@@ -4,8 +4,8 @@
 #     --base      the policy.json the change is made against: a changed policy must carry a higher serial (replay, hub.md)
 #     --signers   the allowed_signers file the signature is checked with (default <hub-dir>/hub-signers, the public key)
 #     --core      a harbor checkout holding the patterns and registers (default: the one this script sits in)
-# Checks (a finding is `[id] text`): layout, leaks, secrets, share, policy, signature, serial, packs. The layout check judges a file with
-# no kind, which lint-share skips (R29). Env: HARBOR_HUB_GATE_GITLEAKS (a missing scanner is a finding), HARBOR_HUB_GATE_PRIVATE (the company's names).
+# Checks (a finding is `[id] text`): layout, leaks, secrets, share, policy, signature, serial, packs (with bin/pack.sh's own refusals, as a
+# laptop applies them: B2). Layout judges a file with no kind, which lint-share skips (R29). Env: HARBOR_HUB_GATE_GITLEAKS (a missing scanner is a finding), HARBOR_HUB_GATE_PRIVATE (the company's names).
 # Exit 0 clean, 1 findings, 2 usage or an unreadable hub. Format: contracts/hub.md.
 set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
@@ -30,7 +30,7 @@ done
 [ -n "$HUB" ] || usage
 [ -d "$HUB" ] || { log_fail "$HUB is not a folder"; log_nofix "name the hub checkout"; exit 2; }
 HUB="$(CDPATH='' cd -- "$HUB" && pwd)"; CORE="$(CDPATH='' cd -- "$CORE" && pwd)"
-for _f in "$HERE/lint-leaks.sh" "$HERE/lint-share.sh" "$HERE/hub-format.sh" "$CORE/contracts/leak-patterns.tsv" "$CORE/standards/naming/kinds.tsv"; do
+for _f in "$HERE/lint-leaks.sh" "$HERE/lint-share.sh" "$HERE/hub-format.sh" "$HERE/pack.sh" "$CORE/contracts/leak-patterns.tsv" "$CORE/standards/naming/kinds.tsv"; do
   [ -r "$_f" ] || { log_fail "$_f is missing, so nothing was judged"; log_nofix "use a complete harbor checkout (--core DIR)"; exit 2; }
 done
 command -v jq >/dev/null 2>&1 || { log_fail "jq is missing, so nothing was judged"; log_fix "$(pkg_hint jq)"; exit 2; }
@@ -45,7 +45,10 @@ quote() { sed 's/^/  /' | head -n "${1:-8}"; }   # a tool's own words, bounded
 # file would pass unseen, and gitleaks would read a .gitleaksignore the hub ships (harbor#1278, R29).
 S="$T/stage"; mkdir -p "$S"
 ( cd "$HUB" && tar --exclude=.git -cf - . ) | ( cd "$S" && tar -xf - )
-( cd "$S" && git init -q . && git add -Af . ) >/dev/null 2>&1 || { log_fail "git could not stage the hub"; log_nofix "git add -A in a copy of the hub shows why"; exit 2; }
+# Committed too, in the copy only: pack.sh reads a pack at a commit, as a laptop reads it at the signed pin (B2).
+( cd "$S" && git init -q . && git add -Af . &&
+  git -c user.name=hub-gate -c user.email=hub-gate@invalid -c commit.gpgsign=false commit -q --no-verify --allow-empty -m 'hub-gate stage' ) >/dev/null 2>&1 ||
+  { log_fail "git could not stage the hub"; log_nofix "git add -A and git commit in a copy of the hub show why"; exit 2; }
 ( cd "$S" && find . -path ./.git -prune -o -type f -print | sed 's|^\./||' | LC_ALL=C sort ) > "$T/files"
 
 # 1 · layout: a hub holds the policy, its signature and key, packs, and the files that describe it.
@@ -133,6 +136,22 @@ if [ -f "$POL" ] && jq -e . "$POL" >/dev/null 2>&1; then
     elif [ "$(hub_sha256 < "$S/packs/$_pk/harbor-pack/$_hp")" != "$_hs" ]; then find_ packs "hook packs/$_pk/harbor-pack/$_hp is not the file policy approved (sha256 differs)"; fi
   done
 fi
+# A hook policy approves belongs to a pack policy pins: hub.sh delivers a hook only against the pin, so an approval for an unpinned pack is a hook no laptop gets.
+if [ -f "$POL" ] && jq -e . "$POL" >/dev/null 2>&1; then
+  jq -r '(.hooks // [])[] | .pack' "$POL" | sort -u | while IFS= read -r _pk; do
+    jq -e --arg p "$_pk" '[(.packs // [])[].id] | index($p) != null' "$POL" >/dev/null 2>&1 || find_ packs "policy approves a hook of pack $_pk and does not pin the pack"
+  done
+  # A pin names a commit; where this checkout holds it, the pack must be in it as the laptop reads it (hub.sh check does the same at signing). A commit this checkout does not hold is not judged here.
+  jq -r '(.packs // [])[] | "\(.id)\t\(.commit)"' "$POL" | while IFS="$(printf '\t')" read -r _pk _pc; do
+    git -C "$HUB" cat-file -e "$_pc^{commit}" 2>/dev/null || continue
+    git -C "$HUB" show "$_pc:packs/$_pk/harbor-pack/pack.toml" >/dev/null 2>&1 && git -C "$HUB" show "$_pc:packs/$_pk/extension.json" >/dev/null 2>&1 ||
+      find_ packs "policy pins $_pk at ${_pc%"${_pc#????????????}"} and that commit holds no packs/$_pk/harbor-pack/pack.toml and extension.json"
+  done
+fi
+# One name, one pack: two packs shipping the same skill or bin file are a clash on every laptop that installs both, and the second is skipped there.
+( cd "$S/packs" 2>/dev/null && find . -mindepth 4 -maxdepth 4 \( -path './*/harbor-pack/skills/*' -o -path './*/harbor-pack/bin/*' \) 2>/dev/null ) |
+  awk -F/ '{ print tolower($4 "/" $5) "\t" $2 }' | LC_ALL=C sort | awk -F'\t' '$1 == k { printf "%s\t%s\t%s\n", $1, p, $2 } { k = $1; p = $2 }' |
+  while IFS="$(printf '\t')" read -r _nm _a _b; do find_ packs "$_nm is in two packs ($_a and $_b): a laptop that installs both skips the second"; done
 for _d in "$S"/packs/*/; do
   [ -d "$_d" ] || continue
   _id="${_d%/}"; _id="${_id##*/}"
@@ -140,10 +159,18 @@ for _d in "$S"/packs/*/; do
   if ! sh "$HERE/hub-format.sh" manifest "$_d/extension.json" > "$T/man.out" 2>&1; then
     find_ packs "packs/$_id/extension.json does not match contracts/hub.md"; quote 6 < "$T/man.out" >> "$T/findings"; continue
   fi
+  _nf="$(wc -l < "$T/findings")"
   jq -r '.files[] | "\(.path)\t\(.sha256)"' "$_d/extension.json" | while IFS="$(printf '\t')" read -r _fp _fs; do
     if [ ! -f "$_d/harbor-pack/$_fp" ]; then find_ packs "packs/$_id lists $_fp and that file does not exist"
     elif [ "$(hub_sha256 < "$_d/harbor-pack/$_fp")" != "$_fs" ]; then find_ packs "packs/$_id/harbor-pack/$_fp differs from the sha256 its manifest lists"; fi
   done
+  [ "$(wc -l < "$T/findings")" -eq "$_nf" ] || continue   # pack.sh would repeat the manifest's finding
+  # What a laptop refuses at install, by the laptop's own code (B2): a pack it would skip is never signed. The tree's commit stands in for the pin.
+  rm -rf "$T/target"; mkdir -p "$T/target"
+  if ! env -u CLAUDE_CONFIG_DIR HARBOR_SCOPE_ROOT="$CORE" sh "$HERE/pack.sh" install "$_id" --hub --hub-tree "$S" --dir "$T/target" > "$T/pack.out" 2>&1; then
+    _why="$(sed -n "s/.*skipped hub-$_id: //p" "$T/pack.out" | head -n 1)"
+    find_ packs "packs/$_id: every laptop would skip it: ${_why:-pack.sh could not judge it: $(tail -n 1 "$T/pack.out")}"
+  fi
 done
 
 n="$(grep -c '^hub-gate: \[' "$T/findings" || :)"

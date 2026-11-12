@@ -65,6 +65,7 @@ Closed keys: an unknown key refuses the file.
 | `revoked` | array of logins | Positive signal for leaving. Nothing else removes policy |
 | `support` | `{keys, relay, relay_key, max_minutes}` | Remote support, below. Optional: absent, or with no relay of the hub's own, means support is off |
 | `hosts` | array of up to 200 host names | Hosts a member's sandboxed commands may reach beyond `contracts/confinement-hosts.txt` and `contracts/member-hosts.txt`. Each in `allowedDomains` shape: lower case, at most one leading `*.`, two labels or more after it, never a bare `*`. A row that admits a support relay is refused. Applied when the settings are composed again: by the first install once its policy verifies, by the updater after each update it applies, or by IT running the install again (docs/how-to/member-install.md, "The network") |
+| `logs` | `{recipient}` | The loader's age X25519 recipient (`age1…`). A laptop seals its logs id and counts to it, and to nothing else; without it the laptop sends none (harbor#1278, the logs payload below) |
 
 ### A hub rule
 
@@ -131,15 +132,25 @@ Closed keys per kind, checked by `hub-format.sh event`. No field holds free text
 
 | Kind | Keys beyond `v kind ts member` |
 |---|---|
-| `heartbeat` | `core contract floor serial mode refusals asks requests packs` |
+| `heartbeat` | `core contract floor serial mode refusals asks requests packs`, and `sealed` when the laptop may send its logs payload (below) |
 | `refusal` | `rule tier target count` |
 | `ask` | `rule tier target outcome count` |
 | `request` | `id rule tier target outcome` |
 | `check` | `check outcome` |
 | `token` | `days_left outcome` |
 | `support` | `id reason outcome` |
+| `activity` | `tool verb_class verdict count`: tool calls, counted by the dispatcher once per call. **Sealed only** |
+| `session` | `outcome count`: session starts (`started`, a resume or compact included) and ends (`ended`). **Sealed only** |
 
-`ts` is coarsened to the hour. `packs` lists hub pack ids only, never a name the member chose.
+`ts` is coarsened to the hour; for `activity` and `session` it is the day (`T00:00:00Z`), so a count per person is never finer than a day (logging-design D4, D9). `tool`, `verb_class` and `verdict` are vocabulary sets: an `mcp__` tool is `mcp`, a tool the list lacks is `other`, a call that is not a shell command has class `na`, and the class is the floor's own by first verb, never the command. These two kinds wait in `HUB_STATE/tally.jsonl`, apart from the outbox, so a busy day can't crowd a refusal out; a full tally is folded in place. `packs` lists hub pack ids only, never a name the member chose.
+
+### The logs payload (harbor#1278, "Log scope", level 2)
+
+Harbor's BigQuery logs key a laptop by a **random id**, never a login: `<managed dir>/harbor-ids/<account>.id`, 32 hex, made by `member-install.sh` from `/dev/urandom`, root-owned, beside the managed root and outside it, so `--uninstall` leaves it and a reinstall keeps it. It is never rotated and never derived from a login or an e-mail. The person reads it with `harbor hub id`, which only reads; it is how they ask for their data or its deletion (`legal/dpia.md` R12).
+
+**The id and the counts never appear in clear on the board.** The heartbeat may carry one more key, `sealed`: base64 of an age file to the X25519 recipient `logs.recipient` of the signed policy, holding `{v, id, events}` where `events` are this send's `activity` and `session` counts (up to 100). `hub-format.sh board` refuses a comment with either kind in clear, and a `sealed` value that is not an age file to an X25519 key, so a clear id has no field to ride in. The loader opens it with its own identity and drops the GitHub author before staging; nothing links the two afterwards.
+
+**Nothing is counted before the notice receipt.** `<managed root>/notice-received` is written by `member-install.sh --notice-received`, which IT runs once it holds the member's signed receipt of the logs notice, and removed by `--notice-withdrawn`. It is inside the floor hash. Without it the sender keeps no `activity` or `session` count and seals nothing, so no row of that laptop can reach BigQuery; the release-1 board events go on as before (D8). With it but no way to seal (no `age`, no `logs.recipient`), the heartbeat says `check hub-logs-seal failed` and the counts wait.
 
 ## Remote support
 

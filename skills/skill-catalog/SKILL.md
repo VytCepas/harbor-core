@@ -70,6 +70,7 @@ section is the only thing standing between them and being lost.
 |---|---|---|---|
 | `access-browser` | core | Pick the right browser backend and drive it, then say what the run's absence is and is not evidence for.…<br>_NOT FOR administering a tag-manager or analytics container (its workload skill owns that),…_ | `~/.claude/skills/access-browser/SKILL.md` |
 | `agent-routing` | core | Which model tier and effort each delegated agent runs on — Agent tool calls, headless `claude -p` runs,…<br>_NOT FOR reviewing a diff (audit-review-fanout), or API code that calls Claude (claude-api)._ | `~/.claude/skills/agent-routing/SKILL.md` |
+| `doc-knowledge-base` | core | Design or restructure a knowledge base (a wiki, a document base, a shared agent memory store) so a person…<br>_NOT FOR writing one page's content (write it to the page shape directly), Harbor's own doc…_ | `~/.claude/skills/doc-knowledge-base/SKILL.md` |
 | `doc-learning-artifact` | core | The approved house style and build kit for study pages — an exam guide, a course explainer, a revision…<br>_NOT FOR an architecture or system diagram (`doc-atlas`), a status report or findings, or…_ | `~/.claude/skills/doc-learning-artifact/SKILL.md` |
 | `housekeeping` | core | Reclaim a drifted box: the measured trash classes that accumulate here, the detector for each, and —…<br>_NOT FOR deleting one file you can already name, or a repo's own build artefacts (its justfile…_ | `~/.claude/skills/housekeeping/SKILL.md` |
 | `test-strength` | core | Prove a load-bearing test can actually fail, and that it fails for the right reason. Break the thing it…<br>_NOT FOR reviewing a diff for defects (audit-review-fanout), or running a suite to see it pass…_ | `~/.claude/skills/test-strength/SKILL.md` |
@@ -82,7 +83,7 @@ Listed for the operator, who does not get the model's skill listing.
 |---|---|---|
 | `access-ledger` | core | Which account to use on each system, the role it holds and what it cannot reach:…<br>_NOT FOR obtaining or storing a credential (the operator holds those), or a number that is wrong…_ |
 | `audit-claims` | core | A fresh-context verifier checks each claim of an answer against its source before it ships.<br>_NOT FOR a code diff (audit-review-fanout)._ |
-| `audit-review-fanout` | core | Review a code change with several cheap reviewers, each given a different lens, then verify every finding…<br>_NOT FOR a one-line or docs-only change (one reviewer is enough), proving a test can fail…_ |
+| `audit-review-fanout` | core | Review a code change with several cheap reviewers, each given a different lens, then verify every finding…<br>_NOT FOR proving a test can fail (test-strength), or the merge decision (gate-merge)._ |
 | `doc-atlas` | core | The single owner of human-readable HTML artefacts on this box: an atlas whose subject is a DRAWING, not…<br>_NOT FOR a projection of a TOPOLOGY.md, which is `topology`'s own report-gen.sh._ |
 | `doc-deliverable-contract` | core | Before writing anything a person outside this session will read — a client thread reply, a ticket…<br>_NOT FOR the investigation itself (casefile), or the durable map (topology)._ |
 | `skill-catalog` | core | The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, each…<br>_NOT FOR invoking a skill already in your listing._ |
@@ -131,6 +132,7 @@ checkout (`~/port/harbor`) or your worktree of it.
 | `harbor merge-stack` | several PRs must merge in order, each on its own green CI | `harbor merge-stack check <plan>` |
 | `harbor ship` | opted-in fleet repos must be merged and deployed unattended | `harbor ship night [--plan <file>]` |
 | `harbor repo` | you create a new governed repo or adopt a checkout into the registry (scaffold, register, route memory, plan labels) | `harbor repo new <name> --kind <repo-kind> --dry-run; harbor repo list; harbor repo audit <name>` |
+| `harbor logs` | you are on the operator's Mac and want to see, or send, the coded rows harbor puts in BigQuery | `harbor logs push; harbor logs id` |
 
 ### `bin/` tools
 
@@ -182,6 +184,7 @@ does not carry the path sends you back to the top.
 - `audit-review-fanout` — `~/.claude/skills/audit-review-fanout/SKILL.md` — review this PR, review the diff, code review, review my changes, audit this change, check before merge, second opinion on code.
 - `doc-atlas` — `~/.claude/skills/doc-atlas/SKILL.md` — presenting an architecture, a technology stack, a module or connection structure to a person; when an existing atlas needs updating; when somebody asks for a diagram they can click.
 - `doc-deliverable-contract` — `~/.claude/skills/doc-deliverable-contract/SKILL.md` — replying to a client or account team, answering a thread, writing a recommendation or proposal, drafting a ticket comment, sending findings to anyone, or when a correct analysis needs to become a usable answer.
+- `doc-knowledge-base` — `~/.claude/skills/doc-knowledge-base/SKILL.md` — structure a wiki, reorganise a wiki or document base, dedupe pages, design a knowledge base, handbook or shared memory store, shelves and books, page templates, tags or metadata for pages, maps of content, llms.txt, entry page, glossary, findability, agents cannot find docs, avoid RAG or vector search.
 - `doc-learning-artifact` — `~/.claude/skills/doc-learning-artifact/SKILL.md` — building or updating a study guide, exam guide, course notes page, revision page or learning artifact; when somebody wants to learn a course, a lecture series or a topic from one page.
 - `housekeeping` — `~/.claude/skills/housekeeping/SKILL.md` — the statusline shows 🧹 or SWEEP, clean up, sweep, free disk space, the box feels cluttered, tidy the fleet, obsolete worktrees or branches, stale sessions, what is safe to delete, disk is full, prune caches, retire a PR nobody will merge, merge what is waiting, garbage collect.
 - `skill-catalog` — `~/.claude/skills/skill-catalog/SKILL.md` — you are about to wait on CI or a PR, run a suite, push, merge or do any scripted chore by hand, or do reasoning work by hand: design an eval or a pass^k study, run a red-team pass, chase a root cause, reason from first principles, get independent perspectives, write or optimise a prompt, extract a paper, generate options. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, skill-book (its old name).
@@ -239,6 +242,7 @@ does not carry the path sends you back to the top.
 - `context-peers.sh` — you need to know which other sessions are live in this working tree — `sh ~/port/harbor/bin/context-peers.sh --repo <dir>`
 - `scope-roots.sh` — you need a governed repo's checkout path, or a named root, without guessing it — `sh ~/port/harbor/bin/scope-roots.sh --repo <id>; sh ~/port/harbor/bin/scope-roots.sh --get <VAR>`
 - `memory.sh` — you need what the notes store already knows about a subject before you start — `memory <query>`
+- `harbor logs` — you are on the operator's Mac and want to see, or send, the coded rows harbor puts in BigQuery — `harbor logs push; harbor logs id`
 
 **None of them has a delete verb, and that is a decision** — nothing they touch
 is recoverable from a session.

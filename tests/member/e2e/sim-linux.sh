@@ -40,7 +40,7 @@ if [ "${1:-}" != --inner ]; then
   docker build -q -t "$IMAGE" "$T/img" >/dev/null || { echo "sim-linux: docker build failed" >&2; exit 2; }
   git -C "$ROOT" bundle create "$T/sim/core.bundle" "$REF" >/dev/null 2>&1 || { echo "sim-linux: cannot bundle '$REF' (a ref name: a branch or HEAD)" >&2; exit 2; }
   _commit="$(git -C "$ROOT" rev-parse "$REF")"; printf '%s\n' "$_commit" > "$T/sim/core.commit"
-  cp "$0" "$T/sim/sim-linux.sh"; cp "$HERE/sim-linux-lib.sh" "$HERE/sim_github.py" "$ROOT/tests/hub/fixtures/stub_board.py" "$T/sim/"
+  cp "$0" "$T/sim/sim-linux.sh"; cp "$HERE/sim-linux-lib.sh" "$HERE/sim-linux-company.sh" "$HERE/sim_github.py" "$HERE/stub_anthropic.py" "$ROOT/tests/hub/fixtures/stub_board.py" "$T/sim/"
   [ -z "${SIM_UPTERM_DIR:-}" ] || cp "$SIM_UPTERM_DIR"/upterm_linux_*.tar.gz "$T/sim/dl/" 2>/dev/null || :
   # systemd as PID 1, as WSL's systemd=true runs it: its own cgroup namespace, remounted writable, and /run as tmpfs.
   docker run -d -t --name "$NAME" --hostname member-laptop --add-host github.com:127.0.0.1 --add-host api.github.com:127.0.0.1 \
@@ -55,7 +55,7 @@ if [ "${1:-}" != --inner ]; then
   case "$_up" in running|degraded) ;; *) echo "sim-linux: systemd did not come up in 60 s (state '${_up:-none}')" >&2; exit 2 ;; esac
   docker cp "$T/sim/." "$NAME:/sim/" >/dev/null || exit 2
   echo "sim-linux: $NAME, core $REF = $_commit" >&2
-  RC=0; docker exec "$NAME" sh /sim/sim-linux.sh --inner || RC=$?
+  RC=0; docker exec -e "SIM_ONLY=${SIM_ONLY:-}" -e "SIM_RESUME=${SIM_RESUME:-0}" -e "SIM_HOSTILE=${SIM_HOSTILE:-}" "$NAME" sh /sim/sim-linux.sh --inner || RC=$?
   OUTDIR="${OUTDIR:-$T/out}"; mkdir -p "$OUTDIR"
   docker cp "$NAME:/sim/out/." "$OUTDIR/" >/dev/null 2>&1 || :
   if [ -f "$OUTDIR/table.tsv" ]; then
@@ -74,7 +74,8 @@ fi
 shift
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive
 OUT=/sim/out; RUN=/sim/run; mkdir -p "$OUT" "$RUN"; chmod 755 /sim "$RUN"
-TABLE="$OUT/table.tsv"; : > "$TABLE"; LOG="$OUT/sim.log"; : > "$LOG"
+TABLE="$OUT/table.tsv"; LOG="$OUT/sim.log"
+if [ "${SIM_RESUME:-0}" = 1 ] && [ -f "$TABLE" ]; then :; else : > "$TABLE"; : > "$LOG"; fi   # a resumed run adds to the table it continues
 M=alice; MH=/home/alice; WD="$MH/port/work"; HUB=acme/hub; ADMIN=acme-admin
 MROOT=/etc/claude-code/harbor; MFILE=/etc/claude-code/managed-settings.json
 GIT=/srv/git; BOARD=/srv/board; ADM=/srv/admin; EVIL="$MH/port/.evil"
@@ -111,6 +112,7 @@ install() {
   [ -f "$MFILE" ] && [ -f "$MROOT/bin/harbor-member-mode" ] || { row FAIL install.landed 'floor on disk' absent "$OUT/install-1.log"; return 1; }
   eq install.settings-json 'managed-settings.json is one JSON object' object "$(jq -r type "$MFILE" 2>/dev/null)"
   eq install.settings-owner 'root owns the settings, mode 644' 'root 644' "$(stat -c '%U %a' "$MFILE")"
+  eq install.law-owner 'root owns the company law beside the settings, mode 644' 'root 644' "$(stat -c '%U %a' /etc/claude-code/CLAUDE.md 2>/dev/null)"
   eq install.root-owner 'root owns every file of the floor' 0 "$(find "$MROOT" ! -user root | wc -l | tr -d ' ')"
   eq install.upterm 'the support binary landed by digest' yes "$( [ -x "$MROOT/bin/upterm" ] && echo yes || echo no)"
   _seal="$(grep -c 'could not be made append-only' "$OUT/install-1.log")"
@@ -312,7 +314,7 @@ hostile() {
   hostile_setup
   : > /srv/evil-proxy.log
   # A -nofetch variant skips the session start: the hub was unreachable when the session began, so only what is on disk decides.
-  for _var in path xdg-empty xdg-replay xdg-replay-nofetch harbor net all all-nofetch; do
+  for _var in ${SIM_HOSTILE:-path xdg-empty xdg-replay xdg-replay-nofetch harbor net all all-nofetch}; do   # SIM_HOSTILE runs some of the variants, so a long section can be taken in chunks
     _ef="$RUN/env.${_var%-nofetch}"
     evil_states
     case "$_var" in
@@ -459,13 +461,31 @@ claude_cli() {
 }
 
 say "sim-linux inner run"
-fixture || { row FAIL run.stopped - fixture 'nothing after this ran'; exit 0; }
-install || { row FAIL run.stopped - install 'nothing after this ran'; exit 0; }
-checks
-shadow_check
-hooks
-hostile
-policies
-updater
-claude_cli
+. /sim/sim-linux-company.sh   # sections 8-12: packs, yard, logging, the question tool, the floor's sandbox
+# SIM_ONLY="packs logging" runs those sections alone, and SIM_RESUME=1 skips the fixture and the install of a container kept with --keep (state.env holds
+# what they set): development aids, never the proof. A partial table says so in its first row.
+only() { [ -n "${SIM_ONLY:-}" ] || return 0; case " $SIM_ONLY " in *" $1 "*) return 0 ;; esac; return 1; }
+save_state() { printf 'PIN=%s\nBASE=%s\nCONTRACT=%s\nMUID=%s\nSERIAL=%s\n' "$PIN" "$BASE" "$CONTRACT" "$MUID" "$SERIAL" > /sim/state.env
+  printf '%s' "$SIM_PACKS" > /sim/state.packs; printf '%s' "$SIM_LOGS" > /sim/state.logs; }
+if [ "${SIM_RESUME:-0}" = 1 ] && [ -f /sim/state.env ]; then . /sim/state.env; SIM_PACKS="$(cat /sim/state.packs 2>/dev/null || echo '[]')"; SIM_LOGS="$(cat /sim/state.logs 2>/dev/null)"; TOKEN="$(cat "$BOARD/token")"
+else
+  fixture || { row FAIL run.stopped - fixture 'nothing after this ran'; exit 0; }
+  install || { row FAIL run.stopped - install 'nothing after this ran'; exit 0; }
+  save_state
+fi
+[ -z "${SIM_ONLY:-}" ] && [ "${SIM_RESUME:-0}" != 1 ] || row INFO run.partial "all sections" "only: ${SIM_ONLY:-all}, resume: ${SIM_RESUME:-0}" 'SIM_ONLY or SIM_RESUME is set: this table is not the full proof'
+only checks && checks
+only shadow && shadow_check
+only hooks && hooks
+only hostile && hostile
+only policies && policies
+only updater && updater
+only packs && packs
+only yard && yard
+only logging && logging
+only ask && ask_tool
+only sandbox && sandbox_floor
+only law && law
+only claude && claude_cli
+save_state
 exit 0

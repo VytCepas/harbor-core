@@ -27,14 +27,14 @@ PRIV="$T_TMP/nopriv"; mkdir -p "$PRIV"; seams 0; sess 1
 cat > "$X/bin/access-browser-agent.sh" <<'EOF'
 for a in "$@"; do printf 'arg=%s\n' "$a"; done
 printf 'session=%s lane=%s path=%s private=%s\n' "${HARBOR_ACCESS_BROWSER_SESSION:-}" "${HARBOR_ACCESS_BROWSER_LANE:-${HARBOR_BROWSER_LANE:-}}" "$PATH" "${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-${HARBOR_BROWSER_PRIVATE_HOSTS:-none}}"
-case "$1" in tabs) cat "$STUB_TABS" 2>/dev/null || : ;; esac
+case "$1" in tabs) cat "$STUB_TABS" 2>/dev/null || : ;; attach) [ -z "${STUB_REATTACH:-}" ] || cp "$STUB_REATTACH.keep" "$STUB_REATTACH" ;; esac
 EOF
 bun "$T_ROOT/tests/access/chrome/fake-daemon.ts" "$SOCK" "$CTL" "$SNAP" & DPID=$!
 trap 'kill $DPID 2>/dev/null; chmod -R u+w "$T_TMP" 2>/dev/null; rm -rf "$T_TMP"' EXIT
 _i=0; while [ ! -e "$CTL/ready" ] && [ "$_i" -lt 100 ]; do sleep 0.1; _i=$((_i + 1)); done
 [ -e "$CTL/ready" ] || { t_fail "the fake daemon did not start"; t_done; exit 1; }
 CALLS="$CTL/calls"; : > "$CALLS"
-clean() { rm -f "$CTL"/blank "$CTL"/hidden "$CTL"/eval_fail "$CTL"/tablist_fail "$CTL"/fail "$CTL"/upload_denied "$CTL"/late_blank* "$CTL"/xerr "$CTL"/page_url "$CTL"/delay_ms "$CTL"/token_url; }
+clean() { rm -f "$CTL"/download "$CTL"/blank "$CTL"/hidden "$CTL"/eval_fail "$CTL"/tablist_fail "$CTL"/fail "$CTL"/upload_denied "$CTL"/late_blank* "$CTL"/xerr "$CTL"/page_url "$CTL"/delay_ms "$CTL"/token_url; }
 
 # mcp <tool> <arg>... -> "exit 0|1"; the result text is left in $T_TMP/out. The environment is the launcher's: nothing else reaches it.
 envs() { env -i HOME="$HOME" TMPDIR="$T_TMP" PATH="$PATH" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 "$@"; }
@@ -63,7 +63,7 @@ t_eq "a list for a tool name, a list for params, no method; then a ping" "-32602
   "$(printf '%s\n' "$OUT" | jq -rc '.error.code // .result' | tr '\n' ' ' | sed 's/ $//')"
 TL="$(rpc '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq -r '.result.tools[].name' | sort)"
 ALLOWED="$(awk '/^_allowed\(\) \{/ { f = 1; next } f && /case "\$1" in/ { next } f && /return 0/ { sub(/\).*/, ""); gsub(/[ \t\\]/, ""); print; exit } f { gsub(/[ \t\\]/, ""); printf "%s", $0 }' "$AG" | tr '|' '\n' | sed '/^$/d')"
-WANT="$(printf '%s\n' $ALLOWED attach status state doctor detach tabs front wait-signin hosts confirm-click | tr '-' '_' | sort -u)"
+WANT="$(printf '%s\n' $ALLOWED attach status state text steps doctor detach tabs front wait-signin hosts confirm-click | tr '-' '_' | sort -u)"
 t_eq "CONTROL: the shell agent's allowlist parses" yes "$([ "$(printf '%s\n' "$ALLOWED" | grep -c .)" -ge 20 ] && echo yes || echo no)"
 t_eq "the tools are exactly the shell agent's allowed verbs and its session verbs" "$WANT" "$TL"
 t_hasnt "no tool runs code in a logged-in page" "$TL" "eval"
@@ -399,6 +399,70 @@ printf '{"name":"x","timestamp":9,"socketPath":"%s/none.sock"}\n' "$T_TMP" > "$D
 t_eq "a session whose daemon is not listening is the same hand-off" "exit 1" "$(mcp tab_list)"
 t_has "naming it" "$(txt)" "no Chrome is connected"
 sess 3
+
+t_section "text, a download, steps and the re-attach (harbor#1507)"
+clean; sess 5; : > "$CALLS"
+t_eq "text reads the page" "exit 0" "$(mcp text)"
+t_eq "...through the fixed page function, raw" 1 "$(n 'eval () => document.body ? document.body.innerText : "" \[raw\]')"
+t_eq "text <ref> reads one element" "exit 0" "$(mcp text e3)"
+t_eq "...through the fixed element function on that ref" 1 "$(n 'eval (el) => el.innerText ?? el.textContent ?? "" e3')"
+: > "$CALLS"
+t_eq "text with a script is refused" "exit 1" "$(mcp text 'document.cookie')"
+t_eq "text with two refs is refused" "exit 1" "$(mcp text e3 e4)"
+t_eq "...and neither reached the daemon" 0 "$(grep -c . "$CALLS")"
+: > "$CTL/download"
+t_eq "a goto that starts a download is not a failure" "exit 0" "$(mcp goto https://business.facebook.com/export.xlsx)"
+t_has "...it says where the file goes" "$(txt)" "download started"
+rm -f "$CTL/download"
+t_eq "RED-PROOF: CONTROL: the daemon's own goto failure still fails" "exit 1" "$(: > "$CTL/fail"; mcp goto https://business.facebook.com/; rm -f "$CTL/fail")"
+stepsj() { jq -cn --argjson s "$1" '{jsonrpc:"2.0",id:9,method:"tools/call",params:{name:"steps",arguments:{steps:$s}}}'; }
+steps() { _r="$(printf '%s\n' "$(stepsj "$1")" | envs bun "$SRV" 2>&1)"; printf '%s' "$_r" | jq -r '.result.content[0].text' > "$T_TMP/out"; [ "$(printf '%s' "$_r" | jq -r .result.isError)" = false ] && echo "exit 0" || echo "exit 1"; }
+: > "$CALLS"
+t_eq "steps runs goto, fill and snapshot in one call" "exit 0" "$(steps '[{"verb":"goto","args":["https://business.facebook.com/"]},{"verb":"fill","args":["e3","x"]},{"verb":"snapshot"}]')"
+t_eq "...each reached the daemon" "1 1" "$(n 'goto https://business.facebook.com/') $(n 'fill e3 x')"
+t_has "...and each is reported" "$(txt)" "[3/3] snapshot → ok"
+: > "$CALLS"
+t_eq "a step off the host allow-list stops the steps" "exit 1" "$(steps '[{"verb":"tab_list"},{"verb":"goto","args":["https://evil.example/"]},{"verb":"snapshot"}]')"
+t_eq "...the step before it ran, the refused one and the one after did not" "1 0 0" "$(n tab-list) $(n 'goto https://evil.example/') $(n '^snapshot')"
+t_has "...and it says where it stopped" "$(txt)" "stopped at step 2 of 3"
+: > "$CALLS"
+t_eq "attach cannot run inside steps" "exit 1" "$(steps '[{"verb":"attach"}]')"
+t_eq "...nor confirm_click" "exit 1" "$(steps '[{"verb":"confirm_click","args":["e3"]}]')"
+t_eq "...nor eval" "exit 1" "$(steps '[{"verb":"eval","args":["1"]}]')"
+t_eq "26 steps are refused" "exit 1" "$(steps "$(jq -cn '[range(26) | {verb:"tab_list"}]')")"
+t_eq "...and none of them reached the daemon" 0 "$(grep -c . "$CALLS")"
+mcp goto https://business.facebook.com/adsmanager >/dev/null
+t_eq "a goto records the page a re-attach reopens" "https://business.facebook.com/adsmanager" "$(cat "$WD/.last-url" 2>/dev/null)"
+SF="$DD/0123/claude-abc123def456.session"; cp "$SF" "$SF.keep"; rm -f "$SF"
+rseams() { printf '{"daemonDir":"%s","settingsFile":"%s","settleMs":0,"privHosts":"%s","tokenRegistered":%s,"scopeEnv":{"HARBOR_SCOPE_PRIVATE":"%s","PORT_ROOT":"%s"},"agentEnv":{"STUB_TABS":"%s","STUB_REATTACH":"%s"}}\n' \
+  "$DD" "$SETF" "$PH" "$1" "$PRIV" "$T_TMP/pr" "$T_TMP/tabs-out" "$SF" > "$X/bin/access-chrome-mcp.seams.json"; }
+ERRF="$DD/0123/claude-abc123def456.err"
+closed() { printf '2026-11-11T10:00:00.000Z pw:mcp:relay ws closed> Extension WebSocket closed: %s\n' "$1" > "$ERRF"; }
+closed 'All controlled tabs detached'
+rseams false; : > "$CALLS"
+t_eq "the relay gone and no token registered: goto is the hand-off, as before" "exit 1" "$(mcp goto https://business.facebook.com/x)"
+t_has "...naming attach" "$(txt)" "no Chrome is connected"
+t_eq "...and the session stays gone (no attach ran)" no "$([ -e "$SF" ] && echo yes || echo no)"
+rseams true; : > "$CALLS"
+t_eq "a read verb never re-attaches, even with the token (it skips the classifier)" "exit 1" "$(mcp snapshot)"
+t_has "...its hand-off names the goto that would" "$(txt)" 'mcp__harbor_chrome__goto with args ["https://business.facebook.com/adsmanager"] re-attaches'
+t_eq "...and no attach ran" no "$([ -e "$SF" ] && echo yes || echo no)"
+t_eq "goto, with the token, after the last tab went: re-attaches once and goes" "exit 0" "$(mcp goto https://business.facebook.com/x)"
+t_has "...saying so" "$(txt)" "re-attached with the registered token"
+t_eq "...to the page it was asked for" 1 "$(n 'goto https://business.facebook.com/x')"
+rm -f "$SF"; closed 'Disconnected by the user'; : > "$CALLS"
+t_eq "after the operator's Disconnect, goto does not re-attach" "exit 1" "$(mcp goto https://business.facebook.com/x)"
+t_eq "...no attach ran" no "$([ -e "$SF" ] && echo yes || echo no)"
+closed 'All controlled tabs detached'
+t_eq "goto off the allow-list never re-attaches" "exit 1" "$(mcp goto https://evil.example/)"
+t_eq "...no attach ran" no "$([ -e "$SF" ] && echo yes || echo no)"
+: > "$WD/.headless"; : > "$CALLS"
+t_eq "a headless session never re-attaches to the operator's Chrome" "exit 1" "$(mcp goto https://business.facebook.com/x)"
+t_eq "...nothing reached the daemon" 0 "$(grep -c . "$CALLS")"
+rm -f "$WD/.headless" "$WD/.last-url"
+t_eq "no recorded page (after a detach): no re-attach" "exit 1" "$(mcp goto https://business.facebook.com/x)"
+rm -f "$ERRF"
+cp "$SF.keep" "$SF"; seams 0; sess 6
 
 t_section "the verbs that are Chrome's own run in the shell agent, unchanged, with a scrubbed environment"
 t_eq "attach is the shell agent's" "exit 0" "$(mcp attach)"

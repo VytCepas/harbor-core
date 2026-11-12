@@ -37,6 +37,11 @@ cc.events	/Library/Application Support/Harbor/collector/cc/YYYY-MM-DD.jsonl	bin/
 reconcile.state	cache/reconcile/<id>.tsv	bin/library-log.sh	cache/reconcile	key epoch (first seen)	overwrite	derived	warn	spill	4
 hub.sync	~/.local/state/harbor/hub/last-sync	bin/hub-sync.sh	last-sync	epoch<TAB>result (updated, unchanged, refused, unreachable)	overwrite	derived	open	spill	4
 hub.outbox	~/.local/state/harbor/hub/outbox.jsonl	bin/hub-events.sh	outbox.jsonl	{v,kind,ts,member,...}: closed vocabulary, contracts/hub.md Events; the only stream that leaves a member laptop	truncate-prune	derived	open	spill	5
+hub.tally	~/.local/state/harbor/hub/tally.jsonl	bin/hub-events.sh	tally.jsonl	{v,kind,ts,member,...}: activity and session counts (D9), day ts, folded in place when full; sent in the same comment as the outbox	truncate-prune	derived	open	spill	5
+hub.logs-id	<managed dir>/harbor-ids/<account>.id	bin/member-install.sh	harbor-ids	one line: 32 hex, the laptop account's random logs id (harbor#1278 Log scope level 2); root-owned, kept across reinstalls, never rotated; read by hub-events.sh and harbor hub id	none	derived	open	spill	5
+hub.notice	<managed dir>/harbor/notice-received	bin/member-install.sh	notice-received	one line: the day IT recorded the signed receipt of the logs notice; without it the sender keeps and sends no counts (legal/dpia.md R11)	overwrite	derived	open	spill	5
+logs.id	~/.config/harbor/logs.id	bin/bq-logs.sh	logs.id	one line: 32 hex, the Mac's random logs id, made once by harbor logs push	none	derived	open	spill	5
+logs.cursor	~/.local/state/harbor/logs/last-push	bin/bq-logs.sh	last-push	one line: the last day harbor logs push --apply sent	overwrite	derived	open	spill	5
 hub.send	~/.local/state/harbor/hub/last-send	bin/hub-events.sh	last-send	epoch of the last comment; beside it dropped, token-days-left, heartbeat-issue	overwrite	derived	open	spill	5
 hub.requests	~/.local/state/harbor/hub/requests/<id>.json	bin/hub-approval.sh	$HS/requests	{id,issue,rule,label,tier,target}: a hint, the board is checked every time	truncate-prune	derived	open	spill	5
 hub.used	~/.local/state/harbor/hub/used/<id>	bin/hub-approval.sh	$HS/used	one comment id per line: an advisory mark, expiry bounds replay	truncate-prune	derived	open	spill	5

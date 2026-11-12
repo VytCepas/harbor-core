@@ -28,7 +28,7 @@ failed gate or a refusal. The quality gates never change with the tier.
 
 - **Always pass `model`.** `context-rules/user/agent-model-required` denies an Agent call without one.
   It exempts a `fork`, and an agent whose definition pins a model. The pin is not a routing
-  decision: `pr-review-toolkit:code-reviewer` pins `opus`. Passing `model` overrides the pin, so
+  decision: a plugin's agent can pin `opus`. Passing `model` overrides the pin, so
   pass it.
 - **Haiku defaults to `medium` effort.** A code-changing Haiku agent needs `effort: high`, where
   the trial measured it. `context-rules/user/agent-brief` names a missing effort. Never run an

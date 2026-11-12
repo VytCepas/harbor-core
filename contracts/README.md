@@ -52,6 +52,8 @@ hand-kept account of direction and status; this table is what exists.
 | [agents.tsv](./agents.tsv) | tsv | - |
 | [bin.tsv](./bin.tsv) | tsv | bin.tsv (harbor#1432) — every file under bin/: its form, purpose and ticket. |
 | [box-profile.md](./box-profile.md) | shim | the old name of `host-profile.md` (renames.tsv), kept until its remove_by date |
+| [bq-schema.tsv](./bq-schema.tsv) | tsv | bq-schema.tsv (harbor#1278) — every table and field harbor's logs may hold in BigQuery, as data. |
+| [bq-values.tsv](./bq-values.tsv) | tsv | bq-values.tsv (harbor#1278) — the closed value sets of contracts/bq-schema.tsv, each code an INT64 that dim_enum maps back. |
 | [browser-agent-hosts.txt](./browser-agent-hosts.txt) | txt | Hosts `harbor chrome` may navigate to (goto, tab-new): the big platforms any |
 | [browser-routing.md](./browser-routing.md) | md | Which browser — the router (harbor#458) |
 | [catalog-non-tools.tsv](./catalog-non-tools.tsv) | tsv | catalog-non-tools.tsv (harbor#1010) - executables the catalog never lists as tools: its CLI table is for credentialed commands a session can |
@@ -111,6 +113,7 @@ hand-kept account of direction and status; this table is what exists.
 | [member-files.txt](./member-files.txt) | txt | member-files.txt (harbor#1278) — what member-install.sh copies into <managed root>/bin. contracts/hub.md is the format of that root. |
 | [member-guards.tsv](./member-guards.tsv) | tsv | member-guards.tsv (harbor#1278) — the PreToolUse guards member-dispatch.sh runs, in order: matcher <TAB> argv, then the patterns admission |
 | [member-hosts.txt](./member-hosts.txt) | txt | member-hosts.txt (harbor#1278) — the hosts a member laptop's sandboxed commands may reach, beyond core's contracts/confinement-hosts.txt. |
+| [member-law.md](./member-law.md) | md | Company rules for Claude Code |
 | [member-prereqs.txt](./member-prereqs.txt) | txt | member-prereqs.txt (harbor#1278) — everything a member laptop needs from its package manager, in one place. |
 | [memory-format.md](./memory-format.md) | md | Memory format (shared canonical) |
 | [merge-stack-union.txt](./merge-stack-union.txt) | txt | merge-stack-union.txt (harbor#1060) — the line lists whose pure additions `harbor merge-stack` keeps from both sides. |

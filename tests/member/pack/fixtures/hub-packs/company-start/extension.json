@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "company-start",
+  "version": "1.0.0",
+  "harbor_version": ">=1",
+  "provides": [
+    "skill"
+  ],
+  "files": [
+    {
+      "path": "skills/company-help/SKILL.md",
+      "sha256": "a23301f1f6dde4ad982360627e83d1209c67becca4963af534bee3cb1db08243"
+    }
+  ]
+}

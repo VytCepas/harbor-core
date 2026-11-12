@@ -88,6 +88,9 @@ t_has "WSL and the distro when absent, and it opens no first-run prompt" "$S" '-
 t_has "...for Ubuntu" "$S" "\$distro = 'Ubuntu'"
 t_eq "...only when absent" 1 "$(grep -F -- '--install --distribution' "$SUP" | grep -c '^if (\$held -notcontains \$distro)')"
 t_has "a restart WSL wants is said, and the script can run again" "$S" 'exit 3010'
+t_has "a restart by exit code, 3010 or its HRESULT read as an Int32, is not a failure" "$S" '$irc -ne 3010 -and $irc -ne -2147023422'
+t_has "a restart asked once and taken, and still no distro, is a failure and not a second ask" "$S" 'if (Restarted) {'
+t_has "...told apart by the boot it noted, outside Program Files" "$S" "Join-Path \$env:ProgramData 'harbor-setup-restart.txt'"
 t_eq "the HKLM refusal comes before the first write (F10)" 1 "$([ "$(at 'Policies\ClaudeCode')" -lt "$(at "Put 'setup")" ] && echo 1)"
 t_eq "and before WSL is touched" 1 "$([ "$(at 'Policies\ClaudeCode')" -lt "$(at '--install --distribution')" ] && echo 1)"
 t_eq "the install runs as root inside" 2 "$(grep -c -F -- '-u root --exec /bin/sh $inner' "$SUP")"
@@ -141,6 +144,7 @@ t_has "removes the settings" "$U" "'managed-settings.json'"
 t_has "removes what it set in the registry" "$U" 'Remove-ItemProperty'
 t_hasnt "and only that: the whole key stays" "$U" 'Remove-Item -Recurse -Force $base'
 t_has "removes the shortcuts" "$U" 'Harbor setup.lnk'
+t_has "and the restart note" "$U" 'harbor-setup-restart.txt'
 t_has "both of them" "$U" 'Harbor support.lnk'
 t_section "the install inside ends at the token step (exit 4): setup still finishes, and says so"
 t_has "exit 4 is not a failure of the install" "$S" 'if ($rc -ne 0 -and $rc -ne 4)'
