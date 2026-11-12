@@ -1,7 +1,9 @@
 #!/usr/bin/env sh
 # member-install.sh (harbor#1278) — IT's one setup for a named member who isn't an admin. Run as root; asks nothing. docs/how-to/member-install.md.
 #   sudo sh member-install.sh --user <member> --hub <owner/name> --login <github login> --signers <file> --pin <commit>
-#                             [--mcp-allow <file>] [--token-stdin] [--windows-out <file>]
+#                             [--mcp-allow <file>] [--token-stdin] [--windows-out <file>] [--notice-received | --notice-withdrawn]
+#     --notice-received   the member's signed receipt of the logs notice is held: the laptop may send logs telemetry (harbor#1278)
+#     --notice-withdrawn  they objected or withdrew: it stops. With neither, a re-run keeps what is there
 #   sudo sh member-install.sh --user <member> --store-check    before the token: the store writes and reads back as the member, as a hook does
 #   sudo sh member-install.sh --user <member> --token-stdin    the token step alone, with IT beside the member; the value comes on stdin
 #   sudo sh member-install.sh --user <member> --uninstall      leaving: only IT can run it, because the floor is root's
@@ -186,11 +188,14 @@ stage_tree() {
   case "$_home" in /*) ;; *) die "the home of $MEMBER is '$_home', not an absolute path" 'contracts/hub.md, member.conf' ;; esac
   case "$_home" in *[!A-Za-z0-9._/@+\ -]*) die "the home of $MEMBER holds a character member.conf and the shell line can't carry: $_home" 'contracts/hub.md, member.conf' ;; esac
   printf 'hub=%s\nlogin=%s\nhome=%s\n' "$HUB" "$LOGIN" "$_home" > "$STAGE/harbor/member.conf"
+  member_logs_identity
   # The commit this floor is, for member-update.sh; and the serial whose hosts and relay it carries. Neither is in the hash.
   printf '%s\n' "$PIN" > "$STAGE/harbor/core.commit"
   member_policy_copy "$SIGNERS" || :
   [ -z "$POLICY_SERIAL" ] || printf '%s\n' "$POLICY_SERIAL" > "$STAGE/harbor/pin.serial"
   member_settings_compose "$STAGE/managed-settings.json" "$MCP_FILE" "$HUB" "$LOGIN"
+  # The company law: Claude Code loads a CLAUDE.md beside the managed settings in every session, and no setting excludes it.
+  cp "$ROOT/contracts/member-law.md" "$STAGE/CLAUDE.md"
   sh "$HERE/deploy-confinement.sh" --marker --member --user "$MEMBER" > "$STAGE/harbor-confinement" || die 'writing the confinement marker failed (above)' "sh '$HERE/deploy-confinement.sh' --marker --member"
   member_upterm
   # What lands in bin beside the list, derived from the stage: member-update.sh carries these, and integrity checks they stay (N3).
@@ -203,6 +208,28 @@ stage_tree() {
   [ "${#_pin}" -eq 16 ] || die "member-integrity.sh printed '$_pin', not 16 hex" 'contracts/hub.md, what runs where'
   printf '%s\n' "$_pin" > "$STAGE/harbor/floor.pin"
   log_ok "staged $(wc -l < "$WORK/rows" | tr -d ' ') floor files, the pin is $_pin"
+}
+# member_logs_identity (harbor#1278, "Log scope", level 2): the account's random id and the notice marker, into the stage.
+# The id: 16 random bytes, never derived from the login, never rotated. It lives in <managed dir>/harbor-ids/<account>.id, beside the
+# managed root and not in it, so --uninstall (which removes the root) leaves it and a reinstall keeps it; root-owned, so no agent or
+# member changes it. A valid id already there is kept.
+# The marker: <managed root>/notice-received, written only when IT passes --notice-received after the signed receipt, removed only by
+# --notice-withdrawn; a re-run with neither keeps what is there. Until it exists the sender sends no logs telemetry (legal/dpia.md R11).
+# It is inside the root, so the floor hash covers it: only a re-run of this install changes it.
+member_logs_identity() {
+  _idf="${MROOT%/*}/harbor-ids/$MEMBER.id"
+  _id="$(cat "$_idf" 2>/dev/null)" || _id=''
+  case "$_id" in *[!0123456789abcdef]*) _id='' ;; esac
+  [ "${#_id}" -eq 32 ] || _id="$(od -An -tx1 -N16 /dev/urandom | tr -d ' \n')"
+  case "$_id" in *[!0123456789abcdef]*) die 'the random id could not be made from /dev/urandom' 'ls -l /dev/urandom' ;; esac
+  [ "${#_id}" -eq 32 ] || die 'the random id could not be made from /dev/urandom' 'ls -l /dev/urandom'
+  mkdir -p "$STAGE/harbor-ids"
+  printf '%s\n' "$_id" > "$STAGE/harbor-ids/$MEMBER.id"
+  case "$NOTICE" in
+    received) date -u +%Y-%m-%d > "$STAGE/harbor/notice-received" ;;
+    withdrawn) ;;
+    *) [ ! -f "$MROOT/notice-received" ] || cp "$MROOT/notice-received" "$STAGE/harbor/notice-received" ;;
+  esac
 }
 # put_file <from> <to>: a temp file beside the target, then a rename, so no reader ever meets half a file.
 put_file() {
@@ -218,14 +245,20 @@ land_unix() {
   sink_clear   # an append-only file refuses chmod and chown, so a re-run lifts the flag and seals it again below
   for _f in "$STAGE/harbor/bin/"*; do put_file "$_f" "$MROOT/bin/${_f##*/}" 0755; done
   for _f in "$MROOT/bin/"*; do [ -e "$STAGE/harbor/bin/${_f##*/}" ] || rm -f "$_f"; done   # a file the pin dropped goes too
-  for _n in hub-signers floor.pin floor.extra .helm-obs-host member.conf core.commit pin.serial; do [ ! -f "$STAGE/harbor/$_n" ] || put_file "$STAGE/harbor/$_n" "$MROOT/$_n"; done
+  for _n in hub-signers floor.pin floor.extra .helm-obs-host member.conf core.commit pin.serial notice-received; do [ ! -f "$STAGE/harbor/$_n" ] || put_file "$STAGE/harbor/$_n" "$MROOT/$_n"; done
+  [ -f "$STAGE/harbor/notice-received" ] || rm -f "$MROOT/notice-received"   # withdrawn: the sender stops at its next send
   put_file "$STAGE/harbor-confinement" "${MROOT%/*}/harbor-confinement"
+  put_file "$STAGE/harbor-ids/$MEMBER.id" "${MROOT%/*}/harbor-ids/$MEMBER.id"
+  chown -R "root:$_grp" "${MROOT%/*}/harbor-ids"
   member_sink
   chown -R "root:$_grp" "$MROOT" "${MROOT%/*}/harbor-confinement"
   chown "root:$(member_group)" "$MROOT/$SINK_REL"
   sink_seal
   put_file "$STAGE/managed-settings.json" "$MFILE"
   chown "root:$_grp" "$MFILE"
+  put_file "$STAGE/CLAUDE.md" "${MFILE%/*}/CLAUDE.md"
+  chown "root:$_grp" "${MFILE%/*}/CLAUDE.md"
+  cmp -s "$STAGE/CLAUDE.md" "${MFILE%/*}/CLAUDE.md" || die "read-back: ${MFILE%/*}/CLAUDE.md is not the company law this run wrote" "cmp '$STAGE/CLAUDE.md' '${MFILE%/*}/CLAUDE.md'"
   [ "$(jq -S . "$MFILE" 2>/dev/null)" = "$(jq -S . "$STAGE/managed-settings.json")" ] || die "read-back: $MFILE is not what this run wrote" "jq . '$MFILE'"
   log_ok "landed, and read $MFILE back"
 }
@@ -283,6 +316,16 @@ member_sudoers() {
   put_file "$WORK/sudoers" "$_f" 0440   # the temp name holds a dot, and sudo skips those, so no reader meets half a rule
   chown "root:$(root_group)" "$_f"
   log_ok "$MEMBER may run the prerequisites helper as root, and nothing else: $_f"
+}
+# WSL: the docs place the managed CLAUDE.md at /etc/claude-code inside the distro and name no Windows inheritance for it, so the law
+# lands there as well as beside the Windows settings (land_windows stages it). land_unix never runs on WSL, so this is its own step.
+member_law_distro() {
+  [ "$OS" = WSL ] || return 0
+  _f="$(member_etc)/claude-code/CLAUDE.md"
+  put_file "$STAGE/CLAUDE.md" "$_f"
+  chown "root:$(root_group)" "$_f"
+  cmp -s "$STAGE/CLAUDE.md" "$_f" || die "read-back: $_f is not the company law this run wrote" "cmp '$STAGE/CLAUDE.md' '$_f'"
+  log_ok "the company law sits in the distro too: $_f"
 }
 # W10: a terminal starts in ~/port. Only from the home folder, so `wsl.exe --cd` and a shell opened anywhere else keep their folder. In /etc, so it is root's and needs no user file.
 member_profile() {
@@ -432,10 +475,12 @@ member_uninstall() {
 [ "${MEMBER_INSTALL_LIB:-0}" = 1 ] && return 0
 member_refuse_override "$(id -u)" || exit 1
 umask 022   # IT's own umask must not leave a floor the member can't read: a blocked read under onFailure block stops every call
-MEMBER=''; HUB=''; LOGIN=''; SIGNERS=''; PIN=''; MCP_FILE=''; TOKEN=0; UNINSTALL=0; STORE_CHECK=0; WINDOWS_OUT=''
+MEMBER=''; HUB=''; LOGIN=''; SIGNERS=''; PIN=''; MCP_FILE=''; TOKEN=0; UNINSTALL=0; STORE_CHECK=0; WINDOWS_OUT=''; NOTICE=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --token-stdin) TOKEN=1 ;;
+    --notice-received) [ "$NOTICE" != withdrawn ] || die '--notice-received and --notice-withdrawn are one choice' "sh $0 --help" 2; NOTICE=received ;;
+    --notice-withdrawn) [ "$NOTICE" != received ] || die '--notice-received and --notice-withdrawn are one choice' "sh $0 --help" 2; NOTICE=withdrawn ;;
     --uninstall) UNINSTALL=1 ;;
     --store-check) STORE_CHECK=1 ;;
     --user|--hub|--login|--signers|--pin|--mcp-allow|--windows-out)
@@ -496,6 +541,7 @@ STAGE="$WORK/stage"; mkdir -p "$STAGE"
 stage_tree
 if [ "$OS" = WSL ]; then land_windows; else land_unix; fi
 member_sudoers
+member_law_distro
 member_profile
 member_user_tier
 member_integrity_check

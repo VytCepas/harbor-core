@@ -11,7 +11,15 @@ valid_repo() {
   case "$1" in ''|/*|*/|*/*/*|*..*|*[!A-Za-z0-9._/-]*) return 1 ;; */*) return 0 ;; *) return 1 ;; esac
 }
 
-board() { sh "$HERE/hub-board.sh" call "$W" "$@" </dev/null 2>/dev/null; }
+# One board call is cut at HUB_BOARD_BOUND seconds: curl's own --max-time (hub-board.sh) never sees a hung credential store. A cut call is "no response" (3), so
+# a caller already treats it as the hub being down: the dispatcher denies, post and note go on. stdout is closed so a survivor can't hold the hook's pipe.
+HUB_BOARD_BOUND=10
+board() {
+  _bc=0
+  hub_bounded "$HUB_BOARD_BOUND" sh "$HERE/hub-board.sh" call "$W" "$@" </dev/null >/dev/null 2>/dev/null || _bc=$?
+  [ "$_bc" != 124 ] || return 3
+  return "$_bc"
+}
 # After a call: no usable answer, so the caller reports unreachable. A token GitHub refused is the same to a member.
 board_down() {
   [ "$1" = 0 ] || return 0

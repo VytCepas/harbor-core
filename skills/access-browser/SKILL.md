@@ -102,7 +102,11 @@ harbor chrome snapshot      # element refs; files land in the session workdir (`
 harbor chrome find 'Pixel ID'
 harbor chrome click <ref>
 harbor chrome detach        # when done; idle-timeout releases it anyway after 30 min
+harbor chrome text [ref]    # the visible text, cheaper than snapshot or screenshot for reading
+harbor chrome attach --headless   # in a lane: throwaway headless Chrome, no login, same allow-list
 ```
+
+As MCP tools, `mcp__harbor_chrome__steps` runs a known sequence in one call (harbor#1507); the playbook says when.
 
 - **Signed in first, then Connect.** An app that is not signed in sends its own tab to
   sign-in, and Chrome drops the extension's debugger on that navigation. With no controlled

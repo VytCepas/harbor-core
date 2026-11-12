@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # sim-windows.sh (harbor#1278) — the Windows path of bin/member-windows.sh run in real PowerShell 7, with Windows stubbed, before any Windows test.
-#   sh tests/member/windows/sim-windows.sh       SIM_WINDOWS_TEST_MD=<windows-test.md> adds the operator's PowerShell blocks; unset, they are named as unchecked
+#   sh tests/member/windows/sim-windows.sh       SIM_WINDOWS_TEST_MD=<windows-test.md> and SIM_WINDOWS_COLLEAGUE=<folder of send-to-colleagues/ and zips/> add the operator's blocks and the colleague launcher and guide; unset, named as unchecked
 # Not *.test.sh, like real-upterm.sh: needs docker (none: FAIL, exit 2, never a skip). The first run builds sim-windows-pwsh:local with network (PowerShell 7 +
 # PSScriptAnalyzer over ubuntu:24.04, dash as on WSL; docker rmi removes it); the run has none. The container is the laptop: PowerShell runs the printed script
 # as written; the distro half runs as root for real (useradd, sudo, visudo, /etc/wsl.conf, git, the bootstrap, member-install.sh). Stubbed: wsl.exe, powershell.exe,
@@ -34,6 +34,9 @@ if [ "$INNER" = 0 ]; then
   [ -z "$MD" ] || [ -f "$MD" ] || { echo "sim-windows: SIM_WINDOWS_TEST_MD names no file: $MD" >&2; exit 2; }
   _x="$(mktemp -d "${TMPDIR:-/tmp}/sim-windows.XXXXXX")"; trap 'rm -rf "$_x"' EXIT
   [ -z "$MD" ] || cp "$MD" "$_x/windows-test.md"
+  CO="${SIM_WINDOWS_COLLEAGUE:-}"
+  [ -z "$CO" ] || [ -d "$CO/send-to-colleagues" ] || { echo "sim-windows: SIM_WINDOWS_COLLEAGUE has no send-to-colleagues/: $CO" >&2; exit 2; }
+  [ -z "$CO" ] || { mkdir -p "$_x/colleague"; cp -R "$CO/send-to-colleagues" "$CO/zips" "$_x/colleague/"; }
   NAME="sim-windows-$$"
   COPYFILE_DISABLE=1 tar -C "$ROOT" -cf - bin contracts standards tests/lib tests/member -C "$_x" . 2>/dev/null \
     | docker run --rm -i --network none --name "$NAME" --entrypoint sh "$IMAGE" -c \
@@ -62,9 +65,9 @@ stub /usr/local/bin/wsl.exe \
   'feat="$(cat $S/feature 2>/dev/null || echo absent)"; dist="$(cat $S/distro 2>/dev/null || echo absent)"' \
   'case " $* " in *" --install "*)' \
   '  [ "${SIM_INSTALL_RC:-0}" = 0 ] || exit "$SIM_INSTALL_RC"' \
-  '  if [ "$feat" = on ]; then echo on > $S/distro; else echo pending > $S/feature; echo pending > $S/distro; printf "Changes will not be effective until the system is rebooted.\r\n" | u16; fi; exit 0 ;; esac' \
+  '  if [ "$feat" = on ]; then if [ -n "${SIM_NOREG:-}" ]; then echo unregistered > $S/distro; else echo on > $S/distro; fi; else echo pending > $S/feature; echo pending > $S/distro; printf "Changes will not be effective until the system is rebooted.\r\n" | u16; fi; exit 0 ;; esac' \
   'case "$1" in' \
-  '  --list) if [ "$feat" != on ] || [ "$dist" != on ]; then printf "Windows Subsystem for Linux has no installed distributions.\r\n" | u16; exit 1; fi; printf "Ubuntu\r\n" | u16; exit 0 ;;' \
+  '  --list|-l) if [ "$feat" != on ] || [ "$dist" != on ]; then printf "Windows Subsystem for Linux has no installed distributions.\r\n" | u16; exit 1; fi; printf "Ubuntu\r\n" | u16; exit 0 ;;' \
   '  --terminate) exit 0 ;;' \
   'esac' \
   '[ "$1 $2" = "-d Ubuntu" ] || { echo "wsl.exe stub: unknown call $*" >&2; exit 2; }; shift 2' \
@@ -79,10 +82,14 @@ stub /usr/local/bin/wsl.exe \
 ln -s wsl.exe /usr/local/bin/wsl   # what a person types; Windows finds wsl.exe by PATHEXT
 stub /usr/local/bin/powershell.exe \
   'printf "powershell.exe %s\n" "$*" >> /sim/calls; f=""' \
-  'while [ $# -gt 0 ]; do case "$1" in -File) f="$2"; shift ;; -ExecutionPolicy) shift ;; esac; shift; done' \
+  'while [ $# -gt 0 ]; do case "$1" in -File) f="$2"; shift 2; break ;; -Command) shift; exec pwsh -NoProfile -NonInteractive -Command "$*" ;; -ExecutionPolicy) shift ;; esac; shift; done' \
   '[ "${SIM_HALF_RC:-0}" = 0 ] || exit "$SIM_HALF_RC"' \
-  'cd /sim && exec pwsh -NonInteractive -File "$f"'
+  'f="$(printf "%s" "$f" | tr "\\\\" /)"; case "$f" in .*) f="$PWD/$f"; exec pwsh -NonInteractive -File "$f" "$@" ;; esac' \
+  'cd /sim && exec pwsh -NonInteractive -File "$f" "$@"'
 stub /usr/local/bin/icacls.exe 'printf "icacls.exe %s\n" "$*" >> /sim/calls'
+stub /usr/local/bin/whoami.exe 'printf "whoami.exe %s\n" "$*" >> /sim/calls; [ "$1" = /groups ] || exit 2; printf "S-1-1-0\n"; [ -n "${SIM_NOADMIN:-}" ] || printf "S-1-5-32-544\n"'
+echo 2026-11-09T08:00:00 > "$SIM/boot"; echo 0 > "$SIM/bootn"
+reboot() { _n=$(( $(cat "$SIM/bootn") + 1 )); echo "$_n" > "$SIM/bootn"; printf '2026-11-09T08:%02d:00\n' "$_n" > "$SIM/boot"; }   # Windows restarted
 # reg.exe where WSL finds it: the distro half's F10 check (member-managed.sh --higher-source) asks it.
 stub "$C/Windows/System32/reg.exe" 'printf "reg.exe %s\n" "$*" >> /sim/calls' \
   '[ "$1" = query ] && [ "$3" = /v ] || exit 1; [ -f "/sim/reg/$(printf "%s" "$2" | tr "\\\\" /)/$4" ]'
@@ -101,7 +108,7 @@ $null = New-PSDrive -Name C -PSProvider FileSystem -Root '/sim/C' -Scope Global
 $env:ProgramData = 'C:\ProgramData'; $env:SystemRoot = 'C:\Windows'
 function global:SimLog([string]$s) { [IO.File]::AppendAllText('/sim/calls', "$s`n") }
 function global:SimReg([string]$p) { '/sim/reg/' + (($p -replace '^HKLM:\\?', 'HKLM/') -replace '\\', '/') }
-class SimIdentity { static [object] GetCurrent() { return 'admin' } }
+class SimIdentity { static [object] GetCurrent() { return [pscustomobject]@{ Name = $(if ($env:SIM_ME) { $env:SIM_ME } else { 'SIMPC\admin' }) } } }
 class SimPrincipal {
   [object]$Who
   SimPrincipal([object]$w) { $this.Who = $w }
@@ -173,6 +180,30 @@ function global:New-Object {
   }
   $sh
 }
+# A restart-needed wsl --install that exits non-zero: Linux keeps only the low byte of an exit code (3010 is 194), so PowerShell's $LASTEXITCODE is set here.
+if ($env:SIM_INSTALL_REBOOT_RC) {
+  function global:wsl.exe { & /usr/local/bin/wsl.exe @args; if ("$args" -match '--install') { $global:LASTEXITCODE = [int]$env:SIM_INSTALL_REBOOT_RC } }
+}
+# Windows' last boot, read from /sim/boot: a restart is a new value there.
+function global:Get-CimInstance {
+  param([string]$ClassName)
+  SimLog "Get-CimInstance $ClassName"
+  [pscustomobject]@{ LastBootUpTime = [datetime]::Parse(([IO.File]::ReadAllText('/sim/boot')).Trim(), [cultureinfo]::InvariantCulture) }
+}
+# The launcher's elevation: the encoded command runs in this process, with its closing `exit $rc` turned into a variable, so a 32-bit exit code survives Linux.
+function global:Start-Process {
+  [CmdletBinding()] param([string]$FilePath, [string]$Verb, [switch]$Wait, [switch]$PassThru, [string]$ArgumentList)
+  SimLog "Start-Process $FilePath verb=$Verb"
+  if ($FilePath -ne 'powershell.exe' -or $Verb -ne 'RunAs') { throw "sim: Start-Process $FilePath $Verb" }
+  if ($env:SIM_UAC -eq 'no') { throw [InvalidOperationException]::new('This command cannot be run due to the error: The operation was canceled by the user.', [ComponentModel.Win32Exception]::new(1223)) }
+  $txt = [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($ArgumentList.Split(' ')[-1]))
+  if ([regex]::Matches($txt, '(?m)^exit \$rc\s*$').Count -ne 1) { throw 'sim: the elevated command no longer ends in exit $rc' }
+  $global:SimRc = $null
+  # An error that stops the elevated command ends that process at once: exit 1, no result file, the transcript closed by the exit.
+  try { & ([scriptblock]::Create([regex]::Replace($txt, '(?m)^exit \$rc\s*$', '$global:SimRc = $rc'))) | Out-Host }
+  catch { $global:SimRc = 1; Write-Host ($_ | Out-String); try { Stop-Transcript | Out-Null } catch { $null = $_ } }
+  [pscustomobject]@{ ExitCode = $global:SimRc }
+}
 PS
 
 # ── helpers ────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -191,7 +222,7 @@ ps_run() { # <script> -> RC, OUT; the operator's command, under the profile
 full_rc() { ( cd "$SIM" && pwsh -NonInteractive -Command "& '$1' *> \$null; [IO.File]::WriteAllText('/sim/rc', \"\$LASTEXITCODE\")" ) >/dev/null 2>&1; cat "$SIM/rc"; }
 calls() { grep -v '^---' "$LOG" 2>/dev/null; }
 seq_of() { calls | sed -n -e 's/^\(wsl\.exe [^/]*\).*/\1/p' -e 's/^\(powershell\.exe\).*/\1/p' | sed 's/ *$//' | tr '\n' '|'; }
-win_reset() { rm -rf "$SIM"/inner-*.log "$CC" "$DESK"/*.lnk "$MENU"/*.lnk "$SIM/state" "$SIM/reg/HKLM/SOFTWARE/Policies/Claude" "$SIM/reg/HKLM/SOFTWARE/Policies/ClaudeCode"; mkdir -p "$SIM/state"; : > "$LOG"; : > "$SIM/distro-calls"; }
+win_reset() { rm -f "$C/ProgramData/harbor-setup-restart.txt"; rm -rf "$SIM"/inner-*.log "$CC" "$DESK"/*.lnk "$MENU"/*.lnk "$SIM/state" "$SIM/reg/HKLM/SOFTWARE/Policies/Claude" "$SIM/reg/HKLM/SOFTWARE/Policies/ClaudeCode"; mkdir -p "$SIM/state"; : > "$LOG"; : > "$SIM/distro-calls"; }
 distro_reset() { userdel -r alice >/dev/null 2>&1; rm -rf /home/alice /opt/harbor-core /opt/harbor-member.ps1 /etc/wsl.conf /etc/sudoers.d/harbor-member-prereqs /etc/profile.d/harbor-member.sh; }
 snap() { find "$C" "$SIM/reg" /etc/wsl.conf /etc/sudoers.d /etc/profile.d/harbor-member.sh -type f 2>/dev/null | LC_ALL=C sort | while IFS= read -r _f; do printf '%s %s\n' "$(sha256sum < "$_f" | cut -c1-16)" "$_f"; done; }
 lnks() { find "$DESK" "$MENU" -name '*.lnk'; }
@@ -263,7 +294,7 @@ t_eq "no registry value, no shortcut" '' "$(regval Claude/disableWslSessions)$(l
 t_eq "...and the exit is 3010 in full" 3010 "$(win_reset; full_rc "$SETUP")"
 
 t_section "after the restart: the whole laptop"
-echo on > "$SIM/state/feature"; [ "$(cat "$SIM/state/distro")" != pending ] || echo on > "$SIM/state/distro"   # optimistic: the restart registers it
+reboot; echo on > "$SIM/state/feature"; [ "$(cat "$SIM/state/distro")" != pending ] || echo on > "$SIM/state/distro"   # optimistic: the restart registers it
 : > "$LOG"; ps_run "$SETUP"
 t_eq "exit 4: the floor is on, the token step is next (no token in the sim)" 4 "$RC"; t_has "...and it says so" "$(cat "$OUT")" 'not finished'
 [ "$RC" = 4 ] || sed -n '1,60p' "$OUT" | sed 's/^/  | /'
@@ -363,11 +394,31 @@ win_reset; SIM_INSTALL_RC=1; export SIM_INSTALL_RC; ps_run "$SETUP"; unset SIM_I
 t_eq "wsl --install failing: exit 1" 1 "$RC"; t_has "...saying so" "$(cat "$OUT")" 'wsl --install stopped with exit 1'
 t_eq "...and nothing written" no "$([ -e "$CC" ] && echo yes || echo no)"
 
-t_section "the --no-launch question (W: the first Windows run)"
-# If the restart does not register the distro, nothing here can tell a pending restart from a distro that never registers.
-win_reset; distro_reset; ps_run "$SETUP"; ps_run "$SETUP"
-t_eq "a distro still pending after a restart: 3010 again, the same advice" 194 "$RC"
-printf '  note: if wsl --install --no-launch leaves Ubuntu unregistered after the restart, the script asks for restarts forever (see the report)\n'
+t_section "wsl --install asks for the restart by its exit code: 3010, or 0x80070BC2 as the Int32 PowerShell reads"
+# Microsoft's WSL install code treats ERROR_SUCCESS_REBOOT_REQUIRED (3010) as success needing a restart; whether the laptop's wsl.exe returns it is unproven here.
+for _rc in 3010 -2147023422; do
+  win_reset; distro_reset; SIM_INSTALL_REBOOT_RC="$_rc"; export SIM_INSTALL_REBOOT_RC; ps_run "$SETUP"
+  t_eq "[$_rc] exit 3010 (194 here), not 1" 194 "$RC"; t_has "[$_rc] ...saying restart, then the same script" "$(cat "$OUT")" 'Restart Windows, then run this same script again'
+  t_hasnt "[$_rc] ...and not a failure" "$(cat "$OUT")" 'stopped with exit'
+  t_eq "[$_rc] nothing under C:\\Program Files\\ClaudeCode" no "$([ -e "$CC" ] && echo yes || echo no)"
+  t_eq "[$_rc] ...and the exit is 3010 in full" 3010 "$(win_reset; full_rc "$SETUP")"
+  unset SIM_INSTALL_REBOOT_RC
+done
+win_reset; distro_reset; SIM_INSTALL_RC=5; export SIM_INSTALL_RC; ps_run "$SETUP"; unset SIM_INSTALL_RC
+t_eq "CONTROL: any other non-zero exit is still a failure: exit 1" 1 "$RC"
+
+t_section "the restart is asked once: --no-launch can leave Ubuntu unregistered after it"
+RESTART_FLAG="$C/ProgramData/harbor-setup-restart.txt"
+win_reset; distro_reset; ps_run "$SETUP"
+t_eq "run 1: 3010" 194 "$RC"; t_eq "...and the boot it asked on is kept, outside Program Files" yes "$([ -s "$RESTART_FLAG" ] && echo yes)"
+ps_run "$SETUP"; t_eq "run again without a restart: 3010 again, the same advice" 194 "$RC"
+reboot; echo on > "$SIM/state/feature"   # Windows restarted; the distro stays unregistered
+SIM_NOREG=1; export SIM_NOREG; ps_run "$SETUP"; unset SIM_NOREG
+t_eq "after a restart with Ubuntu still unregistered: exit 1, never 3010 again" 1 "$RC"
+t_has "...saying what is wrong" "$(cat "$OUT")" 'not registered'; t_hasnt "...and not asking for a restart" "$(cat "$OUT")" 'Restart Windows'
+t_eq "...with nothing written" no "$([ -e "$CC" ] && echo yes || echo no)"
+ps_run "$SETUP"; t_eq "CONTROL: Ubuntu registers on the next try: exit 4" 4 "$RC"
+t_eq "...and the restart note is gone" no "$([ -e "$RESTART_FLAG" ] && echo yes || echo no)"
 
 # ── 3. the payload through real PowerShell: bytes, quoting, a 16 MB line ────────────────────────────────────────────────
 t_section "Put and Keep in real PowerShell, byte for byte"
@@ -402,14 +453,18 @@ cp "$SIGNERS" "$T_TMP/it's a \$file \`x\`"
 t_exit "a --signers path with quotes is fine: only its bytes land" 0 sh "$T_ROOT/bin/member-windows.sh" --setup --pin "$PIN40" --user alice --hub "$HUB" --login "$LOGIN" --signers "$T_TMP/it's a \$file \`x\`"
 t_exit "CONTROL: a plain member with a dot is still taken" 0 sh "$T_ROOT/bin/member-windows.sh" --setup --pin "$PIN40" --user al.ice --hub "$HUB" --login "$LOGIN" --signers "$SIGNERS"
 
+. "$(dirname "$0")/sim-colleague.sh"   # 3b. the launcher the colleagues run, twice (3010, then 4), and the colleague guide
+
 # ── 4. uninstall ───────────────────────────────────────────────────────────────────────────────────────────────────────
 t_section "uninstall"
 win_reset; distro_reset; echo on > "$SIM/state/feature"; echo on > "$SIM/state/distro"; ps_run "$SETUP"; t_eq "CONTROL: installed first (exit 4: the token is next)" 4 "$RC"
 mkdir -p "$REG/Claude"; printf 'DWord:1' > "$REG/Claude/someOtherValue"
+printf '2026-11-09T08:00:00\n' > "$RESTART_FLAG"
 : > "$LOG"; ps_run "$UNINST"
 t_eq "exit 0" 0 "$RC"
 t_eq "the floor, the settings and the marker are gone" '' "$(ls "$CC/harbor" "$CC/managed-settings.json" "$CC/harbor-confinement" 2>/dev/null)"
 t_eq "all three shortcuts are gone" '' "$(lnks)"
+t_eq "...and so is the restart note" no "$([ -e "$RESTART_FLAG" ] && echo yes || echo no)"
 t_eq "disableWslSessions is gone" '' "$(regval Claude/disableWslSessions)"
 t_eq "...and only it: the key and its other values stay" 'DWord:1' "$(regval Claude/someOtherValue)"
 ps_run "$UNINST"; t_eq "a second uninstall: exit 0, nothing to remove" 0 "$RC"

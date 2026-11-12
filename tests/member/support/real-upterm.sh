@@ -237,6 +237,9 @@ join "$T_TMP/stranger" "ws://$_sid@$WSADDR" "$T_TMP/ws-stranger.out" 'wait 3'
 t_eq "a key not listed doesn't" 255 "$JOIN_RC"
 : > "$T_TMP/end-ws"; wait "$WSHOST" 2>/dev/null || :
 
+cw_target() { printf 'ssh://%s@127.0.0.1:%s' "$1" "$PORT"; }
+. "$T_ROOT/tests/member/support/colleague.sh"
+
 kill "$RELAYD" 2>/dev/null
 be_down
 t_done

@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# session.test.sh (harbor#1278) — member-session.sh: SessionStart syncs, checks the floor, records a heartbeat and sends; SessionEnd
-# sends; neither blocks a session, and a failed floor check is a `check` event and a line in the session's context.
+# session.test.sh (harbor#1278) — member-session.sh: SessionStart syncs, checks the floor, counts a session start and sends; SessionEnd
+# counts a session end and sends (D9); neither blocks a session, and a failed floor check is a `check` event and a line in the session's context.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/hub/fixtures/resolver.sh"
 member_env; mkinst; hub_init
@@ -21,6 +21,8 @@ t_eq "exit 0" 0 "$_rc"
 t_eq "the policy was fetched and is held" joined "$(sh "$HS" state 2>/dev/null)"
 t_has "the outbox is sent (the sender builds the heartbeat)" "$(cat "$T_TMP/events.log")" "send"
 t_eq "...and no heartbeat is recorded here: the sender discards one" 0 "$(grep -c 'heartbeat' "$T_TMP/events.log")"
+t_has "a session start is counted (D9)" "$(cat "$T_TMP/events.log")" "record session outcome=started count=1"
+t_eq "...once, before the send" "record session outcome=started count=1" "$(grep -m1 -E 'session|send' "$T_TMP/events.log")"
 t_eq "a clean floor says nothing in the session's context" "" "$_o"
 
 t_section "3 - a failed integrity check is an event and a line in the context"
@@ -58,10 +60,10 @@ _o="$(ms start "")"; _rc=$?
 t_eq "a 401: exit 0, joined" "0 joined" "$_rc $(sh "$HS" state 2>/dev/null)"
 rm -f "$T_BIN/git"
 
-t_section "6 - SessionEnd only sends"
+t_section "6 - SessionEnd counts the end and sends, nothing else"
 : > "$T_TMP/events.log"
 _o="$(ms '' "$END")"; _rc=$?
-t_eq "exit 0" 0 "$_rc"; t_eq "only the send ran" "send" "$(cat "$T_TMP/events.log")"; t_eq "no context" "" "$_o"
+t_eq "exit 0" 0 "$_rc"; t_eq "the end is counted, then the send runs" "$(printf 'record session outcome=ended count=1\nsend')" "$(cat "$T_TMP/events.log")"; t_eq "no context" "" "$_o"
 
 t_section "7 - a verified revocation leaves, says so, and sends nothing"
 publish '.serial = 2 | .revoked = ["alice"]'

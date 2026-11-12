@@ -60,6 +60,40 @@ sh "$E" record check check=floor-integrity outcome=passed
 t_eq "past the cap a record isn't kept" "$n0" "$(lines)"
 t_eq "and is counted" 1 "$(drops)"
 
+t_section "4b - activity and session (D9): their own tally, the day as ts (D4)"
+TL="$BE_HS/tally.jsonl"
+tally() { if [ -f "$TL" ]; then wc -l < "$TL" | tr -d ' '; else echo 0; fi; }
+be_reset; rm -f "$BE_ROOT/notice-received"
+sh "$E" record activity tool=Bash verb_class=readonly verdict=allow count=1
+t_eq "without the receipt marker no count is kept (R11)" "0 0" "$(tally) $(drops)"
+: > "$BE_ROOT/notice-received"
+be_reset
+sh "$E" record activity tool=Bash verb_class=readonly verdict=allow count=1
+sh "$E" record session outcome=started count=1
+t_eq "both in the tally" 2 "$(tally)"
+t_eq "none in the outbox" 0 "$(lines)"
+t_eq "ts is the day" "$(date -u +%Y-%m-%d)T00:00:00Z" "$(jq -rs '.[0].ts' "$TL")"
+t_eq "no drops" 0 "$(drops)"
+be_reset
+sh "$E" record activity tool=mcp__claude_ai_Acme verb_class=na verdict=allow count=1
+t_eq "a raw tool name is dropped, counted" "0 1" "$(tally) $(drops)"
+be_reset
+sh "$E" record session outcome=approved count=1
+t_eq "a session outcome off its two is dropped" "0 1" "$(tally) $(drops)"
+# a full tally folds in place: a day of calls never crowds out a refusal, and isn't dropped either
+be_reset
+mkdir -p "$BE_HS"
+D="$(date -u +%Y-%m-%d)T00:00:00Z"
+awk -v d="$D" 'BEGIN { for (i = 0; i < 9000; i++) print "{\"v\":1,\"kind\":\"activity\",\"ts\":\"" d "\",\"member\":\"alice\",\"tool\":\"" (i % 2 ? "Bash" : "Read") "\",\"verb_class\":\"" (i % 2 ? "readonly" : "na") "\",\"verdict\":\"allow\",\"count\":1}" }' > "$TL"
+sh "$E" record activity tool=Bash verb_class=readonly verdict=allow count=1
+t_eq "folded to one line per kind of call, plus the new record" 3 "$(tally)"
+t_eq "every call is still counted" 9001 "$(jq -s 'map(.count) | add' "$TL")"
+t_eq "nothing dropped" 0 "$(drops)"
+t_eq "the fold leaves no lock or working file" 0 "$(find "$BE_HS" -name 'tally.lock' -o -name 'tally.folding.*' | grep -c . || true)"
+sh "$E" record refusal rule=admission.rm-root tier=very-high target=command count=1
+t_eq "a refusal still reaches the outbox" 1 "$(lines)"
+rm -f "$BE_ROOT/notice-received"
+
 t_section "5 - standalone does nothing"
 be_reset
 HARBOR_MEMBER_ROLE='' sh "$E" record check check=floor-integrity outcome=passed

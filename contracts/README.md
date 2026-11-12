@@ -43,15 +43,19 @@ Generated: one row per file, so a contract added without a README edit appears a
 hand-kept account of direction and status; this table is what exists.
 
 `schemas/` holds the producer's JSON Schemas that rows of `seams.tsv` name (harbor#1425); a directory is listed here by name, its files by their own header.
+`member-rules/` holds the member variants of the core context-rule notes that a member laptop's managed root ships (`member-context-rules.tsv` names them; harbor#1278).
 
 | File | Kind | What it is |
 |---|---|---|
 | [access-card.md](./access-card.md) | md | The access card - the format of the access register |
 | [access-register.md](./access-register.md) | md | The access register - one list of every identity an agent may use |
+| [agent-architectures.tsv](./agent-architectures.tsv) | tsv | - |
 | [agent-tools.tsv](./agent-tools.tsv) | tsv | agent-tools.tsv (harbor#1010) - the USE WHEN and the exact invocation of every agent-facing `harbor` verb and bin/ tool; bin/skill-catalog.s |
 | [agents.tsv](./agents.tsv) | tsv | - |
 | [bin.tsv](./bin.tsv) | tsv | bin.tsv (harbor#1432) — every file under bin/: its form, purpose and ticket. |
 | [box-profile.md](./box-profile.md) | shim | the old name of `host-profile.md` (renames.tsv), kept until its remove_by date |
+| [bq-schema.tsv](./bq-schema.tsv) | tsv | bq-schema.tsv (harbor#1278) — every table and field harbor's logs may hold in BigQuery, as data. |
+| [bq-values.tsv](./bq-values.tsv) | tsv | bq-values.tsv (harbor#1278) — the closed value sets of contracts/bq-schema.tsv, each code an INT64 that dim_enum maps back. |
 | [browser-agent-hosts.txt](./browser-agent-hosts.txt) | txt | Hosts `harbor chrome` may navigate to (goto, tab-new): the big platforms any |
 | [browser-routing.md](./browser-routing.md) | md | Which browser — the router (harbor#458) |
 | [catalog-non-tools.tsv](./catalog-non-tools.tsv) | tsv | catalog-non-tools.tsv (harbor#1010) - executables the catalog never lists as tools: its CLI table is for credentialed commands a session can |
@@ -108,9 +112,11 @@ hand-kept account of direction and status; this table is what exists.
 | [logging.md](./logging.md) | md | Logging — one log format for Harbor's tools and tests |
 | [main-folders.txt](./main-folders.txt) | txt | main-folders.txt (harbor#1442, #1440) — the folders an agent must never change through the file tools, because they |
 | [marker.md](./marker.md) | md | Detect-and-defer marker seam — FREEZE (and fix the name collision) |
+| [member-context-rules.tsv](./member-context-rules.tsv) | tsv | member-context-rules.tsv (harbor#1278) — the context rules that ship to a member laptop. EMPTY BY DEFAULT: a rule not listed here never fi |
 | [member-files.txt](./member-files.txt) | txt | member-files.txt (harbor#1278) — what member-install.sh copies into <managed root>/bin. contracts/hub.md is the format of that root. |
 | [member-guards.tsv](./member-guards.tsv) | tsv | member-guards.tsv (harbor#1278) — the PreToolUse guards member-dispatch.sh runs, in order: matcher <TAB> argv, then the patterns admission |
 | [member-hosts.txt](./member-hosts.txt) | txt | member-hosts.txt (harbor#1278) — the hosts a member laptop's sandboxed commands may reach, beyond core's contracts/confinement-hosts.txt. |
+| [member-law.md](./member-law.md) | md | Company rules for Claude Code |
 | [member-prereqs.txt](./member-prereqs.txt) | txt | member-prereqs.txt (harbor#1278) — everything a member laptop needs from its package manager, in one place. |
 | [memory-format.md](./memory-format.md) | md | Memory format (shared canonical) |
 | [merge-stack-union.txt](./merge-stack-union.txt) | txt | merge-stack-union.txt (harbor#1060) — the line lists whose pure additions `harbor merge-stack` keeps from both sides. |
