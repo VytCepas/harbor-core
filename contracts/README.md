@@ -43,11 +43,13 @@ Generated: one row per file, so a contract added without a README edit appears a
 hand-kept account of direction and status; this table is what exists.
 
 `schemas/` holds the producer's JSON Schemas that rows of `seams.tsv` name (harbor#1425); a directory is listed here by name, its files by their own header.
+`member-rules/` holds the member variants of the core context-rule notes that a member laptop's managed root ships (`member-context-rules.tsv` names them; harbor#1278).
 
 | File | Kind | What it is |
 |---|---|---|
 | [access-card.md](./access-card.md) | md | The access card - the format of the access register |
 | [access-register.md](./access-register.md) | md | The access register - one list of every identity an agent may use |
+| [agent-architectures.tsv](./agent-architectures.tsv) | tsv | - |
 | [agent-tools.tsv](./agent-tools.tsv) | tsv | agent-tools.tsv (harbor#1010) - the USE WHEN and the exact invocation of every agent-facing `harbor` verb and bin/ tool; bin/skill-catalog.s |
 | [agents.tsv](./agents.tsv) | tsv | - |
 | [bin.tsv](./bin.tsv) | tsv | bin.tsv (harbor#1432) — every file under bin/: its form, purpose and ticket. |
@@ -110,6 +112,7 @@ hand-kept account of direction and status; this table is what exists.
 | [logging.md](./logging.md) | md | Logging — one log format for Harbor's tools and tests |
 | [main-folders.txt](./main-folders.txt) | txt | main-folders.txt (harbor#1442, #1440) — the folders an agent must never change through the file tools, because they |
 | [marker.md](./marker.md) | md | Detect-and-defer marker seam — FREEZE (and fix the name collision) |
+| [member-context-rules.tsv](./member-context-rules.tsv) | tsv | member-context-rules.tsv (harbor#1278) — the context rules that ship to a member laptop. EMPTY BY DEFAULT: a rule not listed here never fi |
 | [member-files.txt](./member-files.txt) | txt | member-files.txt (harbor#1278) — what member-install.sh copies into <managed root>/bin. contracts/hub.md is the format of that root. |
 | [member-guards.tsv](./member-guards.tsv) | tsv | member-guards.tsv (harbor#1278) — the PreToolUse guards member-dispatch.sh runs, in order: matcher <TAB> argv, then the patterns admission |
 | [member-hosts.txt](./member-hosts.txt) | txt | member-hosts.txt (harbor#1278) — the hosts a member laptop's sandboxed commands may reach, beyond core's contracts/confinement-hosts.txt. |

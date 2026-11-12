@@ -90,6 +90,7 @@ doc-checks-generate.sh   VERB  regenerates docs/reference/checks.md from control
 status-suggest-scan.sh   IDLE  the pane's Scan button runs it from mods/status-pane/hooks/sources.ts, a TypeScript caller this sweep does not read (harbor#1485)
 hub-digest.sh   VERB  the hub's daily digest workflow runs it (patches/hub/hub-digest.patch.md), a patch this sweep does not read; nothing runs until the operator applies it (harbor#1278)
 hub-fetch.sh    VERB  feeds hub-digest.sh in the same workflow; an admin can run it by hand (harbor#1278)
-hub-gate.sh     VERB  the hub's gates workflow runs it (patches/hub/hub-gates.patch.md); an admin runs it before signing (harbor#1278)
 bq-load.sh      VERB  the hub-bq-load workflow runs it (patches/hub/hub-bq-load.patch.md), a patch this sweep does not read; nothing runs until the operator applies it and J1 has its own yes (harbor#1278)
 member-update.sh  VERB  IT runs it as root during the pilot; its schedule needs the operator's own yes, so nothing calls it (harbor#1278)
+hub-pin-upgrade.sh  VERB  the hub admin runs it by hand to raise the policy's core pin on a branch, once per release; it stops before signing, so nothing can schedule it (harbor#1278)
+member-setup-generate.sh  VERB  the hub admin runs it by hand to rebuild every person's setup zip at a pin, once per release; the roster is private to the admin, so nothing can schedule it (harbor#1278)

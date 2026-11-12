@@ -43,3 +43,4 @@ hub-policy	format	harbor	scaffolded	-	-	-	-	hub	0	no JSON Schema: bin/hub-format
 hub-risk-tiers	format	harbor	scaffolded	-	-	-	-	hub	0	no JSON Schema: bin/hub-format.sh checks it against contracts/risk-tiers.tsv; a hub repo reads it in place, so there is no copy to compare (harbor#1278)
 hub-events	format	harbor	scaffolded	-	-	-	-	hub	0	no JSON Schema: bin/hub-format.sh checks it against contracts/hub-vocabulary.tsv; a hub repo reads it in place, so there is no copy to compare (harbor#1278)
 hub-extension	format	harbor	scaffolded	-	-	-	-	hub	0	no JSON Schema: bin/hub-format.sh checks it against contracts/hub.md; a hub repo reads it in place, so there is no copy to compare (harbor#1278)
+scaffolder-templates-harbor	vendor	yard	harbor	vendor/scaffolder/	MANIFEST.tsv#yard_commit	-	check.seam-fresh	standard	0	the member project standard renders AGENTS.md and CLAUDE.md from this copy; doc-fresh-verify runs standard-vendor-scaffolder.sh --check

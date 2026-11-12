@@ -13,3 +13,4 @@ vendor/naming/doc-shape.sh	*	vendored copy of bin/doc-shape.sh; same in-place re
 bin/standard-inventory.sh	*	the page subcommand writes the two generated pages it owns (docs/reference/env.md, contracts/cli.md) only under --write, the fix column of contracts/fresh-checks.tsv (harbor#1431, harbor#1432)
 relay/install.sh	*	writes only under --root, which it refuses unless absolute (the tests pass a temp dir), or with no --root under / on the relay VM as root: etc/ and usr/local/bin/ are never paths in the checkout (harbor#1278)
 bin/bq-format.sh	contracts/bq-values.tsv	values --write regenerates the tracked file it owns, the fix line of its own --check; it never creates an untracked file (harbor#1278)
+bin/standard-vendor-scaffolder.sh	vendor/scaffolder	--write regenerates the vendored templates it owns, the fix line of its own --check; it never creates a stray file (harbor#1278)

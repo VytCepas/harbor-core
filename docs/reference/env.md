@@ -317,6 +317,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_MEMBER_ROLE` | switch | `standalone` | member on a company laptop, set only in managed settings; on a marker box hub_env_clean sets it from member.conf and env is ignored (contracts/hub.md); anything else is a standalone install | member |  | tests only |
 | `HARBOR_HUB_REMOTE` | test-only | none | Ignored beside harbor-member-mode. Git remote hub-sync fetches instead of https://github.com/<HARBOR_HUB_REPO>.git: https or an absolute path, a test seam; the policy it serves must still verify | hub |  | tests only |
 | `HARBOR_HUB_TIMEOUT` | tuning | `8` | Seconds a hub fetch or event send may take before it is cut off and counted unreachable, default 8 | hub |  | tests only |
+| `HARBOR_HUB_TOOLS_REMOTE` | test-only | none | Ignored beside harbor-member-mode. Git remote member-tools.sh pulls and pushes a member's personal tools through instead of https://github.com/<org>/tools-<login>.git: https or an absolute path, a test seam | hub |  | tests only |
 | `HARBOR_MEMBER_LOGIN` | value | none | The member's GitHub login, set only in managed settings; on a marker box hub_env_clean sets it from member.conf and env is ignored (contracts/hub.md); no value means no approval and no events | member |  | tests only |
 | `HARBOR_HUB_REPO` | value | none | The hub repository as owner/name, set only in managed settings; on a marker box hub_env_clean sets it from member.conf and env is ignored (contracts/hub.md); its Issues are the board | member |  | tests only |
 | `HARBOR_HUB_API_BASE` | test-only | none | A loopback stub for the GitHub API, honoured by hub-board.sh only with no harbor-member-mode file beside it, so it can't redirect a member | member |  | tests only |
@@ -333,6 +334,9 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_MEMBER_SUPPORT_POLL_SECONDS` | test-only | `15` | Seconds between board reads while member-support.sh waits; a test seam, dead beside the member marker | member |  | tests only |
 | `HARBOR_MEMBER_SUPPORT_WAIT_SECONDS` | test-only | `1800` | How long member-support.sh waits for an admin; a test seam, dead beside the member marker | member |  | tests only |
 | `HARBOR_MEMBER_SUPPORT_LIMIT_SECONDS` | test-only | `policy max_minutes` | The session's time limit in seconds; a test seam, dead beside the member marker | member |  | tests only |
+| `HARBOR_HUB_DIR` | path | none | The hub repository checkout hub-pin-upgrade.sh edits, when --hub is not given (harbor#1278) | hub |  | tests only |
+| `HARBOR_HUB_CORE_DIR` | path | none | The harbor-core checkout hub-pin-upgrade.sh and member-setup-generate.sh read the pin from, when --core is not given (harbor#1278) | hub |  | tests only |
+| `HARBOR_HUB_CORE_SHA` | value | none | A variable of the hub repository on GitHub, not of a laptop: the harbor-core commit the hub gates check out and run; raised by hand, never from a pull request (harbor#1278) | hub |  | tests only |
 
 ## Root variables
 
