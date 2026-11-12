@@ -131,6 +131,7 @@ tests/drift/wall/wall.test.sh
 tests/admission/confinement/covered.test.sh
 tests/access/chrome/mcp.test.sh
 tests/access/chrome/session.test.sh
+tests/access/chrome/hidden.test.sh
 tests/access/chrome/benchmark.test.sh
 tests/context/injection-rule/notes.test.sh
 tests/context/injection-rule/agent-brief.test.sh

@@ -56,6 +56,9 @@ const HOT_VERBS = new Set(['state', 'text', 'goto', 'tab-list', 'tab-select', 't
 const INPUT_VERBS = new Set(['click', 'dblclick', 'fill', 'type', 'select', 'check', 'uncheck', 'drag', 'press', 'keydown', 'keyup',
   'hover', 'mousedown', 'mouseup', 'mousewheel']);
 const SIGNIN_FAIL_VERBS = new Set(['goto', 'reload', 'go-back', 'go-forward', 'click', 'dblclick']);
+// Verbs that wait for their target to show before acting: on a hidden tab they time out having done nothing, so a retry
+// after front cannot act twice.
+const SHOWN_RETRY_VERBS = new Set(['click', 'dblclick', 'fill', 'select', 'check', 'uncheck', 'hover', 'drag']);
 
 const VERBS: Record<string, string> = {
   attach: "connect to the operator's Chrome (a window of its own; the operator clicks Connect unless the extension token is registered), " +
@@ -137,6 +140,8 @@ function sessionName(lane: string): string {
   if (bad || laneBad) refuse('no session: run inside Claude Code (CLAUDE_CODE_SESSION_ID), or set HARBOR_ACCESS_BROWSER_SESSION outside it; a HARBOR_ACCESS_BROWSER_LANE is 1-12 of a-z0-9', 'export HARBOR_ACCESS_BROWSER_SESSION=manual');
   return lane ? `${s}-${lane}` : s;
 }
+// The lane a session name carries, for the shell agent, which names the session from the environment itself.
+function laneOf(S: string): string { const b = sessionName(''); return S.startsWith(b + '-') ? S.slice(b.length + 1) : ''; }
 const workdirOf = (s: string) => path.join((process.env.TMPDIR ?? '/tmp').replace(/\/+$/, ''), 'harbor-browser', s);
 
 // ── the daemon socket (cli-client/session.js: newline-framed JSON, {id, method:'run', params:{args, cwd, raw}}) ──
@@ -388,9 +393,12 @@ async function lostCheck(c: Conn, S: string, wd: string, verb: string, held: str
   throw withPrefix(err, pre);
 }
 // After a failed input verb: a hidden tab never paints, so the CLI's waits time out. Say so.
-async function hiddenCheck(c: Conn, wd: string, verb: string, held: string) {
+async function isHidden(c: Conn, wd: string): Promise<boolean> {
   const p = await probeState(c, wd);
-  if (p === null || !/visibility\\?":\\?"hidden/.test(p)) return;
+  return p !== null && /visibility\\?":\\?"hidden/.test(p);
+}
+async function hiddenCheck(c: Conn, wd: string, verb: string, held: string) {
+  if (!await isHidden(c, wd)) return;
   throw withPrefix(new Refusal(`the tab is hidden: Chrome is showing another tab or window, so ${verb} timed out`, 'harbor chrome front'), scrub(held));
 }
 class PrefixedRefusal extends Refusal { constructor(r: Refusal, public prefix: string) { super(r.message, r.fix); } }
@@ -476,7 +484,7 @@ function cliArgs(verb: string, args: string[]): Record<string, unknown> {
 }
 
 type Timing = { guards: number; rpc: number; settle: number };
-async function hot(S: string, verb: string, args: string[], tm: Timing, confirmed = false): Promise<Res> {
+async function hot(S: string, verb: string, args: string[], tm: Timing, confirmed = false, shown = false): Promise<Res> {
   const t0 = performance.now();
   const wd = workdirOf(S);
   envGuards(wd);
@@ -562,7 +570,16 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
   }
   if (INPUT_VERBS.has(verb)) {
     const t2 = performance.now();
-    if (!rc) await lostCheck(c, S, wd, verb, held, tm.rpc); else await hiddenCheck(c, wd, verb, held);
+    if (!rc) await lostCheck(c, S, wd, verb, held, tm.rpc);
+    else if (!shown && SHOWN_RETRY_VERBS.has(verb) && await isHidden(c, wd)) {
+      // A hidden tab in a window of this session's own tabs (the extension's connect page in front after a tab-close,
+      // 2026-11-12): front switches that window's tab and nothing else, so the agent never hands the operator a click.
+      // front refuses a window holding anyone else's tab; that refusal is the answer.
+      const f = await viaAgent(S, 'front', [], laneOf(S));
+      if (f.isError) throw withPrefix(new Refusal(`the tab is hidden: Chrome is showing another tab or window, so ${verb} timed out, and front could not show it: ${f.text.trim()}`, 'harbor chrome tabs'), scrub(held));
+      const r2 = await hot(S, verb, args, tm, confirmed, true);
+      return { text: `[the tab was hidden in this session's own window: front showed it, focus untouched; ${verb} retried once]\n${r2.text}`, isError: r2.isError };
+    } else await hiddenCheck(c, wd, verb, held);
     tm.settle = performance.now() - t2;
   }
   if (!rc) {
@@ -578,7 +595,7 @@ async function connectOrGone(S: string): Promise<Conn> {
 }
 // This session's own page URL while Chrome shows it on a sign-in host: the shell agent's `tabs` marks the session's tabs with `=`.
 async function signedOutProbe(S: string): Promise<string> {
-  const r = await viaAgent(S, 'tabs', [], '');
+  const r = await viaAgent(S, 'tabs', [], laneOf(S));
   for (const l of r.text.split('\n')) {
     const m = /^= window \S+ tab \S+ +(?:active )? *(\S+)$/.exec(l);
     if (m && signinUrl(m[1])) return m[1];
@@ -607,7 +624,9 @@ function viaAgent(S: string, verb: string, args: string[], lane: string): Promis
     p.on('error', (e) => fin({ text: `harbor chrome could not start: ${e.message}`, isError: true }));
     p.on('close', (code) => {
       let text = out;
+      // The agent logs to stderr (LOG_FD=2): dropped on success, every front and attach came back blank (75 fronts, 2026-11-10..12).
       if (code !== 0) text = (text + (text ? '\n' : '') + err).trim() || `exit ${code}`;
+      else if (err.trim()) text = (text + (text ? '\n' : '') + err).trim();
       fin({ text: text.slice(0, OUT_MAX), isError: code !== 0 });
     });
   });
