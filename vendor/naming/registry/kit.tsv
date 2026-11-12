@@ -45,6 +45,7 @@ register.naming-schemas-tsv	register	naming-schemas.tsv?	*	workload	no	a repo's 
 register.naming-exemptions-tsv	register	naming-exemptions.tsv?	*	workload	no	a repo's own exemptions; the repo writes it
 register.contracts-agents-tsv	register	contracts/agents.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-agent-architectures-tsv	register	contracts/agent-architectures.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
+register.contracts-browser-script-tsv	register	contracts/browser-script.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-catalog-non-tools-tsv	register	contracts/catalog-non-tools.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-confinement-coverage-tsv	register	contracts/confinement-coverage.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-core-writes-allow-tsv	register	contracts/core-writes-allow.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
