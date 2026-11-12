@@ -259,6 +259,40 @@ t_eq "...and the banner helper the library and pulse-notify source beside them (
 SO="$T/ss-off"; mkdir -p "$SO"; printf '{}' > "$SO/settings.json"; : > "$SO/session-state.off"; ri --apply --dir "$SO" >/dev/null 2>&1
 t_eq "session-state.off in the config dir: not wired" 0 "$(_ssn "$SO")"
 
+t_section "harbor#1278: the box wires member.tests (snapshot at UserPromptSubmit, check at Stop), and runs it on a registered project only"
+_bt() { jq -r --arg ev "$2" '[.hooks[$ev][]?.hooks[]?.command // empty | select(contains("box-tests.sh"))] | length' "$1/settings.json"; }
+BT="$T/bt-on"; mkdir -p "$BT"; printf '{}' > "$BT/settings.json"; ri --apply --dir "$BT" >/dev/null 2>&1; ri --apply --dir "$BT" >/dev/null 2>&1
+t_eq "two installs wire exactly one UserPromptSubmit entry (the snapshot)" 1 "$(_bt "$BT" UserPromptSubmit)"
+t_eq "...and exactly one Stop entry (the check)" 1 "$(_bt "$BT" Stop)"
+t_eq "...and ship the check, its git library and its architecture table" yes "$([ -f "$BT/bin/member-tests.sh" ] && [ -f "$BT/bin/library-git-safe.sh" ] && [ -f "$BT/bin/agent-architectures.tsv" ] && echo yes || echo no)"
+# Red: the same count over settings with the wiring removed, and over a box that switched it off, is 0.
+mkdir -p "$T/bt-cut"; jq 'del(.hooks.Stop, .hooks.UserPromptSubmit)' "$BT/settings.json" > "$T/bt-cut/settings.json"
+t_eq "wiring removed: the case reads 0 at Stop" 0 "$(_bt "$T/bt-cut" Stop)"
+t_eq "...and 0 at UserPromptSubmit" 0 "$(_bt "$T/bt-cut" UserPromptSubmit)"
+BO="$T/bt-off"; mkdir -p "$BO"; printf '{}' > "$BO/settings.json"; : > "$BO/box-tests.off"; ri --apply --dir "$BO" >/dev/null 2>&1
+t_eq "box-tests.off in the config dir: not wired at Stop" 0 "$(_bt "$BO" Stop)"
+t_eq "...nor at UserPromptSubmit" 0 "$(_bt "$BO" UserPromptSubmit)"
+# The installed hook on a box-shaped HOME: HOME/.claude/bin, HOME/port/<project>, HOME/port/harbor-private/repos.tsv.
+BH="$T/bt-home"; rm -rf "$BH"; mkdir -p "$BH/.claude" "$BH/port/harbor-private" "$BH/port/proj" "$BH/port/harbor/bin" "$BH/port/harbor/contracts"; printf '{}' > "$BH/.claude/settings.json"
+env -u CLAUDE_CONFIG_DIR HOME="$BH" sh "$TOOL" --live --apply >/dev/null 2>&1
+export GIT_AUTHOR_NAME=m GIT_AUTHOR_EMAIL=m@example.invalid GIT_COMMITTER_NAME=m GIT_COMMITTER_EMAIL=m@example.invalid
+: > "$BH/port/harbor/bin/harbor"; : > "$BH/port/harbor/contracts/roots.tsv"
+for _p in proj harbor; do git -C "$BH/port/$_p" init -q; printf 'x\n' > "$BH/port/$_p/app.py"; git -C "$BH/port/$_p" add -A; git -C "$BH/port/$_p" commit -qm base; done
+printf 'proj\tproj\tworkload\t-\tstream-aligned\tx-as-a-service\t-\t-\tyes\t-\ta project\nharbor\tharbor\tworkload\t-\tstream-aligned\tx-as-a-service\t-\t-\tyes\t-\tthe floor\n' > "$BH/port/harbor-private/repos.tsv"
+_bth() { env -i PATH=/usr/bin:/bin HOME="$BH" PORT_ROOT="$BH/port" TMPDIR="$T" sh "$BH/.claude/bin/box-tests.sh"; }
+_bte() { printf '{"hook_event_name":"%s","session_id":"%s"%s}' "$1" "$2" "${3:-}" | _bth; }
+_bte UserPromptSubmit bt1
+printf 'def f():\n    return 1\n' >> "$BH/port/proj/app.py"
+_bto="$(_bte Stop bt1)"
+t_eq "the installed Stop hook blocks a registered non-harbor project's code change with no test" block "$(printf '%s' "$_bto" | jq -r .decision)"
+t_has "...naming that project" "$(printf '%s' "$_bto" | jq -r .reason)" "member.tests: you changed code in the project proj"
+t_eq "...and stands down once stop_hook_active is set (never a second block)" "" "$(_bte Stop bt1 ',"stop_hook_active":true')"
+t_eq "an event it is not bound to prints nothing" "" "$(_bte SessionStart bt1)"
+git -C "$BH/port/proj" checkout -q -- app.py
+_bte UserPromptSubmit bt2
+printf 'def f():\n    return 1\n' >> "$BH/port/harbor/app.py"
+t_eq "a code change in the harbor checkout alone: silent, harbor has its own gates" "" "$(_bte Stop bt2)"
+
 t_section "harbor#1257: session-title.sh is wired at UserPromptSubmit and SessionStart, once, and its sentinel stops the wiring"
 _stn() { jq -r --arg e "$2" '[.hooks[$e][]?.hooks[]?.command // empty | select(contains("session-title.sh"))] | length' "$1/settings.json"; }
 ST="$T/st-on"; mkdir -p "$ST"; printf '{}' > "$ST/settings.json"; ri --apply --dir "$ST" >/dev/null 2>&1; ri --apply --dir "$ST" >/dev/null 2>&1

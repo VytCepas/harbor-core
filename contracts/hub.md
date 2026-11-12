@@ -65,6 +65,7 @@ Closed keys: an unknown key refuses the file.
 | `revoked` | array of logins | Positive signal for leaving. Nothing else removes policy |
 | `support` | `{keys, relay, relay_key, max_minutes}` | Remote support, below. Optional: absent, or with no relay of the hub's own, means support is off |
 | `hosts` | array of up to 200 host names | Hosts a member's sandboxed commands may reach beyond `contracts/confinement-hosts.txt` and `contracts/member-hosts.txt`. Each in `allowedDomains` shape: lower case, at most one leading `*.`, two labels or more after it, never a bare `*`. A row that admits a support relay is refused. Applied when the settings are composed again: by the first install once its policy verifies, by the updater after each update it applies, or by IT running the install again (docs/how-to/member-install.md, "The network") |
+| `logs` | `{recipient}` | The loader's age X25519 recipient (`age1…`). A laptop seals its logs id and counts to it, and to nothing else; without it the laptop sends none (harbor#1278, the logs payload below) |
 
 ### A hub rule
 
@@ -131,15 +132,25 @@ Closed keys per kind, checked by `hub-format.sh event`. No field holds free text
 
 | Kind | Keys beyond `v kind ts member` |
 |---|---|
-| `heartbeat` | `core contract floor serial mode refusals asks requests packs` |
+| `heartbeat` | `core contract floor serial mode refusals asks requests packs`, and `sealed` when the laptop may send its logs payload (below) |
 | `refusal` | `rule tier target count` |
 | `ask` | `rule tier target outcome count` |
 | `request` | `id rule tier target outcome` |
 | `check` | `check outcome` |
 | `token` | `days_left outcome` |
 | `support` | `id reason outcome` |
+| `activity` | `tool verb_class verdict count`: tool calls, counted by the dispatcher once per call. **Sealed only** |
+| `session` | `outcome count`: session starts (`started`, a resume or compact included) and ends (`ended`). **Sealed only** |
 
-`ts` is coarsened to the hour. `packs` lists hub pack ids only, never a name the member chose.
+`ts` is coarsened to the hour; for `activity` and `session` it is the day (`T00:00:00Z`), so a count per person is never finer than a day (logging-design D4, D9). `tool`, `verb_class` and `verdict` are vocabulary sets: an `mcp__` tool is `mcp`, a tool the list lacks is `other`, a call that is not a shell command has class `na`, and the class is the floor's own by first verb, never the command. These two kinds wait in `HUB_STATE/tally.jsonl`, apart from the outbox, so a busy day can't crowd a refusal out; a full tally is folded in place. `packs` lists hub pack ids only, never a name the member chose.
+
+### The logs payload (harbor#1278, "Log scope", level 2)
+
+Harbor's BigQuery logs key a laptop by a **random id**, never a login: `<managed dir>/harbor-ids/<account>.id`, 32 hex, made by `member-install.sh` from `/dev/urandom`, root-owned, beside the managed root and outside it, so `--uninstall` leaves it and a reinstall keeps it. It is never rotated and never derived from a login or an e-mail. The person reads it with `harbor hub id`, which only reads; it is how they ask for their data or its deletion (`legal/dpia.md` R12).
+
+**The id and the counts never appear in clear on the board.** The heartbeat may carry one more key, `sealed`: base64 of an age file to the X25519 recipient `logs.recipient` of the signed policy, holding `{v, id, events}` where `events` are this send's `activity` and `session` counts (up to 100). `hub-format.sh board` refuses a comment with either kind in clear, and a `sealed` value that is not an age file to an X25519 key, so a clear id has no field to ride in. The loader opens it with its own identity and drops the GitHub author before staging; nothing links the two afterwards.
+
+**Nothing is counted before the notice receipt.** `<managed root>/notice-received` is written by `member-install.sh --notice-received`, which IT runs once it holds the member's signed receipt of the logs notice, and removed by `--notice-withdrawn`. It is inside the floor hash. Without it the sender keeps no `activity` or `session` count and seals nothing, so no row of that laptop can reach BigQuery; the release-1 board events go on as before (D8). With it but no way to seal (no `age`, no `logs.recipient`), the heartbeat says `check hub-logs-seal failed` and the counts wait.
 
 ## Remote support
 
@@ -201,7 +212,7 @@ cc: @admin-login
 
 ## extension.json (schema 1)
 
-Closed keys: `schema`, `id` (kebab), `version`, `harbor_version` (the `[op]N[.M]` grammar of `contracts/pack.md`), `provides` (`skill`, `hook`, `script`), `files` (`{path, sha256}`). A pin may not rise while an extension's `harbor_version` rejects the new contract.
+Closed keys: `schema`, `id` (kebab), `version`, `harbor_version` (the `[op]N[.M]` grammar of `contracts/pack.md`), `provides` (`skill`, `hook`, `script`, `rule`: a pure-note context rule), `files` (`{path, sha256}`). A pin may not rise while an extension's `harbor_version` rejects the new contract.
 
 ## What runs where
 
@@ -213,6 +224,10 @@ Closed keys: `schema`, `id` (kebab), `version`, `harbor_version` (the `[op]N[.M]
 | UserPromptSubmit | `hub-approval.sh note` | Tells the person an approval arrived. No network call while no request is open |
 
 Every managed hook starts as `/usr/bin/env -i` with a pinned PATH and `MEMBER_HOOK_ENV` in `bin/member-managed.sh` alone, each passed only when set, then an absolute `/bin/sh`: a settings `env` reaches every hook, so a bare `sh` resolves from a PATH the floor doesn't control, and macOS `/bin/sh` is bash 3.2, which defines an exported function from its environment before the floor's first line. What the floor needs beyond those names it reads from root-owned files: `member.conf`, and the managed settings' `env` (Network env, below). Every entry above runs `hub_env_clean` before anything else.
+
+**Context rules on a member.** The managed settings wire the injection engine (`hooks/injection-rule/injection-rule.sh`, landed as `bin/injection-rule.sh`) as `injection-rule.sh --member-root <managed root>` on the events of the packs listed in `contracts/member-context-rules.tsv`, which is empty by default: a rule ships to members only when listed there, and each id's pack lands in `bin/` through `contracts/member-files.txt`. In this mode the engine reads only those packs: never the session repo, the box tier, or a tree reached by a call, because the agent can write those and a `run:` pack would execute outside the sandbox. `bin/member-managed.sh` refuses a listed pack that has `run:` or `spoke:`. Off: empty the register and re-run the install. Check: `tests/member/context/rules.test.sh`.
+
+**Hub rules.** A hub pack carries pure-note context rules in `harbor-pack/context-rules/user/<f>.md` (`provides: ["rule"]` in its `extension.json`). `bin/hub.sh` delivers each one into `HUB_STATE/rules/<pack>/<f>.md` at sync, a folder the agent cannot write, and the member engine reads that folder besides the managed root. A rule is live only when the signed policy pins its pack, `bin/pack.sh` installed the pack at the pin (so `bin/hub-gate.sh` would pass it), the manifest lists the file and its bytes carry the listed sha256. A rule with `run:` or `spoke:` is refused by the gate and `pack.sh`, by delivery, and by the engine at load. A rule the policy stops pinning is removed at the next sync. The delivered folder is protected by the sandbox and the managed Edit deny rows, not by ownership; the worst a hand-written note there does is fire as a note, since a rule with `run:` or `spoke:` never loads. The managed settings are root-written, so the PreToolUse matcher stays `*`; a call no rule targets exits after one payload read and one pass over the rule files (`injection-rule.sh --member-root`). The engine stands on SessionStart, UserPromptSubmit, SubagentStart and PreToolUse for these (and on PostToolUse for the core picks), so a hub rule uses one of those events. Check: `tests/member/context/hub-rules.test.sh`.
 
 **Network env.** Before any network call, `hub_net_env` (in `hub_env_clean`, and at source time beside the marker) clears every variable that steers git, curl or TLS: all `GIT_*`, every `*_PROXY` and `*_proxy`, `CURL_HOME`, `CURL_CA_BUNDLE`, `SSL_CERT_FILE`, `SSL_CERT_DIR`, `SSLKEYLOGFILE`, `REQUESTS_CA_BUNDLE`, `NODE_EXTRA_CA_CERTS`, `OPENSSL_CONF`, `NETRC`, `XDG_CONFIG_HOME` and `XDG_DATA_HOME`. **The one trusted source for a proxy or CA is the managed settings file's `env`**, read from disk, never from the process env: a launch environment can beat settings `env`, and only an admin writes the file. From it come back `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY` and `NO_PROXY` in either case, and `SSL_CERT_FILE`, `SSL_CERT_DIR`, `CURL_CA_BUNDLE` and `GIT_SSL_CAINFO` when absolute and naming a file the member can't write. So IT sets a corporate proxy in managed `env`, and `hub-board.sh` keeps a CA from there. The hub fetch also reads no `~/.gitconfig` or system git config (`GIT_CONFIG_GLOBAL=/dev/null`), so `url.*.insteadOf` can't move it.
 

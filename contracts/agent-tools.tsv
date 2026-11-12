@@ -55,3 +55,4 @@ tool	worktree.sh	you start a task and need a worktree of your own, or you finish
 tool	context-peers.sh	you need to know which other sessions are live in this working tree	sh ~/port/harbor/bin/context-peers.sh --repo <dir>
 tool	scope-roots.sh	you need a governed repo's checkout path, or a named root, without guessing it	sh ~/port/harbor/bin/scope-roots.sh --repo <id>; sh ~/port/harbor/bin/scope-roots.sh --get <VAR>
 tool	memory.sh	you need what the notes store already knows about a subject before you start	memory <query>
+verb	logs	you are on the operator's Mac and want to see, or send, the coded rows harbor puts in BigQuery	harbor logs push; harbor logs id

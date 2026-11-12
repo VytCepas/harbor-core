@@ -242,44 +242,48 @@ _snap_say() { # <text> — the one stderr line a call gets, however many worktre
 # (nothing to save), when the tree matches HEAD, or when <common git dir>/harbor-snapshot-off exists.
 # Every fork here is paid on each discard of a dirty tree, so values are read with `read`, never sed.
 _snap_take() {
-  _st_top=""; _st_cd=""; _st_idx=""; _st_tmp=""; _st_ht=""; _st_head=""
-  _st_r="$(git -C "$1" rev-parse --show-toplevel --git-common-dir --git-path index --git-path "harbor-snapshot.$$" 'HEAD^{tree}' HEAD 2>/dev/null)" \
-    || _st_r="$(git -C "$1" rev-parse --show-toplevel --git-common-dir --git-path index --git-path "harbor-snapshot.$$" 2>/dev/null)" \
+  _st_top=""; _st_cd=""; _st_gd=""; _st_ht=""; _st_head=""
+  # harbor#1278: the repo is one the agent can write and this hook runs outside its sandbox, so no call here reads the repo's config for a
+  # program to run. rev-parse and the ref calls only read (gs_env stops the global files and the flags); the add runs in a private git dir
+  # (gs_open_at) whose config is one line, so a filter, fsmonitor or hook named in the repo's own files has nothing to run.
+  _st_r="$(gs_env -C "$1" rev-parse --show-toplevel --git-common-dir --absolute-git-dir 'HEAD^{tree}' HEAD 2>/dev/null)" \
+    || _st_r="$(gs_env -C "$1" rev-parse --show-toplevel --git-common-dir --absolute-git-dir 2>/dev/null)" \
     || return 0
-  { read -r _st_top; read -r _st_cd; read -r _st_idx; read -r _st_tmp; read -r _st_ht; read -r _st_head; } <<SNAP_EOF
+  { read -r _st_top; read -r _st_cd; read -r _st_gd; read -r _st_ht; read -r _st_head; } <<SNAP_EOF
 $_st_r
 SNAP_EOF
-  [ -n "$_st_top" ] && [ -n "$_st_tmp" ] || return 0
+  [ -n "$_st_top" ] && [ -n "$_st_gd" ] || return 0
   case "$_SNAP_TOPS" in *"
 $_st_top
 "*) return 0 ;; esac
   _SNAP_TOPS="$_SNAP_TOPS$_st_top
 "
   case "$_st_cd" in /*) ;; *) _st_cd="$1/$_st_cd" ;; esac
-  case "$_st_idx" in /*) ;; *) _st_idx="$1/$_st_idx" ;; esac
-  case "$_st_tmp" in /*) ;; *) _st_tmp="$1/$_st_tmp" ;; esac
+  case "$_st_gd" in /*) ;; *) _st_gd="$1/$_st_gd" ;; esac
   [ ! -e "$_st_cd/harbor-snapshot-off" ] || return 0
-  # The copy keeps the stat cache, so add rehashes only what changed. -p keeps the index mtime, which
-  # git's racy-entry check compares against: a fresh mtime hid a same-second, same-size edit.
-  if [ -f "$_st_idx" ]; then cp -p "$_st_idx" "$_st_tmp.index" 2>/dev/null || { rm -f "$_st_tmp.index"; _snap_say "could not snapshot $_st_top before git $2: its git dir is not writable — the command runs unprotected"; return 0; }; fi
+  # The copy keeps the stat cache (cp -p inside gs_open_at: it keeps the index mtime, which git's racy-entry check compares against; a fresh
+  # mtime hid a same-second, same-size edit), so add rehashes only what changed. The bytes are stored as they sit on disk: no filter runs.
   # No size cap, measured: a cap needs an untracked listing and a stat pass (+45 ms at load 16), more than the whole budget. Large untracked files are rehashed per discard; .gitignore them (docs/explanation/admission-baseline.md).
-  _st_tree=""
-  GIT_INDEX_FILE="$_st_tmp.index" git -C "$_st_top" add -A >/dev/null 2>&1 \
-    && _st_tree="$(GIT_INDEX_FILE="$_st_tmp.index" git -C "$_st_top" write-tree 2>/dev/null)"
-  rm -f "$_st_tmp.index" "$_st_tmp.index.lock"
+  _st_tree=""; _st_w=""
+  if _st_w="$(mktemp -d "${TMPDIR:-/tmp}/harbor-snap.XXXXXX" 2>/dev/null)"; then
+    if command -v gs_open_at >/dev/null 2>&1 && gs_open_at "$_st_top" "$_st_gd" "$_st_cd" "$_st_w"; then
+      gs_git add -A >/dev/null 2>&1 && _st_tree="$(gs_git write-tree 2>/dev/null)"
+    fi
+    rm -rf "$_st_w"
+  fi
   [ -n "$_st_tree" ] || { _snap_say "could not snapshot $_st_top before git $2: writing its objects failed (unwritable repository?) — the command runs unprotected"; return 0; }
   [ "$_st_tree" != "$_st_ht" ] || return 0   # nothing uncommitted: no snapshot to keep
   case "$_st_tree" in 4b825dc642cb6eb9a060e54bf8d69288fbee4904|6ef19b41225c5369f1c104d45d8d85efa9b057b53b14b4b9b939dd74decc5321) [ -n "$_st_head" ] || return 0 ;; esac
   _st_c="$(GIT_AUTHOR_NAME=harbor-snapshot GIT_AUTHOR_EMAIL=snapshot@harbor.invalid \
            GIT_COMMITTER_NAME=harbor-snapshot GIT_COMMITTER_EMAIL=snapshot@harbor.invalid \
-           git -C "$_st_top" commit-tree --no-gpg-sign ${_st_head:+-p "$_st_head"} -m "harbor snapshot before git $2" \
+           gs_env -C "$_st_top" commit-tree --no-gpg-sign ${_st_head:+-p "$_st_head"} -m "harbor snapshot before git $2" \
              -m "worktree: $_st_top" -m "command: $CMD" "$_st_tree" 2>/dev/null)" \
     || { _snap_say "could not snapshot $_st_top before git $2: commit-tree failed — the command runs unprotected"; return 0; }
   # One update-ref writes the new ref and drops every snapshot older than 7 days; awk srand() is the clock.
-  git -C "$_st_top" for-each-ref --format='%(committerdate:unix) %(refname)' refs/snapshots/ 2>/dev/null \
+  gs_env -C "$_st_top" for-each-ref --format='%(committerdate:unix) %(refname)' refs/snapshots/ 2>/dev/null \
     | awk -v c="$_st_c" -v p="$$" 'BEGIN { srand(); now = srand(); print "create refs/snapshots/" now "-" p " " c }
         $1 + 0 < now - 604800 { print "delete " $2 }' \
-    | git -C "$_st_top" update-ref --stdin 2>/dev/null \
+    | gs_env -C "$_st_top" update-ref --stdin 2>/dev/null \
     || { _snap_say "could not snapshot $_st_top before git $2: the ref could not be written — the command runs unprotected"; return 0; }
   return 0
 }
@@ -287,9 +291,9 @@ $_st_top
 # _snap_push <dir> <explicit> — 0 iff this push would publish refs/snapshots: the repo holds some, and
 # the call names --mirror or a refs/* or refs/snapshots refspec, or a remote is configured to mirror them.
 _snap_push() {
-  [ -n "$(git -C "$1" for-each-ref --count=1 --format=x refs/snapshots/ 2>/dev/null)" ] || return 1
+  [ -n "$(gs_env -C "$1" for-each-ref --count=1 --format=x refs/snapshots/ 2>/dev/null)" ] || return 1
   [ "$2" = 1 ] && return 0
-  git -C "$1" config --get-regexp '^remote\..*\.(mirror|push)$' 2>/dev/null \
+  gs_env -C "$1" config --get-regexp '^remote\..*\.(mirror|push)$' 2>/dev/null \
     | "$FLOOR_GREP" -Eq -- '\.mirror[[:space:]]+true$|[[:space:]]\+?(refs/\*|refs/snapshots|\*)'
 }
 
@@ -298,6 +302,9 @@ _SNAP_TOPS="
 _snap_run() {
   _sp="$(_snap_plan)" || return 0
   [ -n "$_sp" ] || return 0
+  # harbor#1278: every git call here is hardened (library-git-safe.sh). Without the library the read-only calls run as before and the
+  # snapshot's add cannot run (gs_open_at is undefined): no snapshot, and the call says so.
+  if [ -r "$DIR/library-git-safe.sh" ]; then . "$DIR/library-git-safe.sh"; else gs_env() { git "$@"; }; fi
   _stab="$(printf '\t')"
   while IFS="$_stab" read -r _sk _sd _sx; do
     case "$_sk" in
@@ -321,8 +328,8 @@ SNAP_EOF
     case "$_sk" in
       SNAP) _snap_take "$_sd" "$_sx" ;;
       MAYBE) # a branch, a tag or a remote branch git would DWIM is a switch, never a discard
-        git -C "$_sd" rev-parse -q --verify "$_sx^{commit}" >/dev/null 2>&1 && continue
-        [ -z "$(git -C "$_sd" for-each-ref --count=1 --format=x "refs/remotes/*/$_sx" 2>/dev/null)" ] || continue
+        gs_env -C "$_sd" rev-parse -q --verify "$_sx^{commit}" >/dev/null 2>&1 && continue
+        [ -z "$(gs_env -C "$_sd" for-each-ref --count=1 --format=x "refs/remotes/*/$_sx" 2>/dev/null)" ] || continue
         _snap_take "$_sd" checkout ;;
       BLIND) [ "$_sd" = push ] || _snap_say "nothing was snapshotted before git $_sd: $_sx" ;;
     esac

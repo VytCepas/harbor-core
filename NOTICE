@@ -15,3 +15,4 @@ are recorded in PROVENANCE.md and vendor/archify/PROVENANCE.md.
 
 Not third-party: vendor/complexity-atlas/ is original work (see its README).
 Not third-party: vendor/naming/ is this repo's own naming package, vendored by bin/standard-vendor.sh.
+Not third-party: vendor/scaffolder/ is the base templates of this project's own scaffolder, vendored by bin/standard-vendor-scaffolder.sh.

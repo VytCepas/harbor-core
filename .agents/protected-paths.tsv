@@ -127,6 +127,7 @@ bin/audit-collector-check.sh	installed	derived: shipped by deploy-runtime-instal
 bin/audit-collector-install.sh	ship	derived: called by bin/deploy.sh
 bin/audit-collector.sh	ship	derived: called by bin/audit-collector-install.sh
 bin/audit-otlp-receiver.py	ship	derived: called by bin/audit-collector-install.sh
+bin/audit-review-config.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/audit-stream-lib.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/audit-triage-run.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/audit-triage.sh	installed	derived: shipped by deploy-runtime-install.sh
@@ -221,6 +222,7 @@ bin/library-alert.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/library-board.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/library-fs.sh	installed	derived: shipped by admission-install.sh
 bin/library-gate.sh	installed	derived: shipped by admission-install.sh
+bin/library-git-safe.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/library-hub.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/library-log.sh	installed	derived: shipped by admission-install.sh
 bin/library-pack-version.sh	ship	derived: called by bin/pack.sh
@@ -249,6 +251,8 @@ bin/lint-siblings.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-suggest-table.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/member-integrity.sh	ci-gate	derived: called by bin/hub-events.sh
 bin/member-managed.sh	installed	derived: called by bin/policy-constitution-install.sh
+bin/member-memory.sh	ci-gate	derived: called by bin/scope-repo.sh
+bin/member-tests.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/memory-lint.sh	installed	derived: called by bin/memory-store-check.sh
 bin/memory-log-token-save.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/memory-route.sh	ci-gate	derived: called by bin/lint-conventions.sh
@@ -308,6 +312,7 @@ bin/test-suite-run.sh	ci-gate	derived: called by .github/workflows/governance.ym
 bin/test-suite-select.sh	ci-gate	derived: called by .github/workflows/governance.yml
 bin/wait-for	operator-run	derived: linked into ~/.local/bin as wait-for by contracts/shims.tsv
 bin/worktree.sh	installed	derived: called by bin/govern-hook.sh
+contracts/agent-architectures.tsv	installed	derived: shipped by deploy-runtime-install.sh
 contracts/event-rules.tsv	installed	derived: shipped by deploy-runtime-install.sh
 contracts/merge-stack-union.txt	installed	derived: shipped by deploy-runtime-install.sh
 contracts/obligation-kinds.tsv	installed	derived: shipped by deploy-runtime-install.sh
@@ -323,6 +328,7 @@ contracts/suites-tally.txt	ci-gate	derived: decides what a required check runs
 contracts/suites.txt	ci-gate	derived: decides what a required check runs
 docs/reference/checks.md	installed	derived: shipped by deploy-runtime-install.sh
 hooks/access-confinement/access-confinement.sh	installed	derived: shipped by deploy-runtime-install.sh
+hooks/box-tests/box-tests.sh	installed	derived: shipped by deploy-runtime-install.sh
 hooks/failure-observe/failure-observe.sh	installed	derived: shipped by deploy-runtime-install.sh
 hooks/injection-rule/injection-rule.sh	installed	derived: wired by context-injection-install.sh
 hooks/memory-harvest/memory-harvest.sh	installed	derived: shipped by deploy-runtime-install.sh

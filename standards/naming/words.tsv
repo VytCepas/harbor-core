@@ -243,6 +243,7 @@ arch	-
 archetypes	-
 archify	tool, product or format name
 architecture	-
+architectures	-
 archive	-
 archived	-
 are	-
@@ -1704,6 +1705,7 @@ filters	-
 final	-
 finally	-
 find	-
+findability	information-architecture term: how easily a reader finds an item (standards/knowledge-base.md, harbor#1501)
 findable	-
 finding	-
 findings	-
@@ -4354,6 +4356,7 @@ surfaced	-
 surfaces	-
 surgery	-
 surprises	-
+surroundings	-
 survey	-
 surveyed	-
 survivable	-

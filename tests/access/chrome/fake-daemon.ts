@@ -6,7 +6,7 @@
 //
 // Every request is logged to <ctl>/calls as `verb args --opt=v`. Behaviour is switched by files in <ctl>, read per request, so a
 // suite changes it with `: > $CTL/blank`: blank, hidden, eval_fail, tablist_fail, fail, upload_denied, late_blank, xerr (holds a log path),
-// page_url (holds a URL), delay_ms (holds a number). The shapes are agent-stub.sh's, which copied the real CLI's (0.1.22).
+// page_url (holds a URL), delay_ms (holds a number), download. The shapes are agent-stub.sh's, which copied the real CLI's (0.1.22).
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
@@ -44,6 +44,7 @@ function reply(args: any, cwd: string, raw: boolean): { isError: boolean; text: 
     fs.appendFileSync(val('xerr'), 'pw:mcp:error Error: Cannot access a chrome-extension:// URL of different extension\n');
     return { isError: true, text: 'Error: Target page, context or browser has been closed' };
   }
+  if (verb === 'goto' && flag('download')) return { isError: true, text: 'Error: Download is starting' };
   if (verb !== 'snapshot' && flag('fail')) return { isError: true, text: 'TimeoutError: Timeout 5000ms exceeded.' };
   let text = `STUB pwd=${cwd} args=${[verb, ...pos, ...opts].join(' ')}`;
   if (['goto', 'click', 'reload'].includes(verb) && flag('page_url')) text += `\n- Page URL: ${val('page_url')}`;

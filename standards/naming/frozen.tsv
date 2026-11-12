@@ -24,6 +24,7 @@ cli:hub	cli	hub	2026-11-07	core
 cli:inject	cli	inject	2026-10-17	core
 cli:install	cli	install	2026-10-17	core
 cli:lint	cli	lint	2026-10-17	core
+cli:logs	cli	logs	2026-11-09	core
 cli:merge-stack	cli	merge-stack	2026-10-17	core
 cli:observe	cli	observe	2026-10-17	core
 cli:pack	cli	pack	2026-10-17	core
@@ -219,9 +220,11 @@ skill:browser	skill	browser	2026-10-17	core
 skill:deliverable-contract	skill	deliverable-contract	2026-10-17	core
 skill:doc-atlas	skill	doc-atlas	2026-10-27	core
 skill:doc-deliverable-contract	skill	doc-deliverable-contract	2026-10-27	core
+skill:doc-knowledge-base	skill	doc-knowledge-base	2026-11-10	core
 skill:doc-learning-artifact	skill	doc-learning-artifact	2026-10-27	core
 skill:housekeeping	skill	housekeeping	2026-10-17	core
 skill:learning-artifact	skill	learning-artifact	2026-10-17	core
+skill:member-setup	skill	member-setup	2026-11-11	core
 skill:review-fanout	skill	review-fanout	2026-10-17	core
 skill:skill-book	skill	skill-book	2026-10-17	core
 skill:skill-catalog	skill	skill-catalog	2026-10-26	core
