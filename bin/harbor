@@ -53,7 +53,7 @@ event	event-bus.sh	no	the local event bus: emit, wait (0 match, 3 deadline), sin
 ui	status-console.sh	no	a localhost console of the live state as read-only panels: 127.0.0.1, one-use link, stops when idle
 scope	scope.sh	no	scope install: create the PORT_ROOT skeleton and an empty private layer (--dry-run, --seed-from-projects); never overwrites
 repo	scope-repo.sh	no	create or adopt a repo in one run, list where each is known, audit one, rename one: new, adopt, list, audit, rename (harbor#1430, #966)
-access	access.sh	yes	the access register: add, list, has, refs, check, stored, status, rotate, revoke; a ref the register does not name is refused by bin/secret
+access	access.sh	yes	the access register: add, list, has, refs, check, stored, status, rotate, revoke, renamed, move; a ref the register does not name is refused by bin/secret
 pack	pack.sh	no	install a workload repo's harbor-pack/ box-wide and remove it exactly: list, install, remove (--dir or --live; dry run unless --apply)
 hub	hub.sh	no	the company hub: init, sync, status, sign, check, pin-check, leave, project register (harbor#1278)
 logs	bq-logs.sh	no	harbor's BigQuery logs from this Mac: push (a dry run unless --apply), id (harbor#1278)

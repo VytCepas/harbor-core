@@ -56,6 +56,27 @@ standards/naming/controls.tsv controls.tsv
 # The token: a hook must never run a user-writable copy of these, and access.sh gates bin/secret
 bin/secret
 bin/access.sh
+# The naming gate access.sh add runs on a new credential's name (harbor#978): the lint and its registry, flat beside it.
+# lint-name.sh reads a registry beside itself when registers.tsv sits there; controls.tsv is listed above for the guards.
+bin/lint-name.sh
+standards/naming/aliases.tsv aliases.tsv
+standards/naming/dialects.tsv dialects.tsv
+standards/naming/exemptions.tsv exemptions.tsv
+standards/naming/frozen.tsv frozen.tsv
+standards/naming/kinds.tsv kinds.tsv
+standards/naming/kit.tsv kit.tsv
+standards/naming/label-axes.tsv label-axes.tsv
+standards/naming/label-retired.tsv label-retired.tsv
+standards/naming/registers.tsv registers.tsv
+standards/naming/renames.tsv renames.tsv
+standards/naming/repo-kinds.tsv repo-kinds.tsv
+standards/naming/schemas.tsv schemas.tsv
+standards/naming/surfaces.tsv surfaces.tsv
+standards/naming/terms.tsv terms.tsv
+standards/naming/verbs.tsv verbs.tsv
+standards/naming/versions.tsv versions.tsv
+standards/naming/words.tsv words.tsv
+standards/naming/writers.tsv writers.tsv
 bin/scope-roots.sh
 bin/scope-repo-sources.sh
 bin/member-memory.sh

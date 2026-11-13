@@ -271,6 +271,21 @@ listed '"k2"'
 _o2="$(pk install k2 --apply --dir "$TG2" 2>&1)"
 t_has "a key another installed pack declares is refused, naming it" "$_o2" "declared by the installed pack ck.txt"
 
+t_section "name-create.tsv: a pack's own create commands are judged at birth (harbor#978)"
+# ncp <id> <row>...: a committed pack whose name-create.tsv holds these rows (\t in a row is a tab)
+ncp() { _i="$1"; shift; mkpack "$_i"; { printf '# fixture rows\n'; for _r; do printf '%b\n' "$_r"; done; } > "$PW/$_i/harbor-pack/name-create.tsv"
+  G "$PW/$_i" add -A; G "$PW/$_i" commit -q -m n; }
+ncp nc 'widgetctl[[:space:]]+create[[:space:]]+\tsecret\tA widget key is a secret ref.'; listed '"nc"'
+TG="$T_TMP/tg-nc"; mkdir -p "$TG/bin" "$TG/skills"; B0="$(snap "$TG")"
+t_exit "a pack with name-create.tsv installs" 0 pk install nc --apply --dir "$TG"
+t_eq "...its rows land at name-create.d/<repo-id>.tsv" "$(cat "$PW/nc/harbor-pack/name-create.tsv")" "$(cat "$TG/name-create.d/nc.tsv")"
+t_exit "remove exits 0" 0 pk remove nc --apply --dir "$TG"
+t_eq "...and takes the rows back, the target byte-identical" "$B0" "$(snap "$TG")"
+ncp nk 'widgetctl create \tnot-a-surface\tnote'; refused name-create-surface nk "not-a-surface is not a surface bin/lint-name.sh --check accepts"
+ncp nw 'widgetctl create \tsecret'; refused name-create-columns nw "has 2 columns"
+ncp ne '\tsecret\tnote'; refused name-create-empty ne "the ERE is empty"
+ncp nb 'widgetctl (create \tsecret\tnote'; refused name-create-ere nb "the ERE does not compile"
+
 t_section "terms.tsv: a pack registers its workload's system terms, so core's registry names none (harbor#950)"
 THDR="$(grep -v '^#' "$T_ROOT/standards/naming/terms.tsv" | awk 'NF { print; exit }')"
 trow() { printf '%s\t%s\t%s\t-\t-\texperimental\t-\ttest\t-\t-\ta fixture system\n' "$1" "$2" "$1"; }
@@ -286,7 +301,14 @@ t_eq "...its rows land at terms.d/<repo-id>.tsv" "$(cat "$PW/tm/harbor-pack/term
 t_has "...and bin/lint-name.sh reads them: the prefix is registered" "$(lnc "$TG")" "no finding"
 t_exit "remove exits 0" 0 pk remove tm --apply --dir "$TG"
 t_eq "...and takes the terms back, the target byte-identical" "$B0" "$(snap "$TG")"
-tp tc "widget client"; refused terms-class tc "has class client: a pack registers system terms only"
+tp tc "widget client"; refused terms-class tc "has class client: a pack registers system terms, its org and its vendors only"
+tp to "zorg org"; listed '"to"'
+TGO="$T_TMP/tg-to"; mkdir -p "$TGO/bin" "$TGO/skills"
+lvc() { env CLAUDE_CONFIG_DIR="$TGO" HARBOR_SCOPE_PRIVATE="$PRIV" sh "$T_ROOT/bin/lint-name.sh" --check vendor-credential "$1" 2>&1; }
+t_has "positive control: before install core's placeholder org passes" "$(lvc 'ACME API GitHub')" "no finding"
+t_exit "a pack whose terms.tsv names the company's org installs (harbor#978)" 0 pk install to --apply --dir "$TGO"
+t_has "...and its org is the one a vendor-side name takes" "$(lvc 'ZORG API GitHub')" "no finding"
+t_has "...retiring core's placeholder on that box" "$(lvc 'ACME API GitHub')" "is not a registered org"
 tp tf "family system"; refused terms-core tf "family is a core term"
 tp tk "WidgetSys system"; refused terms-kebab tk "is not a lowercase kebab term"
 tp tw "widgetsys system" "widgetsys system"; refused terms-twice tw "widgetsys is listed twice"

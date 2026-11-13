@@ -24,7 +24,7 @@ The target is chosen as every installer chooses it (`bin/deploy-install-lib.sh`)
 
 ```
 pack.toml   name, version, harbor_version, description - all four, each a quoted string (flat TOML, harbor/D-81)
-skills/<name>/...   bin/<file>   shims.tsv   conf-keys.txt   terms.tsv   context-rules/user/<file>.md   checks.md   controls.tsv   skill-packs/<core skill>/<name>.md   tests/ (never installed)   README* (ignored)
+skills/<name>/...   bin/<file>   shims.tsv   conf-keys.txt   terms.tsv   name-create.tsv   context-rules/user/<file>.md   checks.md   controls.tsv   skill-packs/<core skill>/<name>.md   tests/ (never installed)   README* (ignored)
 ```
 
 `checks.md` is a check-register fragment in exactly the shape of the private layer's [`checks.md`](./private-layer.md#checksmd):
@@ -41,11 +41,19 @@ and a malformed line; remove takes the keys back with the pack. Three keys core 
 their pack declared them (#1273): with no pack installed, `scope-roots.sh --conf <key>` refuses them (exit 2).
 
 `terms.tsv` (optional) registers the workload's own system terms (harbor#950): core's `standards/naming/terms.tsv` header,
-then one row per system, class `system` alone. Install puts it at `terms.d/<repo-id>.tsv`, and `bin/lint-name.sh` reads it
+then one row per system, class `system`, or the company's own organisation, class `org` (harbor#978: the `<ORG>` of a vendor-side credential name is workload or hub config, and once one is installed core's `ACME` placeholder no longer passes). Install puts it at `terms.d/<repo-id>.tsv`, and `bin/lint-name.sh` reads it
 beside the private layer's overlay, so a system's env prefix and short name are known on the box while core's register names
 no workload. Install refuses another header, another class, a term core already has, one another installed pack declares,
 and a malformed id; remove takes the rows back with the pack. A system named here is public, since the pack is client-free; a
 private system goes in `harbor-private/terms.tsv` instead, whose rows are leak patterns, so a pack naming one is refused.
+
+`name-create.tsv` (optional) names the pack's own create commands, whose new name `context-rules/user/name-note-create.sh`
+judges before the thing exists (harbor#978): rows of `<ERE> TAB <surface> TAB <note>`, the ERE matched against a Bash
+command and ending where the name begins, the surface one `bin/lint-name.sh --check` accepts. Install puts it at
+`name-create.d/<repo-id>.tsv`, beside core's own rows (`contracts/name-create.tsv`, installed as `name-create.d/harbor.tsv`
+by the inject installer). Install refuses a row that is not three columns, an empty ERE, one awk cannot compile, and a
+surface the lint cannot check; a hub pack's is refused, since a member laptop has no naming lint. `harbor check --live` is
+red (`context.name-create`) when no row is installed at all, because then the rule judges nothing.
 
 `shims.tsv` (optional) puts the pack's commands on the operator's PATH: a header row `name` TAB `rel`, then one row per command,
 `rel` a `bin/<file>` this pack installs. `bin/deploy-shim-install.sh` links `~/.local/bin/<name>` to the installed copy, so core's own
@@ -90,6 +98,7 @@ The one exception is the move below: a core skill core no longer ships, unchange
 | `shims.tsv` | `shims.d/<repo-id>.tsv`, one file per pack; `deploy-shim-install.sh` reads them (`--live`: `~/.claude/shims.d`; `--dir`: `HARBOR_PACK_SHIMS_DIR`) |
 | `checks.md` | `checks.d/<repo-id>.md`, one file per pack |
 | `controls.tsv` | `checks.d/<repo-id>.controls.tsv` |
+| `name-create.tsv` | `name-create.d/<repo-id>.tsv` |
 
 ## Adding packs to a core skill
 

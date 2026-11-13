@@ -410,6 +410,7 @@ tests/ci/release-names/release-names.test.sh
 tests/access/cli/add-prompts.test.sh
 tests/access/cli/stored.test.sh
 tests/access/cli/lifecycle.test.sh
+tests/access/cli/names.test.sh
 tests/access/cli/status-json.test.sh
 tests/lint/module/rules.test.sh
 tests/lint/module/unchecked.test.sh

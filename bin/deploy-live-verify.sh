@@ -168,6 +168,24 @@ if [ -f "$CFG/.harbor-manifest" ]; then
   fi
 else log_skip "$ID manifest — no .harbor-manifest in $CFG"; fi
 
+# 10. The name-create rules (harbor#978): context-rules/user/name-note-create.md judges the create commands the rows in
+#     name-create.d/*.tsv name, and with no row it judges nothing while every other check reads green: it never fired on
+#     the box it was built for. A rule whose list is empty is OFF, so this line is red. Retire it: delete this section.
+if [ ! -f "$CFG/context-rules/user/name-note-create.md" ]; then
+  log_skip "$ID name-create — the name-note-create rule is not installed, so no row list is read [check:context.name-create]"
+else
+  _ncr=0; _ncf=0
+  for _f in "$CFG"/name-create.d/*.tsv; do
+    [ -f "$_f" ] || continue
+    _ncf=$((_ncf + 1)); _ncr=$((_ncr + $(grep -cvE '^[[:space:]]*(#|$)' "$_f" || :)))
+  done
+  if [ "$_ncr" -gt 0 ]; then log_ok "$ID name-create — $_ncr command row(s) in $_ncf file(s) under $CFG/name-create.d [check:context.name-create]"
+  else
+    log_fail "$ID name-create — OFF: $CFG/name-create.d $([ -d "$CFG/name-create.d" ] && printf 'holds no row' || printf 'is missing'), so name-note-create judges no create command [check:context.name-create]"
+    log_fix "sh $HERE/context-injection-install.sh --apply --live   (installs core's rows, contracts/name-create.tsv, as name-create.d/harbor.tsv)"
+  fi
+fi
+
 # ── the opt-in probes: the real-system coverage the hermetic suites stub (harbor#667) ─────────────
 if [ "$PROBES" -eq 0 ]; then
   for _p in probe:secret probe:live-dir probe:browser; do

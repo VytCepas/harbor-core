@@ -51,6 +51,24 @@ rm -f "$CFG/name-create.d/fixture.tsv"; call "fixturectl create MyService"
 t_eq "no rows (core names no command): silent" "" "$(note)"
 printf 'fixturectl[[:space:]]+create[[:space:]]+\tskill\tUse the form the grammar names.\n' > "$CFG/name-create.d/fixture.tsv"
 
+t_section "core's own rows (contracts/name-create.tsv): a credential's name is judged at birth (harbor#978)"
+cp "$T_ROOT/contracts/name-create.tsv" "$CFG/name-create.d/harbor.tsv"
+export HARBOR_SCOPE_PRIVATE="$T/no-private"   # hermetic: the box's org overlay never reaches the fixture
+call "secret put github-tools"
+t_has "secret put with a pre-D-36 ref draws a note" "$(note)" '`github-tools` is a new secret name'
+call "secret put harbor-github-tools-push"
+t_eq "...a D-36 ref: silent" "" "$(note)"
+call "harbor access add tt --kind app --what w --secret harbor-github-tools-oauth-client --vendor-name 'Some Connector'"
+t_has "harbor access add with a vendor default name draws a note" "$(note)" '`Some Connector` is a new vendor-credential name'
+call "harbor access add tt2 --kind token --secret worklog-token --what w"
+t_has "harbor access add with a pre-D-36 ref draws a note" "$(note)" '`worklog-token` is a new secret name'
+call "gcloud iam service-accounts create some-sa --project p --display-name=\"Some Connector\""
+t_has "gcloud's service-account display name, quoted with spaces, is judged whole" "$(note)" '`Some Connector` is a new vendor-credential name'
+call "gcloud iam service-accounts create acme-github --display-name \"ACME API GitHub\""
+t_eq "...a compliant display name: silent" "" "$(note)"
+t_red context.name-note-create
+rm -f "$CFG/name-create.d/harbor.tsv"; unset HARBOR_SCOPE_PRIVATE
+
 t_section "it informs and never denies"
 call "fixturectl create MyService"
 t_eq "no permissionDecision" "" "$(printf '%s' "$OUT" | jq -r '.hookSpecificOutput.permissionDecision // ""')"

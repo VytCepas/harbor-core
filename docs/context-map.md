@@ -33,17 +33,17 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | decision-record | docs/decisions/ | element | source | dated | 94 |
 | hook | hooks/ | component | source | living | 50 |
 | skill | skills/ | component | source | living | 51 |
-| fixture | fixtures/ | element | source | living | 439 |
+| fixture | fixtures/ | element | source | living | 443 |
 | template | templates/ | component | source | living | 16 |
-| registry | registries/ | component | source | versioned | 81 |
-| test | tests/ | component | source | living | 669 |
+| registry | registries/ | component | source | versioned | 82 |
+| test | tests/ | component | source | living | 670 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 9 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
 | script | bin/ | component | source | living | 296 |
 | how-to | docs/how-to/ | component | source | living | 7 |
-| reference | docs/reference/ | component | generated | generated | 89 |
+| reference | docs/reference/ | component | generated | generated | 90 |
 | explanation | docs/explanation/ | component | source | living | 106 |
 | (no kind) | - | - | - | - | 287 |
 
@@ -57,9 +57,9 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `bin/` | 300 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 68 | 6 | 1 |
-| `contracts/` | 123 | 14 | 2 |
-| `docs/` | 323 | 26 | 9 |
-| `fixtures/` | 439 | 11 | 1 |
+| `contracts/` | 124 | 14 | 2 |
+| `docs/` | 324 | 26 | 9 |
+| `fixtures/` | 443 | 11 | 1 |
 | `hooks/` | 46 | 7 | 1 |
 | `launchd/` | 21 | 10 | 1 |
 | `mods/` | 7 | 1 | 2 |
@@ -72,7 +72,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 669 | 30 | 1 |
+| `tests/` | 670 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -81,7 +81,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 12 | 32 | 2 | 6 | 0 | 0 |
+| access | control-plane | 12 | 33 | 2 | 6 | 0 | 0 |
 | admission | control-plane | 27 | 90 | 0 | 6 | 0 | 176 |
 | agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
@@ -89,7 +89,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | bq | observability | 3 | 6 | 0 | 2 | 0 | 0 |
 | check | observability | 2 | 5 | 0 | 1 | 59 | 0 |
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
-| context | control-plane | 6 | 16 | 1 | 3 | 0 | 46 |
+| context | control-plane | 6 | 16 | 1 | 4 | 1 | 46 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
 | doc | control-plane | 16 | 13 | 0 | 37 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
@@ -108,7 +108,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | scope | coordination | 14 | 22 | 0 | 1 | 0 | 5 |
 | session | data-plane | 14 | 5 | 0 | 7 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 16 |
-| standard | policy-function | 18 | 28 | 126 | 13 | 13 | 61 |
+| standard | policy-function | 18 | 28 | 126 | 13 | 13 | 63 |
 | status | observability | 13 | 29 | 0 | 10 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
@@ -285,6 +285,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/context-resolve.sh`
 - `commands/context-budget.md`
 - `docs/context-map.md`
+- `docs/reference/check-rows/context-name-create.txt`
 - `hooks/injection-rule/context-rules.test.sh`
 - `registries/context-ratchet.tsv`
 
@@ -846,9 +847,9 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `bin/` | 12 |
 | `commands/` | 2 |
 | `context-rules/` | 56 |
-| `contracts/` | 91 |
+| `contracts/` | 92 |
 | `docs/` | 134 |
-| `fixtures/` | 264 |
+| `fixtures/` | 268 |
 | `hooks/` | 33 |
 | `mods/` | 7 |
 | `patches/` | 10 |
