@@ -58,6 +58,7 @@ contracts/agent-architectures.tsv	row	id case roles receives returns verified_by
 contracts/catalog-non-tools.tsv	row	glob why	glob		skill	bin/skill-catalog.sh	a name glob that is not a tool, with the reason
 contracts/confinement-coverage.tsv	row	id coverage why	id	id>standards/naming/controls.tsv:id	admission	bin/deploy-confinement.sh	how each admission rule is covered by the confinement
 contracts/confinement-mcp.tsv	none	server verdict reason	server		admission	bin/drift-wall.sh	a local MCP server and whether it must start under srt or is exempt, with the reason (harbor#1442)
+contracts/name-create.tsv	none	pattern surface note	pattern	surface>standards/naming/surfaces.tsv:id	context	context-rules/user/name-note-create.sh	core's own create commands whose new name the name-note-create rule judges at birth, installed as name-create.d/harbor.tsv (harbor#978)
 contracts/confinement-classes.tsv	row	class kind treatment where	class		admission	bin/admission-observe-report.sh	every class of Bash call that asks to leave the sandbox, and its treatment (harbor#1441)
 contracts/core-writes-allow.tsv	row	path target reason	path+target	path>path:	lint	bin/lint-core-writes.sh	a core script allowed to write a path
 contracts/credential-patterns.tsv	row	id ere note	id		access	bin/lint-secrets.sh	the shapes of a credential value
