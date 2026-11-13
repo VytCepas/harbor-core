@@ -37,7 +37,7 @@ member_stubs() { # <bin dir>
 core_checkout() {
   mkdir -p "$CORE"
   cp -R "$T_ROOT/bin" "$T_ROOT/contracts" "$CORE/"
-  mkdir -p "$CORE/standards/naming"; cp "$T_ROOT/standards/naming/controls.tsv" "$CORE/standards/naming/"
+  mkdir -p "$CORE/standards/naming"; cp "$T_ROOT/standards/naming/"*.tsv "$CORE/standards/naming/"   # the floor carries the naming registry beside lint-name.sh (harbor#978)
   mkdir -p "$CORE/hooks/injection-rule"; cp "$T_ROOT/hooks/injection-rule/injection-rule.sh" "$CORE/hooks/injection-rule/"   # contracts/member-files.txt lists it (context rules)
   member_stubs "$CORE/bin"
   # What the release would serve: a fake archive, and a pin that names it, so no install suite reaches the network.

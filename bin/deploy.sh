@@ -162,7 +162,7 @@ SNAP=''
 # runtime-install's lib/ and prod-guard-install's settings.json.bak.* were missing. A glob is allowed.
 # The install manifest joined it with Wave C (§3): a restore that put the files back and not their rows
 # would leave install-drift and skills-collide reading a record of an install that was undone.
-SNAP_SET='settings.json CLAUDE.md bin lib hooks context-rules inject.d skills skill-packs commands checks.d shims.d conf-keys.d terms.d .harbor-packs .harbor-hooks-wired .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
+SNAP_SET='settings.json CLAUDE.md bin lib hooks context-rules inject.d skills skill-packs commands checks.d shims.d conf-keys.d terms.d name-create.d .harbor-packs .harbor-hooks-wired .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
 B8PIN="$CFG/.helm-instructions.sha256"
 trap 'rm -rf "$WORK"' EXIT
 # A trapped INT returns to the script, so it must exit explicitly or the install carries on.

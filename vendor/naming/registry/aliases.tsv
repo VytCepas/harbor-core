@@ -27,7 +27,7 @@
 #   surfaces  where the alias is allowed, comma-separated; - for nowhere
 #   remove_by YYYY-MM-DD, never, or -
 id	term	kind	surfaces	remove_by	note
-harbor	platform	codename	repo,brand,cli,launchd,systemd,env-prefix,glossary,readme-heading	never	the brand and the control plane's repo name
+harbor	platform	codename	repo,brand,cli,launchd,systemd,env-prefix,glossary,readme-heading,secret	never	the brand and the control plane's repo name
 yard	scaffolder	codename	repo,brand,cli,env-prefix,glossary,readme-heading	never	repo renamed from project-init (§11 step 7)
 ship	deploy	codename	path,env,check-id,command,glossary,registry,record,memory-prose	never	the ship contract's unattended merge and deploy (v1.1 §5a.8): .agents/ship.config, SHIP_*, check id ship, harbor ship. Was a legacy alias of workload (D-6), and is still never a repo's name
 golden	-	banned	glossary	-	say golden fixture, source of truth, or pin (§5)

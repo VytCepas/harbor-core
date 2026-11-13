@@ -16,7 +16,7 @@ ADD() { # <id> <ref|-> [extra args...] - every field given, so no prompt is need
   case "$_r" in -) _sec=--no-secret ;; *) _sec="--secret $_r" ;; esac
   # shellcheck disable=SC2086
   AX add "$_i" --kind token --what "a test token" --use-when "only in tests" --reaches "nothing real" \
-      --cannot "anything" --grant "the suite" $_sec "$@"
+      --cannot "anything" --grant "the suite" --vendor-name "EXAMPLECO API GitHub" $_sec "$@"
 }
 rc() { "$@" >/dev/null 2>&1; echo $?; }
 
@@ -34,31 +34,31 @@ t_eq "has exits 1" 1 "$(rc AX has some-ref)"
 t_eq "check inspected nothing and exits 2" 2 "$(rc AX check)"
 t_has "...and says it is not a pass" "$(AX check 2>&1)" "NOTHING was checked and this is not a pass"
 t_eq "list prints nothing, exit 0" 0 "$(rc AX list)"
-t_eq "add refuses: exit 1" 1 "$(rc ADD some-id some-ref)"
-t_has "...and says there is no private layer" "$(ADD some-id some-ref 2>&1)" "no private layer to write one in"
+t_eq "add refuses: exit 1" 1 "$(rc ADD some-id harbor-github-tools-some)"
+t_has "...and says there is no private layer" "$(ADD some-id harbor-github-tools-some 2>&1)" "no private layer to write one in"
 t_eq "...nothing was created" gone "$([ -e "$T_TMP/no-layer" ] && echo present || echo gone)"
 HARBOR_SCOPE_PRIVATE="$PV"
 
 t_section "add records the entry and stores the value through the seam, once"
-printf '%s' "$FAKEVAL" | ADD test-token test-token-ref --value-stdin >"$T_TMP/add.out" 2>&1; _rc=$?
+printf '%s' "$FAKEVAL" | ADD test-token harbor-github-tools-test --value-stdin >"$T_TMP/add.out" 2>&1; _rc=$?
 t_eq "add exits 0" 0 "$_rc"
 t_has "...and names the entry" "$(cat "$T_TMP/add.out")" "registered 'test-token' (token)"
 t_hasnt "the register holds no value" "$(cat "$REG")" "$FAKEVAL"
 t_hasnt "add printed no value" "$(cat "$T_TMP/add.out")" "$FAKEVAL"
 t_hasnt "no store call carried the value in argv" "$(cat "$KC_STUB/argv.log")" "$FAKEVAL"
-t_has "the entry carries its fields" "$(cat "$REG")" "    secret: test-token-ref"
+t_has "the entry carries its fields" "$(cat "$REG")" "    secret: harbor-github-tools-test"
 t_has "...and the grant" "$(cat "$REG")" "    grant: the suite"
-t_eq "has says registered: 0" 0 "$(rc AX has test-token-ref)"
-t_eq "refs lists the ref" "test-token-ref" "$(AX refs)"
-t_has "list shows id, kind and ref" "$(AX list)" "test-token	token	test-token-ref	a test token"
-t_eq "the value is in the store, behind secret" "$FAKEVAL" "$(SC run test-token-ref V -- sh -c 'printf %s "$V"' 2>/dev/null)"
+t_eq "has says registered: 0" 0 "$(rc AX has harbor-github-tools-test)"
+t_eq "refs lists the ref" "harbor-github-tools-test" "$(AX refs)"
+t_has "list shows id, kind and ref" "$(AX list)" "test-token	token	harbor-github-tools-test	a test token"
+t_eq "the value is in the store, behind secret" "$FAKEVAL" "$(SC run harbor-github-tools-test V -- sh -c 'printf %s "$V"' 2>/dev/null)"
 t_eq "check is green with the entry" 0 "$(rc AX check)"
 t_has "...and counts it" "$(AX check 2>&1)" "1 entry"
 
 t_section "add refuses what it must"
 BEFORE="$(cksum < "$REG")"
-t_eq "a repeated id: exit 1" 1 "$(rc ADD test-token other-ref)"
-t_eq "a ref another entry names: exit 1" 1 "$(rc ADD other-id test-token-ref)"
+t_eq "a repeated id: exit 1" 1 "$(rc ADD test-token harbor-github-tools-other)"
+t_eq "a ref another entry names: exit 1" 1 "$(rc ADD other-id harbor-github-tools-test)"
 t_eq "an unknown kind: exit 2" 2 "$(rc AX add x --kind wizard --what w --use-when u --reaches r --cannot c --grant g --no-secret)"
 t_eq "a missing field (no tty to ask): exit 2" 2 "$(rc AX add x --kind token --what w --use-when u --reaches r --grant g --no-secret </dev/null)"
 t_has "...and names it" "$(AX add x --kind token --what w --use-when u --reaches r --grant g --no-secret </dev/null 2>&1)" "CANNOT"
@@ -75,19 +75,19 @@ t_section "an entry with no secret names no ref; a ref with no value is recorded
 ADD mail-box - >/dev/null 2>&1
 t_eq "--no-secret is recorded as none" 1 "$(grep -c '    secret: none' "$REG")"
 t_eq "...and none is not a ref" 1 "$(rc AX has none)"
-ADD later-ref later-ref </dev/null >"$T_TMP/later.out" 2>&1
+ADD later-ref harbor-github-tools-later </dev/null >"$T_TMP/later.out" 2>&1
 t_has "no tty and no --value-stdin: the entry is kept and the missing value said" "$(cat "$T_TMP/later.out")" "no value was stored"
-t_eq "...the ref is registered" 0 "$(rc AX has later-ref)"
-t_eq "...and the store holds nothing for it" 1 "$(rc SC run later-ref V -- true)"
+t_eq "...the ref is registered" 0 "$(rc AX has harbor-github-tools-later)"
+t_eq "...and the store holds nothing for it" 1 "$(rc SC run harbor-github-tools-later V -- true)"
 
 t_section "a failed store rolls the entry back"
 mkdir -p "$T_TMP/badkc"; printf '#!/bin/sh\nexit 1\n' > "$T_TMP/badkc/security"; chmod +x "$T_TMP/badkc/security"
 BEFORE="$(cksum < "$REG")"
-printf '%s' "$FAKEVAL" | PATH="$T_TMP/badkc:$PATH" ADD rolled-back rolled-ref --value-stdin >"$T_TMP/rb.out" 2>&1; _rc=$?
+printf '%s' "$FAKEVAL" | PATH="$T_TMP/badkc:$PATH" ADD rolled-back harbor-github-tools-rolled --value-stdin >"$T_TMP/rb.out" 2>&1; _rc=$?
 t_eq "add exits 1" 1 "$_rc"
 t_has "...and says it rolled back" "$(cat "$T_TMP/rb.out")" "rolled back"
 t_eq "the register is byte-for-byte what it was" "$BEFORE" "$(cksum < "$REG")"
-t_eq "the ref is not registered" 1 "$(rc AX has rolled-ref)"
+t_eq "the ref is not registered" 1 "$(rc AX has harbor-github-tools-rolled)"
 
 t_section "--probe: a passing probe is reported, a failing one exits 1 and keeps the entry"
 ADD probed-ok - --probe true >"$T_TMP/p1.out" 2>&1; _rc=$?
@@ -136,7 +136,7 @@ hand_edit "a typo'd field" "unknown field use_when" '
     cannot: c
     grant: g
     secret: none'
-hand_edit "a ref named twice" "secret test-token-ref is already named by test-token" '
+hand_edit "a ref named twice" "secret harbor-github-tools-test is already named by test-token" '
 ## hand-edit
 
     kind: token
@@ -145,7 +145,7 @@ hand_edit "a ref named twice" "secret test-token-ref is already named by test-to
     reaches: r
     cannot: c
     grant: g
-    secret: test-token-ref'
+    secret: harbor-github-tools-test'
 hand_edit "a repeated entry id" "repeats the one on line" '
 ## test-token
 
@@ -184,7 +184,7 @@ LEG="$T_TMP/legacy.txt"; printf '# a comment\nold-ref bin/old-consumer\n' > "$LE
 t_eq "an unlisted, unregistered ref: 1" 1 "$(ACCESS_LEGACY_REFS="$LEG" rc AX has not-listed)"
 t_eq "a listed ref: 3, grandfathered" 3 "$(ACCESS_LEGACY_REFS="$LEG" rc AX has old-ref)"
 t_eq "a comment is not a ref" 1 "$(ACCESS_LEGACY_REFS="$LEG" rc AX has '#')"
-printf 'test-token-ref bin/x\n' >> "$LEG"
-t_has "a legacy ref that is now registered is flagged for removal" "$(ACCESS_LEGACY_REFS="$LEG" AX check 2>&1)" "test-token-ref is registered now"
-t_eq "a registered ref wins over the list: 0" 0 "$(ACCESS_LEGACY_REFS="$LEG" rc AX has test-token-ref)"
+printf 'harbor-github-tools-test bin/x\n' >> "$LEG"
+t_has "a legacy ref that is now registered is flagged for removal" "$(ACCESS_LEGACY_REFS="$LEG" AX check 2>&1)" "harbor-github-tools-test is registered now"
+t_eq "a registered ref wins over the list: 0" 0 "$(ACCESS_LEGACY_REFS="$LEG" rc AX has harbor-github-tools-test)"
 t_done
