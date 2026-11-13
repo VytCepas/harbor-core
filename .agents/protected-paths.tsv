@@ -251,6 +251,7 @@ bin/lint-siblings.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/lint-suggest-table.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/member-integrity.sh	ci-gate	derived: called by bin/hub-events.sh
 bin/member-managed.sh	installed	derived: called by bin/policy-constitution-install.sh
+bin/member-mcp-launch.sh	installed	derived: called by bin/member-managed.sh
 bin/member-memory.sh	ci-gate	derived: called by bin/scope-repo.sh
 bin/member-tests.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/memory-lint.sh	installed	derived: called by bin/memory-store-check.sh
