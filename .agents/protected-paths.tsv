@@ -99,6 +99,7 @@ standards/naming/controls.tsv	ci-gate	the control register: each control's mode,
 # BEGIN derived: bin/gate-register-derive.sh --write writes the rows to END; classify.test.sh fails when they are stale
 bin/access-browser.sh	ship	derived: called by bin/deploy-live-verify.sh
 bin/access-github-app-install.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/access-mint.sh	operator-run	derived: called by bin/access.sh
 bin/access.sh	operator-run	derived: called by bin/secret
 bin/admission-api-route.sh	installed	derived: shipped by admission-install.sh
 bin/admission-bash.sh	installed	derived: shipped by admission-install.sh

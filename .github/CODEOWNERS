@@ -79,6 +79,7 @@
 /standards/naming/controls.tsv @VytCepas
 /bin/access-browser.sh @VytCepas
 /bin/access-github-app-install.sh @VytCepas
+/bin/access-mint.sh @VytCepas
 /bin/access.sh @VytCepas
 /bin/admission-api-route.sh @VytCepas
 /bin/admission-bash.sh @VytCepas

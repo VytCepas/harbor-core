@@ -1246,6 +1246,7 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <div class="scroll">
 <table class="grid"><thead><tr><th>Contract</th><th>Freezes</th></tr></thead><tbody>
 <tr><td><code>contracts/access-card.md</code></td><td>The access card - the format of the access register</td></tr>
+<tr><td><code>contracts/access-mint.md</code></td><td>Minting a credential from an OAuth code</td></tr>
 <tr><td><code>contracts/access-register.md</code></td><td>The access register - one list of every identity an agent may use</td></tr>
 <tr><td><code>contracts/box-profile.md</code></td><td>Box-profile seam (L0 Helm → L3 Yard) — FROZEN v1 (the plan's ONLY up-pointing read)</td></tr>
 <tr><td><code>contracts/browser-routing.md</code></td><td>Which browser — the router (harbor#458)</td></tr>
@@ -1760,6 +1761,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/proposal/proposal/output-contract.test.sh</code></td><td><code>bin/proposal.sh bin/library-log.sh tests/proposal/proposal/output-contract.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/port-paths/private-exempt.test.sh</code></td><td><code>bin/lint-port-paths.sh bin/scope-roots.sh bin/library-log.sh contracts/roots.tsv contracts/private-layer.md tests/lint/port-paths/private-exempt.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/access/cli/register.test.sh</code></td><td><code>bin/access.sh bin/secret bin/scope.sh bin/scope-roots.sh bin/library-log.sh contracts/access-register.md contracts/credential-patterns.tsv contracts/secret-legacy-refs.txt tests/access/cli/register.test.sh tests/cli/keychain-stub.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/access/mint/mint.test.sh</code></td><td><code>bin/access-mint.sh contracts/member-files.txt bin/access.sh bin/secret bin/scope.sh bin/scope-roots.sh bin/library-log.sh contracts/access-mint.md contracts/access-register.md tests/access/mint/mint.test.sh tests/cli/keychain-stub.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/access/cli/secret-gate.test.sh</code></td><td><code>bin/secret bin/access.sh bin/scope.sh bin/scope-roots.sh bin/library-log.sh contracts/secret-legacy-refs.txt tests/access/cli/secret-gate.test.sh tests/cli/keychain-stub.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/scope/access/install.test.sh</code></td><td><code>bin/scope.sh bin/access.sh bin/secret bin/scope-roots.sh skills/access-ledger/bin/check-routes.sh tests/scope/access/install.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/credential-reads/ratchet.test.sh</code></td><td><code>bin/lint-secrets.sh bin/lint-conventions.sh bin/library-log.sh contracts/credential-patterns.tsv contracts/lint-secrets-baseline.txt tests/lint/credential-reads/ratchet.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
@@ -2625,6 +2627,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/access-browser.sh</code></td><td>access-browser.sh — the estate's browser capability behind one router (harbor#457).</td></tr>
 <tr><td><code>bin/access-environment.sh</code></td><td>access-environment.sh (harbor#561) — the repo-visibility lines of the auto-mode environment block, read from</td></tr>
 <tr><td><code>bin/access-github-app-install.sh</code></td><td>access-github-app-install.sh — the in-session GitHub App scripts, COPIED from bin/access-github-app/. harbor#1225.</td></tr>
+<tr><td><code>bin/access-mint.sh</code></td><td>access-mint.sh (harbor#978) - <code>harbor access mint &lt;provider&gt; &lt;code|-&gt;</code>: one OAuth code-for-credential exchange for every vendor.</td></tr>
 <tr><td><code>bin/access.sh</code></td><td>access.sh (harbor#1205, harbor#1149) - <code>harbor access</code>: the access register, the one list of every identity an</td></tr>
 <tr><td><code>bin/admission-api-route.sh</code></td><td>guard-apiroute (harbor#545) — PostToolUse(Bash|Write|Edit|MultiEdit) and</td></tr>
 <tr><td><code>bin/admission-bash.sh</code></td><td>B3 (harbor#3) - PreToolUse(Bash) shell-injection / local-exec guard: the code-execution and destruction class (ports upstream DANGEROUS_PATTERNS a4e8e74, trimmed for POSIX+WSL). Pure POSIX; FAIL-OPEN on parse error.</td></tr>

@@ -618,6 +618,7 @@ case "$VERB" in
   status) cmd_status "$@" ;;
   rotate) cmd_rotate "$@" ;;
   revoke) cmd_revoke "$@" ;;
+  mint) exec sh "$SRC/access-mint.sh" "$@" ;;
   -h|--help|help|'') usage ;;
   *) fail "unknown verb '$VERB'" "harbor access --help" 2 ;;
 esac
