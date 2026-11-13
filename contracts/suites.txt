@@ -472,6 +472,7 @@ tests/standard/schema/emit.test.sh
 tests/standard/seams/fresh.test.sh
 tests/lint/name/versions.test.sh
 tests/lint/name/findings.test.sh
+tests/standard/inventory/coverage.test.sh
 tests/standard/inventory/facts.test.sh
 tests/standard/inventory/schedule.test.sh
 tests/standard/id-resolve/resolve.test.sh

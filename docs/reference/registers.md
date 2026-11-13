@@ -58,6 +58,7 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `contracts/event-kinds.tsv` | event | kind | `kind shape subject emitter meaning` | emitter>path:@space | `bin/lint-conventions.sh` | every kind of event the stream carries |
 | `contracts/event-rules.tsv` | event | id | `id pattern debounce rate backstop handler` | - | `bin/event-dispatch.sh` | the event rules Harbor ships as presets, none switched on |
 | `contracts/scheduled-checks.tsv` | check | id | `id receipt command` | - | `bin/check-run.sh` | the read-only checks launchd runs from main through check-run.sh: the id, who writes the receipt (tool or wrap) and the command |
+| `contracts/standard-coverage.tsv` | standard | id | `id kind path header note` | - | `bin/standard-inventory.sh` | the data each installed context rule reads and the package managers whose PATH tools are not ours, for the coverage check (harbor#978) |
 | `contracts/fresh-checks.tsv` | doc | file+check | `file check fix needs?` | - | `bin/doc-fresh-verify.sh` | a generated file and the command that proves it current |
 | `contracts/hooks-external.tsv` | lint | script | `script event why` | - | `bin/lint-conventions.sh` | a hook the box runs that no installer wires |
 | `contracts/issue-taxonomy.tsv` | standard | kind+label | `kind label glob meaning` | - | `bin/standard-issue-label.sh` | the issue type and theme sets, generated from label-axes.tsv |
