@@ -6,12 +6,6 @@ architecture: code-review
 
 # audit-review-fanout — distinct lenses, then verification
 
-**Every PR gets one.** Check `session.review` (`docs/reference/checks.md`): when a session opens a PR, its Stop hook asks
-that session once to run this skill on it, standards lenses included. Off: `~/.local/state/harbor/review-auto.off`.
-A member laptop runs no user-tier Stop hook, so there the note is the core context rule `review-on-pr-open`
-(`contracts/member-context-rules.tsv`), fired after `gh pr create`. A company's or workload's own rules reach the standards
-lenses as rule-set files from a hub or workload pack (`packs/README.md`), never hard-coded here.
-
 **Done looks like:** a findings list where every item is **confirmed**. It was either reproduced
 by a command, or the exact line is quoted beside the text or contract it breaks. Items are
 deduplicated and ordered most severe first. Each says whether it is fixed (a review fixes
@@ -36,20 +30,12 @@ verifier subagent that did not raise the finding, then the merge (§3).
 | Tier | Lenses | Verify |
 |---|---|---|
 | quick (one-line or docs-only) | the one lens that fits (docs: Contracts) | one Sonnet verifier per finding |
-| standard | all nine | one Sonnet verifier per finding |
-| deep (security-critical, or a verifier disagrees) | all nine | two Sonnet verifiers per finding, so they can disagree (§5) |
+| standard | all six | one Sonnet verifier per finding |
+| deep (security-critical, or a verifier disagrees) | all six | two Sonnet verifiers per finding, so they can disagree (§5) |
 
-## 2. Deterministic lints first, then the lenses
+## 2. Lenses — one subagent each, in parallel, in waves of 5 at most
 
-**Lints before lenses.** A lens judges only what no lint can. Before any lens runs, run the repo's deterministic lints on the
-change and keep their output: in harbor, `sh bin/lint-name.sh --changed`, `sh bin/lint-conventions.sh`,
-`sh bin/doc-fresh-verify.sh` and, for a PR, `sh bin/lint-pr.sh --title <t> --body-file <f> --branch <b>`; in another repo,
-`sh vendor/naming/lint-name.sh --changed` and the lint entry points its `AGENTS.md` "Tests and CI" section names. A lint
-finding is reported as the lint's, never re-raised by a lens: paste the lint output into every lens prompt as already reported.
-
-**Lenses — one subagent each, in parallel, in waves of 5 at most.** The nine briefs are in `lenses/` beside this file; each
-holds its question, rules and reply format. The last three are the standards lenses: each holds ONE of Harbor's own rule
-sources, so a Haiku can hold all of it.
+The six briefs are in `lenses/` beside this file; each holds its question, rules and reply format.
 
 | Lens | Brief | The question it answers |
 |---|---|---|
@@ -59,9 +45,6 @@ sources, so a Haiku can hold all of it.
 | Contracts | `lenses/contracts.md` | Code that contradicts its own comments, docs, usage text or CONTRACTS |
 | Tests | `lenses/tests.md` | Would the tests fail if this change were reverted? |
 | Surroundings | `lenses/surroundings.md` | Existing defects in the code the change touches |
-| Naming | `lenses/naming.md` | Every new or renamed name judged by `lint-name.sh --check <surface>`; a name with no surface, or on an uncheckable one, is a finding |
-| Constitution | `lenses/constitution.md` | The `judgment` clauses of `policy/clauses.tsv` a diff can break (tokens in URLs, shell interpolation, rules with no mechanism, weakened gates), and a governed repo's own `AGENTS.md`/`.agents/` rules |
-| Registration | `lenses/registration.md` | A new check, hook, notifier, lint or injector without its `controls.tsv` row, off switch, emitted id, red-once proof or finding destination; a rule list that can be empty with no alarm |
 
 Every lens is `subagent_type: general-purpose`, **`model: haiku`, `effort: medium`**. No plugin
 is needed. Pass `model` always (`context-rules/user/agent-model-required`).
@@ -69,7 +52,6 @@ is needed. Pass `model` always (`context-rules/user/agent-model-required`).
 **Restate every constraint in each brief.** A rule that sits only in a skill is not followed;
 the same rule in the request is. Paste the lens brief into the prompt and add:
 - the diff (PR number or base ref);
-- the lint output from the step above, as already reported;
 - read-only, change nothing;
 - report only real defects, and `[]` when there are none;
 - reply with only a JSON array (schema: `contracts/finding.md`, "The review-tier finding").

@@ -11,7 +11,7 @@ Every case that uses subagents follows one written architecture. The table is `c
 | Architecture | Roles (count, tier) | Verified by |
 |---|---|---|
 | `decision-check` | `verify` x1, opus/high | the parent's claims, by `verify` |
-| `code-review` | `review` x1-9 haiku/medium, `audit` per finding sonnet/medium, `verify` x1 opus/high on disagreement | lens findings by `audit`, a split by `verify` |
+| `code-review` | `review` x1-6 haiku/medium, `audit` per finding sonnet/medium, `verify` x1 opus/high on disagreement | lens findings by `audit`, a split by `verify` |
 | `analysis` | `explore` x1-3 haiku/medium, `verify` x1 | the report's claims, by `verify` |
 | `test-writing-trivial` | `build` x1 haiku/high (under 20 changed lines, no new interface) | the parent re-runs the runner and the reverted run |
 | `test-writing` | `build` x1, `audit` x1 sonnet/medium | the test, by an `audit` agent that breaks the guarded code and sees red |

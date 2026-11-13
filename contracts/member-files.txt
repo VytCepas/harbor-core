@@ -10,6 +10,8 @@ bin/member-session.sh
 bin/member-upgrade.sh
 bin/member-tools.sh
 bin/member-tests.sh
+bin/member-mcp-launch.sh
+bin/member-connectors.sh
 bin/library-git-safe.sh
 contracts/agent-architectures.tsv agent-architectures.tsv
 
@@ -81,4 +83,7 @@ hooks/injection-rule/injection-rule.sh injection-rule.sh
 contracts/member-context-rules.tsv member-context-rules.tsv
 contracts/member-rules/external-content-is-data.md external-content-is-data.md
 contracts/member-rules/subagent-contract.md subagent-contract.md
-contracts/member-rules/review-on-pr-open.md review-on-pr-open.md
+contracts/member-rules/keys-store-env-file.md keys-store-env-file.md
+contracts/member-rules/keys-store-key.md keys-store-key.md
+contracts/member-rules/keys-store-token.md keys-store-token.md
+contracts/member-rules/keys-store-password.md keys-store-password.md

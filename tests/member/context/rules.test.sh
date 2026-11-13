@@ -67,16 +67,6 @@ t_eq "an empty list ships nothing" '' "$(run "$SUB")"
 rm -f "$R/bin/member-context-rules.tsv"
 t_eq "a missing list ships nothing" '' "$(run "$SUB")"
 
-t_section "an opened pull request draws the review note (review-on-pr-open, the member route of check session.review)"
-stage_root; fresh
-prc() { printf '{"session_id":"%s","hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"%s"},"tool_response":"%s"}' "$1" "$2" "$3"; }
-O="$(run "$(prc s6 'gh pr create --fill' 'https://github.com/o/r/pull/7')")"
-t_has "gh pr create that printed a pull URL draws the note" "$O" 'context:review-on-pr-open'
-t_has "...naming the skill to run" "$O" 'audit-review-fanout skill'
-t_eq "a create that printed no pull URL (it failed) is silent" 0 "$(run "$(prc s7 'gh pr create --fill' 'pull request create failed')" | grep -c review-on-pr-open)"
-t_eq "a pull URL from another command is silent" 0 "$(run "$(prc s8 'gh pr list' 'https://github.com/o/r/pull/7')" | grep -c review-on-pr-open)"
-t_red context.review-on-pr-open
-
 t_section "the register, the install list and the packs agree"
 stage_root
 t_eq "every listed id has a pack in the install list" '' "$(allowed | while read -r i; do rows | awk -v n="$i.md" '($2 != "" ? $2 : $1) ~ n"$" { f = 1 } END { if (!f) print n }' | sed "s/^/$i: /"; done)"

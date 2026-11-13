@@ -268,7 +268,7 @@ The `review` tier's reviewer (`skills/audit-review-fanout`) emits JSON, never th
 **Raised** (a lens subagent's reply is an array of these; `[]` when none):
 
 ```json
-{"lens": "correctness|failure-handling|security|contracts|tests|surroundings|naming|constitution|registration",
+{"lens": "correctness|failure-handling|security|contracts|tests|surroundings",
  "file": "repo-relative path", "line": 14, "claim": "what is wrong", "evidence": "the quoted line and why"}
 ```
 

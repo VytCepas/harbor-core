@@ -106,7 +106,7 @@ t_has "it carries the mark" "$(cat "$M")" '# W10:'
 
 t_section "Edit rows, never Write rows, and no very-high row (M10, F8)"
 t_eq "no Write row" 0 "$(jq '[.permissions.deny[] | select(startswith("Write"))] | length' "$J")"
-t_eq "every deny row is an Edit row, so nothing an admin approves sits here" 0 "$(jq '[.permissions.deny[] | select(startswith("Edit(") | not)] | length' "$J")"
+t_eq "every deny row is an Edit row but the one Read row for /proc, so nothing an admin approves sits here" "Read(//proc/**)" "$(jq -r '[.permissions.deny[] | select(startswith("Edit(") | not)] | join(",")' "$J")"
 t_eq "no ask row is composed" 0 "$(jq '[.permissions.ask[]?] | length' "$J")"
 t_eq "and no allow row: the network is an allowlist" null "$(jq -c .permissions.allow "$J")"
 protected='~/.claude/settings.json ~/.claude/settings.local.json ~/.claude.json ~/.bashrc ~/.zshenv ~/.profile ~/.gitconfig'
@@ -135,7 +135,11 @@ t_has "and the settings file" "$(q '.permissions.deny[]')" 'Edit(//mnt/c/Program
 t_has "and the private layer, which holds the register" "$(q '.permissions.deny[]')" "harbor-private/**)"
 # One list feeds both, so a row in one and not the other is a defect in the composer.
 rows="$(MEMBER_MANAGED_LIB=1 sh -c '. "$0"; member_protected "/mnt/c/Program Files/ClaudeCode/harbor" /p' "$M" | wc -l | tr -d ' ')"
-t_eq "every protected row became an Edit row" "$rows" "$(jq '.permissions.deny | length' "$J")"
+t_eq "every protected row became an Edit row, beside the Read row for /proc and the two Edit rows for project settings files and .mcp.json" "$((rows + 3))" "$(jq '.permissions.deny | length' "$J")"
+t_eq "the Edit tool is denied on a project settings file in any folder (a statusLine or apiKeyHelper the agent plants)" 1 "$(jq '[.permissions.deny[] | select(. == "Edit(**/.claude/settings*.json)")] | length' "$J")"
+t_eq "and on .mcp.json in any folder" 1 "$(jq '[.permissions.deny[] | select(. == "Edit(**/.mcp.json)")] | length' "$J")"
+t_eq "the sandbox denies writes to both, from a command" 2 "$(jq '[.sandbox.filesystem.denyWrite[] | select(. == "**/.claude/settings*.json" or . == "**/.mcp.json")] | length' "$J")"
+t_eq "a managed statusLine wins over a project file's: it runs a command that prints nothing" "/usr/bin/true" "$(jq -r '.statusLine.command' "$J")"
 miss="$(MEMBER_MANAGED_LIB=1 sh -c '. "$0"; member_protected "$1" "$2" | member_sandbox_rows "$2"' "$M" "$(q .env.HARBOR_MEMBER_ROOT)" "$(q '.sandbox.filesystem.allowWrite[0]')" \
   | while IFS= read -r p; do jq -e --arg p "$p" '.sandbox.filesystem.denyWrite | index($p)' "$J" >/dev/null || printf '%s\n' "$p"; done)"
 t_eq "every protected row is in denyWrite" '' "$miss"
