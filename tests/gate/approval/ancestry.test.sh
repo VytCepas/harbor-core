@@ -24,6 +24,17 @@ t_eq "a shell sourcing another config dir's snapshot" refuse "$(J "$(argv_of /ot
 t_eq "a grandparent that is not claude" refuse "$(J "$(argv_of /cfg "$C0")" "/bin/bash" "$C0")"
 t_eq "code before the command" refuse "$(J "/bin/zsh -c source /cfg/shell-snapshots/snapshot-zsh-1.sh && f() { :; } && eval '$C0' < /dev/null && pwd -P >| /tmp/claude-ab12-cwd" claude "$C0")"
 t_eq "code after the command" refuse "$(J "$(argv_of /cfg "$C0") && rm -f x" claude "$C0")"
+# 2.1.323 writes the setopt step as `\builtin setopt …`: accepted, and only in that exact shape.
+BPRE="/bin/zsh -c source /cfg/shell-snapshots/snapshot-zsh-1-ab12.sh 2>/dev/null || true"
+BTAIL=" && eval '$C0' < /dev/null && pwd -P >| /tmp/claude-ab12-cwd"
+BOPT='\builtin setopt NO_EXTENDED_GLOB NO_BARE_GLOB_QUAL NO_BRACE_CCL NO_MAGIC_EQUAL_SUBST 2>/dev/null || true'
+BUNA="{ \\builtin unalias -- 'which'; \\builtin unset -f -- 'which'; } >/dev/null 2>&1 || true"
+t_eq "the 2.1.323 preamble, as measured" accept "$(J "$BPRE && $BOPT && $BUNA$BTAIL" claude "$C0")"
+for bad in '\builtin setopt X; rm -f y 2>/dev/null || true' '\builtin eval X 2>/dev/null || true' \
+           '\builtin source x 2>/dev/null || true' '\builtin  setopt X 2>/dev/null || true' 'builtin setopt X 2>/dev/null || true' \
+           '\\builtin setopt X 2>/dev/null || true' '\builtin setopt x 2>/dev/null || true'; do
+  t_eq "a lookalike setopt step refused: $bad" refuse "$(J "$BPRE && $bad$BTAIL" claude "$C0")"
+done
 
 t_section "the review's bypass shapes, against the installed TOOL, in a Bash-tool-shaped process tree"
 ag_world; HARBOR_GATE_ENFORCE_ANCESTRY=1; export HARBOR_GATE_ENFORCE_ANCESTRY
