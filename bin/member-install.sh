@@ -162,6 +162,7 @@ member_settings_compose() {
   if [ -n "$POLICY_SERIAL" ]; then
     _relay="$(member_policy_relay)"
     [ -z "$_relay" ] || set -- "$@" --deny-host "$_relay"
+    [ "$(jq -c ".connectors // []" "$WORK/policy.json" 2>/dev/null)" = "[]" ] || set -- "$@" --allow-claudeai-mcps   # exclusive MCP control would otherwise drop claude.ai connectors
     _hosts="$(member_policy_hosts)"
     set -f   # a `*.` row must stay a word, not a glob
     for _h in $_hosts; do set -- "$@" --allow-host "$_h"; done
@@ -169,6 +170,53 @@ member_settings_compose() {
   fi
   sh "$HERE/member-managed.sh" "$@" > "$_mc_out" || die 'composing the managed settings failed (above)' "sh '$HERE/member-managed.sh' $*"
   jq -e 'type == "object"' "$_mc_out" >/dev/null 2>&1 || die 'the composed settings are not a JSON object, and Claude Code would refuse to start' "sh '$HERE/member-managed.sh' $*"
+}
+# CONNECTORS (control member.connectors): the verified policy's `connectors` land as <root>/connectors.json (what bin/member-mcp-launch.sh believes) and the sibling
+# managed-mcp.json (what Claude Code starts). Both are root's, composed by member-managed.sh from the verified copy alone, never from a file the agent can write.
+# With none declared neither file exists, so MCP stays as it was (an empty allowlist: nothing a person adds loads). member_connectors_stage <dir>: files in <dir>/harbor and <dir>.
+member_connectors_stage() {
+  rm -f "$1/harbor/connectors.json" "$1/managed-mcp.json"
+  [ -n "$POLICY_SERIAL" ] || return 0
+  _cn="$(jq -c '.connectors // []' "$WORK/policy.json" 2>/dev/null)" || _cn='[]'
+  [ "$_cn" != '[]' ] || return 0
+  printf '%s\n' "$_cn" > "$1/harbor/connectors.json"
+  sh "$HERE/member-managed.sh" --mcp-servers "$1/harbor/connectors.json" --root "$MROOT" > "$1/managed-mcp.json" \
+    || die 'composing the policy connectors failed (above)' "sh '$HERE/member-managed.sh' --mcp-servers '$1/harbor/connectors.json'"
+  log_ok "the policy declares $(jq 'length' "$1/harbor/connectors.json") connector(s): their keys are entered by the person (member-connectors.sh key <ref>)"
+}
+# member_connectors_land <dir> <managed-mcp.json folder> [nofloor]: root copies, a temp file and a rename; a file the policy no longer needs goes. nofloor: leave connectors.json (WSL: it is the Windows tree, PowerShell lands it).
+member_connectors_land() {
+  _grp="$(root_group)"
+  if [ -f "$1/managed-mcp.json" ]; then
+    [ -n "${3:-}" ] || { put_file "$1/harbor/connectors.json" "$MROOT/connectors.json"; chown "root:$_grp" "$MROOT/connectors.json"; }
+    put_file "$1/managed-mcp.json" "$2/managed-mcp.json"; chown "root:$_grp" "$2/managed-mcp.json"
+    [ "$(jq -S . "$2/managed-mcp.json" 2>/dev/null)" = "$(jq -S . "$1/managed-mcp.json")" ] || die "read-back: $2/managed-mcp.json is not what this run wrote" "jq . '$2/managed-mcp.json'"
+  else
+    [ -n "${3:-}" ] || rm -f "$MROOT/connectors.json"; rm -f "$2/managed-mcp.json"
+  fi
+}
+# WSL: Claude Code reads managed-mcp.json from /etc/claude-code inside the distro, as it does the law, so it lands there too.
+member_connectors_distro() {
+  [ "$OS" = WSL ] || return 0
+  member_connectors_land "$STAGE" "$(member_etc)/claude-code" nofloor
+  [ ! -f "$STAGE/managed-mcp.json" ] || log_ok "the connectors sit in the distro too: $(member_etc)/claude-code/managed-mcp.json"
+}
+# The first install fetches its policy after the floor landed (sink_seal), so the connectors it names land in a second pass, and the floor is pinned again.
+member_connectors_refresh() {
+  [ "$OS" != WSL ] || return 0
+  [ -n "$POLICY_SERIAL" ] || return 0
+  _rs="$WORK/connectors-stage"; rm -rf "$_rs"; mkdir -p "$_rs/harbor"
+  member_connectors_stage "$_rs"
+  if [ -f "$_rs/managed-mcp.json" ]; then
+    cmp -s "$_rs/harbor/connectors.json" "$MROOT/connectors.json" 2>/dev/null && [ "$(jq -S . "${MFILE%/*}/managed-mcp.json" 2>/dev/null)" = "$(jq -S . "$_rs/managed-mcp.json")" ] && return 0
+  else
+    [ -f "$MROOT/connectors.json" ] || [ -f "${MFILE%/*}/managed-mcp.json" ] || return 0
+  fi
+  member_connectors_land "$_rs" "${MFILE%/*}"
+  _pin="$(_as_member env HARBOR_MEMBER_ROOT="$MROOT" HARBOR_SCOPE_MANAGED_SETTINGS="$MFILE" sh "$MROOT/bin/member-integrity.sh" hash)" \
+    || die 'member-integrity.sh hash failed (above)' "sh '$MROOT/bin/member-integrity.sh' hash"
+  printf '%s\n' "$_pin" > "$WORK/floor.pin"; put_file "$WORK/floor.pin" "$MROOT/floor.pin"; chown "root:$(root_group)" "$MROOT/floor.pin"
+  log_ok "the managed MCP file now carries the policy's connectors (serial $POLICY_SERIAL)"
 }
 # stage_tree -> $STAGE holds everything that lands, relative to the folder of the managed settings file.
 stage_tree() {
@@ -194,6 +242,7 @@ stage_tree() {
   member_policy_copy "$SIGNERS" || :
   [ -z "$POLICY_SERIAL" ] || printf '%s\n' "$POLICY_SERIAL" > "$STAGE/harbor/pin.serial"
   member_settings_compose "$STAGE/managed-settings.json" "$MCP_FILE" "$HUB" "$LOGIN"
+  member_connectors_stage "$STAGE"
   # The company law: Claude Code loads a CLAUDE.md beside the managed settings in every session, and no setting excludes it.
   cp "$ROOT/contracts/member-law.md" "$STAGE/CLAUDE.md"
   sh "$HERE/deploy-confinement.sh" --marker --member --user "$MEMBER" > "$STAGE/harbor-confinement" || die 'writing the confinement marker failed (above)' "sh '$HERE/deploy-confinement.sh' --marker --member"
@@ -254,6 +303,7 @@ land_unix() {
   chown -R "root:$_grp" "$MROOT" "${MROOT%/*}/harbor-confinement"
   chown "root:$(member_group)" "$MROOT/$SINK_REL"
   sink_seal
+  member_connectors_land "$STAGE" "${MFILE%/*}"
   put_file "$STAGE/managed-settings.json" "$MFILE"
   chown "root:$_grp" "$MFILE"
   put_file "$STAGE/CLAUDE.md" "${MFILE%/*}/CLAUDE.md"
@@ -412,6 +462,7 @@ member_first_policy() {
   log_ok 'the first policy is fetched and verifies'
   HUB="$_hub" LOGIN="$_login" member_policy_copy "$MROOT/hub-signers" || return 0
   member_settings_refresh "$_hub" "$_login"
+  member_connectors_refresh
   _relay="$(member_policy_relay)"
   [ -z "$_relay" ] || jq -e --arg h "$_relay" '.sandbox.network.deniedDomains | index($h) != null' "$MFILE" >/dev/null 2>&1 \
     || log_warn "the policy names the relay $_relay, and these managed settings don't deny it yet: run this install again, or remote support stays refused"
@@ -542,6 +593,7 @@ stage_tree
 if [ "$OS" = WSL ]; then land_windows; else land_unix; fi
 member_sudoers
 member_law_distro
+member_connectors_distro
 member_profile
 member_user_tier
 member_integrity_check
