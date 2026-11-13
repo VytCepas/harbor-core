@@ -29,9 +29,13 @@ each failure means, what has already been tried and failed, and step-by-step tas
    tab is gone; `online: false` stalls react-query apps on a blank page.
 6. **Every input verb is checked.** A lost tab or a hidden tab is a refusal, never a
    silent success. Read the refusal's `fix:` line; it names the next command.
-7. **Writes are the operator's to name.** Saving a data source, a setting, an
+7. **Clicks run by script, so a covered window still takes them.** `click`, `hover`, `check`,
+   `uncheck`, `select` and `scroll <px>|<ref>` dispatch on the element and need no paint. When the
+   page ignores one (`unchanged:`), or for a popup, a file chooser or a drag, use the verb's
+   `--real` form, which waits for the tab to show. Never ask the operator to click our own tab.
+8. **Writes are the operator's to name.** Saving a data source, a setting, an
    invite: ask in chat first, unless the operator named that write this turn.
-8. **One field, one call when timing matters.** `fill <ref> <text> --submit` sends
+9. **One field, one call when timing matters.** `fill <ref> <text> --submit` sends
    Enter in the same call; a second call comes too late after a detach.
 
 ## Fewer calls, faster reads (harbor#1507)
@@ -97,7 +101,8 @@ field and value.
 
 | the verb says | what happened | do |
 |---|---|---|
-| `the tab is hidden … timed out` | Chrome is showing another tab in that window, or the window is minimised | `harbor chrome front`, then the verb again |
+| `the tab is hidden … timed out` | a `--real` verb, or one not scripted, on a tab Chrome is not painting (another tab in front, the window covered or minimised) | through the MCP server a click already ran `front` and retried; else the scripted form (no `--real`), or `harbor chrome front` then the verb again |
+| `… by script: unchanged:` / `refused:` | the page ignored the script's events, the element is disabled, or a select is not native | the verb with `--real` (it needs the tab shown); for a custom select, click it, then click the option |
 | `front: … still hidden` | the window is minimised again or on another Space | the operator brings it up; never minimise a harbor window |
 | `signed out: … sign in as …` | the app sent the tab to sign-in | the operator signs in as named, then `harbor chrome wait-signin` |
 | `the tab was lost on load: another extension put a frame in the page` (from `goto`) | a sign-in page whose password field a password manager fills: Outbrain, Eskimi, every pass | the operator signs in to that host in Chrome, then `attach` and `goto` again |
