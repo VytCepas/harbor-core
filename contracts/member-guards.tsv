@@ -31,6 +31,7 @@ read-deny	//**/id_ed25519
 read-deny	//**/id_rsa
 read-deny	//**/secrets/**
 read-deny	//mnt/c/Users/**
+read-deny	//proc/**
 read-deny	~/.aws/**
 read-deny	~/.claude/.helm-log-token
 read-deny	~/.claude/.helm-obs-salt

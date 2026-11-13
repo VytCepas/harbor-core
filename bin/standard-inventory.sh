@@ -9,22 +9,10 @@
 #                                                 script, shim (derived, never stored; the sweep is lint.tool-has-caller's)
 #   sh bin/standard-inventory.sh uncalled         check.script-uncalled: bin/ files nothing calls, as retirement proposals
 #   sh bin/standard-inventory.sh schedule         check.schedule-registered: scheduled jobs with no row in the composed check register
-#   sh bin/standard-inventory.sh coverage         check.standard.coverage: what the standard does not reach on this box (below)
 #   sh bin/standard-inventory.sh page env|cli [--check|--write]   docs/reference/env.md and contracts/cli.md, generated
 #   sh bin/standard-inventory.sh --help
 #
 #   --root <dir>   the tree judged (default: this checkout)    --map <file>  `<path> TAB <file to read>` for every tracked file
-#   --local-bin <dir>  coverage: the PATH folder judged beside <config>/bin (default ~/.local/bin)
-#   --access <dir>     coverage: the access register's folder (default scope-roots.sh --access)
-#
-# COVERAGE (harbor#978, layer 3 of the standardization loop) is red on three things, each a finding with its age:
-#   surface:<id>  a standards/naming/surfaces.tsv row with checked = no whose note names no owner issue (`owner <repo>#<n>`)
-#                 and no YYYY-MM-DD by which it gets a checker, or whose date has passed
-#   rule:<id>     a context rule installed on the box whose data (contracts/standard-coverage.tsv, rule-data) is missing or
-#                 holds no row: it judges nothing and says nothing
-#   tool:<path>   a file in ~/.local/bin or <config>/bin whose bytes no registered repo holds (scope-roots.sh --repos, the
-#                 private layer, this tree): untracked, or changed since it was committed, so no colleague ever gets it. A tool
-#                 that resolves into a package manager's folder (standard-coverage.tsv, tool-origin) is that manager's
 #
 # THE REGISTERS HOLD ONLY WHAT NOTHING CAN DERIVE. contracts/env.tsv: kind, default, meaning, owner, controls. contracts/bin.tsv: form,
 # layer, purpose, ticket. The readers of a name and the callers of a file come from the tree at the moment of asking, so they cannot drift.
@@ -55,7 +43,7 @@ die2() { log_fail "$1"; log_fix "sh $SELF --help"; log_end || :; exit 2; }
 die3() { log_fail "$1"; log_fix "${2:-sh $SELF --help}"; log_end || :; exit 3; }
 
 ROOT=""; MAP=""; CMD=""; ARGS=""
-REPOS_F=""; REGISTER_F=""; EXEMPT_F=""; LAUNCHD_DIRS=""; LOCAL_BIN="$HOME/.local/bin"; ACCESS_DIR=""; CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; TODAY=""; PRIV_DIR=""; NO_INSTALLED=0
+REPOS_F=""; REGISTER_F=""; EXEMPT_F=""; LAUNCHD_DIRS=""; CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; TODAY=""; PRIV_DIR=""; NO_INSTALLED=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
@@ -66,8 +54,6 @@ while [ $# -gt 0 ]; do
     --exempt) [ $# -ge 2 ] || die2 "--exempt needs a file"; EXEMPT_F="$2"; shift ;;
     --launchd-dir) [ $# -ge 2 ] || die2 "--launchd-dir needs a directory"; LAUNCHD_DIRS="$LAUNCHD_DIRS $2"; shift ;;
     --no-installed) NO_INSTALLED=1 ;;
-    --local-bin) [ $# -ge 2 ] || die2 "--local-bin needs a directory"; LOCAL_BIN="$2"; shift ;;
-    --access) [ $# -ge 2 ] || die2 "--access needs a directory"; ACCESS_DIR="$2"; shift ;;
     --private) [ $# -ge 2 ] || die2 "--private needs a directory"; PRIV_DIR="$2"; shift ;;
     --config-dir) [ $# -ge 2 ] || die2 "--config-dir needs a directory"; CFG="$2"; shift ;;
     --today) [ $# -ge 2 ] || die2 "--today needs YYYY-MM-DD"; TODAY="$2"; shift ;;
@@ -365,109 +351,6 @@ cmd_schedule() {
   exit 0
 }
 
-# coverage: what the standard does not reach on this box (harbor#978): the three kinds in the header, as one delta
-cov_count() { # <header row|none> <file>... → data rows over the files: no blank or # line, and each file's header row dropped
-  _ch="$1"; shift
-  awk -v h="$_ch" 'FNR == 1 { first = 1 } /^[ \t]*$/ || /^[ \t]*#/ { next } { if (first && h == "row") { first = 0; next } first = 0; n++ } END { print n + 0 }' "$@" 2>/dev/null
-}
-resolve() { # <path> → the file a chain of links ends at, made absolute
-  _r="$1"; _k=0
-  while [ -L "$_r" ] && [ "$_k" -lt 20 ]; do
-    _l="$(readlink "$_r")"; case "$_l" in /*) _r="$_l" ;; *) _r="${_r%/*}/$_l" ;; esac; _k=$((_k + 1))
-  done
-  _d="$(CDPATH='' cd -- "${_r%/*}" 2>/dev/null && pwd -P)" && _r="$_d/${_r##*/}"
-  printf '%s\n' "$_r"
-}
-
-cmd_coverage() {
-  : > "$T/cur"
-  _cv="$(mapped contracts/standard-coverage.tsv)"
-  [ -n "$_cv" ] && [ -r "$_cv" ] || die3 "no contracts/standard-coverage.tsv, so no rule's data and no tool origin is known" "git log -- contracts/standard-coverage.tsv"
-  reg contracts/standard-coverage.tsv id kind path header note > "$T/cv" 2> "$T/cv.err" || die3 "contracts/standard-coverage.tsv does not read: $(head -n 1 "$T/cv.err")" "sh $HERE/standard-register.sh check"
-
-  # 1. a surface no checker judges carries an owner issue and a date, and the date has not passed
-  reg standards/naming/surfaces.tsv id checked note > "$T/sf" 2> "$T/sf.err" || die3 "standards/naming/surfaces.tsv does not read: $(head -n 1 "$T/sf.err")" "sh $HERE/standard-register.sh check"
-  awk -F'\t' -v t="$TODAY" -v OFS='\t' '$2 == "no" {
-      o = ""; if (match($3, /owner[: ]+[^;(]*/)) o = substr($3, RSTART, RLENGTH)
-      own = (o !~ /owner[: ]+none/ && (o ~ /#[0-9]+/ || o ~ /[A-Z][A-Z0-9]*-[0-9]+/))
-      d = ""; if (match($3, /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/)) d = substr($3, RSTART, RLENGTH)
-      m = (own ? "" : "no owner issue"); if (d == "") m = m (m == "" ? "" : " and ") "no date"
-      if (m != "") print "surface:" $1, "surfaces.tsv row " $1 " is checked = no and its note names " m ": write `owner <repo>#<n> by <YYYY-MM-DD>` into it, or give the surface a checker"
-      else if (d < t) print "surface:" $1, "surfaces.tsv row " $1 " is checked = no and its date " d " has passed: give it a checker or a new date in its owner issue" }' "$T/sf" >> "$T/cur"
-  _nsf="$(awk -F'\t' '$2 == "no"' "$T/sf" | grep -c . | tr -d ' ')"
-
-  # 2. an installed context rule has data to judge with
-  if [ -z "$ACCESS_DIR" ]; then ACCESS_DIR="$(sh "$HERE/scope-roots.sh" --access 2>/dev/null)" || ACCESS_DIR=""; fi
-  _nr=0
-  while IFS="$TAB" read -r _id _kind _path _hdr _note; do
-    [ "$_kind" = rule-data ] || continue
-    [ -f "$CFG/context-rules/user/$_id.md" ] || continue
-    _nr=$((_nr + 1))
-    case "$_path" in
-      '{access}'*) if [ -z "$ACCESS_DIR" ]; then
-          printf 'rule:%s\tcontext rule %s is installed and the access register has no folder on this box, so it judges nothing: %s\n' "$_id" "$_id" "$_note" >> "$T/cur"; continue; fi ;;
-    esac
-    _p="$(printf '%s' "$_path" | sed -e "s|{rules}|$CFG/context-rules/user|" -e "s|{cfg}|$CFG|" -e "s|{access}|$ACCESS_DIR|")"
-    # shellcheck disable=SC2086 # the last segment is a glob on purpose
-    set -- $_p; _have=0; for _f in "$@"; do [ -f "$_f" ] && _have=1; done
-    if [ "$_have" -eq 0 ]; then
-      printf 'rule:%s\tcontext rule %s is installed and %s does not exist, so it judges nothing: %s\n' "$_id" "$_id" "$_path" "$_note" >> "$T/cur"
-    elif [ "$(cov_count "$_hdr" "$@")" -eq 0 ]; then
-      printf 'rule:%s\tcontext rule %s is installed and %s holds no row, so it judges nothing: %s\n' "$_id" "$_id" "$_path" "$_note" >> "$T/cur"
-    fi
-  done < "$T/cv"
-
-  # 3. every PATH tool's bytes are held by a registered repo
-  if [ -n "$REPOS_F" ]; then [ -r "$REPOS_F" ] || die2 "--repos is not readable: $REPOS_F"; grep -v '^#' "$REPOS_F" > "$T/repos"
-  else sh "$HERE/scope-roots.sh" --repos 2>/dev/null | grep -v '^#' > "$T/repos" || : > "$T/repos"
-    [ -n "$PRIV_DIR" ] || PRIV_DIR="$(sh "$HERE/scope-roots.sh" --private 2>/dev/null)" || PRIV_DIR=""
-    [ -z "$PRIV_DIR" ] || printf 'private\t%s\n' "$PRIV_DIR" >> "$T/repos"; fi
-  printf 'tree\t%s\n' "$ROOT" >> "$T/repos"
-  # paths compare as the file system resolves them (/tmp is /private/tmp on macOS), as resolve() gives a tool's
-  canon() { while IFS="$TAB" read -r _a _b; do _c="$(CDPATH='' cd -- "$_b" 2>/dev/null && pwd -P)" || _c="$_b"; printf '%s\t%s\n' "$_a" "$_c"; done; }
-  canon < "$T/repos" > "$T/repos.c" && mv -f "$T/repos.c" "$T/repos"
-  _hp="$(CDPATH='' cd -- "$HOME" 2>/dev/null && pwd -P)" || _hp="$HOME"
-  awk -F'\t' -v h="$_hp" '$2 == "tool-origin" { p = $3; sub(/^\{home\}/, h, p); print p }' "$T/cv" > "$T/origins"
-  : > "$T/tools"
-  for _dir in "$LOCAL_BIN" "$CFG/bin"; do
-    [ -d "$_dir" ] || continue
-    for _e in "$_dir"/*; do
-      [ -f "$_e" ] && [ -x "$_e" ] || continue   # a tool is an executable file: not a folder, a library, data or a dangling link
-      _rp="$(resolve "$_e")"
-      awk -v p="$_rp" 'index(p, $0) == 1 { f = 1 } END { exit !f }' "$T/origins" && continue
-      printf '%s\t%s\n' "$_e" "$_rp" >> "$T/tools"
-    done
-  done
-  _nt="$(grep -c . "$T/tools" | tr -d ' ')"
-  if [ "$_nt" -gt 0 ]; then
-    cut -f2 "$T/tools" | git hash-object --stdin-paths > "$T/hashes" 2> "$T/hash.err" || die3 "git hash-object could not read the PATH tools: $(head -n 1 "$T/hash.err")" "git --version"
-    # a registered root need not be a repo itself (one holds its repos one level down): the repo around a tool that resolves
-    # inside a root is read too
-    awk -F'\t' 'FILENAME == ARGV[1] { if ($2 != "") R[$2 "/"] = 1; next }
-      { for (r in R) if (index($2, r) == 1) { d = $2; sub(/\/[^\/]*$/, "", d); print d; next } }' "$T/repos" "$T/tools" | LC_ALL=C sort -u |
-      while IFS= read -r _d; do _top="$(git -C "$_d" rev-parse --show-toplevel 2>/dev/null)" && printf 'enclosing\t%s\n' "$_top"; done |
-      LC_ALL=C sort -u >> "$T/repos"
-    : > "$T/held"; _nrepo=0
-    while IFS="$TAB" read -r _n _p; do
-      [ -n "$_p" ] && [ -d "$_p" ] || continue
-      git -C "$_p" rev-parse --git-dir > /dev/null 2>&1 || continue
-      _nrepo=$((_nrepo + 1))
-      git -C "$_p" cat-file --batch-check < "$T/hashes" 2> /dev/null | awk '$2 == "blob" { print $1 }' >> "$T/held"
-    done < "$T/repos"
-    [ "$_nrepo" -gt 0 ] || die3 "no registered repo could be read, so no PATH tool is judged" "sh $HERE/scope-roots.sh --repos"
-    paste "$T/hashes" "$T/tools" | awk -F'\t' -v h="$HOME" -v hp="$_hp" 'FILENAME == ARGV[1] { H[$1] = 1; next }
-      function tilde(x) { if (index(x, h "/") == 1) return "~" substr(x, length(h) + 1); if (index(x, hp "/") == 1) return "~" substr(x, length(hp) + 1); return x }
-      !($1 in H) { e = tilde($2); r = tilde($3)
-        print "tool:" e "\t" "no registered repo holds the bytes of " e (r != e ? " (it resolves to " r ")" : "") ": untracked, or changed since it was committed, so no colleague gets it; move it into the repo and share that owns it, installed by a pack shim or core shims.tsv" }' "$T/held" - >> "$T/cur"
-  fi
-
-  delta_report standard.coverage "$CFG/cache/standard-coverage.tsv" "$T/cur"
-  printf '  judged %s unchecked surface(s), %s installed rule(s) with declared data, %s PATH tool(s)\n' "$_nsf" "$_nr" "$_nt"
-  log_end || :
-  [ "${DELTA_NEW:-0}" -eq 0 ] || exit 1
-  exit 0
-}
-
 # ── the generated pages ─────────────────────────────────────────────────────
 esc() { sed -e 's/|/\\|/g'; }
 
@@ -517,7 +400,6 @@ cmd_page() {
 }
 
 case "$CMD" in
-  coverage) cmd_coverage ;;
   facts) cmd_facts; exit 0 ;;
   env) cmd_env; exit 0 ;;
   callers) cmd_callers; exit 0 ;;

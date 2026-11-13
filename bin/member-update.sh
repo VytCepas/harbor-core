@@ -182,6 +182,7 @@ jq -c '.allowedMcpServers // []' "$SETTINGS" > "$W/mcp.json" || refuse "$SETTING
 set -- --hub "$(conf hub)" --login "$(conf login)" --user "$_who" --root "$ROOT" --mcp-allow "$W/mcp.json"
 _relay="$(jq -r '.support.relay // empty' "$W/policy.json")"; _relay="${_relay#*://}"; _relay="${_relay%%:*}"
 [ -z "$_relay" ] || set -- "$@" --deny-host "$_relay"
+[ "$(jq -c ".connectors // []" "$W/policy.json" 2>/dev/null)" = "[]" ] || set -- "$@" --allow-claudeai-mcps   # beside managed-mcp.json, so claude.ai connectors keep loading
 _hosts="$(jq -r '(.hosts // [])[] | strings' "$W/policy.json")"
 set -f   # a `*.` row must stay a word, not a glob
 for _h in $_hosts; do set -- "$@" --allow-host "$_h"; done
@@ -246,6 +247,27 @@ if [ "$(jq -S . "$SETTINGS")" != "$(jq -S . "$W/settings.carried")" ]; then
     # W4: on WSL the file is under /mnt/c, and whether the distro's root can write there is the open question; the old file stays, whole.
     log_warn "cannot write $SETTINGS from here, so the old settings stay: new hosts, a moved relay or new rows wait until IT runs the install again"
   fi
+fi
+# member.connectors: the policy's connectors, composed by the commit's own member-managed.sh and landed as <root>/connectors.json and managed-mcp.json beside the
+# settings (in /etc/claude-code on WSL). Before the pin below, which covers connectors.json. A list that does not compose keeps the old files and says so.
+_mcpf="${ROOT%/*}/managed-mcp.json"; case "$ROOT" in /mnt/*) _mcpf=/etc/claude-code/managed-mcp.json ;; esac
+_cj="$(jq -c '.connectors // []' "$W/policy.json" 2>/dev/null)" || _cj='[]'
+if [ "$_cj" != '[]' ]; then
+  printf '%s\n' "$_cj" > "$W/connectors.json"
+  if sh "$W/core/bin/member-managed.sh" --mcp-servers "$W/connectors.json" --root "$ROOT" > "$W/managed-mcp.json" 2> "$W/mcp.err"; then
+    _own() { [ "$UID_NOW" -ne 0 ] || chown 0:0 "$1"; }
+    if cp "$W/connectors.json" "$ROOT/connectors.json.new.$$" && chmod 0644 "$ROOT/connectors.json.new.$$" && _own "$ROOT/connectors.json.new.$$" && mv "$ROOT/connectors.json.new.$$" "$ROOT/connectors.json" \
+       && cp "$W/managed-mcp.json" "$_mcpf.new.$$" && chmod 0644 "$_mcpf.new.$$" && _own "$_mcpf.new.$$" && mv "$_mcpf.new.$$" "$_mcpf"; then
+      log_ok "the policy's connectors are landed again (serial $SERIAL)"
+    else
+      rm -f "$ROOT/connectors.json.new.$$" "$_mcpf.new.$$" 2>/dev/null || :
+      log_warn "cannot write the connectors from here, so the old ones stay until IT runs the install again"
+    fi
+  else
+    log_warn "the policy's connectors do not compose at $COMMIT ($(tail -n 1 "$W/mcp.err")): the old ones stay"
+  fi
+elif [ -f "$ROOT/connectors.json" ]; then
+  rm -f "$ROOT/connectors.json" "$_mcpf" 2>/dev/null || log_warn "the policy declares no connector now, and the old files could not be removed from here"
 fi
 _h="$(sh "$ROOT/bin/member-integrity.sh" hash 2>/dev/null || :)"
 case "$_h" in ????????????????) ;; *) rollback "member-integrity.sh hash did not print 16 hex" ;; esac

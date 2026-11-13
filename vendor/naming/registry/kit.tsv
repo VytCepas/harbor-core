@@ -86,7 +86,6 @@ register.contracts-confinement-mcp-tsv	register	contracts/confinement-mcp.tsv	co
 register.contracts-env-tsv	register	contracts/env.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-launchd-wall-exempt-tsv	register	contracts/launchd-wall-exempt.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-scheduled-checks-tsv	register	contracts/scheduled-checks.tsv?	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
-register.contracts-standard-coverage-tsv	register	contracts/standard-coverage.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-verbs-tsv	register	contracts/verbs.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.policy-clauses-tsv	register	policy/clauses.tsv	control-plane	hub	no	the constitution as a register, one row per clause (harbor#1026); the control plane keeps it
 register.policy-enforcement-tsv	register	policy/enforcement.tsv	control-plane	hub	no	which control enforces which clause (harbor#1028); the control plane keeps it

@@ -89,6 +89,8 @@ t_eq "a policy that widens the network is still read" enforce "$(sh "$TIER" mode
 t_eq "...and its tiers apply" "high default" "$(lk admission.dd-to-device)"
 m_reset; m_enforce '.logs = {recipient: "age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}'
 t_eq "a policy that names the logs loader (harbor#1278) is still read: its key is one the floor knows" enforce "$(sh "$TIER" mode)"
+m_reset; m_enforce '.connectors = [{name:"acme",ref:"acme-crm",env:"ACME_API_KEY",service:"Acme CRM",command:["/opt/company-mcp/acme/server"]}]'
+t_eq "a policy that declares connectors (harbor#1278) is still read: a key the tier does not know made every call deny" enforce "$(sh "$TIER" mode)"
 
 t_section "5 - policy failure: stricter, never lower (F20)"
 _bad() { # <label>: a hub-lowered row reads very-high and mode says bad

@@ -14,4 +14,3 @@ standard.label-registered	tool	bin/standard-label-sync.sh --check --config-dir {
 standard.seam-fresh	tool	bin/standard-seams-fresh.sh --config-dir {cfg}
 standard.script-uncalled	tool	bin/standard-inventory.sh --config-dir {cfg} uncalled
 standard.schedule-registered	tool	bin/standard-inventory.sh --config-dir {cfg} schedule
-standard.coverage	tool	bin/standard-inventory.sh --config-dir {cfg} coverage

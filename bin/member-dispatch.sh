@@ -24,7 +24,8 @@ member_guard_table() {
 # MEMBER_READ_ROWS, the hub token's store (bin/secret's ciphertext and, on Linux and WSL, its keys; libsecret's keyrings) that no standalone writer denies (harbor#1278).
 # shellcheck disable=SC2088 # rows, not paths: admission-egress.sh reads the ~ as the home anchor
 MEMBER_READ_ROWS='~/.local/share/secret/**
-~/.local/share/keyrings/**'
+~/.local/share/keyrings/**
+//proc/**'
 member_read_rows() {
   # awk, not grep: this file sources library-admission.sh, whose rules want $FLOOR_GREP, and the generator runs before it is sourced.
   _mrr="$(awk '/^[[:space:]]*#/ { next } { while (match($0, /"Read\([^"]+\)"/)) { print substr($0, RSTART + 6, RLENGTH - 8); $0 = substr($0, RSTART + RLENGTH) } }' \

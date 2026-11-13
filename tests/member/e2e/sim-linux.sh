@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # sim-linux.sh (harbor#1278) — a whole member laptop on Ubuntu 24.04 in Docker, from IT's install to the updater, and a pass/fail table.
-#   sh tests/member/e2e/sim-linux.sh [--ref <git ref>] [--keep] [--out <dir>]   --ref: core commit (default HEAD); --keep: leave sim-linux-* up
+#   sh tests/member/e2e/sim-linux.sh [--ref <git ref>] [--keep] [--out <dir>] [--jail-proof]   --ref: core commit (default HEAD); --keep: leave sim-linux-* up; --jail-proof: see below
 # By hand, with docker; not a suite. Nothing reaches GitHub: /etc/hosts sends github.com and api.github.com to sim_github.py on 127.0.0.1:443,
 # over TLS its own CA signs. Real: the root, the paths, a non-admin member, sudo, ssh-keygen signatures, the token store, the hook commands as
 # composed, the Claude Code CLI from npm, and systemd as PID 1 with the member's session opened as WSL opens one (`login -f`, no display, no
@@ -14,16 +14,19 @@ if [ "${1:-}" != --inner ]; then
   case "${1:-}" in -h|--help) awk 'NR<2{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$0"; exit 0 ;; esac
   HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
   ROOT="$(CDPATH='' cd -- "$HERE/../../.." && pwd)"
-  REF=HEAD; KEEP=0; OUTDIR=''
+  REF=HEAD; KEEP=0; OUTDIR=''; JAILPROOF=0; JAIL_OPT=''
   while [ $# -gt 0 ]; do
     case "$1" in
       --ref) REF="${2:?--ref needs a value}"; shift ;;
       --keep) KEEP=1 ;;
+      --jail-proof) JAILPROOF=1 ;;
       --out) OUTDIR="${2:?--out needs a value}"; shift ;;
       *) echo "sim-linux: unknown argument $1 (see --help)" >&2; exit 2 ;;
     esac
     shift
   done
+  # --jail-proof is opt-in: seccomp unconfined lets the real bwrap run as root so the jail's VIEW is exercised (keys.jail-view*); no member laptop runs so, and without it those rows are SEAM.
+  [ "$JAILPROOF" = 0 ] || { JAIL_OPT='--security-opt seccomp=unconfined'; echo "sim-linux: --jail-proof is ON: this container has seccomp unconfined (opt-in; only keys.jail-view* need it)." >&2; }
   command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 || { echo "sim-linux: no docker daemon; refusing to substitute a weaker check" >&2; exit 2; }
   IMAGE=sim-linux:ubuntu24
   NAME="sim-linux-$$"
@@ -44,7 +47,7 @@ if [ "${1:-}" != --inner ]; then
   [ -z "${SIM_UPTERM_DIR:-}" ] || cp "$SIM_UPTERM_DIR"/upterm_linux_*.tar.gz "$T/sim/dl/" 2>/dev/null || :
   # systemd as PID 1, as WSL's systemd=true runs it: its own cgroup namespace, remounted writable, and /run as tmpfs.
   docker run -d -t --name "$NAME" --hostname member-laptop --add-host github.com:127.0.0.1 --add-host api.github.com:127.0.0.1 \
-    -e container=docker --cap-add SYS_ADMIN --security-opt apparmor=unconfined --cgroupns=private --tmpfs /run --tmpfs /run/lock \
+    -e container=docker --cap-add SYS_ADMIN --security-opt apparmor=unconfined $JAIL_OPT --cgroupns=private --tmpfs /run --tmpfs /run/lock \
     --stop-signal SIGRTMIN+3 --entrypoint /bin/sh "$IMAGE" -c 'mount -o remount,rw /sys/fs/cgroup && exec /sbin/init' >/dev/null \
     || { echo "sim-linux: docker run failed" >&2; exit 2; }
   _up=''; _i=0
@@ -55,7 +58,7 @@ if [ "${1:-}" != --inner ]; then
   case "$_up" in running|degraded) ;; *) echo "sim-linux: systemd did not come up in 60 s (state '${_up:-none}')" >&2; exit 2 ;; esac
   docker cp "$T/sim/." "$NAME:/sim/" >/dev/null || exit 2
   echo "sim-linux: $NAME, core $REF = $_commit" >&2
-  RC=0; docker exec -e "SIM_ONLY=${SIM_ONLY:-}" -e "SIM_RESUME=${SIM_RESUME:-0}" -e "SIM_HOSTILE=${SIM_HOSTILE:-}" "$NAME" sh /sim/sim-linux.sh --inner || RC=$?
+  RC=0; docker exec -e "SIM_ONLY=${SIM_ONLY:-}" -e "SIM_RESUME=${SIM_RESUME:-0}" -e "SIM_HOSTILE=${SIM_HOSTILE:-}" -e "SIM_JAIL_PROOF=$JAILPROOF" "$NAME" sh /sim/sim-linux.sh --inner || RC=$?
   OUTDIR="${OUTDIR:-$T/out}"; mkdir -p "$OUTDIR"
   docker cp "$NAME:/sim/out/." "$OUTDIR/" >/dev/null 2>&1 || :
   if [ -f "$OUTDIR/table.tsv" ]; then
@@ -462,7 +465,7 @@ claude_cli() {
 
 say "sim-linux inner run"
 . /sim/sim-linux-company.sh   # sections 8-12: packs, yard, logging, the question tool, the floor's sandbox
-. /sim/sim-linux-member.sh    # sections 3b, 13-15: context rules, the law, personal tools, tests written
+. /sim/sim-linux-member.sh    # sections 3b, 13-16: context rules, the law, personal tools, tests written, connectors
 # SIM_ONLY="packs logging" runs those sections alone, and SIM_RESUME=1 skips the fixture and the install of a container kept with --keep (state.env holds
 # what they set): development aids, never the proof. A partial table says so in its first row.
 only() { [ -n "${SIM_ONLY:-}" ] || return 0; case " $SIM_ONLY " in *" $1 "*) return 0 ;; esac; return 1; }
@@ -490,6 +493,7 @@ only sandbox && sandbox_floor
 only law && law
 only tools && tools_sync
 only tests && tests_written
+only keys && keys_section
 only claude && claude_cli
 save_state
 exit 0
