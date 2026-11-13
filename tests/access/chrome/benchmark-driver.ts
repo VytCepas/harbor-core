@@ -39,5 +39,6 @@ for (let i = 0; i < n; i++) { last = await callTool(tool, real); ms.push(last.ms
 ms.sort((a, b) => a - b);
 const q = (f: number) => ms[Math.min(ms.length - 1, Math.floor(ms.length * f))];
 const title = (t: string) => /Page Title: (.*)/.exec(t)?.[1] ?? '';
-console.log(JSON.stringify({ label, tool, n, ref, titleBefore: title(snap.text), titleAfter: title(last.text), median: Math.round(q(0.5)), p90: Math.round(q(0.9)), first: Math.round(first.ms), error: last.isError, last: last.text.slice(0, 400), ms: ms.map(Math.round) }));
+const after = await callTool('snapshot', []);   // a script click (harbor#1507) replies without the title
+console.log(JSON.stringify({ label, tool, n, ref, titleBefore: title(snap.text), titleAfter: title(after.text), median: Math.round(q(0.5)), p90: Math.round(q(0.9)), first: Math.round(first.ms), error: last.isError, last: last.text.slice(0, 400), ms: ms.map(Math.round) }));
 p.stdin.end();

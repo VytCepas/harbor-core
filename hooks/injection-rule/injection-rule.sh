@@ -97,7 +97,7 @@ rule_files() { # <dir>... (new layout first) -> one rule file per line; an id al
       if (o !~ /^[0-9]+$/) { o = 1000; if (match(n, /^[0-9]+-/)) o = substr(n, 1, RLENGTH - 1) + 0 }
       if (id in seen) next
       seen[id] = 1
-      printf "%d\t%s\t%s\n", o, n, f }' | sort -t "$(printf '\t')" -k1,1n -k2,2 | cut -f3-
+      printf "%d\t%s\t%s\n", o, n, f }' | sort -t "$TAB" -k1,1n -k2,2 | cut -f3-
 }
 
 # Collation pinned: glob order is LC_COLLATE-dependent and a differing order would flap diff-based checks.
@@ -120,6 +120,7 @@ fmall(){ fm "$1" | awk -v k="^$2:[[:space:]]*" '$0 ~ k { sub(k, ""); print }'; }
 # Same match as fmv (first `<key>:` line, blanks after the colon stripped); fmv/fmall stay for --list.
 NL='
 '
+TAB='	'
 fm_load() { _FM="$(fm "$1")"; }
 fm_scan() { # <key> <all:0|1> -> FMV, the first value (or every value, one per line)
   FMV=''; _rest="$_FM"
@@ -448,7 +449,7 @@ own_committed_file() { # <path> -> 0 iff tracked, clean, in a known repo and ope
   _oc_rel="$(gs_env -C "$_oc_pd" ls-files --full-name -- "$_oc_fn" 2>/dev/null)"; [ -n "$_oc_rel" ] || return 1
   case "$_oc_rel" in vendor/*|evals/*|fixtures/*|tests/*.jsonl|tests/*/*.jsonl|tests/*/*/*.jsonl) return 1 ;; esac
   _oc_ok=1
-  while IFS="$(printf '\t')" read -r _oc_g _oc_rest; do
+  while IFS="$TAB" read -r _oc_g _oc_rest; do
     case "$_oc_g" in ''|'#'*|glob) continue ;; esac
     case "$_oc_g" in
       *'**'*) case "$_oc_rel" in $_oc_g) _oc_ok=0; break ;; esac ;;
@@ -594,7 +595,8 @@ explain() { [ "$MODE" = explain ] && printf '%s\n' "$*" >&2 || true; }
 # The repository holding <path>, physically (a not-yet-existing path walks up to the nearest directory).
 _top() {
   _d="$1"
-  while [ ! -d "$_d" ]; do _d="$(dirname -- "$_d")"; done
+  # dirname by parameter expansion, not a fork per level (harbor#1508).
+  while [ ! -d "$_d" ]; do case "$_d" in /*/*|[!/]*/*) _d="${_d%/*}" ;; /*) _d=/ ;; *) _d=. ;; esac; done
   _t="$(CDPATH='' cd -- "$_d" 2>/dev/null && gs_env rev-parse --show-toplevel 2>/dev/null || true)"
   if [ -n "$_t" ]; then _phys "$_t"; printf '\n'; fi
   return 0
@@ -674,7 +676,7 @@ shell_targets() {
         }
         if (cd) printf "CD\t1\n"
         printf "%s", out
-      }' | while IFS="$(printf '\t')" read -r _k _v; do
+      }' | while IFS="$TAB" read -r _k _v; do
       case "$_k" in
         CD) _hascd=1 ;;
         DIR)
@@ -737,18 +739,27 @@ touched_trees() {
 # The registry is the trust boundary: a reached tree's packs are delivered and a `run:` pack executes, so only trees listed in projects.tsv
 # (box tier, harbor#1010; a worktree counts as its owner) may do that.
 REG="$CFG/context-rules/user/projects.tsv"
+# Registered trees, physical, one per line. Run once inside $(...): _phys's cd stays in that subshell, put back per row
+# for a relative path. A function because bash 3.2 cannot parse a `case` pattern's `)` inside $(...).
+reg_phys() {
+  _w0="$PWD"
+  while IFS="$TAB" read -r _rn _rp _rc; do
+    case "$_rn" in ''|'#'*) continue ;; esac
+    case "$_rp" in '~/'*) _rp="$HOME/${_rp#\~/}" ;; esac
+    [ -d "$_rp" ] || continue
+    _phys "$_rp"; printf '\n'; cd "$_w0" 2>/dev/null || true
+  done < "$REG"
+}
 registered() { # <physical tree>
   [ -z "$MR" ] || return 1   # member mode: the registry is a user-writable file, so no tree is ever trusted by it
   [ -f "$REG" ] || return 1
   _own="$(gs_env -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
   case "$_own" in */.git) _own="$(_phys "${_own%/.git}")" ;; *) _own='' ;; esac
-  while IFS="$(printf '\t')" read -r _rn _rp _rc; do
-    case "$_rn" in ''|'#'*) continue ;; esac
-    case "$_rp" in '~/'*) _rp="$HOME/${_rp#\~/}" ;; esac
-    [ -d "$_rp" ] || continue
-    _rp="$(_phys "$_rp")"
-    if [ "$_rp" = "$1" ] || [ "$_rp" = "$_own" ]; then return 0; fi
-  done < "$REG"
+  # Resolved once a run, not per row per tree (harbor#1508): two forks a row made this ~0.2 s.
+  [ -n "${REGP+x}" ] || REGP="$(reg_phys)"
+  case "$NL$REGP$NL" in *"$NL$1$NL"*) return 0 ;; esac
+  [ -n "$_own" ] || return 1
+  case "$NL$REGP$NL" in *"$NL$_own$NL"*) return 0 ;; esac
   return 1
 }
 
@@ -785,7 +796,7 @@ export HARBOR_CONTEXT_TOUCHED HARBOR_CONTEXT_REACHED
 tier_files() { # <tree it speaks for> <reached> <dirs, one per line> -> the sweep lines of one tier
   _tt="$1"; _tr="$2"; _IFS="$IFS"; IFS="$NL"; set -f; set -- $3; set +f; IFS="$_IFS"
   [ $# -gt 0 ] || return 0
-  rule_files "$@" | while IFS= read -r _tf; do printf '%s\t%s\t%s\n' "$_tf" "$_tt" "$_tr"; done
+  rule_files "$@" | _TT="$_tt" _TR="$_tr" awk '{ print $0 "\t" ENVIRON["_TT"] "\t" ENVIRON["_TR"] }'
 }
 sweep_files() {
   tier_files "$REPO" 0 "$(box_dirs)"
@@ -801,10 +812,32 @@ MALLOW=''
 if [ -n "$MR" ]; then
   MALLOW="$(awk -F'\t' '$1 !~ /^#/ && $1 != "id" && $1 != "" { print $1 }' "$MR/bin/member-context-rules.tsv" 2>/dev/null || true)"
 fi
+
+# One awk drops the packs whose `event:` differs or whose literal `tool:` list lacks the tool (harbor#1508): a fork per pack cost ~1-4 s
+# on every call. Same reading as fm_scan; a `tool:` with regex characters passes through to the pinned grep below.
+prefilter() {
+  _PF_EV="$EVENT" _PF_TL="$TOOL" _PF_X="$MODE" awk -F '\t' '
+    { f = $1; ev = ""; tl = ""; hev = 0; htl = 0; ln = 0; id = f; sub(/^.*\//, "", id); sub(/\.md$/, "", id); hid = 0
+      while ((getline l < f) > 0) {
+        ln++
+        if (ln == 1) { if (l !~ /^---[[:space:]]*$/) break; continue }
+        if (l ~ /^---[[:space:]]*$/) break
+        if (l ~ /^event:/ && !hev) { hev = 1; ev = l; sub(/^event:[ \t]*/, "", ev) }
+        if (l ~ /^tool:/ && !htl)  { htl = 1; tl = l; sub(/^tool:[ \t]*/, "", tl) }
+        if (l ~ /^id:/ && !hid)    { hid = 1; v = l; sub(/^id:[ \t]*/, "", v); if (v != "") id = v }
+      }
+      close(f)
+      if (ev != ENVIRON["_PF_EV"]) { why = "event " ev " != " ENVIRON["_PF_EV"] }
+      else if (tl == "" || tl == ENVIRON["_PF_TL"] || tl !~ /^[A-Za-z0-9_|-]+$/) { print; next }
+      else { n = split(tl, a, "|"); for (i = 1; i <= n; i++) if (a[i] == ENVIRON["_PF_TL"]) { print; next }
+             why = "tool " tl " does not match " ENVIRON["_PF_TL"] }
+      if (ENVIRON["_PF_X"] == "explain") print "skip " id ": " why > "/dev/stderr" }'
+}
+
 DECISION=''; DREASON=''
 # The sweep's one held line (harbor#1485): nothing about it is logged, remembered or spoken until the sweep ends with no deny.
 H_ID=''; H_ROW=''; H_LINE=''; H_NOTE=''; H_KEY=''; H_ONCE=''; H_CMODE=''; H_DIR=''; H_SPOKE=''; SPOKEN=''
-while IFS="$(printf '\t')" read -r _file RT _reach; do
+while IFS="$TAB" read -r _file RT _reach; do
   [ -n "$_file" ] || continue
   _dir="${_file%/*}"
   # A decision ends the sweep; the `break` below only leaves the inner loop.
@@ -970,7 +1003,7 @@ WHEN
     fi
   done
 done <<PACKS
-$(sweep_files)
+$(sweep_files | prefilter)
 PACKS
 
 # -- the held line (harbor#1485) --
