@@ -58,6 +58,7 @@ hand-kept account of direction and status; this table is what exists.
 | [bq-values.tsv](./bq-values.tsv) | tsv | bq-values.tsv (harbor#1278) — the closed value sets of contracts/bq-schema.tsv, each code an INT64 that dim_enum maps back. |
 | [browser-agent-hosts.txt](./browser-agent-hosts.txt) | txt | Hosts `harbor chrome` may navigate to (goto, tab-new): the big platforms any |
 | [browser-routing.md](./browser-routing.md) | md | Which browser — the router (harbor#458) |
+| [browser-script.tsv](./browser-script.tsv) | tsv | browser-script.tsv (harbor#1507): the fixed scripts `harbor chrome` runs in a page for its script-first verbs. |
 | [catalog-non-tools.tsv](./catalog-non-tools.tsv) | tsv | catalog-non-tools.tsv (harbor#1010) - executables the catalog never lists as tools: its CLI table is for credentialed commands a session can |
 | [cli.md](./cli.md) | md | harbor` — the L0 command surface (CLI-1, harbor#42) |
 | [cli.md.tmpl](./cli.md.tmpl) | tmpl | harbor` — the L0 command surface (CLI-1, harbor#42) |

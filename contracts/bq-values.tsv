@@ -1358,3 +1358,13 @@ rule	1348	include	live	bin, hooks: <token>.<shape>
 rule	1349	admission.include	live	floor_member_report: admission.<token>
 rule	1350	context.sheets-write-route	live	standards/naming/controls.tsv
 rule	1351	sheets-write-route	live	standards/naming/controls.tsv, the id less its family
+rule	1352	member.connectors	live	standards/naming/controls.tsv
+rule	1353	context.keys-store-env-file	live	standards/naming/controls.tsv
+rule	1354	context.keys-store-key	live	standards/naming/controls.tsv
+rule	1355	context.keys-store-token	live	standards/naming/controls.tsv
+rule	1356	context.keys-store-password	live	standards/naming/controls.tsv
+rule	1357	connectors	live	standards/naming/controls.tsv, the id less its family
+rule	1358	keys-store-env-file	live	standards/naming/controls.tsv, the id less its family
+rule	1359	keys-store-key	live	standards/naming/controls.tsv, the id less its family
+rule	1360	keys-store-token	live	standards/naming/controls.tsv, the id less its family
+rule	1361	keys-store-password	live	standards/naming/controls.tsv, the id less its family

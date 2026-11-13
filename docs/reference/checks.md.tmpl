@@ -268,6 +268,7 @@ A user timer stops at logout unless the user lingers (`loginctl enable-linger "$
 | member.tests | inherits: `bin/member-managed.sh` (the Stop and UserPromptSubmit hooks) | no schedule of its own: a hook the managed settings wire, it runs wherever the member session runs | the register row's own |
 | member.tools-propose | inherits: a terminal on the member's laptop | no schedule of its own: `member-tools.sh propose` is a command a person types | the register row's own |
 | member.tools-sync | inherits: `bin/member-managed.sh` (the SessionStart and Stop hooks) | no schedule of its own: a hook the managed settings wire, it runs wherever the member session runs | the register row's own |
+| member.connectors | inherits: `bin/member-managed.sh` (the managed-mcp.json entry) | no schedule of its own: Claude Code starts the launcher from the managed MCP file, wherever the member session runs | the register row's own |
 | deploy.launchd | macOS only | launchd is macOS's; with no `launchctl` on PATH the tool logs a skip and exits 0 | not scheduled; drop the `harbor:deploy-installs` marker from a plist to stop deploy installing it |
 | event.fleet-snapshot | inherits: `event.dispatch` | no schedule of its own on this box: it runs where its host runs | the register row's own |
 | event.alerting | inherits: `event.dispatch` | no schedule of its own on this box: it runs where its host runs | the register row's own |
