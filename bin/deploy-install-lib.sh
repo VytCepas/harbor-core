@@ -65,6 +65,9 @@
 
 # The caller sources library-log.sh first; one that did not gets it from beside itself.
 [ -n "${_LOG_LIB:-}" ] || . "$(dirname -- "$0")/library-log.sh"
+# harbor#1278: every git call here may name a repo the agent can write; gs_env stops the programs its config would run. Absent beside the
+# script (a test copy), the plain call runs as before.
+if [ -r "$(dirname -- "$0")/library-git-safe.sh" ]; then . "$(dirname -- "$0")/library-git-safe.sh"; else gs_env() { git "$@"; }; fi
 
 IL_APPLY=0; IL_LIVE=0; IL_DIR=''; IL_DIR_SET=0; IL_ACCEPT_LOSS=0; IL_REFUSED=0; IL_TAKE=0
 IL_ARGV=''; IL_TARGET=''; IL_BK=''; IL_COMMIT='-'; IL_MF_Q=''
@@ -323,16 +326,16 @@ il_src() { # <repo root> <installed name> -> the repo-relative path it is instal
 }
 il_sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | awk '{print $1}'; }
 il_blob() { # <file>
-  if [ -L "$1" ]; then printf '%s' "$(readlink "$1")" | git hash-object --no-filters --stdin 2>/dev/null
-  else git hash-object --no-filters -- "$1" 2>/dev/null; fi
+  if [ -L "$1" ]; then printf '%s' "$(readlink "$1")" | gs_env hash-object --no-filters --stdin 2>/dev/null
+  else gs_env hash-object --no-filters -- "$1" 2>/dev/null; fi
 }
 # A target inside the source's own checkout is an installed copy in a repo that is not its source (a
 # config dir under a dotfiles repo): that repo's HEAD says nothing about these bytes.
 il_source() { # <repo-dir>
   IL_COMMIT='-'
-  _is_t="$(git -C "$1" rev-parse --show-toplevel 2>/dev/null)" || return 0
+  _is_t="$(gs_env -C "$1" rev-parse --show-toplevel 2>/dev/null)" || return 0
   case "$(_il_phys "${IL_TARGET:-/nonexistent}")/" in "$(_il_phys "$_is_t")"/*) return 0 ;; esac
-  IL_COMMIT="$(git -C "$1" rev-parse --verify -q 'HEAD^{commit}' 2>/dev/null || :)"
+  IL_COMMIT="$(gs_env -C "$1" rev-parse --verify -q 'HEAD^{commit}' 2>/dev/null || :)"
   [ -n "$IL_COMMIT" ] || IL_COMMIT='-'
 }
 il_manifest() { # <relpath>…
@@ -361,7 +364,7 @@ IMEOF
     [ -n "$_im_f" ] || continue
     # Absolute paths: inside a work tree, --stdin-paths resolves a relative one from the top, not the cwd.
     _im_b="$(printf '%s' "$_im_f" | IL_T="$IL_TARGET" awk '{ print ENVIRON["IL_T"] "/" $0 }' \
-               | git hash-object --no-filters --stdin-paths 2>/dev/null)" || _im_b=''
+               | gs_env hash-object --no-filters --stdin-paths 2>/dev/null)" || _im_b=''
     if [ "$(printf '%s\n' "$_im_b" | grep -c .)" -ne "$(printf '%s' "$_im_f" | grep -c .)" ]; then
       log_warn "could not hash what was installed under $IL_TARGET/$_im, so it has no .harbor-manifest row"
       log_nofix "git hash-object on the files above; install-drift and skills-collide then read git history alone"
@@ -413,8 +416,8 @@ il_known() { # <cfg> <relpath> <file> <repo> <repo-path>…
   [ -n "$_ik_b" ] || return 1
   [ "$(il_mf_blob "$1" "$2")" != "$_ik_b" ] || return 0
   _ik_r="$4"; shift 4
-  [ $# -gt 0 ] && git -C "$_ik_r" rev-parse --git-dir >/dev/null 2>&1 || return 1
-  git -C "$_ik_r" log --format= --raw --no-abbrev -- "$@" 2>/dev/null \
+  [ $# -gt 0 ] && gs_env -C "$_ik_r" rev-parse --git-dir >/dev/null 2>&1 || return 1
+  gs_env -C "$_ik_r" log --format= --raw --no-abbrev -- "$@" 2>/dev/null \
     | awk -v h="$_ik_b" '$3 == h || $4 == h { f = 1 } END { exit !f }'
 }
 

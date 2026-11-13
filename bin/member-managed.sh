@@ -3,6 +3,8 @@
 #   sh member-managed.sh --hub <owner/name> --login <github login> [--user <name>] [--root <dir>] [--mcp-allow <file>] [--deny-host <host>] [--allow-host <host>]...
 #   sh member-managed.sh --where                 the managed root, then the managed settings file, for this OS
 #   sh member-managed.sh --higher-source         each policy source that would silently beat the file; exit 1 when there is one
+#   sh member-managed.sh --mcp-servers <file> [--root <dir>]   managed-mcp.json for the connectors of a verified policy (member.connectors); exit 2 on a row that does not compose
+#   --allow-claudeai-mcps sets allowAllClaudeAiMcps in the settings: the install passes it when the policy declares connectors, so claude.ai connectors keep loading beside managed-mcp.json
 # --mcp-allow names a JSON array of allowedMcpServers entries; with none, no MCP server a person adds may load.
 # The `sandbox` block is deploy-confinement.sh's composition, strict; this adds only what a member needs on top of it.
 # --deny-host names the hub's support relay; upterm's public relay is always denied too, so the agent's shell can't reach a session (contracts/hub.md).
@@ -70,7 +72,8 @@ member_protected() {
     '~/.gitconfig' '~/.config/git/' \
     '~/.local/state/harbor/hub/' '~/.local/share/secret/' \
     "$2/harbor-private/" \
-    "$1/" "${1%/*}/managed-settings.json" "${1%/*}/managed-settings.d/" "${1%/*}/harbor-confinement"
+    "$1/" "${1%/*}/managed-settings.json" "${1%/*}/managed-settings.d/" "${1%/*}/harbor-confinement" "${1%/*}/CLAUDE.md" "${1%/*}/managed-mcp.json"
+  case "$1" in /mnt/*) printf '%s\n' /etc/claude-code/CLAUDE.md /etc/claude-code/managed-mcp.json ;; esac   # WSL: the in-distro copies (bin/member-install.sh)
 }
 # Every row as its `Edit(...)` rule. Never Write(...): the harness accepts those and never consults them (M10, bin/admission-deny.sh).
 member_edit_rows() {
@@ -101,6 +104,27 @@ member_allowed_hosts() {
   [ -z "$_bad" ] || { log_fail "an allowed host that does not compose: $(printf '%s' "$_bad" | tr '\n' ' ')"; log_nofix "contracts/member-hosts.txt or policy hosts (contracts/hub.md)"; return 1; }
   printf '%s\n' "$_ar" | jq -R . | jq -s -c 'map(select(length > 0)) | unique'
 }
+# The events a hub pack's rules may use (harbor#1278). Which hub rules exist is the signed hub's, unknown here, so the engine stands on every event a "which
+# tool when" note needs: the session's start, a prompt, a helper's start and each tool call (a rule's own `tool:` and `when:` still decide whether it speaks).
+MEMBER_HUB_RULE_EVENTS='SessionStart UserPromptSubmit SubagentStart PreToolUse'
+
+# member_rule_events <contracts dir> -> JSON {"<event>": "<matcher or ->"}: the events the engine is wired on, derived from the listed packs.
+# A tool event takes the union of the packs' `tool:` values, or `*` when any pack on it names none. Empty list, empty object: nothing is wired.
+member_rule_events() {
+  _re_root="$(CDPATH='' cd -- "$1/.." && pwd)"
+  awk -F'\t' '$1 !~ /^#/ && $1 != "id" && $1 != "" { print $1 }' "$1/member-context-rules.tsv" | while IFS= read -r _id; do
+    _pk="$_re_root/contracts/member-rules/$_id.md"   # the member variant: what a member reads is plain, and the shared rule is the dev box's
+    [ -f "$_pk" ] || _pk="$(find "$_re_root/context-rules" -maxdepth 2 -name "$_id.md" 2>/dev/null | head -1)"
+    [ -n "$_pk" ] || { echo "MISSING $_id"; continue; }
+    awk -v id="$_id" 'NR==1 { next } /^---/ { exit } /^event:/ { sub(/^event:[ \t]*/, ""); e = $0 } /^tool:/ { sub(/^tool:[ \t]*/, ""); t = $0 } /^(run|spoke):/ { r = 1 }
+      END { printf "%s\t%s\t%s\t%s\n", id, e, (t == "" ? "-" : t), (r ? "script" : "") }' "$_pk"
+  done | awk -F'\t' '
+    $1 == "MISSING" || $0 ~ /^MISSING/ { print "ERR\t" $0; next }
+    $4 == "script" { print "ERR\t" $1 " has run: or spoke:"; next }
+    $2 == "" { print "ERR\t" $1 " names no event"; next }
+    { if ($3 == "-") any[$2] = 1; else { m[$2] = (m[$2] == "" ? $3 : m[$2] "|" $3) } ev[$2] = 1 }
+    END { for (e in ev) print "EV\t" e "\t" ((e in any) || m[e] == "" ? "-" : m[e]) }'
+}
 # member_compose <os> <root> <hub> <login> <user> <mcp json> [<relay host>] [<policy hosts, one per line>] -> the managed settings on stdout
 member_compose() {
   _mc_relays="$(member_denied_hosts "${7:-}")" || return 1
@@ -121,9 +145,13 @@ member_compose() {
   _mc_clash="$(jq -n -r --argjson a "$_mc_hosts" --argjson d "$_mc_relays" '[$a[] as $r | $d[] as $h | select($r == $h or (($r | startswith("*.")) and ($h | endswith($r[1:])))) | $r] | unique | .[]')"
   [ -z "$_mc_clash" ] || { log_fail "an allowed host admits a support relay: $(printf '%s' "$_mc_clash" | tr '\n' ' ')"; log_nofix "contracts/member-hosts.txt or policy hosts; the relay stays denied (contracts/hub.md)"; return 1; }
   [ "$_mc_kill" != '[]' ] || { log_fail "contracts/env.tsv names no kill switch to pin"; log_nofix "contracts/env.tsv"; return 1; }
+  _mc_ev="$(member_rule_events "$HERE/../contracts")"
+  case "$_mc_ev" in *ERR*) log_fail "contracts/member-context-rules.tsv: $(printf '%s\n' "$_mc_ev" | awk -F'\t' '$1 == "ERR" { print $2 }' | tr '\n' ' ')"; log_nofix "contracts/member-context-rules.tsv"; return 1 ;; esac
+  _mc_rules="$(printf '%s\n' "$_mc_ev" | awk -F'\t' '$1 == "EV" { print $2 "\t" $3 }' | jq -R 'split("\t") | {key: .[0], value: .[1]}' | jq -s -c 'from_entries')"
+  _mc_rules="$(printf '%s' "$_mc_rules" | jq -c --arg ev "$MEMBER_HUB_RULE_EVENTS" 'reduce ($ev | split(" ")[]) as $e (.; .[$e] = "-")')"
   jq -n --argjson block "$_mc_block" --argjson edit "$_mc_edit" --argjson deny "$_mc_deny" --argjson kill "$_mc_kill" --argjson mcp "$6" --argjson relays "$_mc_relays" \
-     --argjson hosts "$_mc_hosts" \
-     --arg q "'" --arg root "$2" --arg hub "$3" --arg login "$4" --arg min "$MEMBER_MIN_VERSION" --argjson local "$MEMBER_DISABLE_LOCAL" \
+     --argjson hosts "$_mc_hosts" --argjson rules "$_mc_rules" \
+     --arg q "'" --arg root "$2" --arg hub "$3" --arg login "$4" --arg min "$MEMBER_MIN_VERSION" --argjson local "$MEMBER_DISABLE_LOCAL" --argjson claudeai "${CLAUDEAI_MCPS:-false}" \
      --argjson open "$_mc_open" --arg port "$_mc_port" --arg keep "$MEMBER_HOOK_ENV" '
     # Absolute: a settings env reaches every hook, and a bare `sh` resolved from its PATH could exit 0 for a hook that never ran (#1278).
     # From an empty environment: an inherited exported function would run before the floor does (N2).
@@ -132,9 +160,21 @@ member_compose() {
       + " /bin/sh " + $q + $root + "/bin/") as $sh |
     {type: "command", command: ($sh + "member-post.sh" + $q)} as $post |
     {type: "command", command: ($sh + "member-session.sh" + $q)} as $session |
+    {type: "command", command: ($sh + "member-upgrade.sh" + $q)} as $upgrade |
+    # member.tools-sync: own tools go to the private repo at Stop. Bounded inside, always exit 0, writes nothing on stdout.
+    {type: "command", command: ($sh + "member-tools.sh" + $q + " push"), timeout: 20} as $tools |
+    {type: "command", command: ($sh + "member-tests.sh" + $q)} as $tests |
+    {type: "command", command: ($sh + "member-tests.sh" + $q + " snap")} as $testsnap |
     {type: "command", command: ($sh + "hub-approval.sh" + $q + " note UserPromptSubmit")} as $note |
+    # The context rules: the engine in member mode, handed the root as an argument so no environment value can aim it at a repo.
+    {type: "command", command: ($sh + "injection-rule.sh" + $q + " --member-root " + $q + $root + $q)} as $engine |
+    # After the existing entries of each event, so the dispatcher stays hooks.PreToolUse[0]. A tool event takes the derived matcher.
+    ($rules | to_entries | map({key: .key, value: [(if (.key | IN("PreToolUse", "PostToolUse", "PostToolUseFailure")) then {matcher: (if .value == "-" then "*" else .value end), hooks: [$engine]} else {hooks: [$engine]} end)]}) | from_entries) as $ctx |
     {wslInheritsWindowsSettings: true,
      allowManagedHooksOnly: true,
+     # The Claude Code docs name allowManagedHooksOnly as "run only the hooks your organization deploys" and list statusLine as settable from any file: a statusLine in a project file would
+     # run its command beside the floor. A managed value wins over every file, so it is pinned to a command that prints nothing.
+     statusLine: {type: "command", command: "/usr/bin/true"},
      allowManagedPermissionRulesOnly: true,
      allowManagedMcpServersOnly: true,
      allowedMcpServers: $mcp,
@@ -142,25 +182,80 @@ member_compose() {
      disableSideloadFlags: true,
      sshHostAllowlist: [],
      # W10: a WSL session opens in the home folder and no setting moves it (docs/how-to/member-install.md), so the workspace is a working directory from anywhere.
-     permissions: ({disableBypassPermissionsMode: "disable", deny: $edit, additionalDirectories: [$port]}
+     permissions: ({disableBypassPermissionsMode: "disable", deny: ($edit + ["Read(//proc/**)", "Edit(**/.claude/settings*.json)", "Edit(**/.mcp.json)"]), additionalDirectories: [$port]}
                    + (if $open then {allow: ["WebFetch(domain:*)"]} else {} end)),
      env: ({HARBOR_MEMBER_ROLE: "member", HARBOR_HUB_REPO: $hub, HARBOR_MEMBER_LOGIN: $login, HARBOR_MEMBER_ROOT: $root}
            + ($kill | map(split("\t") | {key: .[0], value: .[1]}) | from_entries)),
-     hooks: {
+     hooks: (({
        PreToolUse: [{matcher: "*", hooks: [{type: "command", command: ($sh + "member-dispatch.sh" + $q), onFailure: "block"}]}],
        PostToolUse: [{matcher: "*", hooks: [$post]}],
        PostToolUseFailure: [{matcher: "*", hooks: [$post]}],
-       Stop: [{hooks: [$post]}],
-       UserPromptSubmit: [{hooks: [$note]}],
+       Stop: [{hooks: [$post, $upgrade, $tests, $tools]}],
+       UserPromptSubmit: [{hooks: [$note, $testsnap]}],
        SessionStart: [{hooks: [$session]}],
        # The default is a shared 1.5 seconds, and member-session.sh bounds its send at 8: a slow send would be cancelled and wait for the next one.
-       SessionEnd: [{hooks: [$session + {timeout: 15}]}]},
+       SessionEnd: [{hooks: [$session + {timeout: 15}]}]}
+       | with_entries(.value += ($ctx[.key] // []))) as $merged | $ctx + $merged),
      sandbox: ($block
-       | .filesystem.denyWrite = ((.filesystem.denyWrite + $deny) | unique)
+       # A project settings file or .mcp.json written by the agent in any folder is how a statusLine, an apiKeyHelper or an MCP server would start unsandboxed with its own command.
+       | .filesystem.denyWrite = ((.filesystem.denyWrite + $deny + ["**/.claude/settings*.json", "**/.mcp.json"]) | unique)
        | .network.allowedDomains = (.network.allowedDomains + ($hosts - .network.allowedDomains))
        | .network.deniedDomains = (((.network.deniedDomains // []) + $relays) | unique)
-       | .credentials.files = (.credentials.files + [{path: "~/.local/share/secret", mode: "deny"}]))}
-    + (if $local then {disableDesktopLocalSessions: true} else {} end)'
+       | .credentials.files = (.credentials.files + [{path: "~/.local/share/secret", mode: "deny"}])
+       # The weaker nested sandbox swaps --unshare-pid and a fresh --proc for --bind /proc, which would show the environment of a connector server to a command.
+       | .enableWeakerNestedSandbox = false)}
+    + (if $local then {disableDesktopLocalSessions: true} else {} end)
+    # Beside managed-mcp.json (exclusive MCP control) the claude.ai connectors would stop loading, so a laptop with connectors keeps them (operator, 2026-11-12).
+    + (if $claudeai then {allowAllClaudeAiMcps: true} else {} end)'
+}
+
+# CONNECTORS (harbor#1278, lane I, control member.connectors). A colleague's API key reaches only an MCP server that Claude Code itself starts, through
+# bin/member-mcp-launch.sh, which reads the key from the store. The list is the verified policy's `connectors`: name, ref (the store name), env (the
+# variable the server reads), service (words for the person), command (the server, an absolute path first). Nothing here reads a file the agent can write.
+# member_connectors_bad <json> -> one line per problem, none when the list composes. The launcher and the person's put re-check the same rules.
+member_connectors_bad() {
+  printf '%s' "$1" | jq -r '
+    def word: type == "string" and length >= 1 and length <= 500 and (test("[[:cntrl:]]") | not) and (contains("${") | not);
+    def okname: type == "string" and test("^[A-Za-z0-9_-]{1,48}$");
+    def okref: type == "string" and test("^[a-z0-9][a-z0-9._-]{0,63}$") and (test("^hub-") | not);
+    def okenv: type == "string" and test("^[A-Z][A-Z0-9_]{0,63}$") and (test("^(PATH|HOME|SHELL|IFS|USER|LOGNAME|PWD|TMPDIR|LANG|ENV|BASH_ENV|CDPATH|LD_|DYLD_|PYTHON|NODE_|PERL|RUBY|GIT_|HARBOR_|CLAUDE|SSL_|CURL_)|PROXY") | not);
+    def cword: type == "string" and length >= 1 and length <= 500 and (test("[[:cntrl:]]") | not) and (contains("${") | not);
+    def nodots: ((split("/") | map(select(. == ".." or . == ".")) | length) == 0);
+    def inf($n): type == "string" and startswith("/opt/company-mcp/" + $n + "/") and nodots;
+    def banned: type == "string" and (IN("-e","-m","-c","-r","-p","--require","--import","--preload","--eval","--print") or test("^--(eval|require|import|preload|print)="));
+    def plain: type == "string" and (contains("/") | not) and (startswith(".") | not) and (startswith("-") | not);
+    def flagok: type == "string" and test("^--[A-Za-z0-9][A-Za-z0-9_-]*(=([^/.][^/]*)?)?$");
+    def argok($n): inf($n) or plain or flagok;
+    def bn: split("/") | last;
+    def noway: IN("sh","bash","dash","zsh","ksh","ash","fish","csh","tcsh","bunx","deno");
+    def interp: IN("bun","node","nodejs","python","python3") or test("^python3\\.[0-9]+$");
+    def subcmd: IN("x","run","install","add","pm","create");
+    def sysbin: (split("/") | .[:-1] | join("/")) | IN("/usr/bin","/usr/local/bin","/bin");
+    def okcmd($c; $n): ($c | type == "array" and length >= 1 and length <= 16 and all(.[]; cword and (banned | not))
+      and (.[0] | startswith("/") and nodots and ((bn | noway) | not))
+      and (if (.[0] | bn | interp) then
+             (.[0] | (sysbin or inf($n))) and (if (.[0] | bn) == "bun" then (.[1] == "--no-install") and (.[2] | inf($n)) and all(.[3:][]; argok($n) and ((subcmd) | not))
+              else (.[1] | inf($n)) and all(.[2:][]; argok($n)) end)
+           else (.[0] | inf($n)) and all(.[1:][]; argok($n)) end));
+    if type != "array" then "connectors: not an array"
+    elif length > 20 then "connectors: more than 20"
+    else
+      (to_entries[] | .key as $i | .value | if type != "object" then "connectors[\($i)]: not an object"
+        elif ((keys - ["name","ref","env","service","command"]) | length) > 0 or ((["name","ref","env","service","command"] - keys) | length) > 0 then "connectors[\($i)]: the keys are exactly name, ref, env, service, command"
+        else (if (.name | okname) then empty else "connectors[\($i)].name: [A-Za-z0-9_-], 1 to 48" end),
+             (if (.ref | okref) then empty else "connectors[\($i)].ref: lower case [a-z0-9._-], never hub-*" end),
+             (if (.env | okenv) then empty else "connectors[\($i)].env: NAME in capitals, not a variable that steers a program" end),
+             (if (.service | word) and (.service | length) <= 120 then empty else "connectors[\($i)].service: one line of words, up to 120 characters" end),
+             (if okcmd(.command; .name) then empty else "connectors[\($i)].command: command[0] is a file in /opt/company-mcp/<name>/, or bun (then --no-install), node or python3 followed by an entry file there; every later word is an absolute path in that folder, a plain token (no slash, not starting with . or -), or a --name or --name=value flag with no slash or leading dot in the value; no shell, bunx or deno, no interpreter flag (-e -m -c -r -p --require --import --preload --eval --print), no bun x/run/install/add/pm/create, no .. and no ${" end) end),
+      (if (map(.name?) | length) != (map(.name?) | unique | length) then "connectors: a name is listed twice" else empty end),
+      (if (map(.ref?) | length) != (map(.ref?) | unique | length) then "connectors: a ref is listed twice" else empty end)
+    end' 2>/dev/null || printf 'connectors: not JSON\n'
+}
+# member_mcp_json <managed root> <connectors json> -> managed-mcp.json. Each server starts from env -i with a pinned PATH and no ${VAR}, so the file stays
+# outside the allowlist check and no inherited name steers the launcher, which checks ref and server against <root>/connectors.json.
+member_mcp_json() {
+  jq -n --argjson c "$2" --arg root "$1" '{mcpServers: ($c | map({key: .name, value: {type: "stdio", command: "/usr/bin/env",
+    args: (["-i", "PATH=/usr/bin:/bin:/usr/sbin:/sbin", "/bin/sh", ($root + "/bin/member-mcp-launch.sh"), .ref, "--"] + .command)}}) | from_entries)}'
 }
 
 # member_higher_source <os> -> one line per source that beats, or merges over, the file this install writes. Reads only (F10).
@@ -190,14 +285,15 @@ member_higher_source() {
 
 [ "${MEMBER_MANAGED_LIB:-0}" = 1 ] && return 0
 member_refuse_override "$(id -u)" || exit 1
-MODE=compose; HUB=''; LOGIN=''; USERNAME=''; ROOT_ARG=''; MCP_FILE=''; DENY_HOST=''; ALLOW_HOSTS=''
+MODE=compose; CLAUDEAI_MCPS=false; CONN_FILE=''; HUB=''; LOGIN=''; USERNAME=''; ROOT_ARG=''; MCP_FILE=''; DENY_HOST=''; ALLOW_HOSTS=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --where) MODE=where ;;
     --higher-source) MODE=higher ;;
-    --hub|--login|--user|--root|--mcp-allow|--deny-host|--allow-host)
+    --allow-claudeai-mcps) CLAUDEAI_MCPS=true ;;
+    --hub|--login|--user|--root|--mcp-allow|--deny-host|--allow-host|--mcp-servers)
       [ $# -ge 2 ] || { log_fail "$1 needs a value"; log_nofix "sh $0 --help"; exit 2; }
-      case "$1" in --hub) HUB="$2" ;; --login) LOGIN="$2" ;; --user) USERNAME="$2" ;; --root) ROOT_ARG="$2" ;; --mcp-allow) MCP_FILE="$2" ;; --deny-host) DENY_HOST="$2" ;;
+      case "$1" in --hub) HUB="$2" ;; --login) LOGIN="$2" ;; --user) USERNAME="$2" ;; --root) ROOT_ARG="$2" ;; --mcp-allow) MCP_FILE="$2" ;; --deny-host) DENY_HOST="$2" ;; --mcp-servers) MODE=mcp; CONN_FILE="$2" ;;
         --allow-host) [ -n "$2" ] && [ -z "$(printf '%s\n' "$2" | member_hosts_bad)" ] || { log_fail "--allow-host wants one host, at most one leading *., never a bare *: got '$2'"; log_nofix "contracts/hub.md, hosts"; exit 2; }
                       ALLOW_HOSTS="$ALLOW_HOSTS$2
 " ;; esac
@@ -215,6 +311,12 @@ if [ "$MODE" = higher ]; then
   _found="$(member_higher_source "$OS")"
   [ -n "$_found" ] || exit 0
   printf '%s\n' "$_found"; exit 1
+fi
+if [ "$MODE" = mcp ]; then
+  _cj="$(jq -c . "$CONN_FILE" 2>/dev/null)" || { log_fail "member.connectors: --mcp-servers: $CONN_FILE is not JSON"; log_nofix "contracts/hub.md, connectors"; exit 2; }
+  _cb="$(member_connectors_bad "$_cj")"
+  [ -z "$_cb" ] || { log_fail "member.connectors: the list does not compose: $(printf '%s' "$_cb" | tr '\n' ';')"; log_nofix "contracts/hub.md, connectors"; exit 2; }
+  member_mcp_json "${ROOT_ARG:-$(member_root "$OS")}" "$_cj"; exit 0
 fi
 slug_valid "$HUB" || { log_fail "--hub wants owner/name, got '$HUB'"; log_nofix "sh $0 --help"; exit 2; }
 case "$LOGIN" in ''|-*|*[!A-Za-z0-9-]*) log_fail "--login wants a GitHub login, got '$LOGIN'"; log_nofix "sh $0 --help"; exit 2 ;; esac

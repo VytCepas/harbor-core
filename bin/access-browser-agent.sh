@@ -15,7 +15,10 @@
 #   harbor chrome front            show this session's tab (only in a window of its own tabs; never raises)
 #   harbor chrome wait-signin [s]  wait (default 300 s) while the operator signs in, then carry on
 #   harbor chrome hosts            the allow-list goto/tab-new reads: core, then the private layer
-#   harbor chrome click <ref> --force   click through an overlay ("not stable", covered)
+#   harbor chrome click <ref>      by script (contracts/browser-script.tsv): needs no paint, so a covered window takes it;
+#                                  so do dblclick, hover, check, uncheck and select; --real is the CLI's own verb
+#   harbor chrome scroll <px> [ref] | <ref>   scroll the page or an element at once, or a ref into view
+#   harbor chrome click <ref> --force   a press at its box: through an overlay ("not stable", covered)
 #   harbor chrome <verb> [args]    an allowed playwright-cli verb, in this session
 #
 # Guardrails against accidents and an injected agent's obvious moves — not a
@@ -46,7 +49,7 @@ fi
 # The extension token lives only in the Keychain, under this ref in the access register (harbor#1205); attach
 # uses it when registered, so Chrome connects without the Allow click. A token in the caller's env stays refused.
 TOKEN_REF='playwright-extension-token'
-PW_CLI_PIN='0.1.22'   # exact pin (vendoring D1); 0.1.22 is the first that reads the profile name
+PW_CLI_PIN='0.1.24'   # exact pin (vendoring D1); 0.1.22 first read the profile name, 0.1.24 adds background attach (harbor#1507)
 STATE_EXPR='JSON.stringify({visibility: document.visibilityState, focus: document.hasFocus(), ready: document.readyState, host: location.host, blank: location.href === "about:blank", online: navigator.onLine})'
 PW_EXTENSION_ID='mmlmfjhmonkocbjadbfplnigmagldckm'
 PROFILE="${HARBOR_ACCESS_BROWSER_PROFILE:-Default}"
@@ -193,7 +196,7 @@ _allowed() {
     go-back|go-forward|reload|console|resize|\
     click|dblclick|hover|fill|type|select|check|uncheck|drag|\
     press|keydown|keyup|mousemove|mousedown|mouseup|mousewheel|\
-    dialog-accept|dialog-dismiss|upload) return 0 ;;
+    dialog-accept|dialog-dismiss|upload|scroll) return 0 ;;
   esac
   return 1
 }
@@ -510,7 +513,7 @@ _pe="$(_pw_env)"
 [ -f "$HOSTS_FILE" ] || _refuse "missing host allowlist: $HOSTS_FILE" 'git checkout -- contracts/browser-agent-hosts.txt'
 # Per call, never exported: set on any other verb, it is set session-wide.
 case "$VERB" in
-  click|dblclick) ;;
+  click|dblclick|hover|check|uncheck|select) ;;
   *) [ -z "$CONFIRM" ] || _refuse "HARBOR_ACCESS_BROWSER_CONFIRM is set for '$VERB'; it confirms one click and is set on that call only, never exported" 'unset HARBOR_ACCESS_BROWSER_CONFIRM' ;;
 esac
 
@@ -530,6 +533,22 @@ WORKDIR="${TMPDIR:-/tmp}"; WORKDIR="${WORKDIR%/}/harbor-browser/$S"
 
 case "$VERB" in
   attach)
+    case "${1:-}" in
+      '') ;;
+      --headless) [ $# -eq 1 ] || _refuse 'attach takes [--headless] only' 'harbor chrome attach --headless' ;;
+      *) _refuse "attach takes [--headless] only: '$1'" 'harbor chrome attach' ;;
+    esac
+    if [ "${1:-}" = --headless ]; then
+      # The headless lane (harbor#1507): a throwaway, in-memory system Chrome with no profile, so no login and no
+      # window; the same verbs and the same host allow-list (the operator's decision, 2026-11-11). `open` stays refused
+      # as a verb: this fixed call is its only use. A lane already attached to the operator's Chrome is refused.
+      [ ! -s "$WORKDIR/$OWNED_NAME" ] || _refuse "session $S holds tabs in the operator's Chrome; a headless browser takes its own lane" "harbor_chrome attach with lane set and args [\"--headless\"]"
+      mkdir -p "$WORKDIR"; : > "$WORKDIR/.headless"
+      DEBUG='pw:mcp:relay,pw:mcp:error'; export DEBUG   # never the caller's: pw:protocol logs every request's headers
+      _rc=0; _cli_run "-s=$S" open --browser=chrome "--idle-timeout=$IDLE_MS" || { _rc=$?; rm -f "$WORKDIR/.headless"; }
+      exit "$_rc"
+    fi
+    rm -f "$WORKDIR/.headless"
     [ "$(_ext_off)" != yes ] || _refuse "the Playwright Extension is switched off in Chrome profile $PROFILE; Chrome would block its connect page (ERR_BLOCKED_BY_CLIENT)" "chrome://extensions in profile $PROFILE: switch Playwright Extension on"
     if sh "$ROOT/bin/access.sh" has "$TOKEN_REF" >/dev/null 2>&1; then
       _CLI_TOKEN=1
@@ -538,6 +557,12 @@ case "$VERB" in
       log_note "approve in Chrome: the Playwright Extension tab that just opened (connect.html) IS the approval page; click Allow, then click Connect next to any tab. One click lasts until 4 h idle or harbor chrome detach"
     fi
     PLAYWRIGHT_MCP_PROFILE_DIR_NAME="$PROFILE"; export PLAYWRIGHT_MCP_PROFILE_DIR_NAME
+    # Background (CLI 0.1.24) is opt-in: with extension 0.5 on Chrome 157 its tab landed inactive in the operator's
+    # window, read hidden, timed out a click, and detach did not close it (harbor#1507, 2026-11-12).
+    rm -f "$WORKDIR/.background"
+    if [ "${HARBOR_ACCESS_BROWSER_BACKGROUND:-0}" = 1 ]; then
+      PLAYWRIGHT_MCP_BACKGROUND=1; export PLAYWRIGHT_MCP_BACKGROUND; mkdir -p "$WORKDIR"; : > "$WORKDIR/.background"
+    fi
     # The daemon inherits DEBUG and writes it to its .err: pw:mcp:relay logs CDP
     # method names and why the relay closed (status reads it); a caller's
     # DEBUG=pw:protocol would log every request's headers there (2026-10-01). pw:mcp:error
@@ -605,6 +630,11 @@ OSA
     exit "$_rc"
     ;;
   detach)
+    if [ -e "$WORKDIR/.headless" ]; then   # the headless lane: its browser is the daemon's own, so close it whole
+      _rc=0; _cli_run "-s=$S" close || _rc=$?
+      rm -f "$WORKDIR/.headless" "$WORKDIR/.last-url"; exit "$_rc"
+    fi
+    rm -f "$WORKDIR/.last-url" "$WORKDIR/.background"   # a detach is deliberate: nothing re-attaches after it
     # Then close what this session opened, and only that.
     _rc=0; _cli_run "-s=$S" detach || _rc=$?
     # Every tab in the window attach opened is this session's (a dropped tab's replacement, later
@@ -633,8 +663,25 @@ OSA
     [ "$_rc" -eq 0 ] || _gone_check "$_o"
     _scrub < "$_o"; exit "$_rc"
     ;;
+  text)
+    # The visible text of the page or one element (harbor#1507), through two fixed functions: eval stays refused.
+    [ $# -le 1 ] || _refuse 'text takes [] or [ref]' 'harbor chrome text'
+    case "${1:-}" in
+      '') _fn='() => document.body ? document.body.innerText : ""' ;;
+      e[0-9]*|f[0-9]*e[0-9]*)
+        case "$1" in *[!abcdefghijklmnopqrstuvwxyz0123456789]*) _refuse "text takes a snapshot ref (e12, f3e12), not '$1'" 'harbor chrome snapshot' ;; esac
+        _fn='(el) => el.innerText ?? el.textContent ?? ""' ;;
+      *) _refuse "text takes a snapshot ref (e12, f3e12), not '$1'" 'harbor chrome snapshot' ;;
+    esac
+    mkdir -p "$WORKDIR"; _o="$(mktemp "$WORKDIR/.out.XXXXXX")"
+    trap 'rm -f "$_o"' EXIT INT TERM HUP
+    _rc=0; _cli_run "-s=$S" --raw eval "$_fn" ${1:+"$1"} > "$_o" || _rc=$?
+    [ "$_rc" -eq 0 ] || _gone_check "$_o"
+    { jq -r '.' "$_o" 2>/dev/null || cat "$_o"; } | _scrub | head -c 40000; exit "$_rc"   # --raw prints a JSON string
+    ;;
   tabs)
     [ $# -eq 0 ] || _refuse 'tabs takes no arguments' 'harbor chrome tabs'
+    [ ! -e "$WORKDIR/.headless" ] || _refuse "session $S is headless: it has no Chrome window; its tabs are tab-list" 'harbor chrome tab-list'
     _me="$(_session_url)"; _me="$(_bare_url "$_me")"
     _own=" $(cat "$WORKDIR/$OWNED_NAME" 2>/dev/null | tr '\n' ' ') "   # a pipe: under set -e a failed < aborts
     _chrome_tabs | while IFS="$(printf '\t')" read -r _w _t _a _u _id; do
@@ -651,10 +698,19 @@ OSA
     ;;
   front)
     [ $# -eq 0 ] || _refuse 'front takes no arguments' 'harbor chrome front'
+    [ ! -e "$WORKDIR/.headless" ] || { log_ok "front: session $S is headless; its page is always rendered"; exit 0; }
     _me="$(_session_url)"
     [ -n "$_me" ] || _refuse "no page in session $S to bring to the front" 'harbor chrome attach'
     # Matched by suffix: the whole URL, or after marking, the mark alone.
     _n="$(_chrome_tabs | awk -F '\t' -v u="$_me" 'substr($4, length($4) - length(u) + 1) == u' | wc -l | tr -d ' ')"
+    _own=" $(cat "$WORKDIR/$OWNED_NAME" 2>/dev/null | tr '\n' ' ') "   # a pipe: under set -e a failed < aborts
+    # Several tabs on our URL, one of them ours by id (the operator had the same page open: 9 of
+    # 30 front failures, 2026-11-10..12): that one, by id, with no mark.
+    _tid=''
+    if [ "$_n" -gt 1 ]; then
+      _tid="$(_chrome_tabs | awk -F '\t' -v u="$_me" -v own="$_own" 'substr($4, length($4) - length(u) + 1) == u && index(own, " " $5 " ") > 0 { print $5 }')"
+      case "$_tid" in ''|*[!0-9]*) _tid='' ;; *) _n=1 ;; esac   # none, or more than one (a newline): not told apart
+    fi
     if [ "$_n" -ne 1 ]; then
       # Not exactly one tab on this URL (several share it, or the page rewrote it since the
       # CLI looked): mark ours with a same-document fragment and find the mark.
@@ -672,17 +728,17 @@ OSA
     # that follows), so it is allowed only where every tab in the window is this session's. Else the
     # operator's tab in the session's window was replaced for hours (2026-11-06). A shared window
     # whose active tab already is ours needs no switch and passes.
-    _own=" $(cat "$WORKDIR/$OWNED_NAME" 2>/dev/null | tr '\n' ' ') "   # a pipe: under set -e a failed < aborts
-    _hit="$(_chrome_tabs | awk -F '\t' -v u="$_me" 'substr($4, length($4) - length(u) + 1) == u { print $1 "\t" $3; exit }')"
+    _hit="$(_chrome_tabs | awk -F '\t' -v u="$_me" -v id="$_tid" '(id != "" ? $5 == id : substr($4, length($4) - length(u) + 1) == u) { print $1 "\t" $3; exit }')"
     _hw="$(printf '%s' "$_hit" | cut -f1)"; _ha="$(printf '%s' "$_hit" | cut -f2)"
     _foreign="$(_chrome_tabs | awk -F '\t' -v w="$_hw" -v own="$_own" '$1 == w && index(own, " " $5 " ") == 0 { n++ } END { print n + 0 }')"
     if [ "$_foreign" -gt 0 ] && [ "$_ha" != true ]; then
       _refuse "this session's tab is hidden behind another tab in window $_hw, which holds $_foreign tab(s) that are not this session's; showing it would take that tab away from whoever is reading it" \
         "operator: click this session's tab in window $_hw (harbor chrome tabs marks it =), or harbor chrome detach then attach for a window of its own"
     fi
-    _r="$(_osa "$_me" <<'OSA'
+    _r="$(_osa "$_me" "${_tid:-none}" <<'OSA'
 on run argv
   set u to item 1 of argv
+  set tid to item 2 of argv
   set res to ""
   tell application "System Events" to set prev to bundle identifier of first process whose frontmost is true
   tell application "Google Chrome"
@@ -692,7 +748,7 @@ on run argv
       set wid to item k of ids
       set w to window id wid
       repeat with t from 1 to (count tabs of w)
-        if URL of tab t of w ends with u then
+        if (tid is "none" and URL of tab t of w ends with u) or (tid is not "none" and (id of tab t of w as text) is tid) then
           -- shown first, raised only if the page then reads hidden (below)
           set active tab index of w to t
           if minimized of w then set minimized of w to false
@@ -739,6 +795,7 @@ OSA
     log_ok "front: $_r is the tab Chrome shows; focus left where it was"
     ;;
   wait-signin)
+    [ ! -e "$WORKDIR/.headless" ] || _refuse "session $S is headless and signed out by design: sign-in happens in the operator's Chrome" 'harbor chrome attach   # in a lane without --headless'
     _max="${1:-300}"
     case "$_max" in ''|*[!0-9]*) _refuse "wait-signin takes seconds: $_max" 'harbor chrome wait-signin 300' ;; esac
     [ "$_max" -ge 10 ] && [ "$_max" -le 900 ] || _refuse "wait-signin waits 10..900 s: $_max" 'harbor chrome wait-signin 300'
@@ -776,8 +833,10 @@ EOF
   status)
     _e="$(_relay_err)"
     _r=''; [ -z "$_e" ] || _r="$(/usr/bin/grep 'WebSocket closed' "$_e" | tail -1 | cut -c1-200 || :)"
-    printf 'session  %s\npin      @playwright/cli@%s\nprofile  %s\nworkdir  %s\nidle     %s ms\nrelay    %s\n' \
-      "$S" "$PW_CLI_PIN" "$PROFILE" "$WORKDIR" "$IDLE_MS" "${_r:-no close recorded${_e:+ in $_e}}"
+    _mode='operator Chrome'; [ ! -e "$WORKDIR/.headless" ] || _mode='headless, in-memory, no profile'
+    [ ! -e "$WORKDIR/.background" ] || _mode="$_mode, background"
+    printf 'session  %s\npin      @playwright/cli@%s\nmode     %s\nprofile  %s\nworkdir  %s\nidle     %s ms\nrelay    %s\n' \
+      "$S" "$PW_CLI_PIN" "$_mode" "$PROFILE" "$WORKDIR" "$IDLE_MS" "${_r:-no close recorded${_e:+ in $_e}}"
     _cli list
     ;;
   *)
@@ -803,9 +862,16 @@ EOF
           # Enter in the same call as the text: a page that loses the tab within ~300 ms of a
           # typed URL leaves no time for a second call (Commerce Manager, 2026-10-14).
           case "$VERB" in fill|type) ;; *) _refuse "option refused: --submit is for fill and type" ;; esac ;;
-        -*) _refuse "option refused: $_a — only --filename=<name>, on fill and type --submit, and on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>" ;;
+        --real)
+          case "$VERB" in click|dblclick|hover|check|uncheck|select) ;; *) _refuse "option refused: --real is for click, dblclick, hover, check, uncheck and select" ;; esac ;;
+        -*) _refuse "option refused: $_a — only --filename=<name>, on fill and type --submit, on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>, and --real on the scripted verbs" ;;
       esac
     done
+    # Script-first (harbor#1507, operator 2026-11-12): a fixed script from contracts/browser-script.tsv, which needs no
+    # paint, so a window covered by another app still takes it. --real is the CLI's own verb, which waits for the tab to show.
+    _real=''; _sfn=''; _sref=''; _sarg='null'
+    for _a in "$@"; do [ "$_a" != --real ] || _real=1; done
+    if [ -n "$_real" ]; then for _a in "$@"; do shift; [ "$_a" = --real ] || set -- "$@" "$_a"; done; fi
     if [ "$VERB" = click ] || [ "$VERB" = dblclick ]; then
       _ref=''; _btn=''; _force=''; _mods=''
       for _a in "$@"; do
@@ -825,6 +891,43 @@ EOF
         [ -z "$_mods" ] || _refuse '--force cannot carry --modifiers; the mouse verbs it uses take none'
         _force_click "$_ref" "$_btn"
       fi
+      if [ -z "$_real" ] && [ -z "$_mods" ] && { [ -z "$_btn" ] || [ "$_btn" = left ]; }; then _sfn="$VERB"; _sref="$_ref"; fi
+    fi
+    if [ -z "$_real" ]; then
+      case "$VERB" in
+        hover|check|uncheck)
+          [ $# -eq 1 ] || _refuse "$VERB takes <ref>" 'harbor chrome snapshot'
+          _sref="$1"; _sfn="$VERB"
+          case "$VERB" in check) _sarg=true ;; uncheck) _sfn=check; _sarg=false ;; esac ;;
+        select)
+          [ $# -ge 2 ] || _refuse 'select takes <ref> <value> [value...]' 'harbor chrome snapshot'
+          _sref="$1"; _sfn=select; shift; _sarg='['
+          for _v in "$@"; do
+            case "$_v" in *[[:cntrl:]]*) _refuse 'select value refused: it carries a control character' ;; esac
+            _sarg="$_sarg$([ "$_sarg" = '[' ] || printf ,)\"$(printf '%s' "$_v" | sed 's/\\/\\\\/g; s/"/\\"/g')\""
+          done
+          _sarg="$_sarg]" ;;
+        scroll)
+          _sfn=scroll
+          for _a in "$@"; do
+            case "$_a" in
+              -[0-9]*|[0-9]*) case "$_a" in -*[!0-9]*|[0-9]*[!0-9]*) _refuse "scroll takes pixels or a ref, not '$_a'" ;; esac
+                [ "$_sarg" = null ] || _refuse 'scroll takes [pixels] (the page), [pixels ref] (that element) or [ref] (into view)' 'harbor chrome scroll 800'
+                _sarg="$_a" ;;
+              *) [ -z "$_sref" ] || _refuse 'scroll takes [pixels] (the page), [pixels ref] (that element) or [ref] (into view)' 'harbor chrome scroll 800'
+                _sref="$_a" ;;
+            esac
+          done
+          [ "$_sarg" != null ] || [ -n "$_sref" ] || _refuse 'scroll takes [pixels] (the page), [pixels ref] (that element) or [ref] (into view)' 'harbor chrome scroll 800' ;;
+      esac
+      case "$VERB" in hover|check|uncheck|select) [ -z "$CONFIRM" ] || [ "$CONFIRM" = "$_sref" ] \
+        || _refuse "HARBOR_ACCESS_BROWSER_CONFIRM=$CONFIRM does not name this target ($_sref); it confirms one call on one ref" ;; esac
+      case "$VERB" in hover|check|uncheck|select|scroll) [ -z "$_sref" ] || _guard "$VERB" "$_sref" ;; esac
+    fi
+    if [ -n "$_sfn" ]; then
+      _fn="$(awk -F '\t' -v k="$_sfn" '$1 == k { print substr($0, length(k) + 2); exit }' "$ROOT/contracts/browser-script.tsv" 2>/dev/null)"
+      [ -n "$_fn" ] || _refuse "no script for $_sfn in contracts/browser-script.tsv" 'git checkout -- contracts/browser-script.tsv'
+      case "$_fn" in *__ARG__*) _sfn="${_fn%%__ARG__*}$_sarg${_fn#*__ARG__}" ;; *) _sfn="$_fn" ;; esac
     fi
     # upload: allowed from anywhere at the operator's call (2026-10-14), except ~/.claude, which
     # never goes to a web tool (CONSTITUTION №3). The CLI checks no path in skill mode, so this is the check.
@@ -880,7 +983,20 @@ EOF
     fi
     _e="$(_relay_err)"; _el=0; [ -z "$_e" ] || _el="$(wc -l < "$_e" | tr -d ' ')"
     trap 'rm -f "$_o"' EXIT INT TERM HUP
-    _rc=0; _cli_run "-s=$S" "$VERB" "$@" > "$_o" || _rc=$?
+    _rc=0
+    if [ -n "$_sfn" ]; then
+      _cli_run "-s=$S" --raw eval "$_sfn" ${_sref:+"$_sref"} > "$_o.raw" || _rc=$?
+      # --raw prints the script's two lines as one JSON string; decoded here, so a refused line is never missed for want of jq
+      awk '{ s = $0; sub(/^"/, "", s); sub(/"$/, "", s); o = ""
+        while ((i = index(s, "\\")) > 0) { c = substr(s, i + 1, 1); o = o substr(s, 1, i - 1) (c == "n" ? "\n" : c == "t" ? "\t" : c); s = substr(s, i + 2) }
+        print o s }' "$_o.raw" > "$_o"; rm -f "$_o.raw"
+      case "$(head -n 1 "$_o")" in 'refused: '*|'unchanged: '*)
+        _l="$(head -n 1 "$_o")"; rm -f "$_o"
+        _refuse "$VERB${_sref:+ $_sref} by script: $_l" "harbor chrome $VERB $* --real   # the CLI's own verb; it needs the tab shown" ;;
+      esac
+    else
+      _cli_run "-s=$S" "$VERB" "$@" > "$_o" || _rc=$?
+    fi
     if [ "$VERB" = tab-new ] && [ "$_rc" -eq 0 ]; then
       _tab_ids 2>/dev/null | while IFS= read -r _id; do
         case "$_before" in *" $_id "*) ;; *) printf '%s\n' "$_id" >> "$WORKDIR/$OWNED_NAME" ;; esac

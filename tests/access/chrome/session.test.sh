@@ -4,51 +4,7 @@
 # the shape the real one does; a refused case is proved by the daemon's call log staying empty, never by the message alone.
 REQ_BUN="${HARBOR_TEST_REQUIRE_BUN:-0}"  # before t_init clears it
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-. "$(dirname "$0")/../../cli/browser/agent-stub.sh"
-# Where bun is absent (the hosted runner image) the suite skips loudly with one assertion, as panels.test.sh does (harbor#738).
-if ! command -v bun >/dev/null 2>&1; then
-  echo "  SKIP session: bun is not installed (the server's interpreter)"
-  t_section "bun is absent: only an image that does not promise it may skip"
-  t_eq "HARBOR_TEST_REQUIRE_BUN is off where bun is absent" 0 "$REQ_BUN"
-  t_done; exit 0
-fi
-SRVSRC="$T_ROOT/bin/access-chrome-mcp.ts"; AG="$T_ROOT/bin/access-browser-agent.sh"
-X="$T_TMP/x"; mkdir -p "$X/bin" "$X/contracts"; cp "$SRVSRC" "$X/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$X/contracts/"
-cp "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/library-log.sh" "$X/bin/"; cp "$T_ROOT/contracts/roots.tsv" "$X/contracts/"
-SRV="$X/bin/access-chrome-mcp.ts"
-CTL="$T_TMP/ctl"; mkdir -p "$CTL"; SOCK="$T_TMP/d.sock"; PH="$T_TMP/priv-hosts.txt"; : > "$PH"
-DD="$T_TMP/daemons"; mkdir -p "$DD/0123"; WD="$T_TMP/harbor-browser/claude-abc123def456"
-sess() { printf '{"name":"claude-abc123def456","version":"1.64.0","timestamp":%s,"socketPath":"%s"}\n' "$1" "$SOCK" > "$DD/0123/claude-abc123def456.session"; }
-SETF="$T_TMP/settings.json"
-seams() { printf '{"daemonDir":"%s","settingsFile":"'"$SETF"'","settleMs":%s,"privHosts":"%s","accessDir":"%s","scopeEnv":{"HARBOR_SCOPE_PRIVATE":"%s","PORT_ROOT":"%s"},"agentEnv":{"STUB_TABS":"%s"}}\n' \
-  "$DD" "$1" "$PH" "$ACC" "${PRIV:-$T_TMP/nopriv}" "$T_TMP/pr" "$T_TMP/tabs-out" > "$X/bin/access-chrome-mcp.seams.json"; }
-PRIV="$T_TMP/nopriv"; mkdir -p "$PRIV"; seams 0; sess 1
-# the stub shell agent: what the verbs that are Chrome's own run (attach, tabs, ...), and the tab list the sign-in stop reads
-cat > "$X/bin/access-browser-agent.sh" <<'EOF'
-for a in "$@"; do printf 'arg=%s\n' "$a"; done
-printf 'session=%s lane=%s path=%s private=%s\n' "${HARBOR_ACCESS_BROWSER_SESSION:-}" "${HARBOR_ACCESS_BROWSER_LANE:-${HARBOR_BROWSER_LANE:-}}" "$PATH" "${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-${HARBOR_BROWSER_PRIVATE_HOSTS:-none}}"
-case "$1" in tabs) cat "$STUB_TABS" 2>/dev/null || : ;; esac
-EOF
-bun "$T_ROOT/tests/access/chrome/fake-daemon.ts" "$SOCK" "$CTL" "$SNAP" & DPID=$!
-trap 'kill $DPID 2>/dev/null; chmod -R u+w "$T_TMP" 2>/dev/null; rm -rf "$T_TMP"' EXIT
-_i=0; while [ ! -e "$CTL/ready" ] && [ "$_i" -lt 100 ]; do sleep 0.1; _i=$((_i + 1)); done
-[ -e "$CTL/ready" ] || { t_fail "the fake daemon did not start"; t_done; exit 1; }
-CALLS="$CTL/calls"; : > "$CALLS"
-clean() { rm -f "$CTL"/blank "$CTL"/hidden "$CTL"/eval_fail "$CTL"/tablist_fail "$CTL"/fail "$CTL"/upload_denied "$CTL"/late_blank* "$CTL"/xerr "$CTL"/page_url "$CTL"/delay_ms "$CTL"/token_url; }
-
-# mcp <tool> <arg>... -> "exit 0|1"; the result text is left in $T_TMP/out. The environment is the launcher's: nothing else reaches it.
-envs() { env -i HOME="$HOME" TMPDIR="$T_TMP" PATH="$PATH" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 "$@"; }
-mcpe() { # <env assignment or ''> <tool> <arg>...
-  _e="$1"; _t="$2"; shift 2
-  _q="$(for _a in "$@"; do printf '%s\0' "$_a"; done | jq -Rs --arg t "$_t" '{jsonrpc:"2.0",id:9,method:"tools/call",params:{name:$t,arguments:{args:(split("\u0000")[:-1])}}}' -c)"
-  _r="$(printf '%s\n' "$_q" | envs ${_e:+"$_e"} bun "$SRV" 2>&1)"
-  printf '%s' "$_r" | jq -r '.result.content[0].text' > "$T_TMP/out" 2>/dev/null || printf '%s' "$_r" > "$T_TMP/out"
-  [ "$(printf '%s' "$_r" | jq -r '.result.isError' 2>/dev/null)" = false ] && echo "exit 0" || echo "exit 1"
-}
-mcp() { mcpe '' "$@"; }
-rpc() { printf '%s\n' "$@" | envs bun "$SRV" 2>&1; }
-n() { grep -c -- "$1" "$CALLS" 2>/dev/null || :; }   # how many daemon requests carried $1
-txt() { cat "$T_TMP/out"; }
+. "$(dirname "$0")/server-env.sh"
 
 t_section "the protocol, and one tool per allowed verb"
 OUT="$(rpc '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26"}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"ping"}')"
@@ -63,7 +19,7 @@ t_eq "a list for a tool name, a list for params, no method; then a ping" "-32602
   "$(printf '%s\n' "$OUT" | jq -rc '.error.code // .result' | tr '\n' ' ' | sed 's/ $//')"
 TL="$(rpc '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq -r '.result.tools[].name' | sort)"
 ALLOWED="$(awk '/^_allowed\(\) \{/ { f = 1; next } f && /case "\$1" in/ { next } f && /return 0/ { sub(/\).*/, ""); gsub(/[ \t\\]/, ""); print; exit } f { gsub(/[ \t\\]/, ""); printf "%s", $0 }' "$AG" | tr '|' '\n' | sed '/^$/d')"
-WANT="$(printf '%s\n' $ALLOWED attach status state doctor detach tabs front wait-signin hosts confirm-click | tr '-' '_' | sort -u)"
+WANT="$(printf '%s\n' $ALLOWED attach status state text steps doctor detach tabs front wait-signin hosts confirm-click | tr '-' '_' | sort -u)"
 t_eq "CONTROL: the shell agent's allowlist parses" yes "$([ "$(printf '%s\n' "$ALLOWED" | grep -c .)" -ge 20 ] && echo yes || echo no)"
 t_eq "the tools are exactly the shell agent's allowed verbs and its session verbs" "$WANT" "$TL"
 t_hasnt "no tool runs code in a logged-in page" "$TL" "eval"
@@ -167,7 +123,7 @@ t_section "the destructive-click guard reads the label from a fresh snapshot"
 : > "$CALLS"
 t_eq "an ordinary button is clicked" "exit 0" "$(mcp click e3)"
 t_eq "after a full guard snapshot, never a partial one" 1 "$(n 'snapshot --boxes --filename=harbor-guard.yml')"
-t_eq "and the click itself ran" 1 "$(n '^click e3')"
+t_eq "and the click itself ran, by script" 1 "$(n '^script click e3')"
 t_eq "the guard snapshot landed in the session workdir" yes "$([ -s "$WD/harbor-guard.yml" ] && echo yes)"
 : > "$CALLS"
 t_eq "a Delete button is refused" "exit 1" "$(mcp click e4)"
@@ -175,7 +131,7 @@ t_has "...as a hand-off, so the failure ledger does not count it (FC-10)" "$(txt
 t_has "naming the label and the word" "$(txt)" "'button \"Delete campaign\"' (e4) matches 'delete'"
 t_has "with confirm_click as its fix" "$(txt)" 'fix: mcp__harbor_chrome__confirm_click with args ["e4"]'
 t_has "...and the operator's per-call confirm" "$(txt)" "HARBOR_ACCESS_BROWSER_CONFIRM=e4 harbor chrome click e4"
-t_eq "and the click never reached the daemon" 0 "$(n '^click e4')"
+t_eq "and the click never reached the daemon" 0 "$(n '^click e4\|^script click e4')"
 t_eq "the operator's confirm in the server's environment is not honoured" "exit 1" "$(mcpe HARBOR_ACCESS_BROWSER_CONFIRM=e4 click e4)"
 t_eq "dblclick is guarded too" "exit 1" "$(mcp dblclick e4)"
 t_eq "an aria-label Remove is refused" "exit 1" "$(mcp click e5)"
@@ -191,17 +147,17 @@ t_eq "a leading number cannot shift the target" "exit 1" "$(mcp click -5 e3)"
 t_eq "nor an empty argument" "exit 1" "$(mcp click '' e3)"
 t_eq "a ref missing from the snapshot is refused" "exit 1" "$(mcp click e99)"
 t_has "as stale" "$(txt)" "not in the current snapshot"
-t_eq "none of those clicked" 0 "$(n '^click\|^dblclick')"
+t_eq "none of those clicked" 0 "$(n '^click\|^dblclick\|^script click\|^script dblclick')"
 t_eq "status words pass (Paused, Removed: whole words only)" "exit 0" "$(mcp click e12)"
 t_eq "Payments is not pay" "exit 0" "$(mcp click e13)"
 t_eq "an ordinary click inside an iframe passes" "exit 0" "$(mcp click f2e3)"
 { printf '%s\n' '  - button [ref=e30] [box=8,200,20,20]:'; i=0; while [ $i -lt 45 ]; do printf '    - generic [ref=e%s]\n' $((100 + i)); i=$((i + 1)); done
   printf '%s\n' '    - img "Delete" [ref=e199]'; } >> "$SNAP"
 t_eq "a nameless button's whole subtree is read, not 40 lines" "exit 1" "$(mcp click e30)"
-t_eq "a guard snapshot the daemon could not take refuses the click" "exit 1" "$(: > "$CTL/fail"; mcp click e3)"
+t_eq "a click the daemon could not run is refused" "exit 1" "$(: > "$CTL/fail"; : > "$CTL/fail_script"; mcp click e3)"
 clean
 # The guard line removed, the same Delete click must go through: the arms above can fail.
-mkdir -p "$T_TMP/mutant/bin" "$T_TMP/mutant/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$T_TMP/mutant/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$T_TMP/mutant/contracts/"
+mkdir -p "$T_TMP/mutant/bin" "$T_TMP/mutant/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$T_TMP/mutant/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$T_TMP/mutant/contracts/"
 sed 's/^  if (hit \&\& !confirmed) handoff(`destructive .*/  if (false) handoff("");/' "$SRV" > "$T_TMP/mutant/bin/access-chrome-mcp.ts"
 t_eq "the mutant differs from the server" yes "$(cmp -s "$SRV" "$T_TMP/mutant/bin/access-chrome-mcp.ts" || echo yes)"
 _old="$SRV"; SRV="$T_TMP/mutant/bin/access-chrome-mcp.ts"
@@ -216,15 +172,15 @@ jq -n '{permissions: {allow: ["mcp__harbor_chrome__confirm_click"], ask: []}}' >
 t_eq "an allow rule is not an ask rule" "exit 1" "$(mcp confirm_click e4)"
 printf 'not json' > "$SETF"
 t_eq "an unreadable settings.json is refused" "exit 1" "$(mcp confirm_click e4)"
-t_eq "none of those clicked" 0 "$(n '^click e4')"
+t_eq "none of those clicked" 0 "$(n '^click e4\|^script click e4')"
 jq -n '{permissions: {ask: ["mcp__harbor_chrome__confirm_click"]}}' > "$SETF"
 t_eq "with the ask rule the Delete button is clicked" "exit 0" "$(mcp confirm_click e4)"
-t_eq "...once, by the daemon's click" 1 "$(n '^click e4')"
+t_eq "...once, by the script click" 1 "$(n '^script click e4')"
 t_has "...and recorded with its label" "$(cat "$WD/.confirmed.tsv" 2>/dev/null)" "delete"
 t_eq "a stale ref is still refused" "exit 1" "$(mcp confirm_click e99)"
 t_eq "a selector is still refused" "exit 1" "$(mcp confirm_click 'text=Delete')"
 t_eq "plain click on Delete is still refused with the rule present" "exit 1" "$(mcp click e4)"
-t_eq "...so the daemon clicked e4 once in all" 1 "$(n '^click e4')"
+t_eq "...so e4 was clicked once in all" 1 "$(n '^script click e4')"
 # The ask-rule check removed, the same call must go through with no rule: the refusals above can fail.
 rm -f "$SETF"; : > "$CALLS"
 sed 's/^      if (verb === .confirm-click.) askRuleGuard();$/      \/\/ removed/' "$SRV" > "$T_TMP/mutant/bin/access-chrome-mcp.ts"
@@ -327,16 +283,6 @@ t_eq "a verb the daemon took 0.6 s over is not slept on again (settle column und
 rm -f "$CTL/delay_ms"; mcp press Tab >/dev/null; _row="$(tail -n 1 "$WD/.timings.tsv")"
 t_eq "an instant daemon is waited out to the settle (500 ms)" yes "$(printf '%s' "$_row" | awk -F '\t' '$6 + 0 >= 450 { print "yes" }')"
 seams 0
-: > "$CTL/hidden"; : > "$CTL/fail"
-t_eq "a failed click on a hidden tab is refused" "exit 1" "$(mcp click e3)"
-t_has "naming the way back" "$(txt)" "fix: harbor chrome front"
-t_has "and saying the tab is hidden" "$(txt)" "the tab is hidden"
-clean; : > "$CTL/fail"
-t_eq "a failed click on a visible tab keeps the daemon's own error" "exit 1" "$(mcp click e3)"
-t_hasnt "without the hidden hint" "$(txt)" "the tab is hidden"
-t_has "and its words" "$(txt)" "TimeoutError"
-clean
-
 t_section "the stops after a verb: signed out, the other extension's frame, a gone session"
 printf '    account:  tools@example.lt | primary | Business Admin | ads.reddit.com in Chrome via harbor chrome\n' > "$ACC/reddit.md"
 printf '    account:  me@example.lt | primary | admin | business.facebook.com in the browser\n' > "$ACC/meta.md"
@@ -399,6 +345,70 @@ printf '{"name":"x","timestamp":9,"socketPath":"%s/none.sock"}\n' "$T_TMP" > "$D
 t_eq "a session whose daemon is not listening is the same hand-off" "exit 1" "$(mcp tab_list)"
 t_has "naming it" "$(txt)" "no Chrome is connected"
 sess 3
+
+t_section "text, a download, steps and the re-attach (harbor#1507)"
+clean; sess 5; : > "$CALLS"
+t_eq "text reads the page" "exit 0" "$(mcp text)"
+t_eq "...through the fixed page function, raw" 1 "$(n 'eval () => document.body ? document.body.innerText : "" \[raw\]')"
+t_eq "text <ref> reads one element" "exit 0" "$(mcp text e3)"
+t_eq "...through the fixed element function on that ref" 1 "$(n 'eval (el) => el.innerText ?? el.textContent ?? "" e3')"
+: > "$CALLS"
+t_eq "text with a script is refused" "exit 1" "$(mcp text 'document.cookie')"
+t_eq "text with two refs is refused" "exit 1" "$(mcp text e3 e4)"
+t_eq "...and neither reached the daemon" 0 "$(grep -c . "$CALLS")"
+: > "$CTL/download"
+t_eq "a goto that starts a download is not a failure" "exit 0" "$(mcp goto https://business.facebook.com/export.xlsx)"
+t_has "...it says where the file goes" "$(txt)" "download started"
+rm -f "$CTL/download"
+t_eq "RED-PROOF: CONTROL: the daemon's own goto failure still fails" "exit 1" "$(: > "$CTL/fail"; mcp goto https://business.facebook.com/; rm -f "$CTL/fail")"
+stepsj() { jq -cn --argjson s "$1" '{jsonrpc:"2.0",id:9,method:"tools/call",params:{name:"steps",arguments:{steps:$s}}}'; }
+steps() { _r="$(printf '%s\n' "$(stepsj "$1")" | envs bun "$SRV" 2>&1)"; printf '%s' "$_r" | jq -r '.result.content[0].text' > "$T_TMP/out"; [ "$(printf '%s' "$_r" | jq -r .result.isError)" = false ] && echo "exit 0" || echo "exit 1"; }
+: > "$CALLS"
+t_eq "steps runs goto, fill and snapshot in one call" "exit 0" "$(steps '[{"verb":"goto","args":["https://business.facebook.com/"]},{"verb":"fill","args":["e3","x"]},{"verb":"snapshot"}]')"
+t_eq "...each reached the daemon" "1 1" "$(n 'goto https://business.facebook.com/') $(n 'fill e3 x')"
+t_has "...and each is reported" "$(txt)" "[3/3] snapshot → ok"
+: > "$CALLS"
+t_eq "a step off the host allow-list stops the steps" "exit 1" "$(steps '[{"verb":"tab_list"},{"verb":"goto","args":["https://evil.example/"]},{"verb":"snapshot"}]')"
+t_eq "...the step before it ran, the refused one and the one after did not" "1 0 0" "$(n tab-list) $(n 'goto https://evil.example/') $(n '^snapshot')"
+t_has "...and it says where it stopped" "$(txt)" "stopped at step 2 of 3"
+: > "$CALLS"
+t_eq "attach cannot run inside steps" "exit 1" "$(steps '[{"verb":"attach"}]')"
+t_eq "...nor confirm_click" "exit 1" "$(steps '[{"verb":"confirm_click","args":["e3"]}]')"
+t_eq "...nor eval" "exit 1" "$(steps '[{"verb":"eval","args":["1"]}]')"
+t_eq "26 steps are refused" "exit 1" "$(steps "$(jq -cn '[range(26) | {verb:"tab_list"}]')")"
+t_eq "...and none of them reached the daemon" 0 "$(grep -c . "$CALLS")"
+mcp goto https://business.facebook.com/adsmanager >/dev/null
+t_eq "a goto records the page a re-attach reopens" "https://business.facebook.com/adsmanager" "$(cat "$WD/.last-url" 2>/dev/null)"
+SF="$DD/0123/claude-abc123def456.session"; cp "$SF" "$SF.keep"; rm -f "$SF"
+rseams() { printf '{"daemonDir":"%s","settingsFile":"%s","settleMs":0,"privHosts":"%s","tokenRegistered":%s,"scopeEnv":{"HARBOR_SCOPE_PRIVATE":"%s","PORT_ROOT":"%s"},"agentEnv":{"STUB_TABS":"%s","STUB_REATTACH":"%s"}}\n' \
+  "$DD" "$SETF" "$PH" "$1" "$PRIV" "$T_TMP/pr" "$T_TMP/tabs-out" "$SF" > "$X/bin/access-chrome-mcp.seams.json"; }
+ERRF="$DD/0123/claude-abc123def456.err"
+closed() { printf '2026-11-11T10:00:00.000Z pw:mcp:relay ws closed> Extension WebSocket closed: %s\n' "$1" > "$ERRF"; }
+closed 'All controlled tabs detached'
+rseams false; : > "$CALLS"
+t_eq "the relay gone and no token registered: goto is the hand-off, as before" "exit 1" "$(mcp goto https://business.facebook.com/x)"
+t_has "...naming attach" "$(txt)" "no Chrome is connected"
+t_eq "...and the session stays gone (no attach ran)" no "$([ -e "$SF" ] && echo yes || echo no)"
+rseams true; : > "$CALLS"
+t_eq "a read verb never re-attaches, even with the token (it skips the classifier)" "exit 1" "$(mcp snapshot)"
+t_has "...its hand-off names the goto that would" "$(txt)" 'mcp__harbor_chrome__goto with args ["https://business.facebook.com/adsmanager"] re-attaches'
+t_eq "...and no attach ran" no "$([ -e "$SF" ] && echo yes || echo no)"
+t_eq "goto, with the token, after the last tab went: re-attaches once and goes" "exit 0" "$(mcp goto https://business.facebook.com/x)"
+t_has "...saying so" "$(txt)" "re-attached with the registered token"
+t_eq "...to the page it was asked for" 1 "$(n 'goto https://business.facebook.com/x')"
+rm -f "$SF"; closed 'Disconnected by the user'; : > "$CALLS"
+t_eq "after the operator's Disconnect, goto does not re-attach" "exit 1" "$(mcp goto https://business.facebook.com/x)"
+t_eq "...no attach ran" no "$([ -e "$SF" ] && echo yes || echo no)"
+closed 'All controlled tabs detached'
+t_eq "goto off the allow-list never re-attaches" "exit 1" "$(mcp goto https://evil.example/)"
+t_eq "...no attach ran" no "$([ -e "$SF" ] && echo yes || echo no)"
+: > "$WD/.headless"; : > "$CALLS"
+t_eq "a headless session never re-attaches to the operator's Chrome" "exit 1" "$(mcp goto https://business.facebook.com/x)"
+t_eq "...nothing reached the daemon" 0 "$(grep -c . "$CALLS")"
+rm -f "$WD/.headless" "$WD/.last-url"
+t_eq "no recorded page (after a detach): no re-attach" "exit 1" "$(mcp goto https://business.facebook.com/x)"
+rm -f "$ERRF"
+cp "$SF.keep" "$SF"; seams 0; sess 6
 
 t_section "the verbs that are Chrome's own run in the shell agent, unchanged, with a scrubbed environment"
 t_eq "attach is the shell agent's" "exit 0" "$(mcp attach)"

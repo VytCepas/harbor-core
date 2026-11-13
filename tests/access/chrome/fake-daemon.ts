@@ -6,7 +6,8 @@
 //
 // Every request is logged to <ctl>/calls as `verb args --opt=v`. Behaviour is switched by files in <ctl>, read per request, so a
 // suite changes it with `: > $CTL/blank`: blank, hidden, eval_fail, tablist_fail, fail, upload_denied, late_blank, xerr (holds a log path),
-// page_url (holds a URL), delay_ms (holds a number). The shapes are agent-stub.sh's, which copied the real CLI's (0.1.22).
+// page_url (holds a URL), delay_ms (holds a number), download,
+// fail_script, script_result (holds a first line). The shapes are agent-stub.sh's, which copied the real CLI's (0.1.22).
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
@@ -18,6 +19,17 @@ const val = (n: string) => { try { return fs.readFileSync(path.join(ctl, n), 'ut
 function reply(args: any, cwd: string, raw: boolean): { isError: boolean; text: string } {
   const [verb, ...pos] = args._ as string[];
   const opts = Object.entries(args).filter(([k]) => k !== '_').map(([k, v]) => (v === true ? `--${k}` : `--${k}=${v}`));
+  // A script from contracts/browser-script.tsv (harbor#1507): logged as `script <name> <ref> arg=<literal>`, answered in its own
+  // two-line shape. script_result holds a first line to answer instead (refused: ..., unchanged: ...).
+  const SC: [string, string][] = [['double-clicked', 'dblclick'], ["'clicked '", 'click'], ['hovered', 'hover'], ["'checked: '", 'check'], ["'selected: '", 'select'], ['scrolled', 'scroll']];
+  const sc = verb === 'eval' ? SC.find(([k]) => (pos[0] ?? '').includes(k))?.[1] : undefined;
+  if (sc) {
+    const lit = /const (?:want|dy) = (.*?); /.exec(pos[0])?.[1] ?? '';
+    fs.appendFileSync(path.join(ctl, 'calls'), `script ${sc}${pos[1] ? ` ${pos[1]}` : ''}${lit ? ` arg=${lit}` : ''}${raw ? ' [raw]' : ''}\n`);
+    if (flag('fail_script')) return { isError: true, text: 'Error: Execution context was destroyed' };
+    const url = flag('page_url') ? val('page_url') : 'https://business.facebook.com/';
+    return { isError: false, text: JSON.stringify(`${flag('script_result') ? val('script_result') : `${sc} done by script`}\n- Page URL: ${url}`) };
+  }
   fs.appendFileSync(path.join(ctl, 'calls'), [verb, ...pos, ...opts].join(' ') + (raw ? ' [raw]' : '') + '\n');
   if (verb === 'snapshot') {
     if (args.filename) { fs.copyFileSync(snap, path.join(cwd, args.filename)); return { isError: false, text: `### Snapshot\n[Snapshot](${args.filename})` }; }
@@ -44,6 +56,7 @@ function reply(args: any, cwd: string, raw: boolean): { isError: boolean; text: 
     fs.appendFileSync(val('xerr'), 'pw:mcp:error Error: Cannot access a chrome-extension:// URL of different extension\n');
     return { isError: true, text: 'Error: Target page, context or browser has been closed' };
   }
+  if (verb === 'goto' && flag('download')) return { isError: true, text: 'Error: Download is starting' };
   if (verb !== 'snapshot' && flag('fail')) return { isError: true, text: 'TimeoutError: Timeout 5000ms exceeded.' };
   let text = `STUB pwd=${cwd} args=${[verb, ...pos, ...opts].join(' ')}`;
   if (['goto', 'click', 'reload'].includes(verb) && flag('page_url')) text += `\n- Page URL: ${val('page_url')}`;

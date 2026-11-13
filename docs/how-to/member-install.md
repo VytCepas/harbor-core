@@ -31,7 +31,7 @@ For IT. One setup per laptop, for one named person who is **not** an administrat
 
 **On GitHub, per member (the member, with you beside them):**
 
-Create a fine-grained token: resource owner the organisation, repository the hub only, permissions **Issues: read and write** and **Contents: read**. GitHub ties a token to the person who made it, so nobody can make it for them. Note its expiry date: when it lapses, very-high calls stay denied and the board goes quiet.
+Create a fine-grained token: resource owner the organisation, repository the hub only, permissions **Issues: read and write** and **Contents: read**. A member who has a personal tools repo (`docs/how-to/hub-admin.md`, section 10) lists that repo too and takes **Contents: read and write**; the hub-only token cannot reach it. GitHub ties a token to the person who made it, so nobody can make it for them. Note its expiry date: when it lapses, very-high calls stay denied and the board goes quiet.
 
 **On the Claude side (an Owner, in the admin console):**
 
@@ -65,7 +65,7 @@ It asks nothing. It clones `harbor-core` at the pin into `/opt/harbor-core`, ins
 
 It asks nothing. It installs WSL and Ubuntu when they are absent, creates the member's Linux user and makes it the distro's default user, then runs the bootstrap inside as root. That stops with exit 3 because root in the distro can't write `C:\Program Files`, which is the point, so the script runs the Windows half itself: the floor under `C:\Program Files\ClaudeCode`, then the settings, then `HKLM\SOFTWARE\Policies\Claude\disableWslSessions` set to 0. It runs the bootstrap again, which reads the Windows folder back byte for byte and carries on, then adds the two desktop shortcuts.
 
-**A first WSL install can need a restart.** The script then exits 3010 and says so: restart Windows and run the same script again. Nothing is lost.
+**A first WSL install can need a restart.** The script then exits 3010 and says so: restart Windows and run the same script again. Nothing is lost. It notes the boot it asked on (`C:\ProgramData\harbor-setup-restart.txt`): if Windows has restarted and Ubuntu is still not registered (`--no-launch` can leave it installed, not registered), the script stops with exit 1 and says so, never a second 3010.
 
 The member's default user matters: a distro with none runs sessions as root, where none of this holds. If `/etc/wsl.conf` already names another default user, the script stops.
 
@@ -169,6 +169,12 @@ The file being on disk proves nothing: a higher source would hide it with no war
 
 If it says `(remote)`, `(plist)` or `(HKLM)`, another policy won and this floor is not in force. `claude doctor` lists any entry that was dropped.
 
+## The logs notice (release 2)
+
+The laptop sends Harbor's logs counts only after you hold the member's **signed receipt of the logs notice** (harbor#1278, `legal/dpia.md` R11). Then run the install again with `--notice-received`; it writes `<managed root>/notice-received`. Until then the laptop counts nothing and seals nothing, and the board shows only what it showed in release 1. If they object or withdraw, run it with `--notice-withdrawn`: the counts stop at the next send. A re-run with neither flag keeps what is there.
+
+The install also makes the account's random logs id, once: `<managed dir>/harbor-ids/<account>.id`. It is not the login, it survives `--uninstall` and a reinstall, and it never appears on the board. The member reads it with `harbor hub id` and gives it to ask for their data or its deletion; deleting it is adding it to the hub's `logs/excluded-ids.txt`, which the loader drops and deletes from the logs store.
+
 ## If it refuses
 
 | It says | Do |
@@ -195,6 +201,24 @@ Only IT can remove this: a member can't, because the rules are root's. The decis
 
 A failed fetch never does any of this. Policy goes only by a signed `revoked` entry or by you.
 
+## A colleague's API key (connectors, control `member.connectors`)
+
+An API key is entered by the person, never by their agent, and is used only by a company **connector**: an MCP server the admin declared in the signed policy (docs/how-to/hub-admin.md, section 11). The agent calls the connector's tools; the key is in that server's process only.
+
+1. The admin adds the connector and tells you its ref (`acme-crm`). Open Claude Code once more after the next update, so its tools appear.
+2. In a terminal of your own, **outside Claude Code**, run `sh "<managed folder>/bin/member-connectors.sh" key acme-crm`. The managed folder is `/etc/claude-code/harbor` on Linux and WSL, `/Library/Application Support/ClaudeCode/harbor` on macOS. It asks for the key without showing it, and puts it in the company store. It refuses inside a Claude Code session, and for a ref the policy does not list.
+3. `member-connectors.sh list` shows each connector and whether its key is stored (names only). Run `key` again with a new key to replace it.
+4. Never paste a key into Claude Code, a file, a `.env` or a note. If the agent is about to write one, a company note tells it to stop.
+
+### Residual risk (read this)
+
+
+**Checked against Claude Code's sources (2.1.319 and 2.1.322, by the audit of this lane):** the Linux sandbox starts a command with bubblewrap `--unshare-pid` and `--proc /proc`, so a command sees only its own processes, and the Read tool refuses `/proc`. That was read from the sources and mounted as root in a container; a member uid on a real laptop was not exercised, and the macOS sandbox has no equivalent that was inspected. The managed settings also deny `Read(//proc/**)` (and the dispatcher's read-deny table carries it) and pin `sandbox.enableWeakerNestedSandbox` to `false`, because that flag swaps the fresh `/proc` for `--bind /proc` and would show a connector server's environment to a command.
+
+**The jail (since the fifth audit).** The launcher no longer relies on judging paths alone: it runs the server in a bubblewrap view that holds only root-owned trees (`/usr`, `/etc`, the connector's folder, a private `/proc` and an empty `/tmp`), so nothing the agent can plant exists for the server to load, and a server's own `/proc/<pid>/environ` is not visible to anything else. If bubblewrap cannot start, the server does not start, and neither does it when anything in or under `/usr`, `/etc` or the connector's folder is writable by the member (a `/usr/local` handed to the user), which the launcher scans for at every start. **Proved in the sim container, with `sim-linux.sh --jail-proof` (opt-in: it runs the container with seccomp unconfined, which no member laptop does; without it these rows are SEAM):** the launcher's own jail arguments, run with the real `bwrap` as root, the process then dropped to the member, hide six planted files and a planted plugin, a `sys.path` module and a venv standard library (controls without the jail load all of them), and the key still reaches the server. **Not proved there:** bwrap as the member (an unprivileged user cannot start bubblewrap in a container: the row is marked SEAM) and the macOS Seatbelt jail.
+
+The agent runs as the same user as the connector's server. What keeps it from the key is, in order: the key is in no file the agent can read (the store is denied to its sandboxed shell, and the Read tool's rows cover it); the server is started by Claude Code from a root-written file, outside the agent's reach, and the launcher refuses any other server or ref; the sandbox hides other processes where it can (`/proc` on Linux when the sandbox gives the command its own process view, and `ps` and process-argument reads on macOS, which the Seatbelt profile denied when this was measured). **If a sandbox leaves the server's process visible to the same user, the agent could read `/proc/<pid>/environ` of the connector's server and take its key.** The tests cannot start the real sandbox (the Docker simulation has none), so this is not proven closed: it rests on the sandbox, not on this launcher. The same agent can also ask the connector's tools to do anything the key allows, which is the point of a connector: give a key only the rights the work needs, and rotate it at the service if you doubt it. A key typed at a prompt the agent faked on your terminal is a social-engineering risk no file stops: the real prompt is only ever run by you, by the path above.
+
 ## What this floor doesn't reach
 
 | Surface | State |
@@ -205,6 +229,7 @@ A failed fetch never does any of this. Policy goes only by a signed `revoked` en
 | Cloud sessions | Device files don't reach them. Turn them off in the admin console |
 | Cowork | Not covered. Check your Claude Desktop configuration |
 | Windows endpoint tools | They can't see processes inside WSL |
+| Tests with code (`member.tests`) | A project whose `.git` is a file or a symlink (a linked worktree), a split-index repo or a sha256 repo is not checked: the check fails open and says nothing. Only a registered project with a plain `.git` folder is |
 
 ## Not verified
 
@@ -220,7 +245,7 @@ No Windows laptop and no root were available when this was built. Tests stub roo
 | Agent reaching distro root through `wsl.exe` | Scripts on `/mnt/c` don't depend on it; the user tier does | W5 |
 | The sandbox on stock WSL | `failIfUnavailable` refuses sessions if bubblewrap can't start | W6 |
 | The allowlist through the sandbox proxy on WSL: package managers honour the proxy, and the hosts in `contracts/member-hosts.txt` are enough for normal work | Composed and tested as JSON, never run in a session. A missing host blocks work until policy adds it and the install runs again | W6, and the pilot's first week |
-| `wsl --install --no-launch` and the restart it can need, as `--setup` drives them | They have never run. Only the text and the distro-side script are tested | The first Windows run |
+| `wsl --install --no-launch` and the restart it can need, as `--setup` drives them | They have never run. Only the text and the distro-side script are tested. Microsoft's WSL source returns 0 from `--install` when a restart is needed and installs no distro until then; whether the laptop's wsl.exe does, and whether `--no-launch` registers the distro, is unproved | The first Windows run: `wsl --install --distribution Ubuntu --no-launch; $LASTEXITCODE` on a laptop without WSL, then `wsl -l -v` after the restart |
 | The prerequisites helper from a hook, and `sudo` running a file on `/mnt/c` | On WSL a Windows ACL decides who can write that file, not its owner | W5 |
 | Desktop keeping a chosen folder, and login shells in a Desktop terminal | If it forgets, the session opens in the home folder and only the context note steers the agent | W10 |
 | The file store on a real WSL laptop, and writing a logged-out member's macOS Keychain | Proved in an Ubuntu 24.04 container with systemd as PID 1 and a `login -f` session, never on Windows. `--store-check` is the two-minute answer on the first laptop | W7 |

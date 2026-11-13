@@ -12,6 +12,7 @@ when_to_use
 owns-commands
 owns-tools
 inline-section
+architecture
 id
 event
 tool

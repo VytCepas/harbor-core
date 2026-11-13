@@ -2,6 +2,7 @@
 # hub-format.sh (harbor#1278) — checks a hub file against contracts/hub.md. Reads and reports; writes nothing.
 #   sh hub-format.sh policy <file>     a policy.json
 #   sh hub-format.sh event <file>      one event, or an array of events
+#   sh hub-format.sh board <file>      a batch as a board comment holds it: events, with activity and session refused in clear
 #   sh hub-format.sh manifest <file>   an extension.json
 #   sh hub-format.sh tiers [file]      contracts/risk-tiers.tsv
 # One line per finding on stderr. Exit 0 clean, 1 findings, 2 usage or an unreadable file.
@@ -14,7 +15,7 @@ LOG_FD=2; export LOG_FD
 . "$HERE/library-log.sh"
 log_init hub-format
 
-usage() { sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 vocab() { # the vocabulary as {set: [values]}
   grep -v '^#' "$VOCAB" | jq -R -s 'split("\n") | map(select(length > 0) | split("\t")) | .[1:]
     | group_by(.[0]) | map({key: .[0][0], value: map(.[1])}) | from_entries'
@@ -47,17 +48,55 @@ def relayurl: oneline and test("^(wss|ssh)://[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])
 def hostrow: oneline and length <= 253 and test("^(\\*\\.)?[a-z0-9-]+(\\.[a-z0-9-]+)+$");
 # covers($h): this row admits host $h, itself or through its `*.` prefix.
 def covers($h): . as $r | $r == $h or (($r | startswith("*.")) and ($h | endswith($r[1:])));
+# An age recipient, and an age file to an X25519 recipient as base64: the only shape the laptop id and its counts may take on the board.
+def agerecipient: type == "string" and test("^age1[02-9ac-hj-np-z]{58}$");
+def sealed: type == "string" and length <= 60000 and test("^YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0\\+IFgyNTUx[A-Za-z0-9+/]{100,}={0,2}$");
 '
 
 check_policy() {
   _pub="$(awk -F'\t' '$1 == "public-relay" { print $2; exit }' "$UPTERM" 2>/dev/null)" || _pub=''
   [ -n "$_pub" ] || { log_fail "no public-relay row in $UPTERM, so a policy naming it can't be refused"; log_nofix "contracts/support-upterm.tsv"; return 2; }
   jq --argjson v "$(vocab)" --arg pub "$_pub" "$JQ_DEFS"'
+    def cword: type == "string" and length >= 1 and length <= 500 and (test("[[:cntrl:]]") | not) and (contains("${") | not);
+    def nodots: ((split("/") | map(select(. == ".." or . == ".")) | length) == 0);
+    def inf($n): type == "string" and startswith("/opt/company-mcp/" + $n + "/") and nodots;
+    def banned: type == "string" and (IN("-e","-m","-c","-r","-p","--require","--import","--preload","--eval","--print") or test("^--(eval|require|import|preload|print)="));
+    def plain: type == "string" and (contains("/") | not) and (startswith(".") | not) and (startswith("-") | not);
+    def flagok: type == "string" and test("^--[A-Za-z0-9][A-Za-z0-9_-]*(=([^/.][^/]*)?)?$");
+    def argok($n): inf($n) or plain or flagok;
+    def bn: split("/") | last;
+    def noway: IN("sh","bash","dash","zsh","ksh","ash","fish","csh","tcsh","bunx","deno");
+    def interp: IN("bun","node","nodejs","python","python3") or test("^python3\\.[0-9]+$");
+    def subcmd: IN("x","run","install","add","pm","create");
+    def sysbin: (split("/") | .[:-1] | join("/")) | IN("/usr/bin","/usr/local/bin","/bin");
+    def okcmd($c; $n): ($c | type == "array" and length >= 1 and length <= 16 and all(.[]; cword and (banned | not))
+      and (.[0] | startswith("/") and nodots and ((bn | noway) | not))
+      and (if (.[0] | bn | interp) then
+             (.[0] | (sysbin or inf($n))) and (if (.[0] | bn) == "bun" then (.[1] == "--no-install") and (.[2] | inf($n)) and all(.[3:][]; argok($n) and ((subcmd) | not))
+              else (.[1] | inf($n)) and all(.[2:][]; argok($n)) end)
+           else (.[0] | inf($n)) and all(.[1:][]; argok($n)) end));
   . as $p
   | (if type == "object" and (.support | type) == "object" and (.support.relay | type) == "string"
      then .support.relay | sub("^[a-z]+://"; "") | sub(":[0-9]+$"; "") else "" end) as $relayhost
   | if type != "object" then ["policy is not an object"] else
-    closed(["schema","hub","serial","issued","core","rollout","approval","silent_days","tiers","rules","packs","hooks","revoked","support","hosts"])
+    closed(["schema","hub","serial","issued","core","rollout","approval","silent_days","tiers","rules","packs","hooks","revoked","support","hosts","logs","connectors"])
+    # connectors (harbor#1278, lane I): the MCP servers a colleague key may reach. bin/member-managed.sh composes them and re-checks every row.
+    + (if $p | has("connectors") then
+        ck(($p.connectors | type == "array" and length <= 20
+            and all(.[]; type == "object" and ((keys - ["name","ref","env","service","command"]) | length == 0) and ((["name","ref","env","service","command"] - keys) | length == 0)
+              and (.name | type == "string" and test("^[A-Za-z0-9_-]{1,48}$"))
+              and (.ref | type == "string" and test("^[a-z0-9][a-z0-9._-]{0,63}$") and (test("^hub-") | not))
+              and (.env | type == "string" and test("^[A-Z][A-Z0-9_]{0,63}$"))
+              and (.service | oneline and length >= 1 and length <= 120)
+              and okcmd(.command; .name)));
+           "connectors: up to 20 rows of exactly name, ref (never hub-*), env, service and command (an absolute path first)")
+        + ck(($p.connectors | type != "array") or ([$p.connectors[]? | .ref?] | length == (unique | length)); "connectors: a ref listed twice")
+      else [] end)
+    # logs (harbor#1278): the age key of the loader. Without it a laptop seals nothing and the logs get nothing from it.
+    + (if $p | has("logs") then
+        ($p.logs | if type != "object" then ["logs: not an object"] else closed(["recipient"]) + need(["recipient"]) end)
+        + ck(($p.logs.recipient // 0) | agerecipient; "logs.recipient: not an age X25519 recipient (age1...)")
+      else [] end)
     + need(["schema","hub","serial","issued","core","rollout","approval","silent_days"])
     + ck($p.schema == 1; "schema: only 1 is known")
     + ck(($p.hub // 0) | kebab; "hub: not a kebab id")
@@ -88,7 +127,7 @@ check_policy() {
       ) | add // [])
     + ck((($p.rules // []) | map(.id) | length == (unique | length)); "rules: duplicate id")
     + (($p.packs // []) | map(ck((.id // 0) | kebab; "packs: bad id") + ck((.commit // 0) | hex(40); "packs: bad commit")) | add // [])
-    + (($p.hooks // []) | map(ck((.pack // 0) | kebab; "hooks: bad pack") + ck((.sha256 // 0) | hex(64); "hooks: bad sha256") + ck(((.path // "") | type == "string" and test("^[A-Za-z0-9._/-]+$") and (contains("..") | not)); "hooks: bad path")) | add // [])
+    + (($p.hooks // []) | map(ck((.pack // 0) | kebab; "hooks: bad pack") + ck((.sha256 // 0) | hex(64); "hooks: bad sha256") + ck(((.path // "") | type == "string" and test("^[A-Za-z0-9._/-]+$") and (contains("..") | not) and (test("^/|//|(^|/)\\.(/|$)") | not)); "hooks: bad path")) | add // [])
     + ck((($p.revoked // []) | type == "array" and all(.[]; login)); "revoked: needs logins")
     # Hosts the sandbox may reach beyond the core and member lists. Never one that admits a relay: the agent must not reach a session.
     + (if $p | has("hosts") then
@@ -128,15 +167,24 @@ check_event() {
      request: ["id","rule","tier","target","outcome"],
      check: ["check","outcome"],
      token: ["days_left","outcome"],
-     support: ["id","reason","outcome"]}[$kind];
+     support: ["id","reason","outcome"],
+     activity: ["tool","verb_class","verdict","count"],
+     session: ["outcome","count"]}[$kind];
   def one:
     . as $e
     | if type != "object" then ["event is not an object"]
       elif (($e.kind // "") | inset("kind")) | not then ["kind: not in the vocabulary"]
       else shape($e.kind) as $k
-        | closed(["v","kind","ts","member"] + $k) + need(["v","kind","ts","member"] + $k)
+        | closed(["v","kind","ts","member"] + $k + (if $e.kind == "heartbeat" then ["sealed"] else [] end)) + need(["v","kind","ts","member"] + $k)
+        + (if $e | has("sealed") then ck($e.sealed | sealed; "sealed: not an age file to an X25519 key: the laptop id never travels in clear") else [] end)
         + ck($e.v == 1; "v: only 1 is known")
         + ck(($e.ts // 0) | utc and test("T[0-9]{2}:00:00Z$"); "ts: not coarsened to the hour")
+        # D4: activity and session are counts per person per day, so their ts is the day
+        + (if $e.kind == "activity" or $e.kind == "session" then ck(($e.ts // "") | test("T00:00:00Z$"); "ts: not coarsened to the day") else [] end)
+        + (if $e.kind == "session" then ck($e.outcome == "started" or $e.outcome == "ended"; "outcome: a session is started or ended") else [] end)
+        + (if $e | has("tool") then ck($e.tool | inset("tool"); "tool: not in the vocabulary") else [] end)
+        + (if $e | has("verb_class") then ck($e.verb_class | inset("verb_class"); "verb_class: not in the vocabulary") else [] end)
+        + (if $e | has("verdict") then ck($e.verdict | inset("verdict"); "verdict: not in the vocabulary") else [] end)
         + ck(($e.member // 0) | login; "member: not a login")
         + (if $e | has("rule") then ck($e.rule | kebab; "rule: not a kebab id") else [] end)
         + (if $e | has("check") then ck($e.check | kebab; "check: not a kebab id") else [] end)
@@ -154,6 +202,15 @@ check_event() {
   if type == "array" then map(one) | add // [] else one end' "$1"
 }
 
+# check_board <file>: a comment's batch as the board may hold it. activity and session (D9) never travel in clear: colleagues would see
+# each other's tool-call counts (legal/dpia.md R10). They ride inside the heartbeat's sealed field only.
+check_board() {
+  _cbe="$(check_event "$1")" || return 1
+  jq --argjson ev "$_cbe" '$ev + ((if type == "array" then . else [.] end)
+    | map(select(type == "object" and (.kind == "activity" or .kind == "session")))
+    | if length > 0 then ["kind: activity and session travel sealed, never in clear on the board"] else [] end)' "$1"
+}
+
 check_manifest() {
   jq "$JQ_DEFS"'
   . as $x
@@ -163,8 +220,8 @@ check_manifest() {
   + ck(($x.id // 0) | kebab; "id: not a kebab id")
   + ck((($x.version // "") | type == "string" and test("^[0-9]+\\.[0-9]+(\\.[0-9]+)?$")); "version: not N.M or N.M.P")
   + ck((($x.harbor_version // "") | type == "string" and test("^(>=|<=|>|<|=)?[0-9]+(\\.[0-9]+)?(,(>=|<=|>|<|=)?[0-9]+(\\.[0-9]+)?)*$")); "harbor_version: not the pack grammar")
-  + ck(($x.provides | type == "array" and length > 0 and all(.[]; . == "skill" or . == "hook" or . == "script")); "provides: skill, hook or script")
-  + (($x.files // []) | map(ck(((.path // "") | type == "string" and test("^[A-Za-z0-9._/-]+$") and (contains("..") | not)); "files: bad path") + ck((.sha256 // 0) | hex(64); "files: bad sha256")) | add // [])' "$1"
+  + ck(($x.provides | type == "array" and length > 0 and all(.[]; . == "skill" or . == "hook" or . == "script" or . == "rule")); "provides: skill, hook, script or rule")
+  + (($x.files // []) | map(ck(((.path // "") | type == "string" and test("^[A-Za-z0-9._/-]+$") and (contains("..") | not) and (test("^/|//|(^|/)\\.(/|$)") | not)); "files: bad path") + ck((.sha256 // 0) | hex(64); "files: bad sha256")) | add // [])' "$1"
 }
 
 check_tiers() {
@@ -181,13 +238,13 @@ check_tiers() {
 }
 
 verb="${1:-}"; [ -n "$verb" ] || usage
-case "$verb" in --help|-h) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
+case "$verb" in --help|-h) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
 file="${2:-}"
 [ "$verb" = tiers ] && [ -z "$file" ] && file="$HERE/../contracts/risk-tiers.tsv"
 [ -n "$file" ] || usage
 [ -r "$file" ] || { log_fail "cannot read $file"; log_nofix "name a readable file"; log_end || :; exit 2; }
 case "$verb" in
-  policy|event|manifest)
+  policy|event|board|manifest)
     jq -e . "$file" >/dev/null 2>&1 || { log_fail "$file is not JSON"; log_nofix "the format is contracts/hub.md"; log_end || :; exit 1; }
     # a check that crashes must not read as clean
     out="$("check_$verb" "$file")" || { log_fail "the $verb check failed to run"; log_nofix "the jq error is above"; log_end || :; exit 2; }

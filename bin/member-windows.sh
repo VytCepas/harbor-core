@@ -25,6 +25,8 @@ WSL_DISTRO=Ubuntu
 # W4: the managed root as WSL sees it, in the shortcut's command line.
 WSL_SUPPORT='/mnt/c/Program Files/ClaudeCode/harbor/bin/member-support.sh'
 SHORTCUT='Microsoft\Windows\Start Menu\Programs\Harbor Support.lnk'
+# Where --setup notes the boot it asked for a restart on, so a second ask after that boot is a failure and not a loop.
+RESTART_FLAG='harbor-setup-restart.txt'
 # The ledger is the one file a member appends to. A re-run must keep its records, so it is created only when absent.
 SINK_RE='^harbor/MEMORY/OBSERVABILITY/[^/]*/guard-decisions\.jsonl$'
 
@@ -124,9 +126,19 @@ win_setup() { # <pin> <member> <hub> <login> <signers> <bootstrap>
     "\$distro = '$WSL_DISTRO'" \
     "\$inner = '$WSL_BASE/setup/member-wsl-setup.sh'" \
     "\$held = @(); try { \$held = @(& wsl.exe --list --quiet) -replace \"\`0\", '' | ForEach-Object { \$_.Trim() } } catch { \$held = @() }" \
-    "if (\$held -notcontains \$distro) { & wsl.exe --install --distribution \$distro --no-launch; if (\$LASTEXITCODE -ne 0) { Write-Error \"harbor: wsl --install stopped with exit \$LASTEXITCODE\"; exit 1 } }" \
+    "\$flag = Join-Path \$env:ProgramData '$RESTART_FLAG'" \
+    "function BootStamp { try { (Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime.ToString('o') } catch { '' } }" \
+    "function Restarted { \$b = BootStamp; if (-not \$b -or -not (Test-Path \$flag)) { return \$false }; \$w = Get-Content \$flag -TotalCount 1; return [bool](\$w -and \$w -ne \$b) }" \
+    "# 3010 is ERROR_SUCCESS_REBOOT_REQUIRED and 0x80070BC2 is the same as an HRESULT, read as an Int32. Both mean: installed, restart first." \
+    "if (\$held -notcontains \$distro) { & wsl.exe --install --distribution \$distro --no-launch; \$irc = \$LASTEXITCODE; if (\$irc -ne 0 -and \$irc -ne 3010 -and \$irc -ne -2147023422) { Write-Error \"harbor: wsl --install stopped with exit \$irc\"; exit 1 } }" \
     "& wsl.exe -d \$distro -u root --exec /bin/true" \
-    "if (\$LASTEXITCODE -ne 0) { Write-Output 'harbor: WSL needs a restart to finish. Restart Windows, then run this same script again.'; exit 3010 }"
+    "if (\$LASTEXITCODE -ne 0) {" \
+    "  # A restart already asked for and taken, and still no distro: asking again would loop for ever (--no-launch can leave it installed, not registered)." \
+    "  if (Restarted) { Write-Error \"harbor: Windows restarted, but \$distro is still not registered, and another restart will not change that. Call the admin.\"; exit 1 }" \
+    "  Set-Content -Encoding ASCII \$flag (BootStamp)" \
+    "  Write-Output 'harbor: WSL needs a restart to finish. Restart Windows, then run this same script again.'; exit 3010" \
+    "}" \
+    "Remove-Item -Force \$flag -ErrorAction SilentlyContinue"
   printf "Put 'setup\\member-bootstrap.sh' '%s'\n" "$(base64 < "$6" | tr -d '\n')"
   printf "Put 'setup\\hub-signers' '%s'\n" "$(base64 < "$5" | tr -d '\n')"
   printf "Put 'setup\\member-wsl-setup.sh' '%s'\n" "$(win_inner "$1" "$2" "$3" "$4" | base64 | tr -d '\n')"
@@ -158,6 +170,7 @@ win_uninstall() {
     "Remove-Item -Force (Join-Path \$desktop 'Harbor setup.lnk') -ErrorAction SilentlyContinue" \
     "Remove-Item -Force (Join-Path \$desktop 'Harbor support.lnk') -ErrorAction SilentlyContinue" \
     "Remove-Item -Force (Join-Path \$env:ProgramData '$SHORTCUT') -ErrorAction SilentlyContinue" \
+    "Remove-Item -Force (Join-Path \$env:ProgramData '$RESTART_FLAG') -ErrorAction SilentlyContinue" \
     "Remove-Item -Force (Join-Path \$base 'managed-settings.json') -ErrorAction SilentlyContinue" \
     "Remove-Item -Force (Join-Path \$base 'harbor-confinement') -ErrorAction SilentlyContinue" \
     "Remove-Item -Recurse -Force (Join-Path \$base 'harbor') -ErrorAction SilentlyContinue" \

@@ -47,7 +47,7 @@ def rule: type == "object" and ((keys - ["id","label","tier","target","tools","w
 def hook: type == "object" and (.pack | kebab) and (.sha256 | type == "string" and test("^[0-9a-f]{64}$"))
   and (.path | type == "string" and test("^[A-Za-z0-9._/-]+$") and (contains("..") | not) and (startswith("/") | not));
 def ok: type == "object"
-  and ((keys - ["schema","hub","serial","issued","core","rollout","approval","silent_days","tiers","rules","packs","hooks","revoked","support","hosts"]) == [])
+  and ((keys - ["schema","hub","serial","issued","core","rollout","approval","silent_days","tiers","rules","packs","hooks","revoked","support","hosts","logs","connectors"]) == [])
   and .schema == 1
   and (.rollout.mode | . == "shadow" or . == "enforce")
   and ((.tiers // {}) | type == "object" and all(.[]; tier))

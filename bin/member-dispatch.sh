@@ -24,7 +24,8 @@ member_guard_table() {
 # MEMBER_READ_ROWS, the hub token's store (bin/secret's ciphertext and, on Linux and WSL, its keys; libsecret's keyrings) that no standalone writer denies (harbor#1278).
 # shellcheck disable=SC2088 # rows, not paths: admission-egress.sh reads the ~ as the home anchor
 MEMBER_READ_ROWS='~/.local/share/secret/**
-~/.local/share/keyrings/**'
+~/.local/share/keyrings/**
+//proc/**'
 member_read_rows() {
   # awk, not grep: this file sources library-admission.sh, whose rules want $FLOOR_GREP, and the generator runs before it is sourced.
   _mrr="$(awk '/^[[:space:]]*#/ { next } { while (match($0, /"Read\([^"]+\)"/)) { print substr($0, RSTART + 6, RLENGTH - 8); $0 = substr($0, RSTART + RLENGTH) } }' \
@@ -85,12 +86,27 @@ printf '%s' "$FLOOR_IN" > "$PAYLOAD"
 
 event() { sh "$HERE/hub-events.sh" record "$@" </dev/null >/dev/null 2>&1 || :; }
 
+# activity <verdict> (D9): one count per call by tool, verb class and this script's verdict, folded per day by the sender (D4).
+# The tool is mapped onto the vocabulary (an mcp__ name to mcp) and the class is floor_obs_class's literal: no byte of the call leaves.
+VOCAB="$HERE/hub-vocabulary.tsv"; [ -f "$VOCAB" ] || VOCAB="$HERE/../contracts/hub-vocabulary.tsv"
+activity() {
+  _at="$TOOL"
+  case "$_at" in ''|*[!A-Za-z0-9_]*) _at=other ;; esac
+  if ! awk -F'\t' -v t="$_at" '$1 == "tool" && $2 == t { f = 1 } END { exit !f }' "$VOCAB" 2>/dev/null; then
+    case "$_at" in mcp__*) _at=mcp ;; *) _at=other ;; esac
+  fi
+  _ac=na
+  if [ "$TOOL" = Bash ]; then _xo=other; floor_obs_class "$(floor_field '.tool_input.command')" 2>/dev/null || :; _ac="$_xo"; fi
+  event activity tool="$_at" verb_class="$_ac" verdict="$1" count=1
+}
+
 decide() { # <decision> <reason>: the only output of this script
+  activity "$1" || :
   "$JQ" -cn --arg d "$1" --arg r "$2" \
     '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$d,permissionDecisionReason:$r}}'
   DECIDED=1; exit 0
 }
-stay_silent() { DECIDED=1; exit 0; }
+stay_silent() { activity "${1:-allow}" || :; DECIDED=1; exit 0; }   # [verdict]: allow, or shadow when a rule fired and was only recorded
 
 # guard_target <guard>: the closed word a board request shows for a core rule (contracts/hub-vocabulary.tsv).
 guard_target() {
@@ -297,7 +313,7 @@ $(awk -F'\t' '$3 == "fixed" { print; exit }' "$FIRED")
 EOF
     approval_or_deny "$LABEL"
   fi
-  [ -z "$ID" ] || event refusal rule="$ID" tier="$TIER" target="$TARGET" count=1
+  [ -z "$ID" ] || { event refusal rule="$ID" tier="$TIER" target="$TARGET" count=1; stay_silent shadow; }
   stay_silent
 fi
 

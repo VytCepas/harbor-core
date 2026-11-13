@@ -15,8 +15,8 @@ One private repo owned by the company's GitHub organisation. It holds the signed
 ## 1. Create the repo
 
 1. In the organisation, create a **private** repo, for example `harbor-hub`. Make it from the scaffold: copy `templates/hub/` of harbor into a new folder, `git init`, commit, push. The scaffold's `README.md` repeats the first-day steps below.
-2. Do not add anything the gate does not know. `sh bin/hub-gate.sh <folder>` refuses a file that is not a policy, key, pack or description, which is how a member list or a note with a client's name stays out.
-3. Set the repository variables and secret the gates and workflows read (`patches/hub/hub-gates.patch.md` lists them): `HARBOR_CORE_REPO`, `HARBOR_CORE_SHA`, `GITLEAKS_SHA256`, the secret `HUB_LEAKS_TSV` (the company's own names), and `HUB_MEMBERS` (the logins you expect).
+2. Do not add anything the gate does not know. `sh bin/hub-gate.sh <folder>` refuses a file that is not a policy, key, pack or description, which is how a member list or a note with a client's name stays out. It also runs `bin/pack.sh`'s own install refusals over every `packs/<id>/` (front matter, a skill or command named like core's, a symlink, a register file), so a pack every laptop would skip is red before you sign it.
+3. Set the repository variables and secret the gates and workflows read (`patches/hub/hub-gates.patch.md` lists them): `HARBOR_CORE_REPO`, `HARBOR_HUB_CORE_SHA`, `GITLEAKS_SHA256`, the secret `HUB_LEAKS_TSV` (the company's own names), and `HUB_MEMBERS` (the logins you expect).
 
 ## 2. Roles
 
@@ -52,7 +52,7 @@ To raise the pin (`core.commit` and `core.contract`):
 
 1. Test the harbor-core release on a pilot laptop first. The pin is a commit you tested, not the latest.
 2. Set `core.commit` to the 40-hex commit and `core.contract` to that commit's `CONTRACT_VERSION`. A pin may not rise while a pack's `harbor_version` rejects the new contract.
-3. Raise the repository variable `HARBOR_CORE_SHA` to the same commit by hand, so the gate that judges the next change is the release you tested.
+3. Raise the repository variable `HARBOR_HUB_CORE_SHA` to the same commit by hand, so the gate that judges the next change is the release you tested.
 4. Sign, and merge.
 
 The policy reaches laptops at session start. The floor code under the managed root changes only when `bin/member-update.sh` runs there, or IT reinstalls. The updater verifies the policy signature itself, refuses a serial lower than the last applied, refuses a commit whose contract is not the pinned one, checks the floor with `member-integrity.sh`, and rolls back on any failure. Its schedule (`templates/member/`) is a template that nothing installs: it needs your explicit yes, as a recurring job that rewrites root-owned code. Until then, every release needs IT on every laptop, and laptops run the new policy over the old floor in between.
@@ -109,3 +109,60 @@ Say this before the pilot, in your own words, and again to each new member:
 | `silent <login>` | No valid heartbeat from that member for `silent_days` days. A laptop that is off, a holiday, an expired token and a stopped harbor look the same | Ask the person; do not infer |
 | Everyone silent on one morning | An outage on the hub side, or a bad policy every laptop refused | Read the digest of the same morning and the last run of every workflow before writing to anyone |
 | `invalid-comments` above zero in the digest | Something posted to a heartbeat issue that was not a valid event, or a comment on a member's issue by someone else | Open the heartbeat issue; the invalid comment is counted, never shown in the digest |
+
+## 10. Members' own tools (harbor#1278)
+
+Each colleague's own skills, agents and commands live in a private repo `<org>/tools-<login>`, in the hub's own organisation. The person writes it, you read it. Their laptop keeps `~/.claude/skills`, `agents` and `commands` in step with it: a pull at session start, a push at the end of a turn (`bin/member-tools.sh`, check `member.tools-sync`). Hooks and settings never sync; a name a hub pack or core skill holds is skipped and told to the person.
+
+### Create a colleague's repo (one command each)
+
+```sh
+harbor hub tools create <login> --hub <org>/<hub repo> --policy policy.json     # or --admin <login> for each reader
+```
+
+It makes `<org>/tools-<login>` private, gives the person write and every admin read (`--policy` takes the approvers of the signed policy), and refuses where the organisation's default repository permission is not `none`, because every member would then read every personal repo. Fix that once, as an owner: `gh api -X PATCH orgs/<org> -f default_repository_permission=none`. It is safe to run twice. Check: `gh api repos/<org>/tools-<login>/collaborators --jq '.[] | [.login, .role_name] | @tsv'`.
+
+### The token: today's member token cannot reach it
+
+The token in the install guide (`docs/how-to/member-install.md`) names **the hub only**, with Contents read. GitHub gives a fine-grained token no access to a repo outside its list, so with that token the personal repo answers as missing, and the sync does nothing (it says so and changes nothing). The member's token needs, in one token, resource owner the organisation, **repositories: the hub and `tools-<login>`**, permissions **Issues: read and write** and **Contents: read and write**. Contents write on the hub stays harmless while the member is at **Read** on it (section 2): a token never exceeds its person's role. GitHub ties a token to the person, so you cannot edit it for them: with the member beside you, they open the token in GitHub, Settings, Developer settings, Fine-grained tokens, add the repository and the permission, and save. Where the organisation requires approval, you approve the changed request as an owner (Organization settings, Personal access tokens, Pending requests; the REST route is `POST /orgs/<org>/personal-access-token-requests/<id>` with `action=approve`, written from memory of GitHub's docs and not run). No new secret is stored: the laptop reads the same `hub-token`, which the floor already keeps from the agent. A token that lapses stops the sync and the board together.
+
+### Take a proposed tool into the hub
+
+A member's agent runs `member-tools.sh propose skills/<name>`, and the laptop opens an issue on the hub repo `tool proposal skills/<name> from <login>` naming `<org>/tools-<login>` and the commit. It writes nothing else to the hub. Only a skill can move to a hub pack. You:
+
+1. Read the skill at that commit: `gh repo clone <org>/tools-<login> /tmp/tools-<login> -- --no-checkout && git -C /tmp/tools-<login> checkout <commit>`.
+2. Copy it into a pack and run the gate: `harbor hub tools admit skills/<name> --hub-dir <hub checkout> --pack <pack id> --from /tmp/tools-<login>`. It lists the file in `extension.json` and runs `bin/hub-gate.sh`; a red gate (a `hooks:` key, a front-matter key outside the allowlist, a core name, a symlink, a leak, a secret) puts the checkout back and exits 1. Tell the colleague what it said.
+3. List the pack's commit under `packs` in `policy.json`, raise `serial`, `harbor hub sign`, open the pull request, merge.
+
+Once the pack is signed in, the laptops install the hub's copy and the personal one is skipped by name; the person may delete theirs.
+
+### Staff are told
+
+The repo is readable by the admins. Say so with section 8.
+
+## 11. Connectors: a service a colleague's API key may reach (harbor#1278, control `member.connectors`)
+
+A colleague's agent never holds an API key. A key reaches **one MCP server** that Claude Code starts itself, through the managed launcher, and the agent calls that server's tools. You declare the server once, in the signed policy.
+
+1. **Install the server as root, in a folder named for the connector.** Each connector has its own folder `/opt/company-mcp/<name>/`, where `<name>` is the connector's `name` in the policy. The folder and every folder above it must be owned by root and not writable by the colleague; the launcher checks that for the path **as written, at every link hop, and after resolution**, and checks every absolute word of `command` the same way (a link whose own folder the colleague can write is refused even when its target is root's). `command` is a closed grammar, the same at all three layers. **`command[0]`** is an absolute path: a file inside that folder, or `bun`, `node` or `python3` (written or resolved name) **written as a file directly in `/usr/bin`, `/usr/local/bin` or `/bin`, or inside the connector's folder**: an interpreter reached through a link anywhere else (a `~/venv/bin/python3` that leads to `/usr/bin/python3`) is refused though its target is root's, because the link's folder is the colleague's to write and a swap would run another program with the key. For an interpreter the rules always apply: `bun` needs `--no-install` as the next word, then an entry file inside the folder; `node` and `python3` need the entry file inside the folder as the next word. **Every later word** is exactly one of: (a) an absolute path that, links followed, is inside the folder; (b) a plain token, with no `/` and not starting with `.` or `-`; (c) a flag `--name` or `--name=value`, the value having no `/` and not starting with `.`. Nothing else: `-x`, `./x`, `home/x`, `--cwd=/x` are refused. The flags `-e -m -c -r -p --require --import --preload --eval --print` stay refused, as do a shell, `bunx`, `deno`, and `x`, `run`, `install`, `add`, `pm`, `create` after `bun`. A relative word would be resolved against `/` (the launcher runs the server in `/`), so the launcher also refuses a plain token or flag value that names something that exists there (`tmp`, `etc`, `home`). `hub-format.sh` refuses it when you sign, the composer when it writes `managed-mcp.json`, and the launcher when it starts. A wrapper (`env`, `setsid`, `stdbuf`, `taskset`, `flock`, `nohup`), a package runner (`npx`, `bunx`, `uvx`, `pipx`) or a shell would load code from a place the agent can write (`~/.cache/uv`, `~/.bun`, `node_modules`, a file under its home) and run it with the key, so none is accepted.
+
+   **The jail (the class, not one path at a time).** Whatever the command says, the launcher starts the server inside a bubblewrap view (`bwrap`, Linux and WSL) that contains only the root's own trees, read-only: `/usr`, `/bin` `/sbin` `/lib*`, `/etc`, the connector's folder `/opt/company-mcp/<name>/`, a private `/proc` in its own process namespace, `/dev`, and an empty `/tmp`. There is no `/home`, `/root`, `/mnt`, `/var`, `/run/user` or `/dev/shm`, so a file the colleague planted (a venv's `home =` standard library, a `NODE_PATH` or `sys.path` entry, a plugin folder, `~/.cache`, a file in `/tmp`) does not exist for the server to load. The network is shared. The server's working folder is `/` and `HOME` and the `XDG_*` folders are `/`. **A server can therefore use only files under `/usr`, `/etc` and its own folder**, and writes only to its own empty `/tmp`: ship everything it needs in its folder. **At every start the launcher also scans the bound trees as the member** (`find -writable` over `/usr`, `/etc` and the connector's folder, `/etc/claude-code` excepted because it is masked) **and refuses, naming the path, if anything in them is writable by the colleague**: a laptop where `/usr/local` was handed to the user (`npm -g`, Homebrew, `pip`) would put their code inside the view. Fix such a laptop's ownership, or ship the connector's own copy in its folder. **Without a working bwrap the server does not start** (the launcher refuses; it never runs bare), the same stance as the member sandbox. On macOS there is no bwrap: the launcher uses Seatbelt (`sandbox-exec`) with a deny-list of `/Users`, `/Volumes` and the temporary folders, which is weaker than the Linux view and was not exercised by the suites. The view is derived, not listed by guess: the sim finds with `find -writable` that nothing under the bound trees is writable by the member, and lists the places it leaves out.
+
+   **Recommended pattern for a TypeScript or Python connector.** Install it as root into its folder with its dependencies installed there, as root. For TypeScript declare `["/usr/local/bin/bun", "--no-install", "/opt/company-mcp/acme/src/index.ts"]`: **`--no-install` is required** for `bun`, because without it bun fetches a missing package into `~/.bun`, which the colleague can write. `node` and `python3` need no equivalent flag: neither fetches a package by itself, and `-m`, `-c`, `-e` and `-r` are refused. **The server runs with its working directory `/` and `HOME` and the `XDG_*` folders set to `/`**, root-owned places, so it reads no `bunfig.toml`, `.env`, `.npmrc` or `~/.config` of the colleague's. That was proved with bun 1.4.4 on Linux: bun reads `bunfig.toml` (and its `preload`) and `.env` from the working directory and nowhere else it was tried (not `$HOME`, not `XDG_CONFIG_HOME`, not beside the entry file), and `--no-install` makes a missing package an error. A server that needs a writable `HOME` must keep its state elsewhere, in a folder you make for it. **Python.** A python that finds a `pyvenv.cfg` beside it, or one folder up, loads that venv's `site-packages`, and a `.pth` file there runs code. The launcher refuses an interpreter with a `pyvenv.cfg` beside it or one folder up, **unless the interpreter is inside the connector's folder** (and so root-owned): ship Python dependencies as an admin venv there, `/opt/company-mcp/<name>/venv/bin/python3` with its `pyvenv.cfg`, created and owned by root. The `home =` line of that `pyvenv.cfg` must be `/usr/bin`, `/usr/local/bin` or `/bin` (the base python's folder): a base python anywhere else, such as one `uv` installed under the colleague's home, would load its standard library from there, and the launcher refuses it. The launcher cannot judge code a server loads at run time, but the jail above means a `NODE_PATH`, a `sys.path` entry or a plugin directory under the colleague's home does not exist for the server; keep what it loads in its own folder.
+
+2. **Add a row to `connectors` in `policy.json`**, raise `serial`, `harbor hub sign`, open the pull request, merge (section 4):
+
+   ```json
+   "connectors": [
+     {"name": "acme", "ref": "acme-crm", "env": "ACME_API_KEY", "service": "Acme CRM",
+      "command": ["/opt/company-mcp/acme-server", "--stdio"]}
+   ]
+   ```
+
+   `name` is the server's name in Claude Code. `ref` is the store name of the key: lower case, never `hub-*` (the hub token), one ref per row. `env` is the variable the server reads its key from; names that steer a program (`PATH`, `LD_*`, `NODE_*`, `*PROXY*`) are refused. `service` is the words the colleague sees when they enter the key. `command` is the server: an absolute path first, no `..`, no `${`. `hub-format.sh` refuses a row that breaks any of this, and the laptop composes it again.
+3. **It reaches a laptop** at the next install or update (`member-update.sh`): `<managed root>/connectors.json` (what the launcher believes) and `managed-mcp.json` beside the managed settings (`/etc/claude-code/managed-mcp.json` on Linux and WSL), both root's. Until then nothing changes.
+4. **Tell the colleague** to enter the key (docs/how-to/member-install.md, "A colleague's API key").
+
+**This takes exclusive control of MCP on the laptop (Claude Code's `managed-mcp.json`).** While any connector is declared, servers a person adds, project `.mcp.json` servers and plugin servers do not load, and `allowedMcpServers` stops mattering for them. **claude.ai connectors keep loading:** the install and the updater set `allowAllClaudeAiMcps: true` in the managed settings whenever the policy declares a connector (operator decision, 2026-11-12), and leave it unset otherwise. With no `connectors` row neither file is written, the key is absent and MCP is as it was.
+
+To remove a connector: drop its row, raise `serial`, sign, merge, and have the colleague run `harbor access revoke <ref>` or ask you to remove the key at the service. The old key stays in their store until they do.

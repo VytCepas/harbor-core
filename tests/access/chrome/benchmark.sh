@@ -34,7 +34,7 @@ pw "-s=$SESSION" open "$URL" "--config=$BH/cfg.json" >"$BH/open.out" 2>&1 || { c
 
 # before: the launcher's loop and the shell agent, copied without the .ts so the loop is what serves
 cp "$ROOT/bin/access-chrome-mcp.py" "$ROOT/bin/access-browser-agent.sh" "$ROOT/bin/library-log.sh" "$ROOT/bin/scope-roots.sh" "$BH/legacy/bin/"
-cp "$ROOT/contracts/browser-agent-hosts.txt" "$ROOT/contracts/roots.tsv" "$BH/legacy/contracts/"
+cp "$ROOT/contracts/browser-agent-hosts.txt" "$ROOT/contracts/browser-script.tsv" "$ROOT/contracts/roots.tsv" "$BH/legacy/contracts/"
 DRV="$HERE/benchmark-driver.ts"
 OLD="$(bun "$DRV" before "$OLD_N" click REF -- python3 -I "$BH/legacy/bin/access-chrome-mcp.py")"
 NEW="$(bun "$DRV" after "$N" click REF -- python3 -I "$ROOT/bin/access-chrome-mcp.py")"
@@ -47,6 +47,7 @@ a=\$(perl -MTime::HiRes=time -e 'printf "%d\n", time() * 1000')
 bunx @playwright/cli@$PIN "\$@"; rc=\$?
 b=\$(perl -MTime::HiRes=time -e 'printf "%d\n", time() * 1000')
 v=other; for x in "\$@"; do case "\$x" in snapshot|click|eval|tab-list) v=\$x ;; esac; done
+case "\$*" in *"- Page URL: "*) v=script ;; esac   # a click runs as a script through eval (harbor#1507)
 printf '%s %s\n' "\$v" \$((b - a)) >> "$BH/cli.log"
 exit \$rc
 EOF
@@ -62,7 +63,7 @@ i=0; while [ "$i" -lt "$SPLIT_N" ]; do HARBOR_ACCESS_PLAYWRIGHT_CLI="$BH/cli-tim
 med() { sort -n | awk '{ a[NR] = $1 } END { if (NR) print a[int((NR + 1) / 2)]; else print 0 }'; }
 cli() { awk -v v="$1" '$1 == v { print $2 }' "$BH/cli.log" | med; }
 # tab-list is the last SPLIT_N rows; click's own snapshot/click/eval rows are the first ones
-SNAP_MS="$(cli snapshot)"; CLICK_MS="$(cli click)"; EVAL_MS="$(cli eval)"; AGENT_MS="$(med < "$BH/agent.log")"
+SNAP_MS="$(cli snapshot)"; CLICK_MS="$(cli script)"; EVAL_MS="$(cli eval)"; AGENT_MS="$(med < "$BH/agent.log")"
 TABLIST_CLI_MS="$(cli tab-list)"
 TABLIST_SOCK_MS="$(bun "$DRV" tab-list-after "$N" tab_list -- python3 -I "$ROOT/bin/access-chrome-mcp.py" | jq -r .median)"
 TIMINGS="$BH/tmp/harbor-browser/$SESSION/.timings.tsv"
@@ -74,7 +75,7 @@ echo "benchmark: one click on a local page, headless Chromium, pinned @playwrigh
 echo
 printf '  %-52s %8s\n' "BEFORE  per call, through the MCP launcher + shell agent (n=$OLD_N)" "${B_MED} ms"
 printf '    %-50s %8s\n' "guard snapshot, its bunx + node CLI call" "${SNAP_MS} ms"
-printf '    %-50s %8s\n' "the click itself, its bunx + node CLI call" "${CLICK_MS} ms"
+printf '    %-50s %8s\n' "the click (a script via eval), its CLI call" "${CLICK_MS} ms"
 printf '    %-50s %8s\n' "settle (fixed sleep before the lost-tab probe)" "1000 ms"
 printf '    %-50s %8s\n' "lost-tab probe, its bunx + node CLI call" "${EVAL_MS} ms"
 printf '    %-50s %8s\n' "shell, awk, mktemp, python (the rest)" "$((AGENT_MS - SNAP_MS - CLICK_MS - EVAL_MS - 1000)) ms"

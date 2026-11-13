@@ -75,6 +75,7 @@ t_eq "the role comes from the arguments" alice-gh "$(jq -r .env.HARBOR_MEMBER_LO
 t_has "root takes the tree" "$(cat "$CALLS")" "chown -R root:root $MROOT"
 t_has "root takes the settings" "$(cat "$CALLS")" "chown root:root $MFILE"
 t_exit "the confinement marker sits beside the settings" 0 test -f "$SYS/harbor-confinement"
+t_exit "the company law sits beside the settings, where Claude Code loads it in every session" 0 cmp -s "$T_ROOT/contracts/member-law.md" "$SYS/CLAUDE.md"
 t_hasnt "it never turns the P3 skip on" "$(cat "$SYS/harbor-confinement")" 'skip=covered'
 t_has "CONTROL: the tree was chowned" "$(cat "$CALLS")" 'chown -R'
 t_eq "the settings land after the files, so they never name a missing script (M9)" 0 "$(grep -c settings-before-files "$CALLS")"
@@ -136,6 +137,38 @@ t_exit "and the shell line" 1 test -e "$SP"
 HARBOR_MEMBER_OS=Darwin; export HARBOR_MEMBER_OS; clean; go
 t_exit "macOS has no package manager to call, so no rule" 1 test -e "$SR"
 HARBOR_MEMBER_OS=Linux; export HARBOR_MEMBER_OS
+
+t_section "the logs id and the notice marker (harbor#1278, Log scope level 2; legal/dpia.md R11)"
+clean; go
+IDF="${MROOT%/*}/harbor-ids/alice.id"
+t_eq "CONTROL: a clean run, to the token" 4 "$RC"
+t_eq "one 32-hex id lands beside the managed root" 1 "$(grep -cE '^[0-9a-f]{32}$' "$IDF")"
+ID1="$(cat "$IDF")"
+t_has "root's" "$(cat "$CALLS")" "chown -R root:root ${MROOT%/*}/harbor-ids"
+t_eq "the member can read it" 644 "$(fs_mode "$IDF")"
+t_eq "it is not in member.conf" 0 "$(grep -c "$ID1" "$MROOT/member.conf" || true)"
+t_eq "no receipt marker without --notice-received" no "$([ -e "$MROOT/notice-received" ] && echo yes || echo no)"
+go
+t_eq "a re-run keeps the id" "$ID1" "$(cat "$IDF")"
+RC=0; sh "$CORE/bin/member-install.sh" --user alice --uninstall >"$OUT" 2>&1 </dev/null || RC=$?
+t_eq "leaving exits 0" 0 "$RC"
+t_eq "and leaves the id, which is the account's" "$ID1" "$(cat "$IDF" 2>/dev/null)"
+go
+t_eq "a reinstall keeps it: never rotated" "$ID1" "$(cat "$IDF")"
+go --notice-received
+t_eq "--notice-received writes the marker" yes "$([ -f "$MROOT/notice-received" ] && echo yes || echo no)"
+t_exit "...inside the floor hash, which still checks" 0 env HARBOR_MEMBER_ROOT="$MROOT" sh "$MROOT/bin/member-integrity.sh" check
+go
+t_eq "a re-run with neither flag keeps it" yes "$([ -f "$MROOT/notice-received" ] && echo yes || echo no)"
+go --notice-withdrawn
+t_eq "--notice-withdrawn removes it" no "$([ -e "$MROOT/notice-received" ] && echo yes || echo no)"
+t_eq "...and keeps the id" "$ID1" "$(cat "$IDF")"
+go --notice-received --notice-withdrawn
+t_eq "both at once is a usage error" 2 "$RC"
+printf 'alice-gh\n' > "$IDF"; go
+t_eq "a file that is not an id is replaced by a fresh one" 1 "$(grep -cE '^[0-9a-f]{32}$' "$IDF")"
+clean; go
+t_eq "another laptop account gets another id" no "$([ "$(cat "$IDF")" = "$ID1" ] && echo yes || echo no)"
 
 t_section "the user tier runs as the member"
 clean; go
@@ -205,7 +238,7 @@ ssh-keygen -q -t ed25519 -N '' -C hub -f "$T_TMP/hubkey"; KEEP_SIGNERS="$SIGNERS
 printf 'hub namespaces="harbor-hub" %s\n' "$(cut -d' ' -f1,2 "$T_TMP/hubkey.pub")" > "$SIGNERS"
 mkpolicy() { # <serial> [key]: a signed policy adding one host and naming the hub's relay
   mkdir -p "$T_TMP/pol"; P_JSON="$T_TMP/pol/policy.json"; export P_JSON
-  jq -n --argjson s "$1" '{schema: 1, serial: $s, hosts: ["pypi.example-company.com"], support: {relay: "wss://relay.example-company.com:443"}}' > "$P_JSON"
+  jq -n --argjson s "$1" --argjson cn "${PCONN:-[]}" '{schema: 1, serial: $s, hosts: ["pypi.example-company.com"], support: {relay: "wss://relay.example-company.com:443"}} | (if $cn != [] then .connectors = $cn else . end)' > "$P_JSON"
   rm -f "$P_JSON.sig"; ssh-keygen -q -Y sign -f "${2:-$T_TMP/hubkey}" -n harbor-hub "$P_JSON" 2>/dev/null
 }
 allowed() { jq -r --arg h "$1" '.sandbox.network.allowedDomains | index($h) != null' "$MFILE"; }
@@ -233,6 +266,19 @@ clean; go; tok
 t_eq "a policy another key signed (hub-sync is stubbed to pass it): the token step ends" 0 "$RC"
 t_has "...saying root's own check refused it" "$(cat "$OUT")" 'does not verify against'
 t_eq "...and none of its hosts reach the settings" false "$(allowed pypi.example-company.com)"
+
+t_section "the policy's connectors land with the first install, inside the pin (member.connectors)"
+PCONN='[{"name":"acme","ref":"acme-crm","env":"ACME_API_KEY","service":"Acme CRM","command":["/opt/company-mcp/acme/server"]}]'
+clean; mkpolicy 3; go; tok
+t_eq "the token step finishes" 0 "$RC"
+t_eq "connectors.json in the root is the policy's list" "$(printf '%s' "$PCONN" | jq -c .)" "$(jq -c . "$MROOT/connectors.json" 2>/dev/null)"
+t_eq "managed-mcp.json beside the managed settings starts the root's launcher with ref and server" "$MROOT/bin/member-mcp-launch.sh acme-crm -- /opt/company-mcp/acme/server" "$(jq -r '.mcpServers.acme.args[3:] | join(" ")' "${MFILE%/*}/managed-mcp.json" 2>/dev/null)"
+t_exit "the floor is pinned over both" 0 env HARBOR_MEMBER_ROOT="$MROOT" sh "$MROOT/bin/member-integrity.sh" check
+t_eq "the managed settings allow the claude.ai connectors beside managed-mcp.json (allowAllClaudeAiMcps)" true "$(jq ".allowAllClaudeAiMcps" "$MFILE")"
+t_eq "the Edit tool is denied on managed-mcp.json in the settings" 1 "$(jq --arg r "Edit(/${MFILE%/*}/managed-mcp.json)" '[.permissions.deny[] | select(. == $r)] | length' "$MFILE")"
+PCONN=''; clean; mkpolicy 3; go; tok
+t_eq "with no connectors the install writes neither file" "no no" "$([ -e "$MROOT/connectors.json" ] && echo yes || echo no) $([ -e "${MFILE%/*}/managed-mcp.json" ] && echo yes || echo no)"
+t_eq "...and the settings carry no allowAllClaudeAiMcps" false "$(jq 'has("allowAllClaudeAiMcps")' "$MFILE")"
 unset P_JSON; SIGNERS="$KEEP_SIGNERS"
 
 t_section "the Windows half"
@@ -245,6 +291,8 @@ fake_ps "$PS" "$SYS"
 go --windows-out "$PS"; t_eq "after it ran, the same command goes on, to the token" 4 "$RC"
 t_has "...reading it back byte for byte" "$(cat "$OUT")" 'byte for byte'
 t_has "...and deploys" "$(cat "$CALLS")" 'deploy --apply'
+t_exit "...the company law beside the Windows settings" 0 cmp -s "$T_ROOT/contracts/member-law.md" "${MFILE%/*}/CLAUDE.md"
+t_exit "...and inside the distro, where the docs say WSL reads it" 0 cmp -s "$T_ROOT/contracts/member-law.md" "${MFILE%/*}/etc/claude-code/CLAUDE.md"
 printf x >> "$MROOT/bin/library-admission.sh"; go --windows-out "$PS"
 t_eq "a changed byte under the Windows folder is not landed" 3 "$RC"
 HARBOR_MEMBER_OS=Linux

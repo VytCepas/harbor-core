@@ -2,6 +2,7 @@
 # gate.test.sh (harbor#1278) — bin/hub-gate.sh over a signed hub made from templates/hub: it passes clean, and goes red on a planted
 # leak (including one in an untracked or ignored file), a planted secret, a bad or unsigned or replayed policy, a hook that is not the
 # file policy approved, and a file with no kind (lint-share skips one, so the gate must not; R29). A missing gitleaks is a finding.
+# And a pack bin/pack.sh would skip on every laptop (its refusals, run by the gate) is red before anyone signs it (B2).
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 . "$T_ROOT/tests/hub/fixtures/make-hub.sh"
 GATE="$T_ROOT/bin/hub-gate.sh"; H="$T_TMP/hub"
@@ -77,18 +78,54 @@ jq '.serial = 2' "$H/policy.json" > "$H/p" && mv "$H/p" "$H/policy.json"; resign
 gate "$H" --base "$T_TMP/base.json"; [ "$RC" = 0 ] && t_pass || t_fail "a changed policy at a higher serial ($OUT)"
 
 t_section "6 - packs: the hook policy approves is the file that is there"
-make_hub "$H"; mkdir -p "$H/packs/p/harbor-pack"; printf 'echo hi\n' > "$H/packs/p/harbor-pack/hook.sh"
-HS="$(. "$T_ROOT/bin/library-hub.sh"; hub_sha256 < "$H/packs/p/harbor-pack/hook.sh")"
-jq --arg h "$HS" '.packs = [{id:"p", commit:"0123456789abcdef0123456789abcdef01234567"}] | .hooks = [{pack:"p", path:"hook.sh", sha256:$h}]' "$H/policy.json" > "$H/p" && mv "$H/p" "$H/policy.json"
-jq -n --arg h "$HS" '{schema:1,id:"p",version:"1.0",harbor_version:"1",provides:["hook"],files:[{path:"hook.sh",sha256:$h}]}' > "$H/packs/p/extension.json"
+# A hook-only pack as a laptop installs one: pack.toml, and the hook under hooks/ (section 7 runs pack.sh's refusals over it).
+make_hub "$H"; mkdir -p "$H/packs/p/harbor-pack/hooks"; printf 'echo hi\n' > "$H/packs/p/harbor-pack/hooks/hook.sh"
+printf 'name = "p"\nversion = "1.0.0"\nharbor_version = ">=1"\ndescription = "a hook pack"\n' > "$H/packs/p/harbor-pack/pack.toml"
+HS="$(. "$T_ROOT/bin/library-hub.sh"; hub_sha256 < "$H/packs/p/harbor-pack/hooks/hook.sh")"
+jq --arg h "$HS" '.packs = [{id:"p", commit:"0123456789abcdef0123456789abcdef01234567"}] | .hooks = [{pack:"p", path:"hooks/hook.sh", sha256:$h}]' "$H/policy.json" > "$H/p" && mv "$H/p" "$H/policy.json"
+jq -n --arg h "$HS" '{schema:1,id:"p",version:"1.0",harbor_version:"1",provides:["hook"],files:[{path:"hooks/hook.sh",sha256:$h}]}' > "$H/packs/p/extension.json"
 resign "$H"; gate "$H"; [ "$RC" = 0 ] && t_pass || t_fail "an approved hook with its manifest ($OUT)"
-printf 'echo changed\n' > "$H/packs/p/harbor-pack/hook.sh"; gate "$H"
+printf 'echo changed\n' > "$H/packs/p/harbor-pack/hooks/hook.sh"; gate "$H"
 red "the hook file changed after approval" "is not the file policy approved"
 red "and the manifest hash no longer matches" "differs from the sha256 its manifest lists"
 make_hub "$H"; mkdir -p "$H/packs/q"; printf 'a\n' > "$H/packs/q/x"; gate "$H"
 red "a pack with no manifest" "has no extension.json"
 
-t_section "7 - usage"
+t_section "7 - packs: what pack.sh refuses at install is red here, so no pack every laptop skips is signed (B2)"
+# mkpack <id> <skill> [front-matter line]: a skill pack with pack.toml and an extension.json whose sha256s are computed here.
+mkpack() {
+  _p="$H/packs/$1/harbor-pack"; mkdir -p "$_p/skills/$2"
+  printf 'name = "%s"\nversion = "1.0.0"\nharbor_version = ">=1"\ndescription = "a fixture pack"\n' "$1" > "$_p/pack.toml"
+  printf -- '---\nname: %s\ndescription: A fixture skill.\n%s---\n\n# %s\n' "$2" "${3:+$3
+}" "$2" > "$_p/skills/$2/SKILL.md"
+  manifest "$1"
+}
+manifest() { # <id>: list every file under harbor-pack/ but pack.toml, as an admin generates it
+  ( cd "$H/packs/$1/harbor-pack" && find . -type f ! -name pack.toml | sed 's|^\./||' | LC_ALL=C sort | while IFS= read -r _f; do
+      jq -n --arg p "$_f" --arg s "$(. "$T_ROOT/bin/library-hub.sh"; hub_sha256 < "$_f")" '{path:$p,sha256:$s}'; done ) |
+    jq -s --arg i "$1" '{schema:1,id:$i,version:"1.0.0",harbor_version:">=1",provides:["skill"],files:.}' > "$H/packs/$1/extension.json"
+}
+make_hub "$H"; mkpack good fixture-skill; gate "$H"
+[ "$RC" = 0 ] && t_pass || t_fail "a pack pack.sh would install passes ($OUT)"
+make_hub "$H"; mkpack fm fixture-skill 'user-invocable: true'; gate "$H"
+red "a front-matter key outside the allowlist" "[packs]"
+t_has "...named as pack.sh names it" "$OUT" "key user-invocable is not in contracts/pack-frontmatter-keys.txt"
+make_hub "$H"; mkpack hk fixture-skill 'hooks: x'; gate "$H"
+red "a hooks: key in front matter" "has a hooks: key"
+make_hub "$H"; mkpack shadow audit-claims; gate "$H"
+red "a skill named like a core skill" "skill audit-claims shadows a core skill"
+make_hub "$H"; mkpack bn fixture-skill; mkdir -p "$H/packs/bn/harbor-pack/bin"; printf '#!/bin/sh\n' > "$H/packs/bn/harbor-pack/bin/pack.sh"
+manifest bn; gate "$H"
+red "a bin/ file named like a core command" "shadows the core command"
+make_hub "$H"; mkpack ck fixture-skill; printf '## Register\n' > "$H/packs/ck/harbor-pack/checks.md"; manifest ck; gate "$H"
+red "a register fragment, which a member laptop refuses" "checks.md composes into a core register"
+make_hub "$H"; mkpack ln fixture-skill; ln -s SKILL.md "$H/packs/ln/harbor-pack/skills/fixture-skill/alias.md"; gate "$H"
+red "a symlink" "is a symlink"
+make_hub "$H"; mkpack nt fixture-skill; rm "$H/packs/nt/harbor-pack/pack.toml"; gate "$H"
+red "no pack.toml" "no packs/nt/harbor-pack/pack.toml"
+t_eq "...in one finding" 1 "$(printf '%s\n' "$OUT" | grep -c 'packs/nt')"
+
+t_section "8 - usage"
 t_exit "no folder" 2 sh "$GATE"
 t_exit "a folder that is not there" 2 sh "$GATE" "$T_TMP/absent"
 t_exit "--help" 0 sh "$GATE" --help
