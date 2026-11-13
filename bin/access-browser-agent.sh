@@ -15,7 +15,10 @@
 #   harbor chrome front            show this session's tab (only in a window of its own tabs; never raises)
 #   harbor chrome wait-signin [s]  wait (default 300 s) while the operator signs in, then carry on
 #   harbor chrome hosts            the allow-list goto/tab-new reads: core, then the private layer
-#   harbor chrome click <ref> --force   click through an overlay ("not stable", covered)
+#   harbor chrome click <ref>      by script (contracts/browser-script.tsv): needs no paint, so a covered window takes it;
+#                                  so do dblclick, hover, check, uncheck and select; --real is the CLI's own verb
+#   harbor chrome scroll <px> [ref] | <ref>   scroll the page or an element at once, or a ref into view
+#   harbor chrome click <ref> --force   a press at its box: through an overlay ("not stable", covered)
 #   harbor chrome <verb> [args]    an allowed playwright-cli verb, in this session
 #
 # Guardrails against accidents and an injected agent's obvious moves — not a
@@ -193,7 +196,7 @@ _allowed() {
     go-back|go-forward|reload|console|resize|\
     click|dblclick|hover|fill|type|select|check|uncheck|drag|\
     press|keydown|keyup|mousemove|mousedown|mouseup|mousewheel|\
-    dialog-accept|dialog-dismiss|upload) return 0 ;;
+    dialog-accept|dialog-dismiss|upload|scroll) return 0 ;;
   esac
   return 1
 }
@@ -510,7 +513,7 @@ _pe="$(_pw_env)"
 [ -f "$HOSTS_FILE" ] || _refuse "missing host allowlist: $HOSTS_FILE" 'git checkout -- contracts/browser-agent-hosts.txt'
 # Per call, never exported: set on any other verb, it is set session-wide.
 case "$VERB" in
-  click|dblclick) ;;
+  click|dblclick|hover|check|uncheck|select) ;;
   *) [ -z "$CONFIRM" ] || _refuse "HARBOR_ACCESS_BROWSER_CONFIRM is set for '$VERB'; it confirms one click and is set on that call only, never exported" 'unset HARBOR_ACCESS_BROWSER_CONFIRM' ;;
 esac
 
@@ -700,6 +703,14 @@ OSA
     [ -n "$_me" ] || _refuse "no page in session $S to bring to the front" 'harbor chrome attach'
     # Matched by suffix: the whole URL, or after marking, the mark alone.
     _n="$(_chrome_tabs | awk -F '\t' -v u="$_me" 'substr($4, length($4) - length(u) + 1) == u' | wc -l | tr -d ' ')"
+    _own=" $(cat "$WORKDIR/$OWNED_NAME" 2>/dev/null | tr '\n' ' ') "   # a pipe: under set -e a failed < aborts
+    # Several tabs on our URL, one of them ours by id (the operator had the same page open: 9 of
+    # 30 front failures, 2026-11-10..12): that one, by id, with no mark.
+    _tid=''
+    if [ "$_n" -gt 1 ]; then
+      _tid="$(_chrome_tabs | awk -F '\t' -v u="$_me" -v own="$_own" 'substr($4, length($4) - length(u) + 1) == u && index(own, " " $5 " ") > 0 { print $5 }')"
+      case "$_tid" in ''|*[!0-9]*) _tid='' ;; *) _n=1 ;; esac   # none, or more than one (a newline): not told apart
+    fi
     if [ "$_n" -ne 1 ]; then
       # Not exactly one tab on this URL (several share it, or the page rewrote it since the
       # CLI looked): mark ours with a same-document fragment and find the mark.
@@ -717,17 +728,17 @@ OSA
     # that follows), so it is allowed only where every tab in the window is this session's. Else the
     # operator's tab in the session's window was replaced for hours (2026-11-06). A shared window
     # whose active tab already is ours needs no switch and passes.
-    _own=" $(cat "$WORKDIR/$OWNED_NAME" 2>/dev/null | tr '\n' ' ') "   # a pipe: under set -e a failed < aborts
-    _hit="$(_chrome_tabs | awk -F '\t' -v u="$_me" 'substr($4, length($4) - length(u) + 1) == u { print $1 "\t" $3; exit }')"
+    _hit="$(_chrome_tabs | awk -F '\t' -v u="$_me" -v id="$_tid" '(id != "" ? $5 == id : substr($4, length($4) - length(u) + 1) == u) { print $1 "\t" $3; exit }')"
     _hw="$(printf '%s' "$_hit" | cut -f1)"; _ha="$(printf '%s' "$_hit" | cut -f2)"
     _foreign="$(_chrome_tabs | awk -F '\t' -v w="$_hw" -v own="$_own" '$1 == w && index(own, " " $5 " ") == 0 { n++ } END { print n + 0 }')"
     if [ "$_foreign" -gt 0 ] && [ "$_ha" != true ]; then
       _refuse "this session's tab is hidden behind another tab in window $_hw, which holds $_foreign tab(s) that are not this session's; showing it would take that tab away from whoever is reading it" \
         "operator: click this session's tab in window $_hw (harbor chrome tabs marks it =), or harbor chrome detach then attach for a window of its own"
     fi
-    _r="$(_osa "$_me" <<'OSA'
+    _r="$(_osa "$_me" "${_tid:-none}" <<'OSA'
 on run argv
   set u to item 1 of argv
+  set tid to item 2 of argv
   set res to ""
   tell application "System Events" to set prev to bundle identifier of first process whose frontmost is true
   tell application "Google Chrome"
@@ -737,7 +748,7 @@ on run argv
       set wid to item k of ids
       set w to window id wid
       repeat with t from 1 to (count tabs of w)
-        if URL of tab t of w ends with u then
+        if (tid is "none" and URL of tab t of w ends with u) or (tid is not "none" and (id of tab t of w as text) is tid) then
           -- shown first, raised only if the page then reads hidden (below)
           set active tab index of w to t
           if minimized of w then set minimized of w to false
@@ -851,9 +862,16 @@ EOF
           # Enter in the same call as the text: a page that loses the tab within ~300 ms of a
           # typed URL leaves no time for a second call (Commerce Manager, 2026-10-14).
           case "$VERB" in fill|type) ;; *) _refuse "option refused: --submit is for fill and type" ;; esac ;;
-        -*) _refuse "option refused: $_a — only --filename=<name>, on fill and type --submit, and on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>" ;;
+        --real)
+          case "$VERB" in click|dblclick|hover|check|uncheck|select) ;; *) _refuse "option refused: --real is for click, dblclick, hover, check, uncheck and select" ;; esac ;;
+        -*) _refuse "option refused: $_a — only --filename=<name>, on fill and type --submit, on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>, and --real on the scripted verbs" ;;
       esac
     done
+    # Script-first (harbor#1507, operator 2026-11-12): a fixed script from contracts/browser-script.tsv, which needs no
+    # paint, so a window covered by another app still takes it. --real is the CLI's own verb, which waits for the tab to show.
+    _real=''; _sfn=''; _sref=''; _sarg='null'
+    for _a in "$@"; do [ "$_a" != --real ] || _real=1; done
+    if [ -n "$_real" ]; then for _a in "$@"; do shift; [ "$_a" = --real ] || set -- "$@" "$_a"; done; fi
     if [ "$VERB" = click ] || [ "$VERB" = dblclick ]; then
       _ref=''; _btn=''; _force=''; _mods=''
       for _a in "$@"; do
@@ -873,6 +891,43 @@ EOF
         [ -z "$_mods" ] || _refuse '--force cannot carry --modifiers; the mouse verbs it uses take none'
         _force_click "$_ref" "$_btn"
       fi
+      if [ -z "$_real" ] && [ -z "$_mods" ] && { [ -z "$_btn" ] || [ "$_btn" = left ]; }; then _sfn="$VERB"; _sref="$_ref"; fi
+    fi
+    if [ -z "$_real" ]; then
+      case "$VERB" in
+        hover|check|uncheck)
+          [ $# -eq 1 ] || _refuse "$VERB takes <ref>" 'harbor chrome snapshot'
+          _sref="$1"; _sfn="$VERB"
+          case "$VERB" in check) _sarg=true ;; uncheck) _sfn=check; _sarg=false ;; esac ;;
+        select)
+          [ $# -ge 2 ] || _refuse 'select takes <ref> <value> [value...]' 'harbor chrome snapshot'
+          _sref="$1"; _sfn=select; shift; _sarg='['
+          for _v in "$@"; do
+            case "$_v" in *[[:cntrl:]]*) _refuse 'select value refused: it carries a control character' ;; esac
+            _sarg="$_sarg$([ "$_sarg" = '[' ] || printf ,)\"$(printf '%s' "$_v" | sed 's/\\/\\\\/g; s/"/\\"/g')\""
+          done
+          _sarg="$_sarg]" ;;
+        scroll)
+          _sfn=scroll
+          for _a in "$@"; do
+            case "$_a" in
+              -[0-9]*|[0-9]*) case "$_a" in -*[!0-9]*|[0-9]*[!0-9]*) _refuse "scroll takes pixels or a ref, not '$_a'" ;; esac
+                [ "$_sarg" = null ] || _refuse 'scroll takes [pixels] (the page), [pixels ref] (that element) or [ref] (into view)' 'harbor chrome scroll 800'
+                _sarg="$_a" ;;
+              *) [ -z "$_sref" ] || _refuse 'scroll takes [pixels] (the page), [pixels ref] (that element) or [ref] (into view)' 'harbor chrome scroll 800'
+                _sref="$_a" ;;
+            esac
+          done
+          [ "$_sarg" != null ] || [ -n "$_sref" ] || _refuse 'scroll takes [pixels] (the page), [pixels ref] (that element) or [ref] (into view)' 'harbor chrome scroll 800' ;;
+      esac
+      case "$VERB" in hover|check|uncheck|select) [ -z "$CONFIRM" ] || [ "$CONFIRM" = "$_sref" ] \
+        || _refuse "HARBOR_ACCESS_BROWSER_CONFIRM=$CONFIRM does not name this target ($_sref); it confirms one call on one ref" ;; esac
+      case "$VERB" in hover|check|uncheck|select|scroll) [ -z "$_sref" ] || _guard "$VERB" "$_sref" ;; esac
+    fi
+    if [ -n "$_sfn" ]; then
+      _fn="$(awk -F '\t' -v k="$_sfn" '$1 == k { print substr($0, length(k) + 2); exit }' "$ROOT/contracts/browser-script.tsv" 2>/dev/null)"
+      [ -n "$_fn" ] || _refuse "no script for $_sfn in contracts/browser-script.tsv" 'git checkout -- contracts/browser-script.tsv'
+      case "$_fn" in *__ARG__*) _sfn="${_fn%%__ARG__*}$_sarg${_fn#*__ARG__}" ;; *) _sfn="$_fn" ;; esac
     fi
     # upload: allowed from anywhere at the operator's call (2026-10-14), except ~/.claude, which
     # never goes to a web tool (CONSTITUTION №3). The CLI checks no path in skill mode, so this is the check.
@@ -928,7 +983,20 @@ EOF
     fi
     _e="$(_relay_err)"; _el=0; [ -z "$_e" ] || _el="$(wc -l < "$_e" | tr -d ' ')"
     trap 'rm -f "$_o"' EXIT INT TERM HUP
-    _rc=0; _cli_run "-s=$S" "$VERB" "$@" > "$_o" || _rc=$?
+    _rc=0
+    if [ -n "$_sfn" ]; then
+      _cli_run "-s=$S" --raw eval "$_sfn" ${_sref:+"$_sref"} > "$_o.raw" || _rc=$?
+      # --raw prints the script's two lines as one JSON string; decoded here, so a refused line is never missed for want of jq
+      awk '{ s = $0; sub(/^"/, "", s); sub(/"$/, "", s); o = ""
+        while ((i = index(s, "\\")) > 0) { c = substr(s, i + 1, 1); o = o substr(s, 1, i - 1) (c == "n" ? "\n" : c == "t" ? "\t" : c); s = substr(s, i + 2) }
+        print o s }' "$_o.raw" > "$_o"; rm -f "$_o.raw"
+      case "$(head -n 1 "$_o")" in 'refused: '*|'unchanged: '*)
+        _l="$(head -n 1 "$_o")"; rm -f "$_o"
+        _refuse "$VERB${_sref:+ $_sref} by script: $_l" "harbor chrome $VERB $* --real   # the CLI's own verb; it needs the tab shown" ;;
+      esac
+    else
+      _cli_run "-s=$S" "$VERB" "$@" > "$_o" || _rc=$?
+    fi
     if [ "$VERB" = tab-new ] && [ "$_rc" -eq 0 ]; then
       _tab_ids 2>/dev/null | while IFS= read -r _id; do
         case "$_before" in *" $_id "*) ;; *) printf '%s\n' "$_id" >> "$WORKDIR/$OWNED_NAME" ;; esac
