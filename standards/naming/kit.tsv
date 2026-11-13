@@ -110,7 +110,6 @@ register.contracts-hub-vocabulary-tsv	register	contracts/hub-vocabulary.tsv	cont
 register.contracts-member-context-rules-tsv	register	contracts/member-context-rules.tsv	control-plane	hub	no	the context rules that ship to a member laptop; a contract of the control plane's tools, not inherited by a workload
 register.contracts-member-guards-tsv	register	contracts/member-guards.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
 register.contracts-risk-tiers-tsv	register	contracts/risk-tiers.tsv	control-plane	hub	no	a contract of the control plane's tools; not inherited by a workload
-register.contracts-name-create-tsv	register	contracts/name-create.tsv	control-plane	core	no	the commands that create a credential name; the inject installer puts it on this box, not in a repo
 control.name	control	name	*	core	yes	judged in every repo by the vendored lint-name.sh
 control.skill	control	skill	control-plane	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
 control.standard	control	standard	control-plane scaffolder fleet-controller	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine

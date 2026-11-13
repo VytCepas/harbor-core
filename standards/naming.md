@@ -95,9 +95,7 @@ directory, never in a tree scan: `.agents/config.yaml` names the kind and `repo-
 **A renderer with a `rule` is a grammar, not a description.** The lint parses a name back through the cell
 (`--parse`) and renders a tuple with it (`--render`), so editing the cell changes what is accepted: no surface's
 shape is written in `bin/lint-name.sh`. `<slot>` is a word group, `[...]` is optional, and anything else is
-literal. `--self-test` fails when an example does not survive parse then render unchanged. A slot spelled
-`<Capitalised>` renders a term's `pref`, its display spelling, and a template holding a space joins with a space, so a
-grammar can carry brands and spaces: `vendor-credential` is `<ORG> API <Platform>[ <Client>]` (harbor#978). A `bin/` script, a
+literal. `--self-test` fails when an example does not survive parse then render unchanged. A `bin/` script, a
 skill and a test may be the bare family (`bin/worktree.sh`), the family's default action (D-13).
 
 ### 6.2 Symbols: one meaning each
@@ -259,7 +257,7 @@ back (`standard.decision-supersession`).
 | D-33 | Cloud and data | in scope, with registered dialects |
 | D-34 | Host records | partitioned, UTC |
 | D-35 | Skills, agents, workflows | first word a family or registered domain |
-| D-36 | Secrets | `<system>-<service>-<identity>-<purpose>`, checked (`name.secret`); a credential made on a vendor is `<ORG> API <Platform>[ <Client>]` (`name.vendor-credential`, harbor#978) |
+| D-36 | Secrets | `<system>-<service>-<identity>-<purpose>` |
 | D-37 | Harbor's scope | `scope: project` like any repo |
 | D-38 | Object words | free, but checked for aliases and abbreviations |
 | D-39 | Superseded docs | deleted; git is the archive |

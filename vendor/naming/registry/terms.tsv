@@ -22,13 +22,7 @@
 #   id          the canonical word: lowercase kebab, a digit never starts a word
 #   class       one or more of family verb domain client abbreviation kind layer concept
 #               system extension subject level mode outcome decision severity priority state
-#               control-type moment function lifecycle share relation modality tier strength commit-type vendor org, comma-separated.
-#               vendor: a platform that issues credentials; the id is the <service> of a secret ref (D-36) and the pref is
-#               the <Platform> of a vendor-side credential name, spelled as the vendor spells it (harbor#978). Core
-#               registers only the vendors harbor itself uses; a workload's platforms (ad, tracking and hosting vendors)
-#               are vendor rows of its pack's terms.tsv or of the private overlay, never core (lint.domain).
-#               org: the <ORG> of a vendor-side credential name. Core carries one placeholder for its examples; a box's own
-#               organisation is a private-overlay row (D-85), and once one is there the placeholder no longer counts.
+#               control-type moment function lifecycle share relation modality tier strength commit-type, comma-separated.
 #               family and verb never overlap. level terms form one containment chain by `broader` (D-57).
 #               relation: the typed edges a policy row or a kind's required_relations names (research/15 §3).
 #               modality: duty, prohibition, permission (ODRL). tier: constitutional, policy, standard, repo,
@@ -321,7 +315,7 @@ ctr	abbreviation	ctr	-	-	stable	-	standard §12 (D-54)	-	-	Registered industry a
 aov	abbreviation	aov	-	-	stable	-	standard §12 (D-54)	-	-	Registered industry abbreviation: average order value
 cpc	abbreviation	cpc	-	-	stable	-	standard §12 (D-54)	-	-	Registered industry abbreviation: cost per click
 cpm	abbreviation	cpm	-	-	stable	-	standard §12 (D-54)	-	-	Registered industry abbreviation: cost per mille
-meta	concept,vendor	Meta	-	-	stable	-	standard §12 (D-54); harbor#978 (vendor)	-	-	Current vendor name, used in new names (D-54): Meta (the ad platform; was Facebook)
+meta	concept	Meta	-	-	stable	-	standard §12 (D-54)	-	-	Current vendor name, used in new names (D-54): Meta (the ad platform; was Facebook)
 id	abbreviation	id	-	-	experimental	-	harbor#950 (D-18 registered list extended)	-	-	Registered abbreviation: identifier
 env	abbreviation	env	-	-	experimental	-	harbor#950 (D-18 registered list extended)	-	-	Registered abbreviation: environment
 lib	abbreviation	lib	-	-	experimental	-	harbor#950 (D-18 registered list extended)	-	-	Registered abbreviation: library
@@ -461,7 +455,3 @@ revert	commit-type	revert	-	-	stable	-	Conventional Commits 1.0; standards/namin
 perf	commit-type	perf	-	-	stable	-	Conventional Commits 1.0; standards/naming.md D-21; 12 perf commits on main	-	-	A commit or PR that improves performance and changes no behaviour
 local	strength	local	-	-	experimental	-	harbor#1026, harbor#1027 (strength set)	-	-	The strength of a governed repo's own rules: it wins over a plain rule on workflow, conventions and tooling, and over nothing else
 judgment	moment	judgment	-	-	experimental	-	harbor#1028 (moment set; research/15 section 4)	-	-	No mechanism: a clause that only a reader can apply, counted in the matrix and never hidden
-gcloud	vendor	Google Cloud	-	-	experimental	-	harbor#978 (D-36 secret service, vendor-side credential platform)	-	-	Vendor: Google Cloud: projects, service accounts and the gcloud logins
-github	vendor	GitHub	-	-	experimental	-	harbor#978 (D-36 secret service, vendor-side credential platform)	-	-	Vendor: GitHub: tokens, apps and the repositories they reach
-playwright	vendor	Playwright	-	-	experimental	-	harbor#978 (D-36 secret service, vendor-side credential platform)	-	-	Vendor: Playwright, whose Chrome extension pairs the operator's browser with harbor chrome
-exampleco	org	EXAMPLECO	-	-	experimental	-	harbor#978 (the placeholder org of the vendor-credential examples)	-	-	The placeholder organisation the standard's examples and fixtures use; a box names its own org in the private overlay (D-85), which retires this one there

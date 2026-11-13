@@ -1368,9 +1368,3 @@ rule	1358	keys-store-env-file	live	standards/naming/controls.tsv, the id less it
 rule	1359	keys-store-key	live	standards/naming/controls.tsv, the id less its family
 rule	1360	keys-store-token	live	standards/naming/controls.tsv, the id less its family
 rule	1361	keys-store-password	live	standards/naming/controls.tsv, the id less its family
-rule	1362	check.context.name-create	live	standards/naming/controls.tsv
-rule	1363	name.secret	live	standards/naming/controls.tsv
-rule	1364	name.vendor-credential	live	standards/naming/controls.tsv
-rule	1365	context.name-create	live	standards/naming/controls.tsv, the id less its family
-rule	1366	secret	live	standards/naming/controls.tsv, the id less its family
-rule	1367	vendor-credential	live	standards/naming/controls.tsv, the id less its family

@@ -5,8 +5,6 @@
 #   harbor access add <id> --kind K --what T --use-when T --reaches T --cannot T --grant T
 #                          (--secret REF | --no-secret) [--value-stdin] [--probe CMD]
 #                          [--check CMD --expect T] [--expires YYYY-MM-DD] [--renew T] [--revoke T] [--held T]
-#                          [--vendor-name "<ORG> API <Platform>[ <Client>]"]   required for kind token and app
-#                          [--verbatim]   the value is stored byte for byte (a key file); else it is trimmed and one word
 #   harbor access list                    the entries: id, kind, secret ref, what
 #   harbor access has <ref>               exit 0 registered, 3 grandfathered (contracts/secret-legacy-refs.txt), 4 revoked, 1 neither
 #   harbor access refs                    the registered secret refs, one per line
@@ -14,21 +12,7 @@
 #   harbor access stored                  every item bin/secret holds, and whether an entry names it (exit 1 if not)
 #   harbor access status [-v|--json] [id...]  is each credential stored, alive, in date: what is wrong, and since when; --json: the same facts as data
 #   harbor access rotate <id> [--value-stdin] [--locked]   a new value, kept only if the entry's check passes on it
-#
-# A PIPED VALUE IS CHECKED BEFORE IT IS STORED (harbor#978, measured 2026-11-13: a clipboard copy put four characters and a
-# space in front of an ad platform's app secret). With --value-stdin, add and rotate trim surrounding whitespace and newlines and refuse
-# a value with whitespace inside it, saying only its length; an entry with `value-shape: verbatim` (add --verbatim) is
-# stored byte for byte instead, for a key file or JSON. A value typed at bin/secret's own prompt is one line already.
 #   harbor access revoke <id>             retire an entry: refuse its ref from now on, and remove the stored value
-#   harbor access renamed <ref>           the registered ref, the other ref and remove_by of the open secret rename naming it; exit 1 when none
-#   harbor access move <old-ref> [--locked]   the D-36 migration of one ref: the entry names the new ref, the value is copied
-#                                         to it inside bin/secret (never shown), and the old item stays until remove_by
-#
-# NAMES (harbor#978). add refuses a --secret ref that `lint-name.sh --check secret` refuses (D-36,
-# <system>-<service>-<identity>-<purpose>) and a --vendor-name that `--check vendor-credential` refuses, printing the
-# compliant rendering as the fix. A ref renamed in standards/naming/renames.tsv (or the private <access>/renames.tsv,
-# for a ref a workload reads or one naming a client) is the SAME credential under both names until the row's remove_by: has admits
-# either, and bin/secret reads the one the register names, else the other, and writes the one the register names.
 #
 # add records an entry, then stores the value through bin/secret (the ref must be registered first, so it is written
 # before the store and rolled back when the store fails). The value is read from stdin with --value-stdin, or by
@@ -50,18 +34,14 @@ GREP=/usr/bin/grep   # grep here is ugrep on the operator's box; BSD semantics a
 LEGACY="${ACCESS_LEGACY_REFS:-$ROOT/contracts/secret-legacy-refs.txt}"
 PATTERNS="${ACCESS_CREDENTIAL_PATTERNS:-$ROOT/contracts/credential-patterns.tsv}"
 KINDS='account role app mailbox token'
-FIELDS='kind what use-when reaches cannot grant secret verified check expect expires renew revoke rotated revoked held vendor-name value-shape'
+FIELDS='kind what use-when reaches cannot grant secret verified check expect expires renew revoke rotated revoked held'
 DATE_FIELDS='expires rotated revoked'
 PROBE_RUNNER="$ROOT/skills/access-ledger/bin/check-routes.sh"
 STATE="${ACCESS_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/harbor/access-status.tsv}"
 REQUIRED='kind what use-when reaches cannot grant secret verified'
-VENDOR_KINDS='token app'   # the kinds a vendor-side object stands behind, so their new entries carry its name (harbor#978)
-RENAMES="${ACCESS_RENAMES:-$ROOT/standards/naming/renames.tsv}"
-LINT_NAME="${ACCESS_LINT_NAME:-$SRC/lint-name.sh}"
-MEMBER_MODE=0; [ ! -f "$SRC/harbor-member-mode" ] || [ -L "$SRC/harbor-member-mode" ] || MEMBER_MODE=1   # as bin/secret reads it
 
 fail() { log_fail "$1"; log_fix "$2"; log_end || :; exit "${3:-1}"; }
-usage() { sed -n '2,39p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 # The register file: <access dir>/register.md. Empty stdout and exit 1 when there is no register directory.
 register_file() {
@@ -93,105 +73,21 @@ parse() { # <file>
     }' "$1"
 }
 
-reg_state() { # <ref> - 0 an entry names it, 4 that entry is revoked, 1 none. Silent.
-  __rf="$(register_file)" || __rf=""
-  [ -n "$__rf" ] && [ -f "$__rf" ] || return 1
-  # Any entry naming the ref with a revoked: line, whatever its value, refuses it, and the legacy list is
-  # never consulted for it: a revoked ref that was also grandfathered must not come back through the list.
-  parse "$__rf" | awk -F'\t' -v r="$1" '
-    $1 == "R" && $3 == "secret" && $4 == r && r != "none" { named[$2] = 1 }
-    $1 == "R" && $3 == "revoked" { rev[$2] = 1 }
-    END { st = 1; for (i in named) { if (i in rev) { st = 4; break } st = 0 } exit st }'
-}
-
-# The open secret rename naming a ref: "old<TAB>new<TAB>remove_by", exit 1 when none. Rows are surface `secret`,
-# old `secret:<ref>`, in core renames.tsv and in the private <access>/renames.tsv (a ref a workload reads, or one
-# naming a client or a workload vendor, lives there, never in core: the leak gate and lint.domain). Open means today (UTC) is on or before remove_by.
-rename_row() { # <ref>
-  __ad="$(sh "$SRC/scope-roots.sh" --access 2>/dev/null)" || __ad=''
-  __t="$(today)"
-  for __rn in "$RENAMES" ${__ad:+"$__ad/renames.tsv"}; do
-    [ -f "$__rn" ] || continue
-    awk -F'\t' -v r="$1" -v t="$__t" '/^#/ || $1 == "id" { next }
-      $4 == "secret" && substr($2, 1, 7) == "secret:" && (substr($2, 8) == r || $3 == r) && $6 ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ && t <= $6 {
-        printf "%s\t%s\t%s\n", substr($2, 8), $3, $6; f = 1; exit }
-      END { exit !f }' "$__rn" && return 0
-  done
-  return 1
-}
-
 has_ref() { # <ref> - exit 0 registered, 3 grandfathered, 4 revoked, 1 neither. Silent.
   __ref="$1"
-  __hs=0; reg_state "$__ref" || __hs=$?
-  case "$__hs" in 0) return 0 ;; 4) return 4 ;; esac
-  # A renamed ref is the same credential under both names until remove_by: either name is registered when one is.
-  if __row="$(rename_row "$__ref")"; then
-    __po="$(printf '%s' "$__row" | cut -f1)"; __pn="$(printf '%s' "$__row" | cut -f2)"
-    __p="$__pn"; [ "$__ref" != "$__pn" ] || __p="$__po"
-    __ps=0; reg_state "$__p" || __ps=$?
-    case "$__ps" in 0) return 0 ;; 4) return 4 ;; esac
+  __rf="$(register_file)" || __rf=""
+  if [ -n "$__rf" ] && [ -f "$__rf" ]; then
+    # Any entry naming the ref with a revoked: line, whatever its value, refuses it, and the legacy list is
+    # never consulted for it: a revoked ref that was also grandfathered must not come back through the list.
+    __hs=0
+    parse "$__rf" | awk -F'\t' -v r="$__ref" '
+      $1 == "R" && $3 == "secret" && $4 == r && r != "none" { named[$2] = 1 }
+      $1 == "R" && $3 == "revoked" { rev[$2] = 1 }
+      END { st = 1; for (i in named) { if (i in rev) { st = 4; break } st = 0 } exit st }' || __hs=$?
+    case "$__hs" in 0) return 0 ;; 4) return 4 ;; esac
   fi
   if [ -f "$LEGACY" ] && awk -v r="$__ref" '/^[[:space:]]*(#|$)/ { next } $1 == r { f = 1 } END { exit !f }' "$LEGACY"; then return 3; fi
   return 1
-}
-
-# renamed <ref>: the ref the register names (the new one when both or neither are named), the other, and remove_by.
-cmd_renamed() {
-  [ $# -eq 1 ] || usage
-  __row="$(rename_row "$1")" || return 1
-  __o="$(printf '%s' "$__row" | cut -f1)"; __n="$(printf '%s' "$__row" | cut -f2)"; __d="$(printf '%s' "$__row" | cut -f3)"
-  if reg_state "$__n" || ! reg_state "$__o"; then printf '%s\t%s\t%s\n' "$__n" "$__o" "$__d"
-  else printf '%s\t%s\t%s\n' "$__o" "$__n" "$__d"; fi
-}
-
-# The naming gate of add (harbor#978): lint-name.sh judges, this prints its finding and the compliant form.
-# 0 pass (a warn-mode finding is printed and passes), else it exits. A lint that cannot judge refuses: fail closed.
-name_gate() { # <surface> <name> <fix function> <its argument> - the fix is rendered only for a refusal
-  [ -f "$LINT_NAME" ] || fail "no $LINT_NAME, so the name '$2' cannot be judged and nothing was registered" "restore bin/lint-name.sh" 1
-  __lr=0; __lo="$(sh "$LINT_NAME" --check "$1" "$2" 2>&1)" || __lr=$?
-  case "$__lr" in
-    0) printf '%s\n' "$__lo" | grep '^  WARN: ' >&2 || :; return 0 ;;
-    1) __why="$(printf '%s\n' "$__lo" | sed -n 's/^  FAIL: //p' | head -1)"
-       fail "the $1 name '$2' breaks the naming standard: ${__why:-see lint-name.sh --check $1}" "$("$3" "$4")" 2 ;;
-    *) fail "lint-name.sh --check $1 exited $__lr, so the name '$2' was not judged and nothing was registered" "sh $LINT_NAME --check $1 '$2'" 1 ;;
-  esac
-}
-
-# The compliant rendering of a refused secret ref: its renames row when it has one, else harbor-<ref> when that
-# passes (github-tools-push), else the grammar with the slots to fill.
-secret_fix() { # <ref>
-  if __row="$(rename_row "$1")" && [ "$(printf '%s' "$__row" | cut -f1)" = "$1" ]; then
-    printf 'use %s (renames.tsv; harbor access move %s moves an entry that already names it)' "$(printf '%s' "$__row" | cut -f2)" "$1"; return 0
-  fi
-  if sh "$LINT_NAME" --check secret "harbor-$1" > /dev/null 2>&1; then printf 'use harbor-%s' "$1"; return 0; fi
-  printf 'name it harbor-<service>-<identity>-<purpose>: sh %s --render secret system=harbor service=<vendor> identity=<account> purpose=<use>' "$LINT_NAME"
-}
-
-# value_clean <id>: the piped value on stdout, surrounding whitespace trimmed; exit 1 (saying the length, never the value)
-# when it is empty or holds whitespace inside. Held in a variable, as bin/secret holds it: never argv, never a file.
-value_clean() {
-  __v="$(cat; printf x)"; __v="${__v%x}"
-  __n0=${#__v}
-  __v="${__v#"${__v%%[![:space:]]*}"}"; __v="${__v%"${__v##*[![:space:]]}"}"
-  [ -n "$__v" ] || { log_fail "the piped value for '$1' is empty after trimming whitespace ($__n0 characters came in)"; log_fix "pipe the credential itself"; log_end || :; return 1; }
-  case "$__v" in *[[:space:]]*)
-    log_fail "the piped value for '$1' holds whitespace inside it (${#__v} characters after trimming): a copy that carried more than the credential"
-    log_fix "copy only the credential and pipe it again; a value that really holds spaces or lines (a key file) is an entry with --verbatim"
-    log_end || :; return 1 ;;
-  esac
-  [ "${#__v}" = "$__n0" ] || log_note "trimmed $((__n0 - ${#__v})) whitespace character(s) around the value for '$1' (${#__v} characters kept)"
-  printf '%s' "$__v"
-}
-
-renames_fix() { printf 'fix the renames row of %s: its new name must pass lint-name.sh --check secret' "$1"; }
-
-# The compliant vendor-side name for a ref's service: <ORG> API <Platform>, rendered by the grammar.
-vendor_fix() { # <ref or none>
-  __svc="$(sh "$LINT_NAME" --parse secret "$1" 2>/dev/null | sed -n 's/^service=//p')" || __svc=''
-  if [ -n "$__svc" ] && __vr="$(sh "$LINT_NAME" --render vendor-credential platform="$__svc" 2>/dev/null)" && [ -n "$__vr" ]; then
-    printf 'rename it on the vendor to "%s" (add " <Client>" for a per-account key), then pass --vendor-name "%s"' "$__vr" "$__vr"; return 0
-  fi
-  printf 'name it on the vendor <ORG> API <Platform>[ <Client>]: sh %s --render vendor-credential platform=<vendor>' "$LINT_NAME"
 }
 
 today() { date -u +%Y-%m-%d; }   # UTC, as every date this file writes
@@ -268,7 +164,6 @@ cmd_check() {
         if (h[id, "check"] != h[id, "expect"]) printf "%s: check and expect go together; one is missing\n", id
         if (h[id, "held"] && v[id, "held"] == "") printf "%s: held is empty\n", id
         else if (h[id, "held"] && v[id, "secret"] != "none") printf "%s: held says the value lives outside the seam, so it goes with secret: none, not %s\n", id, v[id, "secret"]
-        if (h[id, "value-shape"] && v[id, "value-shape"] != "verbatim") printf "%s: value-shape %s is not verbatim, its one value\n", id, v[id, "value-shape"]
         if (h[id, "expect"] && v[id, "expect"] !~ /`[^`]+`/) printf "%s: expect carries no backticked literal, so no check can pass on it\n", id
       }
     }' "$__tmp/rows" > "$__tmp/problems"
@@ -276,15 +171,6 @@ cmd_check() {
     [ -n "$_p" ] || continue
     log_fail "${__rf##*/} $_p"; log_fix "fix the entry in $__rf (contracts/access-register.md)"; __bad=1
   done < "$__tmp/problems"
-  # A vendor-name is judged as add judged it (harbor#978): an entry edited by hand is held to the same name.
-  awk -F'\t' '$1 == "R" && $3 == "vendor-name" { print $2 "\t" $4 }' "$__tmp/rows" > "$__tmp/vnames"
-  while IFS="$(printf '\t')" read -r _vi _vn; do
-    [ -n "$_vn" ] || continue
-    [ -f "$LINT_NAME" ] || { log_warn "no $LINT_NAME: the vendor-name of $_vi was not judged"; continue; }
-    __vr=0; sh "$LINT_NAME" --check vendor-credential "$_vn" > "$__tmp/vout" 2>&1 || __vr=$?
-    [ "$__vr" = 1 ] || continue
-    log_fail "${__rf##*/} $_vi: vendor-name $(sed -n 's/^  FAIL: //p' "$__tmp/vout" | head -1)"; log_fix "rename it on the vendor, then fix vendor-name: in $__rf"; __bad=1
-  done < "$__tmp/vnames"
   # A value that looks like a credential. The line is reported, never the value.
   if [ -f "$PATTERNS" ]; then
     awk -F'\t' '/^[[:space:]]*(#|$)/ { next } $1 == "id" { next } NF >= 2 { print $2 }' "$PATTERNS" > "$__tmp/pats"
@@ -328,8 +214,7 @@ cmd_stored() {
     __n=$((__n + 1))
     __st=0; has_ref "$__svc" || __st=$?
     case "$__st" in
-      0) if reg_state "$__svc"; then printf 'registered\t%s\n' "$__svc"
-         else printf 'renamed\t%s\n' "$__svc"; log_note "secret.$__svc is the old twin of a renamed ref, served until remove_by: $(rename_row "$__svc" | cut -f2,3 | tr '\t' ' ')"; fi ;;
+      0) printf 'registered\t%s\n' "$__svc" ;;
       3) printf 'grandfathered\t%s\n' "$__svc" ;;
       4) printf 'REVOKED\t%s\n' "$__svc"; __bad=1
          log_fail "secret.$__svc is still stored, but its entry is revoked"
@@ -348,21 +233,20 @@ cmd_add() {
   [ $# -ge 1 ] || usage
   ID="$1"; shift
   KIND=''; WHAT=''; USEWHEN=''; REACHES=''; CANNOT=''; GRANT=''; REFNAME=''; NOREF=0; VALSTDIN=0; PROBE=''
-  CHECK=''; EXPECT=''; EXPIRES=''; RENEW=''; REVOKE=''; HELD=''; VNAME=''; VERBATIM=0
+  CHECK=''; EXPECT=''; EXPIRES=''; RENEW=''; REVOKE=''; HELD=''
   while [ $# -gt 0 ]; do
     case "$1" in
-      --kind|--what|--use-when|--reaches|--cannot|--grant|--secret|--probe|--check|--expect|--expires|--renew|--revoke|--held|--vendor-name)
+      --kind|--what|--use-when|--reaches|--cannot|--grant|--secret|--probe|--check|--expect|--expires|--renew|--revoke|--held)
         [ $# -ge 2 ] || { log_fail "$1 needs a value"; log_fix "harbor access add --help"; log_end || :; exit 2; }
         case "$1" in
           --kind) KIND="$2" ;; --what) WHAT="$2" ;; --use-when) USEWHEN="$2" ;; --reaches) REACHES="$2" ;;
           --cannot) CANNOT="$2" ;; --grant) GRANT="$2" ;; --secret) REFNAME="$2" ;; --probe) PROBE="$2" ;;
           --check) CHECK="$2" ;; --expect) EXPECT="$2" ;; --expires) EXPIRES="$2" ;; --renew) RENEW="$2" ;;
-          --revoke) REVOKE="$2" ;; --held) HELD="$2" ;; --vendor-name) VNAME="$2" ;;
+          --revoke) REVOKE="$2" ;; --held) HELD="$2" ;;
         esac
         shift 2 ;;
       --no-secret) NOREF=1; shift ;;
       --value-stdin) VALSTDIN=1; shift ;;
-      --verbatim) VERBATIM=1; shift ;;
       -h|--help|help) usage ;;
       *) log_fail "unknown argument '$1'"; log_fix "harbor access add --help"; log_end || :; exit 2 ;;
     esac
@@ -383,7 +267,6 @@ cmd_add() {
     printf 'secret reference (empty for none): ' >&2; IFS= read -r REFNAME || REFNAME=''
     [ -n "$REFNAME" ] || NOREF=1
   fi
-  case " $VENDOR_KINDS " in *" $KIND "*) [ "$MEMBER_MODE" = 1 ] || ask VNAME "its name on the vendor (<ORG> API <Platform>[ <Client>])" ;; esac
   __missing=''
   for __f in KIND WHAT USEWHEN REACHES CANNOT GRANT; do
     eval "__v=\${$__f}"; [ -n "$__v" ] || __missing="$__missing $__f"
@@ -397,7 +280,7 @@ cmd_add() {
   for __f in "$KIND" "$WHAT" "$USEWHEN" "$REACHES" "$CANNOT" "$GRANT" "$ID"; do
     one_line "$__f" || fail "a field must be one non-empty line with no tab" "shorten it to a single line" 2
   done
-  for __f in "$CHECK" "$EXPECT" "$EXPIRES" "$RENEW" "$REVOKE" "$PROBE" "$HELD" "$VNAME"; do
+  for __f in "$CHECK" "$EXPECT" "$EXPIRES" "$RENEW" "$REVOKE" "$PROBE" "$HELD"; do
     [ -z "$__f" ] || one_line "$__f" || fail "a field must be one non-empty line with no tab" "shorten it to a single line" 2
   done
   [ -z "$CHECK" ] && [ -z "$EXPECT" ] || { [ -n "$CHECK" ] && [ -n "$EXPECT" ]; } || fail "--check and --expect go together" "give both" 2
@@ -411,30 +294,13 @@ cmd_add() {
   # A value pasted into a field is the mistake this refuses: no field may be shaped like a credential.
   if [ -f "$PATTERNS" ]; then
     awk -F'\t' '/^[[:space:]]*(#|$)/ { next } $1 == "id" { next } NF >= 2 { print $2 }' "$PATTERNS" > "${TMPDIR:-/tmp}/access-pats.$$"
-    if printf '%s\n' "$WHAT" "$USEWHEN" "$REACHES" "$CANNOT" "$GRANT" "$REFNAME" "$CHECK" "$EXPECT" "$RENEW" "$REVOKE" "$PROBE" "$HELD" "$VNAME" \
+    if printf '%s\n' "$WHAT" "$USEWHEN" "$REACHES" "$CANNOT" "$GRANT" "$REFNAME" "$CHECK" "$EXPECT" "$RENEW" "$REVOKE" "$PROBE" "$HELD" \
         | "$GREP" -qE -f "${TMPDIR:-/tmp}/access-pats.$$"; then
       rm -f "${TMPDIR:-/tmp}/access-pats.$$"
       fail "a field is shaped like a credential value; a register holds references, never values" "pipe the value with --value-stdin instead" 2
     fi
     rm -f "${TMPDIR:-/tmp}/access-pats.$$"
   fi
-  # harbor#978: a new ref is born under its D-36 name, and a token or app says what it is called on the vendor. A member
-  # laptop gets the lint and its registry in the pinned floor (contracts/member-files.txt), so the ref gate runs there too;
-  # hub-token, the one name the floor's guards require, is a tool-required exemption. The vendor-name gate needs the
-  # company's org, which no hub channel delivers to a laptop yet, so on a member it stands down and says so.
-  [ "$REFNAME" = none ] || name_gate secret "$REFNAME" secret_fix "$REFNAME"
-  if [ "$MEMBER_MODE" = 1 ]; then
-    case " $VENDOR_KINDS " in *" $KIND "*) log_note "member laptop: the vendor-name gate does not run here, since no hub channel delivers the company's org yet" ;; esac
-  else
-    case " $VENDOR_KINDS " in *" $KIND "*)
-      [ -n "$VNAME" ] || fail "a $KIND entry names the credential as the vendor shows it, and --vendor-name is missing" "$(vendor_fix "$REFNAME")" 2 ;;
-    esac
-    [ -z "$VNAME" ] || name_gate vendor-credential "$VNAME" vendor_fix "$REFNAME"
-  fi
-  [ "$VERBATIM" = 0 ] || [ "$REFNAME" != none ] || fail "--verbatim describes a stored value, so it needs --secret" "give the ref" 2
-  # The piped value is read and judged before anything is written, so a bad paste leaves no entry to roll back.
-  VALUE=''
-  if [ "$VALSTDIN" = 1 ] && [ "$VERBATIM" = 0 ]; then VALUE="$(value_clean "$ID")" || exit 2; fi
   REG="$(register_file)" || fail "no access register: there is no private layer to write one in" "harbor scope install" 1
   [ ! -L "$REG" ] || fail "$REG is a symlink; refusing to write through it" "replace it with a plain file" 1
   [ -f "$REG" ] || fail "$REG does not exist" "harbor scope install (it creates the register with a header only)" 1
@@ -442,7 +308,6 @@ cmd_add() {
   parse "$REG" | awk -F'\t' -v i="$ID" '$1 == "N" && $2 == i { f = 1 } END { exit !f }' && fail "the entry '$ID' already exists" "pick another id, or edit $REG" 1
   if [ "$REFNAME" != none ]; then
     cmd_refs | grep -qxF -- "$REFNAME" && fail "the secret ref '$REFNAME' is already named by another entry" "one entry names a ref" 1
-    ! has_ref "$REFNAME" || fail "the secret ref '$REFNAME' is the renamed twin of a registered ref (renames.tsv)" "harbor access move <its old ref> moves that entry to it" 1
   fi
   __new="$REG.new.$$"; __old="$REG.old.$$"
   cp "$REG" "$__old"
@@ -457,18 +322,13 @@ cmd_add() {
     [ -z "$RENEW" ] || printf '    renew: %s\n' "$RENEW"
     [ -z "$REVOKE" ] || printf '    revoke: %s\n' "$REVOKE"
     [ -z "$HELD" ] || printf '    held: %s\n' "$HELD"
-    [ -z "$VNAME" ] || printf '    vendor-name: %s\n' "$VNAME"
-    [ "$VERBATIM" = 0 ] || printf '    value-shape: verbatim\n'
     if [ "$REFNAME" != none ] && { [ "$VALSTDIN" = 1 ] || [ -t 0 ]; }; then printf '    rotated: %s\n' "$(today)"; fi
   } > "$__new"
   mv -f "$__new" "$REG"
   log_ok "registered '$ID' ($KIND) in $REG"
   if [ "$REFNAME" != none ]; then
     # The ref is registered, so bin/secret admits it. A failed store leaves nothing behind.
-    if [ "$VALSTDIN" = 1 ] && [ "$VERBATIM" = 0 ]; then
-      printf '%s' "$VALUE" | sh "$SRC/secret" put "$REFNAME" || { VALUE=''; mv -f "$__old" "$REG"; fail "storing '$REFNAME' failed, so the entry was rolled back" "check the credential store (bin/secret help)" 1; }
-      VALUE=''
-    elif [ "$VALSTDIN" = 1 ]; then
+    if [ "$VALSTDIN" = 1 ]; then
       sh "$SRC/secret" put "$REFNAME" || { mv -f "$__old" "$REG"; fail "storing '$REFNAME' failed, so the entry was rolled back" "check the credential store (bin/secret help)" 1; }
     elif [ -t 0 ]; then
       sh "$SRC/secret" put "$REFNAME" || { mv -f "$__old" "$REG"; fail "storing '$REFNAME' failed, so the entry was rolled back" "check the credential store (bin/secret help)" 1; }
@@ -675,7 +535,6 @@ cmd_rotate() {
   ! grep -q '^E' "$__tmp/rows" || { rm -rf "$__tmp"; fail "the register does not parse cleanly, so nothing was rotated" "harbor access check, and fix what it names" 1; }
   __ref="$(entry_field "$__tmp/rows" "$__id" secret)"; __chk="$(entry_field "$__tmp/rows" "$__id" check)"
   __exp="$(entry_field "$__tmp/rows" "$__id" expect)"; __rv="$(entry_field "$__tmp/rows" "$__id" revoke)"
-  __shape="$(entry_field "$__tmp/rows" "$__id" value-shape)"
   __revd=0; awk -F'\t' -v i="$__id" '$1 == "R" && $2 == i && $3 == "revoked" { f = 1 } END { exit !f }' "$__tmp/rows" && __revd=1
   rm -rf "$__tmp"
   [ -n "$__ref" ] && [ "$__ref" != none ] || fail "'$__id' names no secret ref, so there is no value to rotate" "a sign-in is renewed where it lives" 2
@@ -688,15 +547,8 @@ cmd_rotate() {
   [ "$__cls" = run ] || fail "'$__id' has a ${__cls:-unclassifiable} check, so a rotation cannot be proved here" "make its check a read that prints a backticked literal, or secret put $__ref and check it by hand" 1
   [ "$__vs" = 1 ] || [ -t 0 ] || fail "no value: stdin is not a terminal and --value-stdin was not given" "pipe the value in: <clipboard or file> | harbor access rotate $__id --value-stdin" 2
   __rc=0
-  if [ "$__vs" = 1 ] && [ "$__shape" != verbatim ]; then
-    __val="$(value_clean "$__id")" || exit 2
-    # shellcheck disable=SC2086 # $__lock is empty or one word
-    printf '%s' "$__val" | sh "$SRC/secret" rotate "$__ref" $__lock -- sh "$PROBE_RUNNER" --probe "$__chk" "$__exp" || __rc=$?
-    __val=''
-  else
-    # shellcheck disable=SC2086 # $__lock is empty or one word
-    sh "$SRC/secret" rotate "$__ref" $__lock -- sh "$PROBE_RUNNER" --probe "$__chk" "$__exp" || __rc=$?
-  fi
+  # shellcheck disable=SC2086 # $__lock is empty or one word
+  sh "$SRC/secret" rotate "$__ref" $__lock -- sh "$PROBE_RUNNER" --probe "$__chk" "$__exp" || __rc=$?
   case "$__rc" in
     0) ;;
     1) fail "'$__id' was NOT rotated: its check failed against the new value, and the old one is back" "check the new value at its source, then rotate again" 1 ;;
@@ -715,55 +567,6 @@ cmd_rotate() {
 
 # Retire an entry: revoked: is written FIRST, so the ref is refused before the value goes (rm is ungated), and
 # a failure between the two leaves a refused ref, never a live one. Retiring it at its source is the operator's.
-# move <old-ref>: the D-36 migration of one ref, inside its renames row's window (harbor#978). The entry that names the
-# old ref names the new one, then bin/secret copies the stored value to the new name in its own process (secret copy:
-# never printed, proved by hash) and leaves the old item, which every reader still gets until remove_by. Reruns are
-# safe: a moved entry is not moved again and a stored new value is not overwritten. Removing the old item is the
-# operator's, once no reader asks for it: secret rm <old-ref>.
-cmd_move() {
-  [ $# -ge 1 ] || usage
-  __old="$1"; shift; __lock=''
-  while [ $# -gt 0 ]; do case "$1" in --locked) __lock=--locked; shift ;; *) usage ;; esac; done
-  valid_ref "$__old" || fail "'$__old' is not a ref [A-Za-z0-9._-]+" "harbor access list" 2
-  __row="$(rename_row "$__old")" || fail "no open secret rename names '$__old' (or its remove_by has passed)" "add a row to standards/naming/renames.tsv, or to the private <access>/renames.tsv for a name that carries a client" 2
-  [ "$(printf '%s' "$__row" | cut -f1)" = "$__old" ] || fail "'$__old' is the new name of its rename; move takes the old one" "harbor access move $(printf '%s' "$__row" | cut -f1)" 2
-  __new="$(printf '%s' "$__row" | cut -f2)"; __until="$(printf '%s' "$__row" | cut -f3)"
-  name_gate secret "$__new" renames_fix "$__new"
-  REG="$(register_file)" || fail "no access register" "harbor scope install" 2
-  [ -f "$REG" ] || fail "$REG does not exist" "harbor scope install" 2
-  [ ! -L "$REG" ] || fail "$REG is a symlink; refusing to write through it" "replace it with a plain file" 1
-  lock_register "$REG"
-  __tmp="$(mktemp -d "${TMPDIR:-/tmp}/access.XXXXXX")" || exit 2
-  parse "$REG" > "$__tmp/rows"
-  ! grep -q '^E' "$__tmp/rows" || { rm -rf "$__tmp"; fail "the register does not parse cleanly, so nothing was moved" "harbor access check, and fix what it names" 1; }
-  __io="$(awk -F'\t' -v r="$__old" '$1 == "R" && $3 == "secret" && $4 == r { print $2; exit }' "$__tmp/rows")"
-  __in="$(awk -F'\t' -v r="$__new" '$1 == "R" && $3 == "secret" && $4 == r { print $2; exit }' "$__tmp/rows")"
-  rm -rf "$__tmp"
-  [ -n "$__io$__in" ] || fail "no entry names $__old or $__new" "register it under the new name, storing nothing: harbor access add <id> --kind ... --secret $__new < /dev/null; then rerun" 1
-  [ -z "$__io" ] || [ -z "$__in" ] || fail "two entries name the pair: $__io names $__old and $__in names $__new" "merge them into one entry, then rerun" 1
-  __back="$REG.move.$$"; __moved=0
-  if [ -n "$__io" ]; then
-    cp "$REG" "$__back"
-    # The ref is [A-Za-z0-9._-]+ (valid_ref, and the renames row passed the lint), so -v carries nothing awk unescapes.
-    awk -v id="$__io" -v o="$__old" -v n="$__new" '
-      /^## / { cur = $0; sub(/^## +/, "", cur); sub(/[ \t]+$/, "", cur) }
-      cur == id && $0 ~ /^[ \t]+secret:[ \t]/ { v = $0; sub(/^[ \t]+secret:[ \t]*/, "", v); sub(/[ \t]+$/, "", v); if (v == o) { sub(/secret:.*/, "secret: " n) } }
-      { print }' "$REG" > "$REG.new.$$" && mv -f "$REG.new.$$" "$REG"
-    reg_state "$__new" || { mv -f "$__back" "$REG"; fail "the entry $__io still does not name $__new, so nothing was moved" "harbor access check" 1; }
-    __moved=1; log_ok "the entry $__io names $__new now (was $__old)"
-  else log_note "the entry $__in already names $__new"; fi
-  unlock_register
-  __sr="$(store_refs)" || { [ "$__moved" = 0 ] || mv -f "$__back" "$REG"; fail "bin/secret list failed, so the value was not copied and the entry was put back" "secret list; then rerun" 2; }
-  if printf '%s\n' "$__sr" | grep -qxF -- "$__new"; then log_note "secret.$__new holds a value already; nothing was copied"
-  elif printf '%s\n' "$__sr" | grep -qxF -- "$__old"; then
-    # shellcheck disable=SC2086 # $__lock is empty or one word
-    sh "$SRC/secret" copy "$__old" "$__new" $__lock || { [ "$__moved" = 0 ] || mv -f "$__back" "$REG"; fail "copying secret.$__old to secret.$__new failed, so the entry was put back" "secret list; then rerun" 1; }
-  else log_note "nothing is stored under $__old or $__new: store the value with harbor access rotate $__io$__in, or secret put $__new"; fi
-  rm -f "$__back"
-  log_note "secret.$__old is kept and read in place of $__new only while $__new holds nothing, until $__until; once no reader asks for $__old: secret rm $__old"
-  log_end || :
-}
-
 cmd_revoke() {
   [ $# -eq 1 ] || usage
   __id="$1"
@@ -793,10 +596,6 @@ cmd_revoke() {
     if printf '%s\n' "$__sr" | grep -qxF -- "$__ref"; then
       sh "$SRC/secret" rm "$__ref" || fail "secret.$__ref is still stored" "secret rm $__ref" 1
     else log_note "nothing was stored under secret.$__ref"; fi
-    # The other name of a renamed ref holds the same credential (harbor#978): it goes with it.
-    if __tw="$(cmd_renamed "$__ref" | cut -f2)" && [ -n "$__tw" ] && printf '%s\n' "$__sr" | grep -qxF -- "$__tw"; then
-      sh "$SRC/secret" rm "$__tw" || fail "secret.$__tw, the renamed twin of $__ref, is still stored" "secret rm $__tw" 1
-    fi
   fi
   if [ -n "$__rv" ]; then log_note "retire it at its source too: $__rv"
   else log_warn "'$__id' has no revoke: recipe; the value still works at its source until someone retires it there"; fi
@@ -819,8 +618,6 @@ case "$VERB" in
   status) cmd_status "$@" ;;
   rotate) cmd_rotate "$@" ;;
   revoke) cmd_revoke "$@" ;;
-  renamed) cmd_renamed "$@" ;;
-  move) cmd_move "$@" ;;
   -h|--help|help|'') usage ;;
   *) fail "unknown verb '$VERB'" "harbor access --help" 2 ;;
 esac
