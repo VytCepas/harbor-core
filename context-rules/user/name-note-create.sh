@@ -33,17 +33,11 @@ for F in "$CFG"/name-create.d/*.tsv; do
     REST="$(printf '%s\n' "$CMD" | RE="$RE" awk '{ if (match($0, ENVIRON["RE"])) { print substr($0, RSTART + RLENGTH); exit } }')"
     [ -n "$REST" ] || continue
     NAME=""
-    # A quoted name is taken whole, spaces and all (`--display-name "ACME API GitHub"`, harbor#978); else the first word.
-    REST="${REST#"${REST%%[! 	]*}"}"
-    case "$REST" in
-      \"*) NAME="${REST#\"}"; NAME="${NAME%%\"*}" ;;
-      \'*) NAME="${REST#\'}"; NAME="${NAME%%\'*}" ;;
-      *) for W in $REST; do
-           case "$W" in -*) continue ;; esac
-           NAME="$W"; break
-         done
-         NAME="${NAME#[\'\"]}"; NAME="${NAME%[\'\"]}" ;;
-    esac
+    for W in $REST; do
+      case "$W" in -*) continue ;; esac
+      NAME="$W"; break
+    done
+    NAME="${NAME#[\'\"]}"; NAME="${NAME%[\'\"]}"
     case "$NAME" in ''|*[\$\`\;\&\|\(\)\<\>\\]*) continue ;; esac
     # exit 1 is a block-mode finding, which is what the note is for; 2 and above judged nothing.
     _rc=0

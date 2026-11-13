@@ -121,7 +121,6 @@ hand-kept account of direction and status; this table is what exists.
 | [member-prereqs.txt](./member-prereqs.txt) | txt | member-prereqs.txt (harbor#1278) — everything a member laptop needs from its package manager, in one place. |
 | [memory-format.md](./memory-format.md) | md | Memory format (shared canonical) |
 | [merge-stack-union.txt](./merge-stack-union.txt) | txt | merge-stack-union.txt (harbor#1060) — the line lists whose pure additions `harbor merge-stack` keeps from both sides. |
-| [name-create.tsv](./name-create.tsv) | tsv | name-create.tsv (harbor#978) — core's own create commands whose new name context-rules/user/name-note-create.sh judges at birth. |
 | [obligation-kinds.tsv](./obligation-kinds.tsv) | tsv | obligation-kinds.tsv (harbor#1050) — every kind of unfinished work the obligations ledger tracks. |
 | [pack-frontmatter-keys.txt](./pack-frontmatter-keys.txt) | txt | Allowed top-level front-matter keys in an .md a pack installs (bin/pack.sh; harbor#1149). Derived 2026-10-11: union of the top-level keys of |
 | [pack.md](./pack.md) | md | The pack loader - `harbor pack` |

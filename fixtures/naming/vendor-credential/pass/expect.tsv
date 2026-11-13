@@ -1,8 +1,0 @@
-# fixtures/naming/vendor-credential/pass (harbor#978) — vendor-side credential names that MUST stay green. Read by bin/lint-name.sh --self-test.
-# COLUMNS  name <TAB> -
-name	rule
-ACME API GitHub	-
-ACME API Google Cloud Northwind	-
-ACME API Playwright	-
-ACME API Google Cloud	-
-ACME API GitHub Northwind Traders	-

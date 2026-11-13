@@ -15,11 +15,8 @@
 #             verdict. <slot> is one word group, [..] is optional, anything else is literal, and a
 #             slot spelled in capitals renders in capitals. Slots: <family> <verb> <system> (or
 #             <REPO>) are registered terms; <family-or-domain> is a family or a domain; <object>
-#             <subject> <aspect> <name> <id> <ext> <identity> <purpose> <client> are free; <service> and <platform>
-#             are terms.tsv vendor terms, <org> an org term (harbor#978). The joiner inside a slot is _ when the
-#             grammar has an _, a space when it has a space, and - otherwise. A slot spelled <Capitalised> renders
-#             a term's pref (its display spelling) and a free slot's words capitalised; a literal in capitals
-#             (" API ") is matched in any case and rendered as written.
+#             <subject> <aspect> <name> <id> <ext> are free. The joiner inside a slot is _ when the
+#             grammar has an _ and - otherwise.
 #   family    required | optional | -   whether the first word must be a family (or a domain)
 #   checked   tree     lint-name.sh scans the repo tree for it, and --check accepts it
 #             check    --check accepts it; nothing in a repo tree carries it
@@ -64,8 +61,7 @@ release-tag	v<major>.<minor>.<patch>, SemVer 2.0	-	check	v1.2.3	-	-	a release ta
 field	snake_case; _at _date _s _ms _bytes _id suffixes; is_ and has_ booleans	-	check	created_at	-	-	a JSON key, a registry column or a config key; read by --check, and the header row of every register is scanned by the tree run. The retired spellings (_ts _time _seconds _kb _size _uid _flag) are listed in bin/lint-name.sh (harbor#1001); owner #996 G2 (standard-shape.sh reads a field as a shape of a kind)
 option	--long-kebab, one flag per meaning (D-56)	-	no	--dir	-	-	no checker yet; owner #1259 (an option surface and a flag census over bin/*.sh --help; lint D7 stays as is) (#996 item 10)
 schema-file	<name>.schema.json	-	no	event.schema.json	-	-	no checker yet; owner #996 G2 (a schema kind row; vendored files stay exempt by the vendor/ rule) (#996 item 10)
-secret	<system>-<service>-<identity>-<purpose>	-	check	harbor-github-vytcepas-pr-read	name.secret	-	a bin/secret ref (D-36), lowercase kebab, never a value or an email. system: the consumer, harbor for this box's access register; service: the vendor, a vendor term (core has github, gcloud, playwright, meta; a workload pack or the private overlay registers its own platforms); identity: the one account it acts as, a mailbox local part (tools, analytics) or a system-user or app-owner handle, never a full email; purpose: what it is for (ads, read, write, oauth-client), or a client slug for a per-account key. Read by --check only: bin/access.sh add refuses a ref that fails it (harbor#978)
-vendor-credential	<ORG> API <Platform>[ <Client>]	-	check	ACME API GitHub	name.vendor-credential	-	the name a credential carries ON the vendor: an API app, key, token, system user or service account display name, so the vendor's console says whose it is (harbor#978). ORG: the company's organisation, an org term of a workload or hub pack or the private overlay (ACME is core's placeholder); Platform: a terms.tsv vendor, spelled as its pref; Client: the client a per-account key serves, each word capitalised. A slot spelled <Capitalised> renders the display spelling, so this grammar carries spaces and brands. Read by --check only: bin/access.sh add checks an entry's vendor-name, and the name-create rows judge gcloud --display-name at birth
+secret	<system>-<service>-<identity>-<purpose>	-	no	harbor-github-vytcepas-pr-read	-	-	never a value, client data or email (D-36)
 cloud-resource	<system>-<family>-<object>[-<env>]	-	no	frobapp-api-prod	-	-	a warehouse keeps one dialect per repo, dialects.tsv (D-33)
 test	tests/<family>/<subject>/<aspect>.test.<ext>	required	tree	tests/admission/bash/destroy.test.sh	name.test-path	-	Python keeps test_<aspect>.py (D-14)
 path.test	the test surface under the name harbor#961 gives it	-	check	tests/admission/bash/destroy.test.sh	-	test	judged exactly as test is; test is the registry id, path.test its second name

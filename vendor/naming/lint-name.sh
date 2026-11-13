@@ -37,7 +37,7 @@
 #   --base <ref>        the base for --changed, --added and name.exemption-grow (default: $HARBOR_CI_BASE or origin/main)
 #   --today YYYY-MM-DD  the date alias and exemption expiry is judged against (default: $HARBOR_LINT_TODAY, else today in UTC, D-51)
 #   --exemptions-base <file>   the base exemptions.tsv for name.exemption-grow (default: read from git)
-#   HARBOR_SCOPE_PRIVATE=<dir>  the private layer whose terms.tsv overlays client, system, org and vendor terms (D-85; default: $PORT_ROOT/harbor-private)
+#   HARBOR_SCOPE_PRIVATE=<dir>  the private layer whose terms.tsv overlays client and system terms (D-85; default: $PORT_ROOT/harbor-private)
 #   <root>/naming-words.tsv, <root>/naming-families.tsv   the repo overlay (harbor#967): a repo's own words and families,
 #                               in words.tsv's and terms.tsv's row shape, read from the judged root and never from a root
 #                               that holds standards/naming/ (standards/naming.md §14)
@@ -121,8 +121,6 @@ if [ "$VENDORED" = 1 ] && [ -z "$ROOT" ]; then ROOT="$HERE/../.."; fi
 ROOT="${ROOT:-$(CDPATH='' cd -- "$HERE/.." && pwd)}"
 ROOT="$(CDPATH='' cd -- "$ROOT" 2>/dev/null && pwd)" || { log_fail "no such root: $ROOT"; log_fix "sh $SELF --root <dir>"; log_end || :; exit 2; }
 if [ -z "$REG" ] && [ "$VENDORED" = 1 ] && [ ! -f "$ROOT/standards/naming/registers.tsv" ]; then REG="$HERE/registry"; fi
-# A member laptop's managed bin is flat (contracts/member-files.txt): the registry sits beside this file (harbor#978).
-if [ -z "$REG" ] && [ -f "$HERE/harbor-member-mode" ] && [ -f "$HERE/registers.tsv" ] && [ ! -f "$ROOT/standards/naming/registers.tsv" ]; then REG="$HERE"; fi
 REG="${REG:-$ROOT/standards/naming}"
 TODAY="${TODAY:-${HARBOR_LINT_TODAY:-$(date -u +%Y-%m-%d)}}"   # D-51: UTC for every date; the env pins it for a caller that cannot pass --today
 case "$TODAY" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *)
@@ -162,9 +160,7 @@ PRIV="${HARBOR_SCOPE_PRIVATE:-${PORT_ROOT:-$HOME/port}/harbor-private}/terms.tsv
 [ "$ACTION" != self-test ] || { HARBOR_SCOPE_PRIVATE="$T/no-private"; export HARBOR_SCOPE_PRIVATE; }
 [ -z "$PRIV" ] || [ -r "$PRIV" ] || { log_fail "the private overlay $PRIV is not readable — nothing was judged"; log_fix "ls -l $PRIV"; log_end || :; exit "$UNCHECKED"; }
 # A pack's system terms (harbor#950): <config dir>/terms.d/<repo-id>.tsv, written by bin/pack.sh install, read with the
-# private overlay's rules and class `system` only, so a workload registers its own systems and core names none. Class `org`
-# and `vendor` too (harbor#978): the company's own org, the <ORG> of a vendor-side credential name, and the workload's
-# platforms, the <service> of a secret ref, are workload or hub config, never core (lint.domain).
+# private overlay's rules and class `system` only, so a workload registers its own systems and core names none.
 PACKT=""
 # --self-test's fixture runs are children of this one: they inherit an empty config dir, as they inherit no private root.
 [ "$ACTION" != self-test ] || { CLAUDE_CONFIG_DIR="$T/no-config"; export CLAUDE_CONFIG_DIR; }
@@ -364,24 +360,11 @@ function slotclass(nm,   n) {
   if (n == "family-or-domain") return "family|domain"
   if (n == "verb") return "verb"
   if (n == "system" || n == "repo") return "system"
-  if (n == "service" || n == "platform") return "vendor"
-  if (n == "org") return "org"
-  if (n == "object" || n == "subject" || n == "aspect" || n == "name" || n == "id" || n == "ext" || n == "identity" || n == "purpose" || n == "client") return "free"
+  if (n == "object" || n == "subject" || n == "aspect" || n == "name" || n == "id" || n == "ext") return "free"
   return "?"
 }
-# How a slot is spelled (harbor#978): <REPO> in capitals, <Platform> as the pref of the term (its display spelling, a free
-# slot each word capitalised), <family> as the term id. A capitalised slot is what lets a name carry spaces and brands.
-function slotcase(tv) { return (tv == toupper(tv)) ? "U" : ((substr(tv, 1, 1) == toupper(substr(tv, 1, 1))) ? "D" : "L") }
-function dispkey(v) { v = tolower(v); gsub(/ /, "-", v); return v }
-function pkload(   k, KP) {   # PK[class, dispkey(pref)] = id, for the classes a display slot takes
-  if (PK_LOADED) return
-  for (k in IS) { split(k, KP, SUBSEP); if ((KP[1] == "vendor" || KP[1] == "org") && (KP[2] in PREF) && PREF[KP[2]] != "" && PREF[KP[2]] != "-") PK[KP[1], dispkey(PREF[KP[2]])] = KP[2] }
-  PK_LOADED = 1
-}
-function dispof(id) { return ((id in PREF) && PREF[id] != "" && PREF[id] != "-") ? PREF[id] : id }
-function capwords(v, J,   n, A, i, o) { n = split(v, A, "-"); o = ""; for (i = 1; i <= n; i++) o = o (i > 1 ? J : "") toupper(substr(A[i], 1, 1)) substr(A[i], 2); return o }
 function tcompile(sid, t,   i, c, lit, nm, j, n, opt, k, grp) {
-  n = 0; lit = ""; opt = 0; grp = 0; TJ[sid] = (t ~ /_/) ? "_" : ((t ~ / /) ? " " : "-"); TERR[sid] = ""
+  n = 0; lit = ""; opt = 0; grp = 0; TJ[sid] = (t ~ /_/) ? "_" : "-"; TERR[sid] = ""
   for (i = 1; i <= length(t); i++) {
     c = substr(t, i, 1)
     if (c == "<") {
@@ -399,7 +382,7 @@ function tcompile(sid, t,   i, c, lit, nm, j, n, opt, k, grp) {
   if (lit != "") { n++; TK[sid, n] = "L"; TV[sid, n] = lit; TO[sid, n] = opt }
   NTK[sid] = n; TEXT[sid] = (n > 0 && TK[sid, n] == "S" && tolower(TV[sid, n]) == "ext")
   for (k = 1; k <= n; k++) {
-    if (TK[sid, k] == "S" && slotclass(TV[sid, k]) == "?") { TERR[sid] = "the slot <" TV[sid, k] "> is not a slot (family verb system family-or-domain service platform org object subject aspect name id ext identity purpose client)"; return }
+    if (TK[sid, k] == "S" && slotclass(TV[sid, k]) == "?") { TERR[sid] = "the slot <" TV[sid, k] "> is not a slot (family verb system family-or-domain object subject aspect name id ext)"; return }
     if (TK[sid, k] == "S" && k < n && TK[sid, k + 1] == "S" && !TO[sid, k + 1]) { TERR[sid] = "two slots with no literal between them: <" TV[sid, k] "><" TV[sid, k + 1] ">"; return }
   }
 }
@@ -407,15 +390,12 @@ function slotok(cls, cand, sid,   ctx) {
   if (cls == "family") return (("family" SUBSEP cand) in IS)
   if (cls == "family|domain") return ((("family" SUBSEP cand) in IS) || (("domain" SUBSEP cand) in IS))
   if (cls == "verb") return (("verb" SUBSEP cand) in IS)
-  if (cls == "vendor") return (("vendor" SUBSEP cand) in IS)
-  # The org of a box is a private-overlay term (D-85); once one is registered, the core placeholder stops counting.
-  if (cls == "org") return NORGOV ? (cand in ORGOV) : (("org" SUBSEP cand) in IS)
   ctx = (sid == "env") ? "env-prefix" : sid
   return ((("system" SUBSEP cand) in IS) || ((cand in AL) && allowed(cand, ctx)))
 }
 function clsname(cls) { return (cls == "family|domain") ? "family or domain" : cls }
 # "" when s (lowercase) parses, else why not. VAL[<slot>] holds each slot. upto = a slot name: stop after it.
-function tmatch(sid, s, upto,   n, i, j, k, p, e, nm, cls, nx, optend, lit, seg, W, nw, kmax, cand, found, J, a, bb, R, c, tail, vn, len, gend, take, dc) {
+function tmatch(sid, s, upto,   n, i, j, k, p, e, nm, cls, nx, optend, lit, seg, W, nw, kmax, cand, found, J, a, bb, R, c, tail, vn, len, gend, take) {
   delete VAL
   if (!(sid in TJ)) return "surfaces.tsv has no grammar for " q(sid)
   if (TERR[sid] != "") return TERR[sid]
@@ -425,13 +405,13 @@ function tmatch(sid, s, upto,   n, i, j, k, p, e, nm, cls, nx, optend, lit, seg,
     if (TO[sid, i]) {
       if (i > gend) {   # a group no free slot has consumed: taken when the name carries its first literal
         gend = i; while (gend + 1 <= n && TO[sid, gend + 1] == TO[sid, i]) gend++
-        take = (p <= length(s) && TK[sid, i] == "L" && substr(s, p, length(TV[sid, i])) == tolower(TV[sid, i]))
+        take = (p <= length(s) && TK[sid, i] == "L" && substr(s, p, length(TV[sid, i])) == TV[sid, i])
       }
       if (!take) continue
     }
     if (TK[sid, i] == "L") {
-      lit = tolower(TV[sid, i])   # s is lowercase; a literal spelled in capitals (" API ") is matched as such and rendered as written
-      if (substr(s, p, length(lit)) != lit) return "expected " q(TV[sid, i]) " at " q(substr(s, p) == "" ? "the end" : substr(s, p))
+      lit = TV[sid, i]
+      if (substr(s, p, length(lit)) != lit) return "expected " q(lit) " at " q(substr(s, p) == "" ? "the end" : substr(s, p))
       p += length(lit); continue
     }
     nm = tolower(TV[sid, i]); cls = slotclass(nm)
@@ -445,21 +425,18 @@ function tmatch(sid, s, upto,   n, i, j, k, p, e, nm, cls, nx, optend, lit, seg,
       seg = substr(s, p, R - p)
       nw = split(seg, W, J)
       if (nw == 0) return "no " nm " in " q(s)
-      dc = slotcase(TV[sid, i]); if (dc == "D") pkload()
-      kmax = (cls == "system" || dc == "D") ? nw : 1   # a display spelling may be several words (OpenAI Ads)
+      kmax = (cls == "system") ? nw : 1
       found = 0
       for (k = kmax; k >= 1 && !found; k--) {
         cand = W[1]; for (a = 2; a <= k; a++) cand = cand "-" W[a]
-        if (dc == "D") { if (((cls SUBSEP cand) in PK) && slotok(cls, PK[cls, cand], sid)) { found = 1; VAL[nm] = PK[cls, cand] } }
-        else if (slotok(cls, cand, sid)) { found = 1; VAL[nm] = cand }
-        if (found) { len = k - 1; for (a = 1; a <= k; a++) len += length(W[a]) }
+        if (slotok(cls, cand, sid)) { found = 1; VAL[nm] = cand; len = k - 1; for (a = 1; a <= k; a++) len += length(W[a]) }
       }
       if (!found) return q(W[1]) " is not a registered " clsname(cls)
       p += len
     } else {
       if (nx == 0) e = length(s) + 1
       else {
-        lit = tolower(TV[sid, nx])
+        lit = TV[sid, nx]
         if (nx == n) { e = length(s) - length(lit) + 1; if (e < p || substr(s, e) != lit) return "expected " q(lit) " at the end" }
         else { a = index(substr(s, p), lit); if (a == 0) return "expected " q(lit); e = p + a - 1 }
       }
@@ -473,7 +450,7 @@ function tmatch(sid, s, upto,   n, i, j, k, p, e, nm, cls, nx, optend, lit, seg,
       if (index(seg, "/")) return "the " nm " " q(seg) " has an extra path segment"
       if (nm == "ext" && (index(seg, ".") || seg !~ /^[a-z0-9]+$/)) return "the extension " q(seg) " is not one lowercase element"
       if ((nm == "subject" || nm == "aspect") && !kebab(seg)) return "the " nm " " q(seg) " is not lowercase kebab"
-      VAL[nm] = seg; if (J == "_") gsub(/_/, "-", VAL[nm]); if (J == " ") gsub(/ /, "-", VAL[nm])
+      VAL[nm] = seg; if (J == "_") gsub(/_/, "-", VAL[nm])
       p = e; i = optend
     }
     if (upto != "" && nm == upto) {
@@ -502,23 +479,17 @@ function trender(sid, V,   n, i, g, out, nm, v, ok, k, J, part) {
       for (k = i; k <= g; k++) if (TK[sid, k] == "S" && !(tolower(TV[sid, k]) in V)) ok = 0
       if (ok) for (k = i; k <= g; k++) {
         if (TK[sid, k] == "L") part = part TV[sid, k]
-        else { nm = tolower(TV[sid, k]); part = part tspell(sid, TV[sid, k], V[nm]) }
+        else { nm = tolower(TV[sid, k]); v = V[nm]; gsub(/-/, J, v); part = part ((TV[sid, k] == toupper(TV[sid, k])) ? toupper(v) : v) }
       }
       out = out part; i = g; continue
     }
     if (TK[sid, i] == "L") { out = out TV[sid, i]; continue }
     nm = tolower(TV[sid, i])
     if (!(nm in V)) { RERR = "the slot <" nm "> has no value"; return "" }
-    out = out tspell(sid, TV[sid, i], V[nm])
+    v = V[nm]; gsub(/-/, J, v)
+    out = out ((TV[sid, i] == toupper(TV[sid, i])) ? toupper(v) : v)
   }
   return out
-}
-# one slot value as the template spells the slot: capitals, the display spelling, or the id joined by the grammar joiner
-function tspell(sid, tv, v,   c) {
-  c = slotcase(tv)
-  if (c == "D") return (slotclass(tv) == "free") ? capwords(v, TJ[sid]) : dispof(v)
-  gsub(/-/, TJ[sid], v)
-  return (c == "U") ? toupper(v) : v
 }
 # ── harbor#1259: the validators, rendered from the same compiled grammar (tcompile) and term sets (slotok) ──
 # A validator is an allowlist of shape and family, never a second parser: a registered slot is the words slotok
@@ -535,14 +506,11 @@ function valts(sid, cls, up,   k, KP, n, m, i, j, w, t, ctx, J, out, seen) {   #
   for (k in IS) {
     split(k, KP, SUBSEP)
     if ((KP[1] == "family" && (cls == "family" || cls == "family|domain")) || (KP[1] == "domain" && cls == "family|domain") \
-        || (KP[1] == "verb" && cls == "verb") || (KP[1] == "system" && cls == "system") || (KP[1] == "vendor" && cls == "vendor") \
-        || (KP[1] == "org" && cls == "org" && slotok("org", KP[2], sid))) WL[++n] = KP[2]
+        || (KP[1] == "verb" && cls == "verb") || (KP[1] == "system" && cls == "system")) WL[++n] = KP[2]
   }
   if (cls == "system") for (k in AL) if (allowed(k, ctx)) WL[++n] = k
   for (i = 1; i <= n; i++) {
-    w = WL[i]
-    if (up == "D") w = dispof(w)
-    else { gsub(/-/, J, w); if (up) w = toupper(w) }
+    w = WL[i]; gsub(/-/, J, w); if (up) w = toupper(w)
     if (!(w in seen)) { seen[w] = 1; VW[++m] = w }
   }
   if (m == 0) { VERR = "no term of class " cls " (the grammar of " sid " needs one)"; return "" }
@@ -553,12 +521,12 @@ function valts(sid, cls, up,   k, KP, n, m, i, j, w, t, ctx, J, out, seen) {   #
 function vslot(sid, nm, up,   J, w) {   # one slot: its words, or a free word-run joined by the surface joiner
   J = TJ[sid]
   if (slotclass(nm) != "free") return valts(sid, slotclass(nm), up)
-  w = (up == "D") ? "[A-Z0-9][A-Za-z0-9]*" : (up ? "[A-Z][A-Z0-9]*" : "[a-z][a-z0-9]*")
+  w = up ? "[A-Z][A-Z0-9]*" : "[a-z][a-z0-9]*"
   return (nm == "ext") ? w : w "(" J w ")*"
 }
 function vtok(sid, i) {
   if (TK[sid, i] == "L") return vlit(TV[sid, i])
-  return vslot(sid, tolower(TV[sid, i]), (slotcase(TV[sid, i]) == "D") ? "D" : (slotcase(TV[sid, i]) == "U"))
+  return vslot(sid, tolower(TV[sid, i]), TV[sid, i] == toupper(TV[sid, i]))
 }
 function vre(sid, from, to,   i, g, k, out, part) {   # tokens from..to; an optional group is (..)? as the template spells it
   out = ""
@@ -662,26 +630,6 @@ function branch_check(subj, name,   t) {
   t = name; sub(/\/.*$/, "", t)
   if (!(("commit-type" SUBSEP t) in IS)) emit("name.branch", subj, "the type " q(t) " is not a registered commit type (terms.tsv, class commit-type)")
 }
-# harbor#978 (D-36): a secret ref is <system>-<service>-<identity>-<purpose>, lowercase kebab, so a stored credential says
-# whose it is, which vendor issued it, the account it acts as and what it is for. A value, an email or a dot never fits.
-function secret_check(subj, name,   r) {
-  if (name !~ /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/) { emit(SRULE["secret"], subj, shape_msg("secret", "a secret ref is lowercase kebab, letters and digits, never an email or a value: " q(name))); return }
-  r = tmatch("secret", name, "")
-  if (r != "") emit(SRULE["secret"], subj, shape_msg("secret", r))
-}
-# harbor#978: the name a credential carries ON the vendor (an API app, key, token, system user, service account) says whose
-# it is: <ORG> API <Platform>[ <Client>], the org in capitals, the platform as its terms.tsv pref spells it.
-function vendor_check(subj, name,   sid, r, k, pre, cl) {
-  sid = "vendor-credential"
-  r = tmatch(sid, tolower(name), "")
-  if (r != "") { emit(SRULE[sid], subj, shape_msg(sid, r)); return }
-  delete V; for (k in VAL) if (k != "client") V[k] = VAL[k]
-  pre = trender(sid, V)
-  if (substr(name, 1, length(pre)) != pre) { delete V; for (k in VAL) V[k] = VAL[k]; emit(SRULE[sid], subj, shape_msg(sid, q(name) " is spelled " q(trender(sid, V)))); return }
-  cl = substr(name, length(pre) + 2)
-  if (("client" in VAL) && cl !~ /^[A-Z0-9][A-Za-z0-9]*( [A-Z0-9][A-Za-z0-9]*)*$/)
-    emit(SRULE[sid], subj, shape_msg(sid, "the client " q(cl) " is words that each start with a capital or a digit"))
-}
 function skill_check(subj, name,   r) {
   r = tmatch("skill", tolower(name), "")
   if (r != "") emit(SRULE["skill"], subj, shape_msg("skill", r))
@@ -754,8 +702,6 @@ function check_rec(sf, nm,   p) {
   else if (sf == "field") field_check("field:" nm, nm)
   else if (sf == "commit") commit_check("commit:" nm, nm)
   else if (sf == "branch") branch_check("branch:" nm, nm)
-  else if (sf == "secret") secret_check("secret:" nm, nm)
-  else if (sf == "vendor-credential") vendor_check("vendor-credential:" nm, nm)
   else if (sf == "rule-id" || sf == "check-id") id_check(sf ":" nm, nm, sf)
 }
 function shape(f, msg) { emit("name.registry-shape", REL[f], msg) }
@@ -776,7 +722,7 @@ function repokind_check(label, kind, tok, state,   sj) {
 BEGIN {
   FS = "\t"; OFS = "\t"
   _npk = split(packt, _PK, " "); for (i = 1; i <= _npk; i++) ISPACK[_PK[i]] = 1   # the pack overlays (harbor#950)
-  split("family verb domain client abbreviation kind layer concept system extension subject level mode outcome decision severity priority state control-type moment function lifecycle share relation modality tier strength commit-type vendor org", L, " ")
+  split("family verb domain client abbreviation kind layer concept system extension subject level mode outcome decision severity priority state control-type moment function lifecycle share relation modality tier strength commit-type", L, " ")
   for (i in L) CLASS[L[i]] = 1
   split("codename legacy banned abbreviation spelling", L, " "); for (i in L) AKIND[L[i]] = 1
   split("tool-required world-name legacy", L, " "); for (i in L) EKIND[L[i]] = 1
@@ -809,9 +755,9 @@ FILENAME != recfile {
     if ($1 in AL) { emitb("name.registry-duplicate", "term:" $1, REL[f] " line " FNR ": " q($1) " is a core alias, and the overlay cannot make it a term (D-85)"); next }
     if ($1 !~ /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/) { emitb("name.registry-shape", "private-term:" $1, REL[f] " line " FNR ": " q($1) " is not a lowercase kebab term, so the overlay would never match it (D-85)"); next }
     np = split(col(f, "class"), PC, ",")
-    if (f in ISPACK) { if (col(f, "class") != "system" && col(f, "class") != "org" && col(f, "class") != "vendor") { emitb("name.registry-shape", "private-term:" $1, REL[f] " line " FNR ": class " q(col(f, "class")) " is not system, org or vendor: a pack registers its systems, its organisation and its platforms only (harbor#950, harbor#978)"); next } }
-    else for (i = 1; i <= np; i++) if (PC[i] != "client" && PC[i] != "system" && PC[i] != "org" && PC[i] != "vendor") {
-      emitb("name.registry-shape", "private-term:" $1, REL[f] " line " FNR ": class " q(PC[i]) " is not client, system, org or vendor: the overlay adds only those (D-85, harbor#978)"); next }
+    if (f in ISPACK) { if (col(f, "class") != "system") { emitb("name.registry-shape", "private-term:" $1, REL[f] " line " FNR ": class " q(col(f, "class")) " is not system: a pack registers its system terms only (harbor#950)"); next } }
+    else for (i = 1; i <= np; i++) if (PC[i] != "client" && PC[i] != "system") {
+      emitb("name.registry-shape", "private-term:" $1, REL[f] " line " FNR ": class " q(PC[i]) " is not client or system: the overlay adds only those (D-85)"); next }
     OVT[$1] = REL[f]
   }
   else if ((ovw != "" && f == ovw) || (ovf != "" && f == ovf)) {
@@ -856,7 +802,6 @@ FILENAME != recfile {
       if (!(C[i] in CLASS)) emit("name.registry-term", "term:" id, q(C[i]) " is not a class (§1.1)")
       IS[C[i], id] = 1
     }
-    if ((("org" SUBSEP id) in IS) && (id in OVT)) { ORGOV[id] = 1; NORGOV++ }   # the org of the box replaces the core placeholder
     if ((("family" SUBSEP id) in IS) && (("verb" SUBSEP id) in IS))
       emit("name.registry-overlap", "term:" id, q(id) " is both a family and a verb, so a name could not be parsed back into its tuple (§3)")
     if (((("family" SUBSEP id) in IS) || (("verb" SUBSEP id) in IS)) && id ~ /-/)
@@ -965,7 +910,6 @@ $1 == "M" { emit("name.control-unregistered", $2 ":census", "the census " q($3) 
 $1 == "P" { r = tmatch($2, tolower($3), ""); if (r == "") print "P", "ok", tslots($2); else print "P", "err", r; next }
 $1 == "R" { if (!($2 in TJ)) { print "R", "err", "surfaces.tsv has no grammar for " q($2); next }
             delete V; for (i = 3; i <= NF; i++) { kv = $i; eq = index(kv, "="); V[substr(kv, 1, eq - 1)] = substr(kv, eq + 1) }
-            if (!("org" in V)) { no = 0; for (k in IS) { split(k, KP, SUBSEP); if (KP[1] == "org" && slotok("org", KP[2], $2)) { no++; ov = KP[2] } } if (no == 1) V["org"] = ov }   # the one org the box registers
             o = trender($2, V); if (o == "") print "R", "err", RERR; else print "R", "ok", o; next }
 $1 == "T" { sid = $2; if (!(sid in TJ)) { print "T", sid, "err", "surfaces.tsv has no grammar for " q(sid); next } ex = SEX[sid]; r = tmatch(sid, tolower(ex), "")
             if (r != "") { print "T", sid, "err", "the example " q(ex) " does not parse: " r; next }
