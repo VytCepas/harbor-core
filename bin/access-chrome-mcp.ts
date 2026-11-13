@@ -52,10 +52,16 @@ const AGENT_VERBS = new Set(['attach', 'status', 'doctor', 'detach', 'tabs', 'fr
 // Run here. Default-deny: absent on purpose are run-code, eval, cookie-*, *storage-*, state-save/load, requests, route, install...
 const HOT_VERBS = new Set(['state', 'text', 'goto', 'tab-list', 'tab-select', 'tab-close', 'snapshot', 'find', 'screenshot', 'pdf',
   'go-back', 'go-forward', 'reload', 'console', 'resize', 'click', 'dblclick', 'hover', 'fill', 'type', 'select', 'check', 'uncheck',
-  'drag', 'press', 'keydown', 'keyup', 'mousemove', 'mousedown', 'mouseup', 'mousewheel', 'dialog-accept', 'dialog-dismiss', 'upload']);
+  'drag', 'press', 'keydown', 'keyup', 'mousemove', 'mousedown', 'mouseup', 'mousewheel', 'dialog-accept', 'dialog-dismiss', 'upload', 'scroll']);
 const INPUT_VERBS = new Set(['click', 'dblclick', 'fill', 'type', 'select', 'check', 'uncheck', 'drag', 'press', 'keydown', 'keyup',
   'hover', 'mousedown', 'mouseup', 'mousewheel']);
 const SIGNIN_FAIL_VERBS = new Set(['goto', 'reload', 'go-back', 'go-forward', 'click', 'dblclick']);
+// Script-first (harbor#1507, operator 2026-11-12): these run a fixed script from contracts/browser-script.tsv, which needs no
+// paint, so a window covered by another app still takes them. --real is the Playwright path, which waits for the tab to show.
+const SCRIPTED = new Set(['click', 'dblclick', 'hover', 'check', 'uncheck', 'select', 'scroll']);
+// Verbs that wait for their target to show before acting: on a hidden tab they time out having done nothing, so a retry
+// after front cannot act twice.
+const SHOWN_RETRY_VERBS = new Set(['click', 'dblclick', 'fill', 'select', 'check', 'uncheck', 'hover', 'drag']);
 
 const VERBS: Record<string, string> = {
   attach: "connect to the operator's Chrome (a window of its own; the operator clicks Connect unless the extension token is registered), " +
@@ -79,9 +85,11 @@ const VERBS: Record<string, string> = {
   pdf: 'the page as a PDF (args: [--filename=<bare name>])',
   'go-back': 'history back', 'go-forward': 'history forward', reload: 'reload the page',
   console: 'the page console', resize: 'resize the viewport (args: [width, height])',
-  click: 'click a ref (args: [ref] or [ref, button], --force, --modifiers=<key>)', dblclick: 'double-click a ref',
-  hover: 'hover a ref', fill: 'fill a field (args: [ref, text], --submit)', type: 'type text (args: [text], --submit)',
-  select: 'select an option (args: [ref, value])', check: 'check a ref', uncheck: 'uncheck a ref',
+  click: 'click a ref by script, which works on a covered window (args: [ref]); --real for the Playwright click ([ref, button], --modifiers=<key>), --force for a press at its box',
+  dblclick: 'double-click a ref by script; --real for the Playwright one',
+  hover: 'hover a ref by script; --real for the Playwright one', fill: 'fill a field (args: [ref, text], --submit)', type: 'type text (args: [text], --submit)',
+  select: 'select options of a native <select> by script (args: [ref, value, ...]); --real for the Playwright one', check: 'check a ref by script; --real for the Playwright one', uncheck: 'uncheck a ref by script; --real for the Playwright one',
+  scroll: 'scroll at once, on a covered window too (args: [pixels] the page, [pixels, ref] that element, [ref] into view)',
   drag: 'drag (args: [from-ref, to-ref])', press: 'press a key (args: [key])',
   keydown: 'key down (args: [key])', keyup: 'key up (args: [key])',
   mousemove: 'move the mouse (args: [x, y])', mousedown: 'mouse down', mouseup: 'mouse up',
@@ -137,6 +145,10 @@ function sessionName(lane: string): string {
   if (bad || laneBad) refuse('no session: run inside Claude Code (CLAUDE_CODE_SESSION_ID), or set HARBOR_ACCESS_BROWSER_SESSION outside it; a HARBOR_ACCESS_BROWSER_LANE is 1-12 of a-z0-9', 'export HARBOR_ACCESS_BROWSER_SESSION=manual');
   return lane ? `${s}-${lane}` : s;
 }
+// The lane a session name carries, for the shell agent, which names the session from the environment itself.
+function laneOf(S: string): string { const b = sessionName(''); return S.startsWith(b + '-') ? S.slice(b.length + 1) : ''; }
+const SCRIPTS: Record<string, string> = Object.fromEntries(readText(path.join(ROOT, 'contracts', 'browser-script.tsv')).split('\n')
+  .filter((l) => l && !l.startsWith('#') && l.includes('\t')).map((l) => [l.slice(0, l.indexOf('\t')), l.slice(l.indexOf('\t') + 1)]));
 const workdirOf = (s: string) => path.join((process.env.TMPDIR ?? '/tmp').replace(/\/+$/, ''), 'harbor-browser', s);
 
 // ── the daemon socket (cli-client/session.js: newline-framed JSON, {id, method:'run', params:{args, cwd, raw}}) ──
@@ -388,9 +400,12 @@ async function lostCheck(c: Conn, S: string, wd: string, verb: string, held: str
   throw withPrefix(err, pre);
 }
 // After a failed input verb: a hidden tab never paints, so the CLI's waits time out. Say so.
-async function hiddenCheck(c: Conn, wd: string, verb: string, held: string) {
+async function isHidden(c: Conn, wd: string): Promise<boolean> {
   const p = await probeState(c, wd);
-  if (p === null || !/visibility\\?":\\?"hidden/.test(p)) return;
+  return p !== null && /visibility\\?":\\?"hidden/.test(p);
+}
+async function hiddenCheck(c: Conn, wd: string, verb: string, held: string) {
+  if (!await isHidden(c, wd)) return;
   throw withPrefix(new Refusal(`the tab is hidden: Chrome is showing another tab or window, so ${verb} timed out`, 'harbor chrome front'), scrub(held));
 }
 class PrefixedRefusal extends Refusal { constructor(r: Refusal, public prefix: string) { super(r.message, r.fix); } }
@@ -426,7 +441,8 @@ function optionGuards(verb: string, args: string[], wd: string) {
       if (verb !== 'click' && verb !== 'dblclick') refuse(`option refused: ${a} — --modifiers is for click and dblclick`);
     } else if (a === '--force') { if (verb !== 'click') refuse('option refused: --force is for click only; the mouse verbs it uses carry no click count'); }
     else if (a === '--submit') { if (verb !== 'fill' && verb !== 'type') refuse('option refused: --submit is for fill and type'); }
-    else if (a.startsWith('-')) refuse(`option refused: ${a} — only --filename=<name>, on fill and type --submit, and on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>`);
+    else if (a === '--real') { if (!SCRIPTED.has(verb) || verb === 'scroll') refuse('option refused: --real is for click, dblclick, hover, check, uncheck and select'); }
+    else if (a.startsWith('-')) refuse(`option refused: ${a} — only --filename=<name>, on fill and type --submit, on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>, and --real on the scripted verbs`);
   }
 }
 const lc = (s: string) => asciiLower(s);
@@ -476,7 +492,44 @@ function cliArgs(verb: string, args: string[]): Record<string, unknown> {
 }
 
 type Timing = { guards: number; rpc: number; settle: number };
-async function hot(S: string, verb: string, args: string[], tm: Timing, confirmed = false): Promise<Res> {
+// A scripted verb: the guard snapshot (destructive label, stale ref) as for click, then one fixed script on the ref.
+async function scripted(c: Conn, S: string, wd: string, verb: string, args: string[], ref: string, tm: Timing, t0: number, confirmed: boolean): Promise<Res> {
+  const isRef = (a: string) => /^(e[0-9]+|f[0-9]+e[0-9]+)$/.test(a);
+  let arg: unknown = null;
+  if (verb === 'scroll') {
+    const px = args.filter((a) => /^-?[0-9]+$/.test(a)), rf = args.filter((a) => !/^-?[0-9]+$/.test(a));
+    if (px.length > 1 || rf.length > 1 || (rf.length === 1 && !isRef(rf[0])) || (!px.length && !rf.length))
+      refuse('scroll takes [pixels] (the page), [pixels, ref] (that element) or [ref] (into view)', 'harbor chrome scroll 800');
+    ref = rf[0] ?? ''; arg = px.length ? Number(px[0]) : null;
+  } else if (verb !== 'click' && verb !== 'dblclick') {
+    ref = args[0] ?? '';
+    if (verb === 'select') { arg = args.slice(1); if (!(arg as string[]).length) refuse('select takes [ref, value, ...]', 'harbor chrome snapshot'); }
+    else if (args.length !== 1) refuse(`${verb} takes [ref]`, 'harbor chrome snapshot');
+    if (verb === 'check' || verb === 'uncheck') arg = verb === 'check';
+  }
+  if (ref) await guardSnapshot(c, S, wd, verb, ref, confirmed);   // refuses a non-ref, a stale ref and a destructive label
+  const fn = SCRIPTS[verb === 'uncheck' ? 'check' : verb];
+  if (!fn) refuse(`no script for ${verb} in contracts/browser-script.tsv`, 'git checkout -- contracts/browser-script.tsv');
+  tm.guards = performance.now() - t0;
+  const t1 = performance.now();
+  let r: { isError: boolean; text: string };
+  try { r = await c.run({ _: ['eval', fn.replace('__ARG__', JSON.stringify(arg)), ...(ref ? [ref] : [])] }, wd, true); } catch (e) {
+    if (!c.dead) throw e;
+    return goneRefusal(S);
+  }
+  tm.rpc = performance.now() - t1;
+  if (r.isError) { goneCheck(S, r.text); return { text: scrub(r.text ?? ''), isError: true }; }
+  let out = r.text ?? '';
+  try { const j = JSON.parse(out); if (typeof j === 'string') out = j; } catch { /* already plain */ }
+  const first = out.split('\n')[0];
+  if (/^(refused|unchanged): /.test(first)) refuse(`${verb}${ref ? ` ${ref}` : ''} by script: ${first}`, `harbor chrome ${verb} ${args.join(' ')} --real   # the Playwright path; it needs the tab shown`);
+  if (INPUT_VERBS.has(verb)) { const t2 = performance.now(); await lostCheck(c, S, wd, verb, out, tm.rpc); tm.settle = performance.now() - t2; }
+  const pu = /^- Page URL: (.*)$/m.exec(out)?.[1] ?? '';
+  if (pu && signinUrl(pu)) signedOut(wd, pu);
+  if (pu && hostOk(pu)) { try { fs.writeFileSync(path.join(wd, '.last-url'), pu + '\n'); } catch { /* a courtesy for the re-attach */ } }
+  return { text: scrub(out), isError: false };
+}
+async function hot(S: string, verb: string, args: string[], tm: Timing, confirmed = false, shown = false): Promise<Res> {
   const t0 = performance.now();
   const wd = workdirOf(S);
   envGuards(wd);
@@ -520,6 +573,9 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
   if (verb === 'upload') uploadGuards(args);
   hostGuard(verb, args);
   const c = await connectOrGone(S);
+  const real = args.includes('--real');
+  if (SCRIPTED.has(verb) && !real && !force && !mods && (!btn || btn === 'left')) return scripted(c, S, wd, verb, args, ref, tm, t0, confirmed);
+  if (real) args = args.filter((a) => a !== '--real');
   if (ref) {
     const tgt = await guardSnapshot(c, S, wd, verb, ref, confirmed);
     if (force) {
@@ -562,7 +618,16 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
   }
   if (INPUT_VERBS.has(verb)) {
     const t2 = performance.now();
-    if (!rc) await lostCheck(c, S, wd, verb, held, tm.rpc); else await hiddenCheck(c, wd, verb, held);
+    if (!rc) await lostCheck(c, S, wd, verb, held, tm.rpc);
+    else if (!shown && SHOWN_RETRY_VERBS.has(verb) && await isHidden(c, wd)) {
+      // A hidden tab in a window of this session's own tabs (the extension's connect page in front after a tab-close,
+      // 2026-11-12): front switches that window's tab and nothing else, so the agent never hands the operator a click.
+      // front refuses a window holding anyone else's tab; that refusal is the answer.
+      const f = await viaAgent(S, 'front', [], laneOf(S));
+      if (f.isError) throw withPrefix(new Refusal(`the tab is hidden: Chrome is showing another tab or window, so ${verb} timed out, and front could not show it: ${f.text.trim()}`, 'harbor chrome tabs'), scrub(held));
+      const r2 = await hot(S, verb, real ? [...args, '--real'] : args, tm, confirmed, true);
+      return { text: `[the tab was hidden in this session's own window: front showed it, focus untouched; ${verb} retried once]\n${r2.text}`, isError: r2.isError };
+    } else await hiddenCheck(c, wd, verb, held);
     tm.settle = performance.now() - t2;
   }
   if (!rc) {
@@ -578,7 +643,7 @@ async function connectOrGone(S: string): Promise<Conn> {
 }
 // This session's own page URL while Chrome shows it on a sign-in host: the shell agent's `tabs` marks the session's tabs with `=`.
 async function signedOutProbe(S: string): Promise<string> {
-  const r = await viaAgent(S, 'tabs', [], '');
+  const r = await viaAgent(S, 'tabs', [], laneOf(S));
   for (const l of r.text.split('\n')) {
     const m = /^= window \S+ tab \S+ +(?:active )? *(\S+)$/.exec(l);
     if (m && signinUrl(m[1])) return m[1];
@@ -607,7 +672,9 @@ function viaAgent(S: string, verb: string, args: string[], lane: string): Promis
     p.on('error', (e) => fin({ text: `harbor chrome could not start: ${e.message}`, isError: true }));
     p.on('close', (code) => {
       let text = out;
+      // The agent logs to stderr (LOG_FD=2): dropped on success, every front and attach came back blank (75 fronts, 2026-11-10..12).
       if (code !== 0) text = (text + (text ? '\n' : '') + err).trim() || `exit ${code}`;
+      else if (err.trim()) text = (text + (text ? '\n' : '') + err).trim();
       fin({ text: text.slice(0, OUT_MAX), isError: code !== 0 });
     });
   });
