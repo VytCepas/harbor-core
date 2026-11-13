@@ -29,19 +29,19 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 3 |
 | standard | standards/ | system | source | versioned | 32 |
-| contract | contracts/ | system | source | versioned | 47 |
+| contract | contracts/ | system | source | versioned | 48 |
 | decision-record | docs/decisions/ | element | source | dated | 94 |
 | hook | hooks/ | component | source | living | 50 |
 | skill | skills/ | component | source | living | 51 |
 | fixture | fixtures/ | element | source | living | 439 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 81 |
-| test | tests/ | component | source | living | 670 |
+| test | tests/ | component | source | living | 671 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 9 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 298 |
+| script | bin/ | component | source | living | 299 |
 | how-to | docs/how-to/ | component | source | living | 7 |
 | reference | docs/reference/ | component | generated | generated | 89 |
 | explanation | docs/explanation/ | component | source | living | 106 |
@@ -54,10 +54,10 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | (repo root) | 12 | 1 | 1 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
-| `bin/` | 302 | 32 | 2 |
+| `bin/` | 303 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 68 | 6 | 1 |
-| `contracts/` | 127 | 14 | 2 |
+| `contracts/` | 128 | 14 | 2 |
 | `docs/` | 323 | 26 | 9 |
 | `fixtures/` | 439 | 11 | 1 |
 | `hooks/` | 46 | 7 | 1 |
@@ -72,7 +72,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 670 | 30 | 1 |
+| `tests/` | 671 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -81,7 +81,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 12 | 32 | 2 | 6 | 0 | 0 |
+| access | control-plane | 13 | 33 | 3 | 6 | 0 | 0 |
 | admission | control-plane | 27 | 90 | 0 | 6 | 0 | 176 |
 | agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
@@ -128,10 +128,12 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/access-chrome-mcp.ts`
 - `bin/access-environment.sh`
 - `bin/access-github-app-install.sh`
+- `bin/access-mint.sh`
 - `bin/access.sh`
 - `context-rules/user/access-route-pointer.md`
 - `context-rules/user/access-route.sh`
 - `contracts/access-card.md`
+- `contracts/access-mint.md`
 - `contracts/access-register.md`
 - `hooks/access-confinement/access-confinement.sh`
 - `hooks/access-confinement/access-confinement.test.sh`

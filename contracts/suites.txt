@@ -376,6 +376,7 @@ tests/memory/memory/output-contract.test.sh
 tests/proposal/proposal/output-contract.test.sh
 tests/lint/port-paths/private-exempt.test.sh
 tests/access/cli/register.test.sh
+tests/access/mint/mint.test.sh
 tests/access/cli/secret-gate.test.sh
 tests/scope/access/install.test.sh
 tests/lint/credential-reads/ratchet.test.sh

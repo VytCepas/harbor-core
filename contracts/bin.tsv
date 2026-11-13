@@ -24,6 +24,7 @@ bin/access-browser-hosts-add.sh	command	floor	propose a host for `harbor chrome`
 bin/access-browser.sh	command	floor	the estate's browser capability behind one router (harbor#457). harbor browser route print the router — which backend, and why	harbor#457
 bin/access-chrome-mcp.py	command	trio	the launcher of the harbor_chrome MCP server (`harbor chrome` as one tool per verb)	harbor#1301
 bin/access-chrome-mcp.ts	command	tool	`harbor chrome` as the MCP server `harbor_chrome`, one process per session	harbor#1421
+bin/access-mint.sh	command	floor	`harbor access mint`: one OAuth code-for-credential exchange driven by contracts/access-mint.tsv, stored through the access register and never printed	harbor#978
 bin/access-environment.sh	command	floor	the repo-visibility lines of the auto-mode environment block, read from the registry of governed repos and a live `gh repo view	harbor#561
 bin/access-github-app-install.sh	command	floor	the in-session GitHub App scripts, COPIED from bin/access-github-app/. harbor#1225.	harbor#1225
 bin/access-github-app/gh	command	floor	gh shim (harbor#1018): inside a Claude Code session (CLAUDECODE=1) gh acts as the harbor-claude GitHub App, with a 1-hour token	harbor#1018

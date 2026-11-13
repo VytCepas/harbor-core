@@ -48,6 +48,7 @@ hand-kept account of direction and status; this table is what exists.
 | File | Kind | What it is |
 |---|---|---|
 | [access-card.md](./access-card.md) | md | The access card - the format of the access register |
+| [access-mint.md](./access-mint.md) | md | Minting a credential from an OAuth code |
 | [access-register.md](./access-register.md) | md | The access register - one list of every identity an agent may use |
 | [agent-architectures.tsv](./agent-architectures.tsv) | tsv | - |
 | [agent-tools.tsv](./agent-tools.tsv) | tsv | agent-tools.tsv (harbor#1010) - the USE WHEN and the exact invocation of every agent-facing `harbor` verb and bin/ tool; bin/skill-catalog.s |

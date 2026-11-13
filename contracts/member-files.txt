@@ -58,6 +58,7 @@ standards/naming/controls.tsv controls.tsv
 # The token: a hook must never run a user-writable copy of these, and access.sh gates bin/secret
 bin/secret
 bin/access.sh
+bin/access-mint.sh
 bin/scope-roots.sh
 bin/scope-repo-sources.sh
 bin/member-memory.sh
