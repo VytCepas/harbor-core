@@ -1,0 +1,35 @@
+diff --git a/context-rules/user/vendor-name-note.md b/context-rules/user/vendor-name-note.md
+new file mode 100644
+--- /dev/null
++++ b/context-rules/user/vendor-name-note.md
+@@ -0,0 +1,9 @@
++---
++order: 97
++description: A command that names a vendor console draws a note on how the vendor-side object must be named
++event: PreToolUse
++tool: Bash
++when: always
++once: match
++run: vendor-name-note.sh
++---
+diff --git a/context-rules/user/vendor-name-note.sh b/context-rules/user/vendor-name-note.sh
+new file mode 100644
+--- /dev/null
++++ b/context-rules/user/vendor-name-note.sh
+@@ -0,0 +1,16 @@
++#!/usr/bin/env sh
++# vendor-name-note: a command that names a vendor console draws the vendor-side naming note.
++# The rows (ERE TAB note) come from <config dir>/vendor-name.d/*.tsv, written by a workload pack.
++set -u
++command -v jq >/dev/null 2>&1 || exit 0
++CMD="$(jq -r '.tool_input.command // empty' 2>/dev/null)"
++CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
++TAB="$(printf '\t')"
++for f in "$CFG"/vendor-name.d/*.tsv; do
++  [ -f "$f" ] || continue
++  while IFS="$TAB" read -r re note; do
++    case "$re" in ''|'#'*) continue ;; esac
++    printf '%s\n' "$CMD" | grep -Eq -- "$re" && { printf 'Vendor-side name: %s\n' "$note"; exit 0; }
++  done < "$f"
++done
++exit 0

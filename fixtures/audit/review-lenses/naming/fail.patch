@@ -1,0 +1,14 @@
+diff --git a/bin/access-rotate-report.sh b/bin/access-rotate-report.sh
+new file mode 100644
+--- /dev/null
++++ b/bin/access-rotate-report.sh
+@@ -0,0 +1,9 @@
++#!/usr/bin/env sh
++# access-rotate-report.sh — rotates the Meta Conversions API token and reports when it was last rotated.
++#
++# The token is stored in Secret Manager as META_TOKEN_PROD. On the Meta side it belongs to the system user
++# "ClaudeBot API User" in Business Manager, created for this script.
++set -eu
++DAYS="${metaRotateDays:-30}"
++gcloud secrets versions add META_TOKEN_PROD --data-file=- < "${1:?usage: access-rotate-report.sh <token-file>}"
++printf '[check:metaRotate] rotated; next rotation in %s days\n' "$DAYS"
