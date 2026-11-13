@@ -57,41 +57,11 @@ check_policy() {
   _pub="$(awk -F'\t' '$1 == "public-relay" { print $2; exit }' "$UPTERM" 2>/dev/null)" || _pub=''
   [ -n "$_pub" ] || { log_fail "no public-relay row in $UPTERM, so a policy naming it can't be refused"; log_nofix "contracts/support-upterm.tsv"; return 2; }
   jq --argjson v "$(vocab)" --arg pub "$_pub" "$JQ_DEFS"'
-    def cword: type == "string" and length >= 1 and length <= 500 and (test("[[:cntrl:]]") | not) and (contains("${") | not);
-    def nodots: ((split("/") | map(select(. == ".." or . == ".")) | length) == 0);
-    def inf($n): type == "string" and startswith("/opt/company-mcp/" + $n + "/") and nodots;
-    def banned: type == "string" and (IN("-e","-m","-c","-r","-p","--require","--import","--preload","--eval","--print") or test("^--(eval|require|import|preload|print)="));
-    def plain: type == "string" and (contains("/") | not) and (startswith(".") | not) and (startswith("-") | not);
-    def flagok: type == "string" and test("^--[A-Za-z0-9][A-Za-z0-9_-]*(=([^/.][^/]*)?)?$");
-    def argok($n): inf($n) or plain or flagok;
-    def bn: split("/") | last;
-    def noway: IN("sh","bash","dash","zsh","ksh","ash","fish","csh","tcsh","bunx","deno");
-    def interp: IN("bun","node","nodejs","python","python3") or test("^python3\\.[0-9]+$");
-    def subcmd: IN("x","run","install","add","pm","create");
-    def sysbin: (split("/") | .[:-1] | join("/")) | IN("/usr/bin","/usr/local/bin","/bin");
-    def okcmd($c; $n): ($c | type == "array" and length >= 1 and length <= 16 and all(.[]; cword and (banned | not))
-      and (.[0] | startswith("/") and nodots and ((bn | noway) | not))
-      and (if (.[0] | bn | interp) then
-             (.[0] | (sysbin or inf($n))) and (if (.[0] | bn) == "bun" then (.[1] == "--no-install") and (.[2] | inf($n)) and all(.[3:][]; argok($n) and ((subcmd) | not))
-              else (.[1] | inf($n)) and all(.[2:][]; argok($n)) end)
-           else (.[0] | inf($n)) and all(.[1:][]; argok($n)) end));
   . as $p
   | (if type == "object" and (.support | type) == "object" and (.support.relay | type) == "string"
      then .support.relay | sub("^[a-z]+://"; "") | sub(":[0-9]+$"; "") else "" end) as $relayhost
   | if type != "object" then ["policy is not an object"] else
-    closed(["schema","hub","serial","issued","core","rollout","approval","silent_days","tiers","rules","packs","hooks","revoked","support","hosts","logs","connectors"])
-    # connectors (harbor#1278, lane I): the MCP servers a colleague key may reach. bin/member-managed.sh composes them and re-checks every row.
-    + (if $p | has("connectors") then
-        ck(($p.connectors | type == "array" and length <= 20
-            and all(.[]; type == "object" and ((keys - ["name","ref","env","service","command"]) | length == 0) and ((["name","ref","env","service","command"] - keys) | length == 0)
-              and (.name | type == "string" and test("^[A-Za-z0-9_-]{1,48}$"))
-              and (.ref | type == "string" and test("^[a-z0-9][a-z0-9._-]{0,63}$") and (test("^hub-") | not))
-              and (.env | type == "string" and test("^[A-Z][A-Z0-9_]{0,63}$"))
-              and (.service | oneline and length >= 1 and length <= 120)
-              and okcmd(.command; .name)));
-           "connectors: up to 20 rows of exactly name, ref (never hub-*), env, service and command (an absolute path first)")
-        + ck(($p.connectors | type != "array") or ([$p.connectors[]? | .ref?] | length == (unique | length)); "connectors: a ref listed twice")
-      else [] end)
+    closed(["schema","hub","serial","issued","core","rollout","approval","silent_days","tiers","rules","packs","hooks","revoked","support","hosts","logs"])
     # logs (harbor#1278): the age key of the loader. Without it a laptop seals nothing and the logs get nothing from it.
     + (if $p | has("logs") then
         ($p.logs | if type != "object" then ["logs: not an object"] else closed(["recipient"]) + need(["recipient"]) end)

@@ -214,7 +214,6 @@
 /bin/lint-suggest-table.sh @VytCepas
 /bin/member-integrity.sh @VytCepas
 /bin/member-managed.sh @VytCepas
-/bin/member-mcp-launch.sh @VytCepas
 /bin/member-memory.sh @VytCepas
 /bin/member-tests.sh @VytCepas
 /bin/memory-lint.sh @VytCepas

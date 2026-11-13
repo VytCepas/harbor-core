@@ -238,7 +238,7 @@ ssh-keygen -q -t ed25519 -N '' -C hub -f "$T_TMP/hubkey"; KEEP_SIGNERS="$SIGNERS
 printf 'hub namespaces="harbor-hub" %s\n' "$(cut -d' ' -f1,2 "$T_TMP/hubkey.pub")" > "$SIGNERS"
 mkpolicy() { # <serial> [key]: a signed policy adding one host and naming the hub's relay
   mkdir -p "$T_TMP/pol"; P_JSON="$T_TMP/pol/policy.json"; export P_JSON
-  jq -n --argjson s "$1" --argjson cn "${PCONN:-[]}" '{schema: 1, serial: $s, hosts: ["pypi.example-company.com"], support: {relay: "wss://relay.example-company.com:443"}} | (if $cn != [] then .connectors = $cn else . end)' > "$P_JSON"
+  jq -n --argjson s "$1" '{schema: 1, serial: $s, hosts: ["pypi.example-company.com"], support: {relay: "wss://relay.example-company.com:443"}}' > "$P_JSON"
   rm -f "$P_JSON.sig"; ssh-keygen -q -Y sign -f "${2:-$T_TMP/hubkey}" -n harbor-hub "$P_JSON" 2>/dev/null
 }
 allowed() { jq -r --arg h "$1" '.sandbox.network.allowedDomains | index($h) != null' "$MFILE"; }
@@ -266,19 +266,6 @@ clean; go; tok
 t_eq "a policy another key signed (hub-sync is stubbed to pass it): the token step ends" 0 "$RC"
 t_has "...saying root's own check refused it" "$(cat "$OUT")" 'does not verify against'
 t_eq "...and none of its hosts reach the settings" false "$(allowed pypi.example-company.com)"
-
-t_section "the policy's connectors land with the first install, inside the pin (member.connectors)"
-PCONN='[{"name":"acme","ref":"acme-crm","env":"ACME_API_KEY","service":"Acme CRM","command":["/opt/company-mcp/acme/server"]}]'
-clean; mkpolicy 3; go; tok
-t_eq "the token step finishes" 0 "$RC"
-t_eq "connectors.json in the root is the policy's list" "$(printf '%s' "$PCONN" | jq -c .)" "$(jq -c . "$MROOT/connectors.json" 2>/dev/null)"
-t_eq "managed-mcp.json beside the managed settings starts the root's launcher with ref and server" "$MROOT/bin/member-mcp-launch.sh acme-crm -- /opt/company-mcp/acme/server" "$(jq -r '.mcpServers.acme.args[3:] | join(" ")' "${MFILE%/*}/managed-mcp.json" 2>/dev/null)"
-t_exit "the floor is pinned over both" 0 env HARBOR_MEMBER_ROOT="$MROOT" sh "$MROOT/bin/member-integrity.sh" check
-t_eq "the managed settings allow the claude.ai connectors beside managed-mcp.json (allowAllClaudeAiMcps)" true "$(jq ".allowAllClaudeAiMcps" "$MFILE")"
-t_eq "the Edit tool is denied on managed-mcp.json in the settings" 1 "$(jq --arg r "Edit(/${MFILE%/*}/managed-mcp.json)" '[.permissions.deny[] | select(. == $r)] | length' "$MFILE")"
-PCONN=''; clean; mkpolicy 3; go; tok
-t_eq "with no connectors the install writes neither file" "no no" "$([ -e "$MROOT/connectors.json" ] && echo yes || echo no) $([ -e "${MFILE%/*}/managed-mcp.json" ] && echo yes || echo no)"
-t_eq "...and the settings carry no allowAllClaudeAiMcps" false "$(jq 'has("allowAllClaudeAiMcps")' "$MFILE")"
 unset P_JSON; SIGNERS="$KEEP_SIGNERS"
 
 t_section "the Windows half"

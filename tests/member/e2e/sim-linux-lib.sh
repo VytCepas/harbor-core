@@ -86,11 +86,11 @@ held_serial() { _p="$(hs path 2>/dev/null)"; [ -n "$_p" ] && jq -r .serial "$_p"
 # ── the hub admin ──────────────────────────────────────────────────────────────────────────────────────────
 SERIAL=0; CONTRACT=1
 adm_git() { git -C "$ADM/hub" -c user.name=acme-admin -c user.email=admin@acme.test "$@"; }
-SIM_PACKS='[]'; SIM_LOGS=''; SIM_CONNECTORS='[]'   # the policy's packs (JSON), its logs recipient and its connectors (JSON): the sections that need them set these
+SIM_PACKS='[]'; SIM_LOGS=''   # the policy's packs (JSON) and its logs recipient: the sections that need them set these
 mkpolicy() { # <out> <serial> <mode> <core commit> <revoked 0|1> [hosts, comma-separated]
-  python3 - "$1" "$2" "$3" "$4" "$CONTRACT" "$5" "${6:-}" "$SIM_PACKS" "$SIM_LOGS" "$SIM_CONNECTORS" <<'PY'
+  python3 - "$1" "$2" "$3" "$4" "$CONTRACT" "$5" "${6:-}" "$SIM_PACKS" "$SIM_LOGS" <<'PY'
 import datetime, json, sys
-out, serial, mode, commit, contract, revoked, hosts, packs, logs, conns = sys.argv[1:11]
+out, serial, mode, commit, contract, revoked, hosts, packs, logs = sys.argv[1:10]
 rule = lambda i, l, t, tg, tool, field, v: {"id": i, "label": l, "tier": t, "target": tg, "tools": [tool], "when": [{"field": field, "op": "contains", "value": v}]}
 p = {"schema": 1, "hub": "acme-hub", "serial": int(serial), "issued": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
      "core": {"commit": commit, "contract": int(contract)}, "rollout": {"mode": mode},
@@ -100,7 +100,6 @@ p = {"schema": 1, "hub": "acme-hub", "serial": int(serial), "issued": datetime.d
      "packs": json.loads(packs), "hooks": [], "revoked": ["alice"] if revoked == "1" else []}
 if hosts: p["hosts"] = hosts.split(",")
 if logs: p["logs"] = {"recipient": logs}
-if conns != "[]": p["connectors"] = json.loads(conns)
 json.dump(p, open(out, "w"), indent=1)
 PY
 }

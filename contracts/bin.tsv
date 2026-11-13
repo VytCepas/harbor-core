@@ -311,8 +311,6 @@ bin/hub-tools.sh	command	floor	the admin side of members' personal tools, behind
 bin/member-tests.sh	command	floor	the Stop check member.tests and its UserPromptSubmit snapshot: a registered project's code changed in a turn with no test goes back once	harbor#1278
 bin/member-integrity.sh	command	floor	hashes the managed root and managed settings against the pin IT wrote	harbor#1278
 bin/member-prereqs.sh	command	floor	the one root helper a member may run: installs the fixed list in contracts/member-prereqs.txt and refuses everything else	harbor#1278
-bin/member-mcp-launch.sh	command	floor	starts one MCP server with a colleague key in its environment only, from the managed MCP file: refuses unless the policy connectors.json lists this ref with exactly this server, which no user can write; the agent calls the server tools and never holds the key	harbor#1278
-bin/member-connectors.sh	command	floor	the person side of a connector: enters its key in a terminal of their own (hidden, never argv, refused inside a Claude Code session and for any ref the policy does not list) and lists which keys are stored	harbor#1278
 bin/library-board.sh	library	floor	the board's reading code: what makes a comment count, the policy read, the relay and agent checks; shared by approval and support	harbor#1278
 bin/member-support.sh	command	floor	a person on a member laptop asks an admin for help and watches: board request, verified accept, a time-limited upterm session	harbor#1278
 bin/member-support-guard.sh	command	floor	the dispatcher's rule that an agent's tool call never starts or reaches a support session	harbor#1278

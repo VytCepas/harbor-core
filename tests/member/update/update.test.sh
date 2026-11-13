@@ -64,8 +64,8 @@ mkroot() { # install commit A in a fresh managed root, as the install would
   jq -n '{env: {HARBOR_MEMBER_ROLE: "member", HTTPS_PROXY: "http://proxy.corp.example:3128"}, allowedMcpServers: [{serverName: "fixture-mcp"}]}' > "$MS"
   sh "$R/bin/member-integrity.sh" hash > "$R/floor.pin"
 }
-mkpol() { # <serial> <commit> [contract]: with one host and the hub relay, which the settings must come to carry; $CONN (JSON) adds connectors
-  mkdir -p "$POL"; jq --argjson s "$1" --arg c "$2" --argjson k "${3:-1}" --argjson cn "${CONN:-[]}" '.serial = $s | .core.commit = $c | .core.contract = $k | (if $cn != [] then .connectors = $cn else . end)
+mkpol() { # <serial> <commit> [contract]: with one host and the hub's relay, which the settings must come to carry
+  mkdir -p "$POL"; jq --argjson s "$1" --arg c "$2" --argjson k "${3:-1}" '.serial = $s | .core.commit = $c | .core.contract = $k
     | .hosts = ["pkg.example.com", "*.corp.example"] | .support = {relay: "wss://relay.example:8443"}' "$T_ROOT/tests/hub/fixtures/policy.json" > "$POL/policy.json"
   rm -f "$POL/policy.json.sig"; ssh-keygen -q -Y sign -f "$HUBKEY" -n harbor-hub "$POL/policy.json"
 }
@@ -157,7 +157,7 @@ mkpol 2 "$B"; HARBOR_MEMBER_ROOT="$R" HARBOR_MEMBER_CORE_SOURCE="file://$T_TMP/n
 t_eq "a core that is not there: exit 3" 3 "$RC"
 
 t_section "7 - what the install placed beside the list moves with the floor (N3)"
-CONN=''; mkroot; mkpol 2 "$B"; upd --policy "$POL/policy.json"
+mkroot; mkpol 2 "$B"; upd --policy "$POL/policy.json"
 t_eq "an update exits 0" 0 "$RC"
 t_eq "upterm, which no list names, is still there" 'upterm v1' "$(cat "$R/bin/upterm" 2>/dev/null)"
 t_eq "...runnable" yes "$([ -x "$R/bin/upterm" ] && echo yes || echo no)"
@@ -170,7 +170,7 @@ upd --policy "$POL/policy.json"; t_eq "a commit that lists a file floor.extra na
 t_eq "the floor is untouched" "$before" "$(state)"
 
 t_section "8 - the managed settings are composed again from the verified policy (N7)"
-CONN=''; mkroot; mkpol 2 "$B"; upd --policy "$POL/policy.json"
+mkroot; mkpol 2 "$B"; upd --policy "$POL/policy.json"
 t_eq "an update exits 0" 0 "$RC"
 t_eq "the commit's own composer wrote them" core "$(jq -r .by "$MS")"
 args() { jq -r '.composed | join(" ")' "$MS"; }
@@ -217,19 +217,4 @@ printf '999999\n' > "$R.update.lock/pid"; upd --policy "$POL/policy.json"
 t_eq "a stale lock is cleared and the run goes on" 0 "$RC"
 t_exit "an argument it does not know" 2 sh "$U" --nonsense
 t_exit "--help" 0 sh "$U" --help
-
-t_section "7 - the policy's connectors land with the floor (member.connectors), inside the pin, and go when the policy drops them"
-CN='[{"name":"acme","ref":"acme-crm","env":"ACME_API_KEY","service":"Acme CRM","command":["/opt/company-mcp/acme/server"]}]'
-mkroot; CONN="$CN"; mkpol 2 "$B"; upd --policy "$POL/policy.json"
-t_eq "the update succeeds" 0 "$RC"
-t_eq "connectors.json in the root is the policy's list" "$(printf '%s' "$CN" | jq -c .)" "$(jq -c . "$R/connectors.json" 2>/dev/null)"
-t_eq "managed-mcp.json sits beside the managed settings, composed by the commit's own composer from that list" "--mcp-servers" "$(jq -r '.composed[0]' "$T_TMP/managed-mcp.json" 2>/dev/null)"
-t_eq "...for the managed root, as the launcher is found from it" "$R" "$(jq -r '.composed[3]' "$T_TMP/managed-mcp.json" 2>/dev/null)"
-t_eq "the managed settings are composed with --allow-claudeai-mcps, so claude.ai connectors keep loading beside managed-mcp.json" 1 "$(jq -r '[.composed[] | select(. == "--allow-claudeai-mcps")] | length' "$MS")"
-if check_ok; then t_pass; else t_fail "the floor does not check with connectors.json in it: the pin must cover it"; fi
-CONN=''; mkroot; mkpol 2 "$B"; : > "$R/connectors.json"; : > "$T_TMP/managed-mcp.json"; upd --policy "$POL/policy.json"
-t_eq "a policy with no connectors removes both files" "no no" "$([ -e "$R/connectors.json" ] && echo yes || echo no) $([ -e "$T_TMP/managed-mcp.json" ] && echo yes || echo no)"
-CONN=''; mkroot; mkpol 2 "$B"; upd --policy "$POL/policy.json"
-t_eq "and with none ever declared neither file appears" "no no" "$([ -e "$R/connectors.json" ] && echo yes || echo no) $([ -e "$T_TMP/managed-mcp.json" ] && echo yes || echo no)"
-t_eq "...and the settings are composed without --allow-claudeai-mcps" 0 "$(jq -r '[.composed[] | select(. == "--allow-claudeai-mcps")] | length' "$MS")"
 t_done

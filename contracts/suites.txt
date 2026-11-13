@@ -565,4 +565,3 @@ tests/member/pack/robust-time.test.sh
 tests/member/pack/robust-floor.test.sh
 tests/hub/pin/upgrade.test.sh
 tests/member/setup/generate.test.sh
-tests/member/connectors/connectors.test.sh

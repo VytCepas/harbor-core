@@ -201,24 +201,6 @@ Only IT can remove this: a member can't, because the rules are root's. The decis
 
 A failed fetch never does any of this. Policy goes only by a signed `revoked` entry or by you.
 
-## A colleague's API key (connectors, control `member.connectors`)
-
-An API key is entered by the person, never by their agent, and is used only by a company **connector**: an MCP server the admin declared in the signed policy (docs/how-to/hub-admin.md, section 11). The agent calls the connector's tools; the key is in that server's process only.
-
-1. The admin adds the connector and tells you its ref (`acme-crm`). Open Claude Code once more after the next update, so its tools appear.
-2. In a terminal of your own, **outside Claude Code**, run `sh "<managed folder>/bin/member-connectors.sh" key acme-crm`. The managed folder is `/etc/claude-code/harbor` on Linux and WSL, `/Library/Application Support/ClaudeCode/harbor` on macOS. It asks for the key without showing it, and puts it in the company store. It refuses inside a Claude Code session, and for a ref the policy does not list.
-3. `member-connectors.sh list` shows each connector and whether its key is stored (names only). Run `key` again with a new key to replace it.
-4. Never paste a key into Claude Code, a file, a `.env` or a note. If the agent is about to write one, a company note tells it to stop.
-
-### Residual risk (read this)
-
-
-**Checked against Claude Code's sources (2.1.319 and 2.1.322, by the audit of this lane):** the Linux sandbox starts a command with bubblewrap `--unshare-pid` and `--proc /proc`, so a command sees only its own processes, and the Read tool refuses `/proc`. That was read from the sources and mounted as root in a container; a member uid on a real laptop was not exercised, and the macOS sandbox has no equivalent that was inspected. The managed settings also deny `Read(//proc/**)` (and the dispatcher's read-deny table carries it) and pin `sandbox.enableWeakerNestedSandbox` to `false`, because that flag swaps the fresh `/proc` for `--bind /proc` and would show a connector server's environment to a command.
-
-**The jail (since the fifth audit).** The launcher no longer relies on judging paths alone: it runs the server in a bubblewrap view that holds only root-owned trees (`/usr`, `/etc`, the connector's folder, a private `/proc` and an empty `/tmp`), so nothing the agent can plant exists for the server to load, and a server's own `/proc/<pid>/environ` is not visible to anything else. If bubblewrap cannot start, the server does not start, and neither does it when anything in or under `/usr`, `/etc` or the connector's folder is writable by the member (a `/usr/local` handed to the user), which the launcher scans for at every start. **Proved in the sim container, with `sim-linux.sh --jail-proof` (opt-in: it runs the container with seccomp unconfined, which no member laptop does; without it these rows are SEAM):** the launcher's own jail arguments, run with the real `bwrap` as root, the process then dropped to the member, hide six planted files and a planted plugin, a `sys.path` module and a venv standard library (controls without the jail load all of them), and the key still reaches the server. **Not proved there:** bwrap as the member (an unprivileged user cannot start bubblewrap in a container: the row is marked SEAM) and the macOS Seatbelt jail.
-
-The agent runs as the same user as the connector's server. What keeps it from the key is, in order: the key is in no file the agent can read (the store is denied to its sandboxed shell, and the Read tool's rows cover it); the server is started by Claude Code from a root-written file, outside the agent's reach, and the launcher refuses any other server or ref; the sandbox hides other processes where it can (`/proc` on Linux when the sandbox gives the command its own process view, and `ps` and process-argument reads on macOS, which the Seatbelt profile denied when this was measured). **If a sandbox leaves the server's process visible to the same user, the agent could read `/proc/<pid>/environ` of the connector's server and take its key.** The tests cannot start the real sandbox (the Docker simulation has none), so this is not proven closed: it rests on the sandbox, not on this launcher. The same agent can also ask the connector's tools to do anything the key allows, which is the point of a connector: give a key only the rights the work needs, and rotate it at the service if you doubt it. A key typed at a prompt the agent faked on your terminal is a social-engineering risk no file stops: the real prompt is only ever run by you, by the path above.
-
 ## What this floor doesn't reach
 
 | Surface | State |

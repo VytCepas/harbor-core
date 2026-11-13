@@ -158,7 +158,7 @@ _want="$(sed -n "/^floor_hooks() { cat <<'ROWS'/,/^ROWS\$/p" "$T_ROOT/bin/admiss
 t_eq "every always-on row, and Read" "$((_want + 1))" "$(grep -vc '^read-deny' "$MB/member-guards.tsv")"
 t_eq "Read comes last, to the egress guard" "$(printf 'Read\tadmission-hook.sh admission-egress.sh')" "$(grep -v '^read-deny' "$MB/member-guards.tsv" | tail -n 1)"
 _rd="$(grep -vh '^[[:space:]]*#' "$T_ROOT/bin/deploy-harden.sh" "$T_ROOT/bin/admission-deny.sh" | grep -oE '"Read\([^"]+\)"' | sort -u | wc -l | tr -d ' ')"
-t_eq "one read-deny row per Read deny row a standalone install writes, and the two of the token store and /proc (a connector server environment)" "$((_rd + 3))" "$(grep -c '^read-deny' "$MB/member-guards.tsv")"
+t_eq "one read-deny row per Read deny row a standalone install writes, and the two of the token store" "$((_rd + 2))" "$(grep -c '^read-deny' "$MB/member-guards.tsv")"
 t_has "the token store's ciphertext is one" "$(grep '^read-deny' "$MB/member-guards.tsv")" '~/.local/share/secret/**'
 t_has "and libsecret's keyrings, where bin/secret keeps values on Linux" "$(grep '^read-deny' "$MB/member-guards.tsv")" '~/.local/share/keyrings/**'
 t_eq "CONTROL: that is a real count" 1 "$([ "$_rd" -ge 20 ] && echo 1)"
