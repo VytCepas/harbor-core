@@ -12,7 +12,8 @@ notes".
 
 Every check stamps its output `[check:<id>]`, so an alert resolves to its row
 here and to the exact command that switches it off, without anyone opening the
-source. `grep '\[check:' ~/.claude/cache/checks.log` is the whole alert history.
+source. `grep '\[check:' ~/.claude/cache/checks.log` is the alert history of every check that logs; a row
+whose Output says `no checks.log line` (a hook's systemMessage) is not in it.
 
 An id is `<family>.<object>`, the family of the script that runs it (harbor#961 W5, decided 2026-10-29). A line
 stamped before then carries the old id (`[check:pulse]`, `[check:judge]`), and it resolves through the `check-id`
