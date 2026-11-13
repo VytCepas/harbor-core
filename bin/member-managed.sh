@@ -122,7 +122,9 @@ member_rule_events() {
     $1 == "MISSING" || $0 ~ /^MISSING/ { print "ERR\t" $0; next }
     $4 == "script" { print "ERR\t" $1 " has run: or spoke:"; next }
     $2 == "" { print "ERR\t" $1 " names no event"; next }
-    { if ($3 == "-") any[$2] = 1; else { m[$2] = (m[$2] == "" ? $3 : m[$2] "|" $3) } ev[$2] = 1 }
+    { if ($3 == "-") any[$2] = 1
+      else { n = split($3, tl, "|"); for (i = 1; i <= n; i++) if (!((($2) SUBSEP tl[i]) in seen)) { seen[$2, tl[i]] = 1; m[$2] = (m[$2] == "" ? tl[i] : m[$2] "|" tl[i]) } }
+      ev[$2] = 1 }
     END { for (e in ev) print "EV\t" e "\t" ((e in any) || m[e] == "" ? "-" : m[e]) }'
 }
 # member_compose <os> <root> <hub> <login> <user> <mcp json> [<relay host>] [<policy hosts, one per line>] -> the managed settings on stdout
