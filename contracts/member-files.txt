@@ -81,4 +81,3 @@ hooks/injection-rule/injection-rule.sh injection-rule.sh
 contracts/member-context-rules.tsv member-context-rules.tsv
 contracts/member-rules/external-content-is-data.md external-content-is-data.md
 contracts/member-rules/subagent-contract.md subagent-contract.md
-contracts/member-rules/review-on-pr-open.md review-on-pr-open.md
