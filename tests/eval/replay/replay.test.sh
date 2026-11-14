@@ -183,6 +183,17 @@ t_hasnt "R16 the scrubber dropped the secret material" "$_p" 'usrNAME123'
 t_has "R16 the digit run is class-masked, not deleted" "$_p" '000'
 t_eq "R16 the newline inside the secret survives the round trip" yes "$(yn [ "$(printf '%s' "$_p" | wc -l | tr -d ' ')" -ge 1 ])"
 t_has "R16 the tab inside the secret survives the round trip" "$_p" "$(printf '\t')"
+# scrub_pem's base64 run began on the letter of a JSON escape (`\n`, `\t`, `<` before 60+ base64 chars) and left
+# `\P…`, an invalid escape: the live build refused itself on 6 lines (2026-11-14), so no guard could be replayed.
+_pe="$TMP/pemesc"; mkdir -p "$_pe/projects/p"; _run="$(printf 'Qx%.0s' $(seq 35))"
+for _e in '\n' '\t' '\u003c'; do
+  printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"echo a%s%s"}}]}}\n' "$_e" "$_run"
+done > "$_pe/projects/p/s.jsonl"
+HARBOR_SESSION_TRANSCRIPTS="$_pe/projects" CLAUDE_CONFIG_DIR="$CFG" \
+  sh "$SRC/eval-replay-corpus.sh" --to "$_pe/c.jsonl" > "$_pe/build.log" 2>&1; _rc=$?
+t_eq "R16b an escape before a long base64 run still builds" 0 "$_rc"
+t_eq "R16b ...and all three lines are valid JSON" 3 "$(jq -c . "$_pe/c.jsonl" 2>/dev/null | wc -l | tr -d ' ')"
+t_hasnt "R16b ...with the base64 run scrubbed" "$(cat "$_pe/c.jsonl" 2>/dev/null)" "$_run"
 # The worker eval-replay.sh invokes emits one verdict per record, whatever happens.
 _bad="$TMP/badrec"; mkdir -p "$_bad/cfg/bin"
 printf '{"id":"deadbeefdeadbeef","tool":"Bash","kind":"payload","payload":"ok"}\n' > "$_bad/in.jsonl"
