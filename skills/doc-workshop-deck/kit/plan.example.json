@@ -1,0 +1,17 @@
+{
+  "title": "How a web request works",
+  "lang": "en",
+  "duration_min": 45,
+  "room": "live, one projector, everyone has a laptop",
+  "audience": "account managers and analysts; non-engineers",
+  "prior_knowledge": "use dashboards and ad platforms daily; have never opened DevTools",
+  "running_example": "one purchase on a client's shop, followed to the number in the client's dashboard",
+  "transfer": "next week each of them opens DevTools on a client site and finds the purchase request",
+  "outcomes": [
+    {"id": "O1", "verb": "put in order", "text": "put the steps from typed address to loaded page in order", "check": "sort six cards in pairs"},
+    {"id": "O2", "verb": "find", "text": "find the request that brings a page its data in DevTools", "check": "hands-on: Network tab, Fetch/XHR, Preview"}
+  ],
+  "glossary": ["DNS", "API", "JSON"],
+  "off_slide": ["security weaknesses", "credentials", "IP addresses", "client data"],
+  "limits": {}
+}

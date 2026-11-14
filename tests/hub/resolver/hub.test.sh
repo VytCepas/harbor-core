@@ -63,6 +63,9 @@ t_has "a tiers entry on a fixed row is refused before signing" "$(out sign "$SD/
 jq 'del(.tiers)' "$SD/policy.json" > "$SD/p.new"; mv "$SD/p.new" "$SD/policy.json"
 t_eq "a higher serial signs" 0 "$(rcof sign "$SD/policy.json" --key "$KEY")"
 t_eq "a signature by a key hub-signers does not hold fails check" 1 "$(sign_with "$OTHERKEY" "$SD/policy.json"; rcof check "$SD" --signers "$MR/hub-signers")"
+# A signature nobody checked is not a pass: with no signers file, check printed "signature ... agree" and exited 0.
+t_eq "check with no signers file is red, never green on an unverified signature" 1 "$(HARBOR_MEMBER_ROOT="$T_TMP/emptyroot" rcof check "$SD")"
+t_has "...and names the missing signers file" "$(HARBOR_MEMBER_ROOT="$T_TMP/emptyroot" out check "$SD")" "signature not verified"
 
 t_section "5 - check covers packs, hooks and the pin of a whole hub repo"
 hub_init; mkhubpack fixture-pack
