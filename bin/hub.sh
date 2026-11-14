@@ -335,7 +335,8 @@ check_dir() {
   if [ "$2" = sig ]; then
     _sg="${SIGNERS:-$(hs root)/hub-signers}"
     if [ ! -f "$_cd/policy.json.sig" ]; then say "policy.json.sig is missing: the policy is unsigned"
-    elif [ ! -s "$_sg" ]; then printf 'check: signature not verified, no signers file at %s (give --signers)\n' "$_sg" >&2
+    # An unchecked signature is a finding, as in hub-gate.sh: it printed "signature ... agree" and exited 0 on a tampered policy.
+    elif [ ! -s "$_sg" ]; then say "signature not verified: no signers file at $_sg (give --signers)"
     elif ! ssh-keygen -Y verify -f "$_sg" -I hub -n harbor-hub -s "$_cd/policy.json.sig" < "$_cd/policy.json" > /dev/null 2>&1; then
       say "policy.json.sig does not verify against the signers file"
     fi
