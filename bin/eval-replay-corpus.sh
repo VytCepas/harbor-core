@@ -177,7 +177,12 @@ scrub() { # stdin -> stdout
     }'
 }
 # PEM bodies are not caught by SECRET (it matches only the BEGIN marker): any long base64 run is replaced wholesale.
-scrub_pem() { sed -E 's#[A-Za-z0-9+/]{60,}={0,2}#PEMBODYSCRUBBEDPEMBODYSCRUBBEDPEMBODYSCRUBBEDPEMBODYSCRUBBEDXX#g'; }
+# A JSON escape is closed off with a \001 first (raw control bytes cannot occur in JSON text), so a run never starts on the escape's
+# letter: `\n` + base64 became `\PEMBODY…`, an invalid escape, and the live build refused itself (2026-11-14).
+scrub_pem() {
+  _x="$(printf '\001')"
+  sed -E 's#(\\u[0-9A-Fa-f]{4}|\\.)#\1'"$_x"'#g; s#[A-Za-z0-9+/]{60,}={0,2}#PEMBODYSCRUBBEDPEMBODYSCRUBBEDPEMBODYSCRUBBEDPEMBODYSCRUBBEDXX#g; s#'"$_x"'##g'
+}
 
 SCRUBBED=0
 for t in Bash Write Edit Path; do

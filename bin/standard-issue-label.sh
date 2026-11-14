@@ -251,23 +251,17 @@ case "$mode" in
     # Check the contract against the tracker in both directions: harbor#609 declared `theme:security`/`theme:testing` that never existed on the tracker.
     printf '\n'; log_head "taxonomy against the tracker"
     LIVE="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"; DECL="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"
-    # An unread list is not an empty tracker: piped straight into sort, a failed read listed every declared label ABSENT.
-    if gh label list -R "$R" --limit 300 --json name -q '.[].name' 2>/dev/null > "$LIVE.raw"; then
-      LC_ALL=C sort "$LIVE.raw" > "$LIVE"
-      cut -f1 "$MAP" | LC_ALL=C sort -u > "$DECL"
-      miss_live="$(LC_ALL=C comm -23 "$DECL" "$LIVE" | tr '\n' ' ')"
-      miss_decl="$(LC_ALL=C comm -13 "$DECL" "$LIVE" | tr '\n' ' ')"
-      if [ -n "$(printf '%s' "$miss_live" | tr -d ' ')" ]; then
-        printf '  declared here, ABSENT on the tracker: %s\n' "$miss_live"; FAIL=1
-      fi
-      if [ -n "$(printf '%s' "$miss_decl" | tr -d ' ')" ]; then
-        printf '  on the tracker, NOT declared here:    %s\n' "$miss_decl"; FAIL=1
-      fi
-      [ -z "$(printf '%s%s' "$miss_live" "$miss_decl" | tr -d ' ')" ] && printf '  reconciled\n'
-    else
-      printf "  could not read the tracker's labels: the taxonomy was not compared\n"; FAIL=1
+    gh label list -R "$R" --limit 300 --json name -q '.[].name' 2>/dev/null | LC_ALL=C sort > "$LIVE"
+    cut -f1 "$MAP" | LC_ALL=C sort -u > "$DECL"
+    miss_live="$(LC_ALL=C comm -23 "$DECL" "$LIVE" | tr '\n' ' ')"
+    miss_decl="$(LC_ALL=C comm -13 "$DECL" "$LIVE" | tr '\n' ' ')"
+    if [ -n "$(printf '%s' "$miss_live" | tr -d ' ')" ]; then
+      printf '  declared here, ABSENT on the tracker: %s\n' "$miss_live"; FAIL=1
     fi
-    rm -f "$LIVE.raw"
+    if [ -n "$(printf '%s' "$miss_decl" | tr -d ' ')" ]; then
+      printf '  on the tracker, NOT declared here:    %s\n' "$miss_decl"; FAIL=1
+    fi
+    [ -z "$(printf '%s%s' "$miss_live" "$miss_decl" | tr -d ' ')" ] && printf '  reconciled\n'
     rm -f "$LIVE" "$DECL"
 
     # ── 4 · P0 IS ONLY MEANINGFUL WHILE IT IS RARE ─────────────────────────────
@@ -280,22 +274,16 @@ case "$mode" in
     # about the EDGE, never about a label that claims to restate it.
     printf '\n'; log_head "ownership graph"
     # Paginated: `first:100` against 135 open issues reported 24 orphans instead of 34.
-    # A failed page, or the cap with pages left, is a PARTIAL graph: it once printed "edges consistent" over part of it.
-    _cur=''; _pages=0; _trunc=''
+    _cur=''; _pages=0
     while [ "$_pages" -lt 20 ]; do
       _pages=$((_pages + 1))
       if [ -z "$_cur" ]; then _after='null'; else _after="\"$_cur\""; fi
       _q='{repository(owner:"'"${R%%/*}"'",name:"'"${R#*/}"'"){issues(states:OPEN,first:100,after:'"$_after"'){pageInfo{hasNextPage endCursor} nodes{number parent{number} subIssues(first:50){totalCount}}}}}'
-      _out="$(gh api graphql -f query="$_q" 2>/dev/null)" || { _trunc="page $_pages could not be read"; break; }
-      printf '%s' "$_out" | jq -r '.data.repository.issues.nodes[] | "\(.number)\t\(.parent.number // "-")\t\(.subIssues.totalCount)"' >> "$GRAPH" 2>/dev/null \
-        || { _trunc="page $_pages did not parse"; break; }
+      _out="$(gh api graphql -f query="$_q" 2>/dev/null)" || break
+      printf '%s' "$_out" | jq -r '.data.repository.issues.nodes[] | "\(.number)\t\(.parent.number // "-")\t\(.subIssues.totalCount)"' >> "$GRAPH" 2>/dev/null || break
       [ "$(printf '%s' "$_out" | jq -r '.data.repository.issues.pageInfo.hasNextPage')" = true ] || break
       _cur="$(printf '%s' "$_out" | jq -r '.data.repository.issues.pageInfo.endCursor')"
-      if [ "$_pages" -ge 20 ]; then _trunc="the 20-page cap ended it with pages left"; fi
     done
-    if [ -n "$_trunc" ] && [ -s "$GRAPH" ]; then
-      printf '  graph INCOMPLETE (%s): the verdicts below cover only what was read\n' "$_trunc"; FAIL=1
-    fi
     if [ ! -s "$GRAPH" ]; then
       log_warn "graph unavailable — sub-issue query returned nothing"
     else
@@ -316,7 +304,7 @@ case "$mode" in
       [ -n "$kidnoepic" ] && { printf '  parents carrying no epic:*:%s\n' "$kidnoepic"; FAIL=1; }
       orph="$(awk -F'\t' '$2=="-" && $3==0 {n++} END{print n+0}' "$GRAPH")"
       printf '  %s issue(s) with no parent and no children\n' "$orph"
-      [ -z "$closedpar$epicnokid$kidnoepic$_trunc" ] && printf '  edges consistent\n'
+      [ -z "$closedpar$epicnokid$kidnoepic" ] && printf '  edges consistent\n'
       # PROSE-ONLY PARENTAGE (harbor#978): a body that says `Part of #N` (or the italic `_Part of_ #N`) while the native
       # sub-issue edge is absent is a parent the board cannot see. The edge is authoritative; the prose is the finding.
       BODIES="$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX")"

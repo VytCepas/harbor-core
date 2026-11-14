@@ -96,4 +96,15 @@ t_section "unchanged: a pack skill named like a core skill is still refused"
 mkpack sh4; mkdir -p "$PW/sh4/harbor-pack/skills/reader/packs"; printf 'x\n' > "$PW/sh4/harbor-pack/skills/reader/packs/x.md"; recommit sh4
 refused skill-name sh4 "shadows a core skill"
 
+t_section "the real core: audit-review-fanout keeps packs/, so a workload or hub rule set for its standards lenses installs"
+rr() { env -u CLAUDE_CONFIG_DIR PORT_ROOT="$PW" HARBOR_SCOPE_PRIVATE="$PRIV" HARBOR_SCOPE_ROOT="$T_ROOT" sh "$T_ROOT/bin/pack.sh" "$@"; }
+t_eq "the core skill keeps a packs/ directory" yes "$([ -d "$T_ROOT/skills/audit-review-fanout/packs" ] && echo yes || echo no)"
+_d="$PW/rs"; rm -rf "$_d"; mkdir -p "$_d/harbor-pack/skill-packs/audit-review-fanout"
+printf 'name = "rs"\nversion = "1.0.0"\nharbor_version = ">=1.0"\ndescription = "a fixture"\n' > "$_d/harbor-pack/pack.toml"
+printf 'A workload term is spelled acme-<object>; judge it with lint-name.sh --check path.\n' > "$_d/harbor-pack/skill-packs/audit-review-fanout/naming-acme.md"
+G "$_d" init -q; G "$_d" add -A; G "$_d" commit -q -m fixture; listed '"rs"'
+TG="$T_TMP/tg-rs"; mkdir -p "$TG/bin" "$TG/skills"
+t_exit "a naming rule set for audit-review-fanout installs" 0 rr install rs --apply --dir "$TG"
+t_has "...where the lens reads it" "$(cat "$TG/skill-packs/audit-review-fanout/naming-acme.md" 2>/dev/null)" "acme-<object>"
+
 t_done

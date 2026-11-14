@@ -29,11 +29,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 3 |
 | standard | standards/ | system | source | versioned | 32 |
-| contract | contracts/ | system | source | versioned | 47 |
+| contract | contracts/ | system | source | versioned | 48 |
 | decision-record | docs/decisions/ | element | source | dated | 94 |
 | hook | hooks/ | component | source | living | 50 |
-| skill | skills/ | component | source | living | 58 |
-| fixture | fixtures/ | element | source | living | 439 |
+| skill | skills/ | component | source | living | 55 |
+| fixture | fixtures/ | element | source | living | 445 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 82 |
 | test | tests/ | component | source | living | 671 |
@@ -43,7 +43,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
 | script | bin/ | component | source | living | 298 |
 | how-to | docs/how-to/ | component | source | living | 7 |
-| reference | docs/reference/ | component | generated | generated | 90 |
+| reference | docs/reference/ | component | generated | generated | 91 |
 | explanation | docs/explanation/ | component | source | living | 106 |
 | (no kind) | - | - | - | - | 288 |
 
@@ -57,9 +57,9 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `bin/` | 302 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 68 | 6 | 1 |
-| `contracts/` | 128 | 15 | 2 |
-| `docs/` | 324 | 26 | 9 |
-| `fixtures/` | 439 | 11 | 1 |
+| `contracts/` | 129 | 15 | 2 |
+| `docs/` | 325 | 26 | 9 |
+| `fixtures/` | 445 | 12 | 1 |
 | `hooks/` | 46 | 7 | 1 |
 | `launchd/` | 22 | 10 | 1 |
 | `mods/` | 7 | 1 | 2 |
@@ -68,7 +68,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `registries/` | 1 | 1 | 1 |
 | `relay/` | 4 | 1 | 1 |
 | `runners/` | 2 | 1 | 1 |
-| `skills/` | 58 | 10 | 1 |
+| `skills/` | 55 | 10 | 1 |
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
@@ -85,13 +85,13 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | admission | control-plane | 27 | 90 | 0 | 6 | 0 | 176 |
 | agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
-| audit | control-plane | 9 | 15 | 0 | 17 | 0 | 2 |
+| audit | control-plane | 9 | 15 | 0 | 27 | 0 | 2 |
 | bq | observability | 3 | 6 | 0 | 2 | 0 | 0 |
-| check | observability | 2 | 5 | 0 | 1 | 59 | 0 |
+| check | observability | 2 | 5 | 0 | 1 | 60 | 0 |
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
-| context | control-plane | 6 | 16 | 1 | 3 | 0 | 50 |
+| context | control-plane | 6 | 16 | 1 | 3 | 0 | 51 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
-| doc | control-plane | 16 | 13 | 0 | 44 | 0 | 22 |
+| doc | control-plane | 16 | 13 | 0 | 37 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
 | eval | control-plane | 11 | 8 | 0 | 2 | 0 | 0 |
 | event | observability | 3 | 19 | 0 | 12 | 0 | 2 |
@@ -106,7 +106,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | policy | policy-function | 3 | 4 | 3 | 137 | 0 | 7 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 14 | 22 | 0 | 1 | 0 | 5 |
-| session | data-plane | 14 | 5 | 0 | 7 | 0 | 0 |
+| session | data-plane | 14 | 5 | 0 | 8 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 16 |
 | standard | policy-function | 18 | 29 | 126 | 16 | 14 | 61 |
 | status | observability | 13 | 29 | 0 | 10 | 0 | 0 |
@@ -336,7 +336,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `skills/doc-deliverable-contract/SKILL.md`
 - `skills/doc-knowledge-base/SKILL.md`
 - `skills/doc-learning-artifact/SKILL.md`
-- `skills/doc-workshop-deck/SKILL.md`
 
 ### drift
 
@@ -613,6 +612,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `context-rules/user/session-title-missing.sh`
 - `contracts/session-waiting.tsv`
 - `docs/reference/check-rows/session-reply-shape.txt`
+- `docs/reference/check-rows/session-review.txt`
 - `docs/reference/check-rows/session-state.txt`
 - `docs/reference/check-rows/session-subagent-stop.txt`
 - `docs/reference/check-rows/session-title.txt`
@@ -852,7 +852,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `bin/` | 12 |
 | `commands/` | 2 |
 | `context-rules/` | 56 |
-| `contracts/` | 95 |
+| `contracts/` | 96 |
 | `docs/` | 134 |
 | `fixtures/` | 264 |
 | `hooks/` | 33 |

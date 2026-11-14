@@ -8,7 +8,8 @@ T="$T_TMP"; ST="$T/state"; REPO="$T/repo"; CFG="$T/cfg"
 export HARBOR_STATUS_DIR="$ST" HARBOR_EVENT_DIR="$T/bus"
 # Auto-compact off for every section but its own, and never a real osascript: a test must not type into a terminal.
 export HARBOR_SESSION_AUTOCOMPACT_PERCENT=101 HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
-mkdir -p "$REPO/docs/how-to" "$CFG"
+mkdir -p "$REPO/docs/how-to" "$CFG" "$ST"
+: > "$ST/review-auto.off"  # the review ask is off for every section but its own: their PR events would draw it
 git -C "$REPO" init -q && git -C "$REPO" config user.email t@t && git -C "$REPO" config user.name t
 git -C "$REPO" checkout -q -b work; printf 'a\n' > "$REPO/f"; printf 'h\n' > "$REPO/docs/how-to/handover.md"
 git -C "$REPO" add . && git -C "$REPO" commit -q -m init
@@ -254,6 +255,44 @@ sleep 0.5; : > "$T/clean.calls"; sh "$T_ROOT/bin/session-cleanup.sh" '../x'
 t_eq "the helper: an unsafe session id runs nothing" "" "$(cat "$T/clean.calls")"
 unset HARBOR_SESSION_AUTOCOMPACT_TTY HARBOR_SESSION_AUTOCOMPACT_DELAY HARBOR_SESSION_CLEANUP_TOOL; export HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT=false
 
+t_section "review: a PR this session opened draws one continuation to review it against the standards; once per PR"
+rm -f "$ST/review-auto.off"
+ev pr.opened o/r#10 2020-01-01T00:01:00Z rv-1
+run rv-other plain 'All set.'
+t_eq "another session's PR: no question" "" "$(cat "$T/out")"
+run rv-1 plain 'All set.' '[]' true
+t_eq "inside a stop-hook continuation: no question" "" "$(cat "$T/out")"
+run rv-1 plain 'All set.' "$RUN"
+t_eq "a running background task: no question" "" "$(cat "$T/out")"
+run rv-1 plain 'All set.'
+t_has "this session's open PR: one continuation" "$(cat "$T/out")" '"additionalContext"'
+t_has "...stamped with its check id" "$(cat "$T/out")" '[check:session.review]'
+t_has "...naming the PR" "$(cat "$T/out")" 'o/r#10: opened by this session'
+t_has "...the skill and the standards lenses" "$(cat "$T/out")" 'audit-review-fanout skill before merge: the repo'"'"'s deterministic lints first, then its lenses including the three standards lenses (naming, constitution, registration)'
+t_has "...as a governance note" "$(cat "$T/out")" '[HARBOR GOVERNANCE]'
+t_eq "...and the record keeps the ask" 2020-01-01T00:01:00Z "$(rec rv-1 review_ask)"
+run rv-1 plain 'All set.'
+t_eq "the same PR does not ask again" "" "$(cat "$T/out")"
+ev pr.opened o/r#11 2020-01-01T00:02:00Z rv-1; ev pr.merged o/r#11 2020-01-01T00:03:00Z ""
+run rv-1 plain 'All set.'
+t_eq "a PR already merged: no review question (its cleanup ask is its own)" 0 "$(grep -c 'check:session.review' "$T/out" | tr -d ' ')"
+ev pr.opened o/r#12 2020-01-01T00:04:00Z rv-1
+run rv-1 plain 'Done.
+[compact-ok]'
+t_eq "a closing marker as the last line: no question" "" "$(cat "$T/out")"
+printf '50\n' > "$ST/ctx/rv-1"; export HARBOR_SESSION_AUTOCOMPACT_PERCENT=35
+run rv-1 plain 'All set.'
+t_has "a newer PR asks again, and only about itself" "$(cat "$T/out")" 'o/r#12: opened'
+t_eq "...and it outranks the compact ask: one continuation, not two" 1 "$(grep -c additionalContext "$T/out" | tr -d ' ')"
+export HARBOR_SESSION_AUTOCOMPACT_PERCENT=101
+printf 'salt-x\n' > "$CFG/.helm-govern-salt"; ev pr.opened o/r#13 2020-01-01T00:05:00Z rv-2
+run rv-2 plain 'All set.'
+t_has "with the box salt, the note carries this session's token" "$(cat "$T/out")" "[HARBOR GOVERNANCE $(CLAUDE_CONFIG_DIR="$CFG" sh "$T_ROOT/bin/govern-token.sh" --token rv-2)]"
+rm -f "$CFG/.helm-govern-salt"
+: > "$ST/review-auto.off"; ev pr.opened o/r#14 2020-01-01T00:06:00Z rv-3
+run rv-3 plain 'All set.'
+t_eq "review-auto.off: no question" "" "$(cat "$T/out")"
+
 t_section "fail-open, off switch, and speed"
 printf 'not json' | CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" > "$T/out" 2>&1; t_eq "garbage on stdin: exit 0, silent" "0:" "$?:$(cat "$T/out")"
 printf '{"session_id":"../x","cwd":"/"}' | CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" > "$T/out" 2>&1; t_eq "an unsafe session id writes nothing" "no" "$([ -e "$ST/x.json" ] && echo yes || echo no)"
@@ -267,5 +306,5 @@ awk 'BEGIN { s = sprintf("%1000s", "x"); for (i = 0; i < 20000; i++) printf "{\"
 a="$(date +%s)"; run s-big big 'ok'; b="$(date +%s)"
 t_eq "a 20 MB transcript is read through a window: still done within 2 s" yes "$([ $((b - a)) -le 2 ] && [ "$(rec s-big state)" = idle ] && echo yes || echo no)"
 settle  # let the last detached bus append finish before the sandbox is removed
-t_red check.session-state check.event.session-save-now   # the falsifier this suite names for them (harbor#1422)
+t_red check.session-state check.event.session-save-now check.session-review   # the falsifier this suite names for them (harbor#1422)
 t_done

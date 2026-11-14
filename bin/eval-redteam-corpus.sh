@@ -23,7 +23,7 @@
 # while any is not accepted; deploy-push's release gate reads that through --print. A row added needs the operator's
 # review (CODEOWNERS); a row removed is an ordinary commit. --print is also red when the guards or pins changed since.
 # FINDINGS: one `[check:eval.redteam-corpus]` line per corpus per run in cache/checks.log: new, cleared, standing of the
-# total, unaccepted and the oldest standing age. A new one opens obligation `redteam-corpus`; none unaccepted closes it.
+# total, unaccepted and the oldest standing age. A new UNACCEPTED one, on the live cache, opens obligation `redteam-corpus`; none unaccepted closes it.
 # POSIX sh, jq, git; node for ccg (absent: ccg is skipped, and a skipped corpus is red, never green).
 set -eu
 case "${1:-}" in

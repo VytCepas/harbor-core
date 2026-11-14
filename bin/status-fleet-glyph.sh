@@ -466,7 +466,7 @@ fi
 #
 # The YOU queue is the cache's `you` list: operator-owned handoffs (event-bus.sh emit obligation.open, no session id) and approvals. Titles are session-written, so control
 # characters are stripped and the text capped at 40 columns here as well as at the fold (an escape sequence must not repaint this row);
-# the full title is in `harbor status obligations`. Overdue items are red.
+# the full title is in `harbor status obligations --json` (the print view clips at 70). Overdue items are red.
 OBLTOK=""; YOUQ=""
 if [ -f "$CACHE_DIR/status-obligations.json" ] && command -v jq >/dev/null 2>&1; then
   _ob="$(jq -r --argjson now "$NOW_EPOCH" --arg red "$RED" --arg yel "$YEL" --arg dim "$DIM" --arg rst "$RST" \
