@@ -74,7 +74,8 @@ gate_init() { # <tool file name>
 # Measured 2026-10-07 on Claude Code 2.1.290 (macOS, docs/design/approval-gate.md "The ancestry"): the tool's
 # parent is the Bash-tool shell, argv `<shell> -c source <cfg>/shell-snapshots/snapshot-<…>.sh 2>/dev/null || true
 # && … && eval '<command>' < /dev/null && pwd -P >| /tmp/claude-<hex>-cwd`, and that shell's parent is the
-# signed `claude` process. A glob, `eval`, a function, `sh file`, make, a git alias or any wrapper changes the text
+# signed `claude` process. 2.1.323 (2026-11-13) writes the setopt step as `\builtin setopt …`; both are accepted.
+# A glob, `eval`, a function, `sh file`, make, a git alias or any wrapper changes the text
 # inside eval '…' or puts another process between, so the click is the only way to reach the canonical text here.
 # gate_ancestry_judge <shell-argv> <claude-argv> <canonical> <cfg> → prints the refusal, or nothing when it holds.
 gate_ancestry_judge() {
@@ -91,7 +92,7 @@ gate_ancestry_judge() {
   printf '%s' "${_jpre#"$_jsn"}" | awk 'BEGIN { RS = "\001" } {
       n = split($0, g, / && /); if (g[1] != " 2>/dev/null || true") exit 1
       for (i = 2; i <= n; i++) {
-        if (g[i] ~ /^setopt [A-Z_ ]+ 2>\/dev\/null \|\| true$/) continue
+        if (g[i] ~ /^(\\builtin )?setopt [A-Z_ ]+ 2>\/dev\/null \|\| true$/) continue
         if (g[i] ~ /^shopt -[su] [a-z_ ]+ 2>\/dev\/null \|\| true$/) continue
         if (g[i] ~ /^\{ \\builtin unalias -- .[A-Za-z_]+.; \\builtin unset -f -- .[A-Za-z_]+.; \} >\/dev\/null 2>&1 \|\| true$/) continue
         exit 1 } }' || { printf "the parent shell does more than source its snapshot before the command"; return 1; }
