@@ -35,17 +35,17 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | skill | skills/ | component | source | living | 51 |
 | fixture | fixtures/ | element | source | living | 439 |
 | template | templates/ | component | source | living | 16 |
-| registry | registries/ | component | source | versioned | 81 |
-| test | tests/ | component | source | living | 670 |
+| registry | registries/ | component | source | versioned | 82 |
+| test | tests/ | component | source | living | 671 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 9 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
 | script | bin/ | component | source | living | 298 |
 | how-to | docs/how-to/ | component | source | living | 7 |
-| reference | docs/reference/ | component | generated | generated | 89 |
+| reference | docs/reference/ | component | generated | generated | 90 |
 | explanation | docs/explanation/ | component | source | living | 106 |
-| (no kind) | - | - | - | - | 287 |
+| (no kind) | - | - | - | - | 288 |
 
 ## Folders
 
@@ -57,11 +57,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `bin/` | 302 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 68 | 6 | 1 |
-| `contracts/` | 127 | 14 | 2 |
-| `docs/` | 323 | 26 | 9 |
+| `contracts/` | 128 | 15 | 2 |
+| `docs/` | 324 | 26 | 9 |
 | `fixtures/` | 439 | 11 | 1 |
 | `hooks/` | 46 | 7 | 1 |
-| `launchd/` | 21 | 10 | 1 |
+| `launchd/` | 22 | 10 | 1 |
 | `mods/` | 7 | 1 | 2 |
 | `patches/` | 17 | 4 | 1 |
 | `policy/` | 3 | 1 | 1 |
@@ -72,7 +72,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 670 | 30 | 1 |
+| `tests/` | 671 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -108,7 +108,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | scope | coordination | 14 | 22 | 0 | 1 | 0 | 5 |
 | session | data-plane | 14 | 5 | 0 | 7 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 16 |
-| standard | policy-function | 18 | 28 | 126 | 13 | 13 | 61 |
+| standard | policy-function | 18 | 29 | 126 | 16 | 14 | 61 |
 | status | observability | 13 | 29 | 0 | 10 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
@@ -656,6 +656,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/standard-shape.sh`
 - `bin/standard-vendor-scaffolder.sh`
 - `bin/standard-vendor.sh`
+- `contracts/standard-coverage.tsv`
 - `docs/decisions/0001-uppercase-policy.md`
 - `docs/decisions/0002-term-for-tool-call-enforcement.md`
 - `docs/decisions/0003-term-for-control-plane.md`
@@ -750,6 +751,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0092-promote-name-rules-on-evidence.md`
 - `docs/decisions/0093-knowledge-base-standard.md`
 - `docs/decisions/README.md`
+- `docs/reference/check-rows/standard-coverage.txt`
 - `docs/reference/check-rows/standard-fleet-names.txt`
 - `docs/reference/check-rows/standard-label-registered.txt`
 - `docs/reference/check-rows/standard-label-sync.txt`
@@ -758,6 +760,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/reference/check-rows/standard-script-uncalled.txt`
 - `docs/reference/check-rows/standard-seam-fresh.txt`
 - `docs/reference/check-rows/standard-vendor-scaffolder-fresh.txt`
+- `launchd/com.harbor.standard.coverage.plist`
 - `launchd/com.harbor.standard.fleet-names.plist`
 - `launchd/com.harbor.standard.label-registered.plist`
 - `launchd/com.harbor.standard.schedule-registered.plist`

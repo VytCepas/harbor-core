@@ -1,0 +1,28 @@
+# standard-coverage.tsv (harbor#978) — what bin/standard-inventory.sh coverage needs to know and cannot derive.
+#
+# WHY THIS FILE EXISTS. A rule with no data judges nothing and says nothing: name-note-create shipped with no
+# name-create.d on the box and never fired (measured 2026-11-13). Which file each installed context rule reads is in its
+# script, not in a field the engine knows, so it is declared here once. And a PATH tool is "home" when a registered repo
+# holds its bytes; the package managers that legitimately put tools on PATH from outside every repo are declared here too.
+#
+# standard_version: 2.0.0
+#
+# COLUMNS  id <TAB> kind <TAB> path <TAB> header <TAB> note
+#   id      rule-data: the context rule's id, its file context-rules/user/<id>.md in the config dir (judged only when installed)
+#           tool-origin: the package manager's name
+#   kind    rule-data | tool-origin
+#   path    rule-data: the data the rule reads, a glob allowed in the last segment; {cfg} the config dir, {rules} its
+#           context-rules/user, {access} the access register's folder (scope-roots.sh --access)
+#           tool-origin: a folder prefix under {home}; a PATH tool resolving inside it is that manager's, not ours
+#   header  row when each data file opens with a header row that is not data; none otherwise; - for a tool-origin
+#   note    the fix when the data is missing or empty, or what the origin is
+id	kind	path	header	note
+name-note-create	rule-data	{cfg}/name-create.d/*.tsv	none	core rows come from contracts/name-create.tsv and each pack's name-create.tsv; the inject installer and harbor pack install put them there
+access-route-pointer	rule-data	{access}/routes.tsv	none	routes.tsv in the access register's folder maps a command to its card (contracts/access-card.md)
+project-pointer	rule-data	{rules}/projects.tsv	none	the private layer's projects.tsv, installed by the inject installer
+browser-route-platform-chrome	rule-data	{rules}/projects.tsv	none	the private layer's projects.tsv, installed by the inject installer
+default-way-route	rule-data	{rules}/default-way-route.tsv	row	core's default-way-route.tsv, installed by the inject installer
+default-way-deny	rule-data	{rules}/default-way-route.tsv	row	core's default-way-route.tsv, installed by the inject installer
+suggest-tool	rule-data	{rules}/suggest-tool.tsv	row	no row has a delivery until harbor#1278; until then the rule is installed and judges nothing
+uv	tool-origin	{home}/.local/share/uv/	-	uv tool install and uv python install
+claude-code	tool-origin	{home}/.local/share/claude/	-	the Claude Code installer's own versions
