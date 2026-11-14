@@ -13,8 +13,12 @@ case "$1 $2" in
     esac ;;
   "issue list")  [ "${STUB_LIST_FAIL:-no}" = yes ] && exit 1; cat "${STUB_LIST:-/dev/null}" 2>/dev/null || true; exit 0 ;;
   "issue edit")  printf '%s\n' "$*" >> "$TMP_EDITLOG"; exit 0 ;;
-  "label list")  cat "${STUB_LABELS_LIVE:-/dev/null}" 2>/dev/null || true; exit 0 ;;
-  "api graphql") cat "${STUB_GRAPH:-/dev/null}" 2>/dev/null || true; exit 0 ;;
+  "label list")  [ "${STUB_LABEL_FAIL:-no}" = yes ] && exit 1; cat "${STUB_LABELS_LIVE:-/dev/null}" 2>/dev/null || true; exit 0 ;;
+  "api graphql") # STUB_GRAPH_FAIL_AFTER=<counter file>: the second and later calls fail, as a mid-pagination error would
+    if [ -n "${STUB_GRAPH_FAIL_AFTER:-}" ]; then
+      _n=$(( $(cat "$STUB_GRAPH_FAIL_AFTER" 2>/dev/null || echo 0) + 1 )); echo "$_n" > "$STUB_GRAPH_FAIL_AFTER"; [ "$_n" -ge 2 ] && exit 1
+    fi
+    cat "${STUB_GRAPH:-/dev/null}" 2>/dev/null || true; exit 0 ;;
 esac
 exit 9
 STUB
@@ -136,6 +140,12 @@ t_has "a tracker label absent from the contract is reported" "$(aud "$L7" | grep
 live 'bug\nfeature\ntheme:floor\ntheme:ci\nepic:provenance\nblocked:review\n'
 t_has "control: a matching contract reports reconciled" "$(aud "$L7")" "reconciled"
 
+# An unreadable label list is not a tracker with no labels: it listed every declared label as ABSENT (review sim, 2026-11-14).
+# A subshell: an assignment before a FUNCTION call persists in sh, and would leave the failure on for every later case.
+L7U="$(export STUB_LABEL_FAIL=yes; aud "$L7")"
+t_has "an unreadable tracker label list is named as unread" "$L7U" "could not read the tracker's labels"
+t_hasnt "...and does not report every declared label ABSENT" "$L7U" "ABSENT on the tracker"
+
 t_section "--audit reads the ownership graph, not a label that restates it"
 graph '{"number":7,"parent":{"number":999},"subIssues":{"totalCount":0}}'
 t_has "an open issue under a closed parent is reported" "$(aud "$L7")" "CLOSED parent: #7->#999"
@@ -145,6 +155,15 @@ graph '{"number":7,"parent":null,"subIssues":{"totalCount":2}}'
 t_has "a parent with no epic label is reported" "$(aud "$L7" | grep 'carrying no epic')" ": #7"
 graph '{"number":7,"parent":null,"subIssues":{"totalCount":0}}'
 t_has "control: a consistent graph says so" "$(aud "$L7")" "edges consistent"
+# A page that fails mid-pagination, or the page cap, read as the end of the graph: "edges consistent" over part of it.
+printf '{"data":{"repository":{"issues":{"pageInfo":{"hasNextPage":true,"endCursor":"c1"},"nodes":[{"number":7,"parent":null,"subIssues":{"totalCount":0}}]}}}}\n' > "$T_TMP/graph.json"
+rm -f "$T_TMP/gcount"; GT="$(export STUB_GRAPH_FAIL_AFTER="$T_TMP/gcount"; aud "$L7")"
+t_has "a page that fails mid-pagination is named" "$GT" "graph INCOMPLETE"
+t_hasnt "...and the partial graph is not called consistent" "$GT" "edges consistent"
+GC="$(aud "$L7")"   # every page says there is another: the 20-page cap ends the loop
+t_has "the page cap with pages left is named" "$GC" "graph INCOMPLETE"
+rm -f "$T_TMP/gcount"; ( export STUB_GRAPH_FAIL_AFTER="$T_TMP/gcount"; aud "$L7" --strict >/dev/null ); t_eq "--strict fails on an incomplete graph" "exit 1" "$(cat "$T_TMP/aud.rc")"
+graph '{"number":7,"parent":null,"subIssues":{"totalCount":0}}'
 
 t_section "--audit reports a parent named only in prose (harbor#978)"
 graph '{"number":7,"parent":null,"subIssues":{"totalCount":0}}'
