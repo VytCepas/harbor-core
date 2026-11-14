@@ -40,6 +40,12 @@ ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 . "$ROOT/bin/library-log.sh"
 . "$ROOT/bin/deploy-install-lib.sh"
 log_init deploy
+# A deleted cwd fails `git hash-object` silently, so every installed file read as box-only work (65 false refusals).
+# dash's `pwd -P` exits 0 there with empty output, so the folder it names is checked too.
+if ! _dcwd="$(pwd -P 2>/dev/null)" || [ ! -d "$_dcwd" ]; then
+  cd "$ROOT"
+  log_note "the folder this ran from no longer exists; running from $ROOT"
+fi
 # A native Windows shell is refused before anything, even arguments: no floor on an unproved platform (harbor#833).
 case "$(uname -s 2>/dev/null || :)" in MINGW*|MSYS*|CYGWIN*)
   log_fail "native Windows shell ($(uname -s)): Harbor runs on macOS and Linux, and on Windows only inside WSL2 (contracts/platforms.md)"

@@ -132,6 +132,9 @@ fixture inj; echo mine > "$C/inject.d/99-mine.md"; refuse "a box-only inject pac
 fixture injed; echo edited > "$C/inject.d/10-a.md"; refuse "a hand-edited inject pack" "10-a.md"
 fixture injold; printf 'old pack\n' > "$C/inject.d/20-old.md"; echo x > "$C/inject.d/.DS_Store"; run '' --live
 t_eq "a withdrawn pack and .DS_Store do not block" 0 "$RC"
+fixture injgone; printf 'old pack\n' > "$C/inject.d/20-old.md"; GONE=1; run '' --live; GONE=
+t_eq "run from a deleted folder, a withdrawn pack still does not block" 0 "$RC"
+t_has "...and deploy says where it ran from instead" "$(out)" "the folder this ran from no longer exists"
 fixture cmdold; mkdir -p "$C/commands"; printf 'v1\n' > "$C/commands/x.md"; printf '  note: x: would update (drifted)\n' > "$T/cmds"; run '' --live
 t_eq "a stale command the repo once held does not block" 0 "$RC"
 fixture cmdmine; mkdir -p "$C/commands"; printf 'mine\n' > "$C/commands/x.md"; printf '  note: x: would update (drifted)\n' > "$T/cmds"
