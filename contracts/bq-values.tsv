@@ -1370,3 +1370,7 @@ rule	1360	keys-store-token	live	standards/naming/controls.tsv, the id less its f
 rule	1361	keys-store-password	live	standards/naming/controls.tsv, the id less its family
 rule	1362	check.standard.coverage	live	standards/naming/controls.tsv
 rule	1363	standard.coverage	live	standards/naming/controls.tsv, the id less its family
+rule	1364	check.session-review	live	standards/naming/controls.tsv
+rule	1365	context.review-on-pr-open	live	standards/naming/controls.tsv
+rule	1366	session-review	live	standards/naming/controls.tsv, the id less its family
+rule	1367	review-on-pr-open	live	standards/naming/controls.tsv, the id less its family

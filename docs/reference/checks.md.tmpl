@@ -272,6 +272,7 @@ A user timer stops at logout unless the user lingers (`loginctl enable-linger "$
 | deploy.launchd | macOS only | launchd is macOS's; with no `launchctl` on PATH the tool logs a skip and exits 0 | not scheduled; drop the `harbor:deploy-installs` marker from a plist to stop deploy installing it |
 | event.fleet-snapshot | inherits: `event.dispatch` | no schedule of its own on this box: it runs where its host runs | the register row's own |
 | event.alerting | inherits: `event.dispatch` | no schedule of its own on this box: it runs where its host runs | the register row's own |
+| session.review | inherits: the Stop hook | no schedule of its own on this box: it runs where its host runs | the register row's own |
 | session.state | inherits: the Stop hook | no schedule of its own on this box: it runs where its host runs | the register row's own |
 | session.title | inherits: the UserPromptSubmit and SessionStart hook | no schedule of its own on this box: it runs where its host runs | the register row's own |
 | event.session-notify | inherits: `event.dispatch` | no schedule of its own on this box: it runs where its host runs | the register row's own |
