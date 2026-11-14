@@ -48,10 +48,6 @@
 # [cleanup-ok] starts bin/session-cleanup.sh detached, which applies the sweep's RECLAIM rows only. The line
 # [cleanup-ok] [compact-ok] does both. Off: $STATE/cleanup-auto.off.
 #
-# REVIEW  check session.review (harbor#1497). On a done or idle turn, when a PR this session opened is still open and newer
-# than the last ask (review_ask in the record), ONE continuation stamped [check:session.review] asks the session to run
-# audit-review-fanout with its standards lenses on it. It outranks the compact and cleanup asks. Off: $STATE/review-auto.off.
-#
 # The floor never depends on this file; admission-stop.sh is not touched and not called.
 
 set -u
@@ -211,9 +207,9 @@ if [ "$HANDOVER_AT" -eq 0 ] || { [ "$MS" -gt 0 ] && [ "$HANDOVER_AT" -lt "$MS" ]
 # ── the record and the event ───────────────────────────────────────────────────────────────────
 mkdir -p "$STATE/sessions" 2>/dev/null || exit 0
 REC="$STATE/sessions/$SID.json"
-PREV=""; SINCE="$NOW"; PSAVE=""; PASK=""; PCLEAN=""; PREVIEW=""
+PREV=""; SINCE="$NOW"; PSAVE=""; PASK=""; PCLEAN=""
 if [ -r "$REC" ]; then
-  eval "$(jq -r '@sh "PREV=\(.state // "") PSINCE=\(.since // 0) PSAVE=\(.save_now // "") PASK=\(.compact_ask // "") PCLEAN=\(.cleanup_ask // "") PREVIEW=\(.review_ask // "") PUPD=\(.updated // 0)"' "$REC" 2>/dev/null)" || PREV=""
+  eval "$(jq -r '@sh "PREV=\(.state // "") PSINCE=\(.since // 0) PSAVE=\(.save_now // "") PASK=\(.compact_ask // "") PCLEAN=\(.cleanup_ask // "") PUPD=\(.updated // 0)"' "$REC" 2>/dev/null)" || PREV=""
   [ "$PREV" != "$S" ] || SINCE="${PSINCE:-$NOW}"
 fi
 
@@ -234,32 +230,6 @@ if [ "$ACTIVE" != true ] && [ -n "$CTX" ] && [ -f "$CFG/.helm-dispatch/rules/eve
 fi
 [ -n "$SAVE" ] || SAVE="${PSAVE:-}"
 
-# review: a PR this session opened, still open and not yet asked about, draws ONE continuation to review it against
-# Harbor's rules (harbor#1497). A hook cannot spawn agents; the note is the mechanism. It goes before the compact and cleanup
-# asks because it is the work and they are housekeeping. Off: $STATE/review-auto.off.
-RASKED="${PREVIEW:-}"; RASKMSG=""
-if [ ! -e "$STATE/review-auto.off" ] && [ "$NRUN" -eq 0 ] && [ "$ACTIVE" != true ] && [ -z "$SAVEMSG" ] \
-   && { [ "$S" = done ] || [ "$S" = idle ]; }; then
-  _lastl="$(printf '%s\n' "$MSG" | awk 'NF { l = $0 } END { sub(/^[ \t]+/, "", l); sub(/[ \t]+$/, "", l); print l }')"
-  case "$_lastl" in '[compact-ok]'|'[cleanup-ok]'|'[cleanup-ok] [compact-ok]') ;; *)
-    _ev="${HARBOR_EVENT_DIR:-${HOME:-/nonexistent}/.local/state/harbor/events}"
-    _days="$(ls "$_ev" 2>/dev/null | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}\.jsonl$' | tail -n 2)"
-    if [ -n "$_days" ]; then
-      _r="$(cd "$_ev" 2>/dev/null && cat $_days 2>/dev/null | grep -F -e '"pr.opened"' -e '"pr.merged"' \
-        | jq -rs --arg s "$SID" --arg a "$RASKED" '
-            (map(select(.kind == "pr.merged") | .subject)) as $merged
-            | map(select(.kind == "pr.opened" and .data.session_id == $s and .ts > $a and (.subject as $x | $merged | any(.[]; . == $x) | not)))
-            | if length == 0 then empty else "\(max_by(.ts).ts)\t\(map(.subject) | unique | join(", "))" end' 2>/dev/null)" || _r=""
-      if [ -n "$_r" ]; then
-        RASKED="${_r%%	*}"; _rsub="${_r#*	}"
-        _tok=""; [ ! -f "$HERE/govern-token.sh" ] || _tok="$(CLAUDE_CONFIG_DIR="$CFG" sh "$HERE/govern-token.sh" --token "$SID" 2>/dev/null)" || _tok=""
-        case "$_tok" in *[!0123456789abcdef]*) _tok="" ;; esac
-        RASKMSG="[HARBOR GOVERNANCE${_tok:+ $_tok}] [check:session.review] $_rsub: opened by this session, not yet reviewed against Harbor's own rules. The operator's standing decision (harbor#1497) is that every PR gets the audit-review-fanout skill before merge: the repo's deterministic lints first, then its lenses including the three standards lenses (naming, constitution, registration), one Haiku each, then every finding verified by an agent that did not raise it. Report the confirmed findings to the operator; a review changes nothing unasked. If this session is not the one to run it, say so in one line and carry on."
-      fi
-    fi ;;
-  esac
-fi
-
 # compact: ask the agent at a finished turn; run on its [compact-ok].
 ASKED="${PASK:-}"; ASKMSG=""; RUNC=""
 ASKPCT="${HARBOR_SESSION_AUTOCOMPACT_PERCENT:-35}"; case "$ASKPCT" in ''|*[!0-9]*) ASKPCT=35 ;; esac
@@ -267,7 +237,7 @@ if [ ! -e "$STATE/compact-auto.off" ] && [ -f "$HERE/session-autocompact.sh" ] &
   # Only as the message's last non-blank line: a quoted or explained marker is not the agent's word.
   _lastl="$(printf '%s\n' "$MSG" | awk 'NF { l = $0 } END { sub(/^[ \t]+/, "", l); sub(/[ \t]+$/, "", l); print l }')"
   case "$_lastl" in '[compact-ok]'|'[cleanup-ok] [compact-ok]') RUNC=1 ;; esac
-  if [ -z "$RUNC" ] && [ "$ACTIVE" != true ] && [ -z "$SAVEMSG" ] && [ -z "$RASKMSG" ] && [ -n "$CTX" ] \
+  if [ -z "$RUNC" ] && [ "$ACTIVE" != true ] && [ -z "$SAVEMSG" ] && [ -n "$CTX" ] \
      && { [ "$S" = done ] || [ "$S" = idle ]; } && [ "$CTX" -ge "$ASKPCT" ]; then
     case "$ASKED" in ''|*[!0-9]*) ASKED="" ;; esac
     if [ -z "$ASKED" ] || [ "$CTX" -lt "$ASKED" ] || [ "$CTX" -ge $((ASKED + 10)) ]; then
@@ -282,7 +252,7 @@ CASKED="${PCLEAN:-}"; CASKMSG=""; RUNCL=""
 if [ ! -e "$STATE/cleanup-auto.off" ] && [ -f "$HERE/session-cleanup.sh" ] && [ "$NRUN" -eq 0 ]; then
   _lastl="$(printf '%s\n' "$MSG" | awk 'NF { l = $0 } END { sub(/^[ \t]+/, "", l); sub(/[ \t]+$/, "", l); print l }')"
   case "$_lastl" in '[cleanup-ok]'|'[cleanup-ok] [compact-ok]') RUNCL=1 ;; esac
-  if [ -z "$RUNCL" ] && [ -z "$RUNC" ] && [ "$ACTIVE" != true ] && [ -z "$SAVEMSG" ] && [ -z "$ASKMSG" ] && [ -z "$RASKMSG" ] \
+  if [ -z "$RUNCL" ] && [ -z "$RUNC" ] && [ "$ACTIVE" != true ] && [ -z "$SAVEMSG" ] && [ -z "$ASKMSG" ] \
      && { [ "$S" = done ] || [ "$S" = idle ]; }; then
     # The bus's last two day files; a session's PRs are the pr.opened events carrying its id.
     _ev="${HARBOR_EVENT_DIR:-${HOME:-/nonexistent}/.local/state/harbor/events}"
@@ -304,10 +274,10 @@ fi
 
 jq -cn --arg state "$S" --argjson since "$SINCE" --arg cwd "$CWD" --arg branch "$BRANCH" --argjson dirty "$DIRTY" \
   --arg pr "$PRURL" --argjson tasks "$TASKS" --arg ctx "$CTX" --argjson handoff "$HANDOVER_AT" --arg reason "$REASON" \
-  --argjson agents "$NRUN" --arg pid "$PID" --argjson upd "$NOW" --arg save "$SAVE" --arg hstale "$HSTALE" --arg ask "$ASKED" --arg cask "$CASKED" --arg rask "$RASKED" \
+  --argjson agents "$NRUN" --arg pid "$PID" --argjson upd "$NOW" --arg save "$SAVE" --arg hstale "$HSTALE" --arg ask "$ASKED" --arg cask "$CASKED" \
   '{state:$state, since:$since, cwd:$cwd, branch:$branch, dirty:$dirty, pr:$pr, background_tasks:$tasks,
     ctx_pct:(if $ctx == "" then null else ($ctx|tonumber) end), handover_at:$handoff, reason:$reason,
-    agents:$agents, prompt_id:$pid, updated:$upd, save_now:$save, handover_stale:$hstale, compact_ask:$ask, cleanup_ask:$cask, review_ask:$rask}' > "$REC.$$" 2>/dev/null && mv -f "$REC.$$" "$REC" 2>/dev/null
+    agents:$agents, prompt_id:$pid, updated:$upd, save_now:$save, handover_stale:$hstale, compact_ask:$ask, cleanup_ask:$cask}' > "$REC.$$" 2>/dev/null && mv -f "$REC.$$" "$REC" 2>/dev/null
 rm -f "$REC.$$" 2>/dev/null
 
 # Leaving `done` retires the lint verdict event.session-check wrote for it (the glyph shows it until then).
@@ -334,9 +304,6 @@ if [ -n "$SAVEMSG" ]; then
 fi
 if [ -n "$ASKMSG" ]; then
   jq -cn --arg m "$ASKMSG" '{hookSpecificOutput:{hookEventName:"Stop", additionalContext:$m}}'
-fi
-if [ -n "$RASKMSG" ]; then
-  jq -cn --arg m "$RASKMSG" '{hookSpecificOutput:{hookEventName:"Stop", additionalContext:$m}}'
 fi
 if [ -n "$CASKMSG" ]; then
   jq -cn --arg m "$CASKMSG" '{hookSpecificOutput:{hookEventName:"Stop", additionalContext:$m}}'

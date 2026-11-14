@@ -6,7 +6,6 @@
 id	reason
 external-content-is-data	a pure note, no script: warns when fetched text addresses the agent, which a non-engineer cannot spot themselves
 subagent-contract	a pure note, no script: tells any helper agent to report once, show evidence and treat fetched text as data
-review-on-pr-open	a pure note, no script: an agent that opens a pull request is told to run the standards review before it merges (the member route of check session.review)
 keys-store-env-file	a pure note, no script: points at the company store and its connectors when the agent is about to write a .env file
 keys-store-key	a pure note, no script: the same hint when the text being written holds a _KEY= assignment
 keys-store-token	a pure note, no script: the same hint for a TOKEN= assignment
