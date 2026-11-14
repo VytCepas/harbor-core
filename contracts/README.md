@@ -147,6 +147,7 @@ hand-kept account of direction and status; this table is what exists.
 | [shims.tsv](./shims.tsv) | tsv | shims.tsv — the commands the operator types, and the file each one is. harbor#630. |
 | [skill-book-router.tsv](./skill-book-router.tsv) | tsv | skill-book-router.tsv (harbor#1149) - the "Start here" table of the skill catalog (bin/skill-catalog.sh): a situation and the skill that own |
 | [skill-pack-frontmatter-keys.txt](./skill-pack-frontmatter-keys.txt) | txt | Allowed top-level front-matter keys in an .md a pack installs under skill-packs/ (bin/pack.sh; harbor#1149). These files are |
+| [standard-coverage.tsv](./standard-coverage.tsv) | tsv | standard-coverage.tsv (harbor#978) — what bin/standard-inventory.sh coverage needs to know and cannot derive. |
 | [streams.tsv](./streams.tsv) | tsv | streams.tsv (harbor#1181) — every log, ledger and state file Harbor writes, one row each. Lane 1 records the |
 | [subagent.md](./subagent.md) | md | Subagent contract: roles, stop rules, the stop check |
 | [suite-cache.md](./suite-cache.md) | md | The suite cache — a suite whose inputs already passed is reported `cached` (harbor#1288) |
