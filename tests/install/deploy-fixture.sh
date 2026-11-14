@@ -113,6 +113,8 @@ run() { # [answers] -- deploy args. With answers, under a pty; without, stdin is
   [ -z "${STUB_PO:-}" ] || _env="$_env STUB_PO=$STUB_PO"
   # VIA=harbor: deploy reached as `harbor deploy`, through the repo's own dispatcher, from / (not the repo).
   _cwd=.; if [ "${VIA:-}" = harbor ]; then _cwd=/; set -- "$REPO/bin/harbor" deploy "$@"; else set -- "$REPO/bin/deploy.sh" "$@"; fi
+  # GONE=1: deploy starts in a folder deleted after the cd, as a terminal left in a removed worktree does.
+  if [ -n "${GONE:-}" ]; then _cwd="$T/gone"; mkdir -p "$_cwd"; fi
   if [ -n "$_ans" ]; then
     rm -f "$T/done"
     { sleep 1; printf "$_ans"; _i=0; while [ ! -f "$T/done" ] && [ "$_i" -lt 90 ]; do sleep 1; _i=$((_i + 1)); done; } \
@@ -120,7 +122,7 @@ run() { # [answers] -- deploy args. With answers, under a pty; without, stdin is
     RC="$(cat "$T/rc")"
   else
     RC=0
-    ( cd "$_cwd" && env -u CLAUDE_CONFIG_DIR -u HARBOR_SCOPE_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" ) >"$T/out" 2>&1 </dev/null || RC=$?
+    ( cd "$_cwd" && { [ -z "${GONE:-}" ] || rmdir "$_cwd"; } && env -u CLAUDE_CONFIG_DIR -u HARBOR_SCOPE_LOCAL_BIN CLAUDECODE="${CC:-}" $_env sh "$@" ) >"$T/out" 2>&1 </dev/null || RC=$?
   fi
   tr -d '\r' <"$T/out" >"$T/out.txt"
 }
