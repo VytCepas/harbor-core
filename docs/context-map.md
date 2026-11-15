@@ -33,10 +33,10 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | decision-record | docs/decisions/ | element | source | dated | 94 |
 | hook | hooks/ | component | source | living | 50 |
 | skill | skills/ | component | source | living | 62 |
-| fixture | fixtures/ | element | source | living | 446 |
+| fixture | fixtures/ | element | source | living | 450 |
 | template | templates/ | component | source | living | 16 |
-| registry | registries/ | component | source | versioned | 82 |
-| test | tests/ | component | source | living | 673 |
+| registry | registries/ | component | source | versioned | 83 |
+| test | tests/ | component | source | living | 674 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 10 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
@@ -44,7 +44,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | script | bin/ | component | source | living | 298 |
 | agent | agents/ | component | source | living | 1 |
 | how-to | docs/how-to/ | component | source | living | 7 |
-| reference | docs/reference/ | component | generated | generated | 91 |
+| reference | docs/reference/ | component | generated | generated | 92 |
 | explanation | docs/explanation/ | component | source | living | 106 |
 | (no kind) | - | - | - | - | 290 |
 
@@ -59,9 +59,9 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `bin/` | 302 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 70 | 6 | 1 |
-| `contracts/` | 129 | 15 | 2 |
-| `docs/` | 326 | 26 | 9 |
-| `fixtures/` | 446 | 12 | 1 |
+| `contracts/` | 130 | 15 | 2 |
+| `docs/` | 327 | 26 | 9 |
+| `fixtures/` | 450 | 12 | 1 |
 | `hooks/` | 46 | 7 | 1 |
 | `launchd/` | 22 | 10 | 1 |
 | `mods/` | 7 | 1 | 2 |
@@ -74,7 +74,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 673 | 30 | 1 |
+| `tests/` | 674 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -83,7 +83,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 12 | 34 | 2 | 6 | 0 | 0 |
+| access | control-plane | 12 | 35 | 2 | 6 | 0 | 0 |
 | admission | control-plane | 27 | 90 | 0 | 6 | 0 | 176 |
 | agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
@@ -91,7 +91,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | bq | observability | 3 | 6 | 0 | 2 | 0 | 0 |
 | check | observability | 2 | 5 | 0 | 1 | 60 | 0 |
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
-| context | control-plane | 6 | 16 | 1 | 3 | 0 | 52 |
+| context | control-plane | 6 | 16 | 1 | 4 | 1 | 52 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
 | doc | control-plane | 16 | 13 | 0 | 44 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
@@ -110,7 +110,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | scope | coordination | 14 | 22 | 0 | 1 | 0 | 5 |
 | session | data-plane | 14 | 5 | 0 | 8 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 16 |
-| standard | policy-function | 18 | 29 | 126 | 16 | 14 | 61 |
+| standard | policy-function | 18 | 29 | 126 | 16 | 14 | 63 |
 | status | observability | 13 | 29 | 0 | 11 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
@@ -287,6 +287,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/context-resolve.sh`
 - `commands/context-budget.md`
 - `docs/context-map.md`
+- `docs/reference/check-rows/context-name-create.txt`
 - `hooks/injection-rule/context-rules.test.sh`
 - `registries/context-ratchet.tsv`
 
@@ -856,9 +857,9 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `bin/` | 12 |
 | `commands/` | 2 |
 | `context-rules/` | 58 |
-| `contracts/` | 96 |
+| `contracts/` | 97 |
 | `docs/` | 135 |
-| `fixtures/` | 264 |
+| `fixtures/` | 268 |
 | `hooks/` | 33 |
 | `mods/` | 7 |
 | `patches/` | 10 |
