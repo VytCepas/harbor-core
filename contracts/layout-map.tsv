@@ -21,7 +21,6 @@ entry	kind	layer	note
 contracts/	contract	source	interface contracts and the registers beside them
 evals/	eval	source	eval corpora, bulk data
 bin/	script	source	the tools, hook entry points and guards
-agents/	agent	source	subagent definitions, installed beside commands/ by skill-install.sh agents
 commands/	command	source	slash commands
 context-rules/	injection-rule	source	notes injected into a session
 docs/	explanation	source	documentation; docs/context-map.md and docs/generated/ in it are generated

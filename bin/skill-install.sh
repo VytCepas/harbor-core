@@ -1,11 +1,9 @@
 #!/usr/bin/env sh
 # skill-install.sh (harbor#7 · I1) — install a tracked skill into ~/.claude/skills.
-#   harbor skills [--apply] (--live | --dir PATH) [--accept-loss] [commands | agents] [<name> | --all] [--from-old OLD] [--uninstall]
+#   harbor skills [--apply] (--live | --dir PATH) [--accept-loss] [commands] [<name> | --all] [--from-old OLD]
 #     no name, no --all   list the tracked skills and their install state
 #     <name> | --all      install or update one, or every tracked skill (a dry run unless --apply)
 #     commands            the slash commands in commands/ instead of skills
-#     agents              the subagent definitions in agents/ (flat files, as commands)
-#     --uninstall         agents only: move the named tracked agent (or --all) out of the target into the backup
 #     --from-old OLD      a rename: the old dir moves into the backup
 #     --accept-loss       install over a newer live copy, or one holding files the repo does not
 #   A dry run exits 1 exactly when --apply would refuse (nested, newer, box-only files).
@@ -26,12 +24,11 @@ log_init skills-install
 
 # Two payload kinds, one gate (harbor#7): commands are flat files, skills are directories. The nesting refusal and
 # `--from-old` are directory-shaped; the gate (dry run, verify after writing, no live surface without --live) is shared.
-KIND=skills; ALL=0; NAME=''; FROM_OLD=''; UNINSTALL=0
+KIND=skills; ALL=0; NAME=''; FROM_OLD=''
 il_opt() {
   # shellcheck disable=SC2034 # IL_TAKE: read by deploy-install-lib.sh
   case "$1" in
-    commands|skills|agents) KIND="$1"; IL_TAKE=1 ;;
-    --uninstall) UNINSTALL=1; IL_TAKE=1 ;;
+    commands|skills) KIND="$1"; IL_TAKE=1 ;;
     --all) ALL=1; IL_TAKE=1 ;;
     # A TRAILING `--from-old` USED TO ABORT WITH NO OUTPUT; il_value makes it a usage error.
     --from-old) il_value --from-old "$2"; FROM_OLD="$2"; IL_TAKE=2 ;;
@@ -41,9 +38,6 @@ il_opt() {
 }
 il_parse "$@"
 [ "$ALL" -eq 0 ] || [ -z "$NAME" ] || il_usage_error "a name and --all are two selections; give one"
-[ "$UNINSTALL" -eq 0 ] || [ "$KIND" = agents ] || il_usage_error '--uninstall takes the agents kind only'
-[ "$UNINSTALL" -eq 0 ] || [ "$ALL" -eq 1 ] || [ -n "$NAME" ] || il_usage_error '--uninstall names an agent, or --all'
-[ "$UNINSTALL" -eq 0 ] || [ -z "$FROM_OLD" ] || il_usage_error '--uninstall and --from-old are two operations; give one'
 il_target
 DEST_ROOT="$IL_TARGET/$KIND"
 WROTE=0; BAD=0
@@ -320,40 +314,13 @@ install_one() {
 if [ "$IL_APPLY" -eq 1 ]; then
   mkdir -p "$DEST_ROOT"
   log_head "apply to $DEST_ROOT"
-elif [ "$KIND" = commands ] || [ "$KIND" = agents ] || [ -n "$NAME" ] || [ "$ALL" -eq 1 ]; then
+elif [ "$KIND" = commands ] || [ -n "$NAME" ] || [ "$ALL" -eq 1 ]; then
   log_head "plan for $DEST_ROOT (dry run: nothing is written)"
 fi
 
-# An agent leaves the target the way it came: one tracked name at a time, never a file the repo does not track. The file goes
-# into the backup (a move IS the backup), its manifest row is dropped, and bytes in no commit are refused without --accept-loss.
-uninstall_agents() {
+if [ "$KIND" = commands ]; then
   found=0
-  for f in "$ROOT"/agents/*.md; do
-    [ -f "$f" ] || continue
-    b="$(basename "$f")"
-    [ -n "$NAME" ] && [ "$NAME" != "${b%.md}" ] && [ "$NAME" != "$b" ] && continue
-    found=1
-    d="$DEST_ROOT/$b"
-    if [ ! -f "$d" ]; then log_ok "${b%.md}: absent"; continue; fi
-    if ! cmp -s "$f" "$d" && ! il_known "$IL_TARGET" "agents/$b" "$d" "$ROOT" "agents/$b"; then
-      _loss "${b%.md}" "the installed copy matches no commit, and uninstalling would move that edit into the backup" || BAD=1
-      [ "$IL_ACCEPT_LOSS" -eq 1 ] || continue
-    fi
-    if [ "$IL_APPLY" -eq 0 ]; then log_note "${b%.md}: would uninstall (move into the backup)"; continue; fi
-    if _aside "$d"; then WROTE=1; il_manifest_drop "agents/$b"; log_ok "${b%.md}: uninstalled, kept in $IL_BK"; else BAD=1; fi
-  done
-  if [ "$found" -eq 0 ]; then
-    BAD=1
-    log_fail "no tracked agent named ${NAME:-<any>} in agents/"
-    log_fix "sh $IL_SELF agents --uninstall $(il_spell)"
-  fi
-}
-
-if [ "$UNINSTALL" -eq 1 ]; then
-  uninstall_agents
-elif [ "$KIND" = commands ] || [ "$KIND" = agents ]; then
-  found=0
-  for f in "$ROOT/$KIND"/*.md; do
+  for f in "$ROOT"/commands/*.md; do
     [ -f "$f" ] || continue
     b="$(basename "$f")"
     [ -n "$NAME" ] && [ "$NAME" != "${b%.md}" ] && [ "$NAME" != "$b" ] && continue
@@ -369,14 +336,14 @@ elif [ "$KIND" = commands ] || [ "$KIND" = agents ]; then
       WROTE=1; log_ok "${b%.md}: installed, verified byte-identical"; il_manifest "$KIND/$b"
     else
       rm -f "$d.tmp.$$"; BAD=1
-      log_fail "${b%.md}: $d differs from $KIND/$b after the copy"
+      log_fail "${b%.md}: $d differs from commands/$b after the copy"
       log_nofix "the cp/mv error above; the pre-run copy is in $IL_BK"
     fi
   done
   if [ "$found" -eq 0 ]; then
     BAD=1
-    log_fail "no tracked ${KIND%s} named ${NAME:-<any>} in $KIND/"
-    log_fix "sh $IL_SELF $KIND $(il_spell)"
+    log_fail "no tracked command named ${NAME:-<any>} in commands/"
+    log_fix "sh $IL_SELF commands $(il_spell)"
   fi
 elif [ "$ALL" -eq 1 ]; then
   for d in "$ROOT"/skills/*/ "$ROOT"/vendor/skills/*/; do
@@ -410,7 +377,7 @@ il_manifest_write || BAD=1
 if [ "$IL_APPLY" -eq 1 ] && [ "$WROTE" -eq 1 ] && [ "$IL_LIVE" -eq 1 ]; then
   il_next --deploy-does "sh $IL_TARGET/bin/pin-instructions.sh --apply --live"
 fi
-if [ "$IL_APPLY" -eq 0 ] && [ "$BAD" -eq 0 ] && [ "$UNINSTALL" -eq 0 ] && { [ "$KIND" = commands ] || [ "$KIND" = agents ] || [ -n "$NAME" ] || [ "$ALL" -eq 1 ]; }; then
+if [ "$IL_APPLY" -eq 0 ] && [ "$BAD" -eq 0 ] && { [ "$KIND" = commands ] || [ -n "$NAME" ] || [ "$ALL" -eq 1 ]; }; then
   # Every skill, on the live box, is deploy's --only skills (§4); one skill or the commands alone stay here.
   il_apply_next skills --all
 fi

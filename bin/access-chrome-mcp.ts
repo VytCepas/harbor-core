@@ -50,7 +50,7 @@ const DESTRUCTIVE = ('delete remove archive pause publish unpublish discard pay 
 const LONG: Record<string, number> = { attach: 900, 'wait-signin': 900 };   // seconds
 const AGENT_VERBS = new Set(['attach', 'status', 'doctor', 'detach', 'tabs', 'front', 'wait-signin', 'hosts', 'tab-new']);
 // Run here. Default-deny: absent on purpose are run-code, eval, cookie-*, *storage-*, state-save/load, requests, route, install...
-const HOT_VERBS = new Set(['state', 'text', 'goto', 'tab-list', 'tab-select', 'tab-close', 'snapshot', 'find', 'screenshot', 'pdf',
+const HOT_VERBS = new Set(['state', 'timing', 'text', 'goto', 'tab-list', 'tab-select', 'tab-close', 'snapshot', 'find', 'screenshot', 'pdf',
   'go-back', 'go-forward', 'reload', 'console', 'resize', 'click', 'dblclick', 'hover', 'fill', 'type', 'select', 'check', 'uncheck',
   'drag', 'press', 'keydown', 'keyup', 'mousemove', 'mousedown', 'mouseup', 'mousewheel', 'dialog-accept', 'dialog-dismiss', 'upload', 'scroll']);
 const INPUT_VERBS = new Set(['click', 'dblclick', 'fill', 'type', 'select', 'check', 'uncheck', 'drag', 'press', 'keydown', 'keyup',
@@ -68,6 +68,8 @@ const VERBS: Record<string, string> = {
     'or, with args ["--headless"] and a lane, a throwaway headless Chrome with no login on the same host allow-list',
   status: "this session's browser name, pin, profile and workdir",
   state: "the page's own visibility, focus and load state",
+  timing: "the page's own clock as JSON (no args): navigation timing, the latest LCP, now, and every own-origin resource as " +
+    '{path, initiatorType, startTime, responseEnd, duration, transferSize}, in whole ms; for a prod-vs-rebuild timing parity check',
   text: 'the visible text of the page, or of one element (args: [] or [ref]); cheaper than snapshot or screenshot for reading',
   steps: 'run several verbs in one call, in order, stopping at the first failure (steps: [{verb, args}], at most 25; every guard runs per step; ' +
     'not attach, detach, front, tabs, wait-signin or confirm_click). Only the last step returns its full output',
@@ -77,17 +79,16 @@ const VERBS: Record<string, string> = {
   front: "make this session's tab the visible one, then give focus back",
   'wait-signin': 'wait (args: [seconds], default 300) while the operator signs in',
   hosts: 'the host allowlist goto and tab_new read: core, then the private layer',
-  goto: 'open one https url (args: [url]) on an allowed host',
-  'tab-new': 'open a tab (args: [] or [url] on an allowed host)',
+  goto: 'open one url (args: [url]): https on an allowed host; in a headless lane only, also a dev server at http://localhost:<port> or http://127.0.0.1:<port> (1024-65535)',
+  'tab-new': 'open a tab (args: [] or [url] on an allowed host; a dev server in a headless lane only)',
   'tab-list': "this session's tabs", 'tab-select': 'select a tab (args: [index])', 'tab-close': 'close a tab (args: [index])',
   snapshot: 'the page as an accessibility tree with refs', find: 'find on the page (args: [text])',
   screenshot: 'a screenshot (args: [] or [--filename=<bare name>]); it lands in the session workdir',
   pdf: 'the page as a PDF (args: [--filename=<bare name>])',
   'go-back': 'history back', 'go-forward': 'history forward', reload: 'reload the page',
   console: 'the page console', resize: 'resize the viewport (args: [width, height])',
-  click: 'click a ref by script, which works on a covered window (args: [ref]); or by its visible name with no find first (args: ["--text=Save changes"]: ' +
-    'the one exact match is clicked, else the one partial match; several are refused listing their refs, none points at find); --real for the Playwright click ([ref, button], --modifiers=<key>), --force for a press at its box',
-  dblclick: 'double-click a ref, or --text=<name>, by script; --real for the Playwright one',
+  click: 'click a ref by script, which works on a covered window (args: [ref]); --real for the Playwright click ([ref, button], --modifiers=<key>), --force for a press at its box',
+  dblclick: 'double-click a ref by script; --real for the Playwright one',
   hover: 'hover a ref by script; --real for the Playwright one', fill: 'fill a field (args: [ref, text], --submit)', type: 'type text (args: [text], --submit)',
   select: 'select options of a native <select> by script (args: [ref, value, ...]); --real for the Playwright one', check: 'check a ref by script; --real for the Playwright one', uncheck: 'uncheck a ref by script; --real for the Playwright one',
   scroll: 'scroll at once, on a covered window too (args: [pixels] the page, [pixels, ref] that element, [ref] into view)',
@@ -225,7 +226,23 @@ function signinUrl(url: string): boolean {   // a login host, or a sign-in path 
   if (/^(login|signin|accounts|auth|sso|id|identity|passport)\./.test(host)) return true;
   return sp.split('/').some((seg) => /^(login|signin|sign-in|log-in|logon|authorize|accountchooser|servicelogin|uas|checkpoint|oauth2?|sso)(\.(php|html?|aspx?|jsp))?$/.test(seg));
 }
-function hostOk(url: string): boolean {   // https, a plain host, equal to a listed host or a subdomain of one
+// A dev server (harbor#1507). The authority must equal localhost:<port> or 127.0.0.1:<port> (1024-65535) whole, so userinfo,
+// a suffix host, an encoded byte or [::1]/0.0.0.0/127.1 never match; a backslash, space or control byte anywhere is refused.
+function loopbackOk(url: string): boolean {
+  if (!url.startsWith('http://') || /[\\ \x00-\x1f\x7f]/.test(url)) return false;
+  const m = /^(?:localhost|127\.0\.0\.1):([1-9][0-9]{3,4})$/.exec(url.slice(7).split(/[/?#]/)[0]);
+  return !!m && Number(m[1]) >= 1024 && Number(m[1]) <= 65535;
+}
+// Loopback is the headless lane's only (operator, 2026-11-15): in the logged-in profile an agent-written page could send credentialed
+// cross-site requests and read localhost cookies. The .headless marker is a $TMPDIR file anyone can write, so the daemon's own record
+// must agree: the CLI writes attached: true for the operator's Chrome (access-browser-agent.sh _headless_lane).
+function headlessLane(S: string, wd: string): boolean {
+  if (!fs.existsSync(path.join(wd, '.headless'))) return false;
+  const f = sessionFile(S) as { attached?: unknown } | null;
+  return !!f && f.attached !== true;
+}
+function hostOk(url: string, headless = false): boolean {   // https on a listed host or a subdomain of one; or, headless only, a dev server
+  if (loopbackOk(url)) return headless;
   if (!url.startsWith('https://') || /[\\ \t]/.test(url)) return false;
   let h = url.slice(8);
   h = h.split('/')[0].split('?')[0].split('#')[0];
@@ -289,21 +306,18 @@ const bare = (s: string) => s.replace(/\[(ref|box|cursor|level|active|expanded|d
 
 // Take a fresh full snapshot, read the target's label and box (a partial one would replace the CLI's ref table).
 type Target = { root: string; frame: string; box: string; label: string; file: string };
-async function guardLines(c: Conn, S: string, wd: string, verb: string, target: string): Promise<{ file: string; body: string[] }> {
+async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: string, confirmed = false): Promise<Target> {
+  if (/^(e[0-9]|f[0-9].*e[0-9])/s.test(ref)) { if (/[^a-z0-9]/.test(ref)) refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref`); }
+  else refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref (e12, f3e12); a selector carries no label for the destructive check`, 'harbor chrome snapshot');
   fs.mkdirSync(wd, { recursive: true });
   const g = path.join(wd, 'harbor-guard.yml'); fs.rmSync(g, { force: true });
   let r: { isError: boolean; text: string } | undefined;
   try { r = await c.run({ _: ['snapshot'], boxes: true, filename: 'harbor-guard.yml' }, wd, false); } catch { if (!sessionFile(S)) goneRefusal(S); }
   if (!r || r.isError || !fs.existsSync(g) || fs.statSync(g).size === 0) {
     if (r) goneCheck(S, r.text);
-    refuse(`no guard snapshot, so ${verb} ${target} cannot be checked`, 'harbor chrome status');
+    refuse(`no guard snapshot, so ${verb} ${ref} cannot be checked`, 'harbor chrome status');
   }
-  return { file: g, body: fs.readFileSync(g, 'utf8').split('\n') };
-}
-async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: string, confirmed = false): Promise<Target> {
-  if (/^(e[0-9]|f[0-9].*e[0-9])/s.test(ref)) { if (/[^a-z0-9]/.test(ref)) refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref`); }
-  else refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref (e12, f3e12) or --text=<name>; a selector carries no label for the destructive check`, 'harbor chrome snapshot');
-  const { file: g, body } = await guardLines(c, S, wd, verb, ref);
+  const body = fs.readFileSync(g, 'utf8').split('\n');
   let root = '', found = false, ind = 0, tf = '', box = '', label = '';
   for (const line of body) {
     const a = attrs(line);
@@ -323,31 +337,6 @@ async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: 
   if (hit && !confirmed) handoff(`destructive ${verb} refused: '${lab}' (${ref}) matches '${hit}' — the operator confirms one call`, `${verb === 'click' ? `mcp__harbor_chrome__confirm_click with args ["${ref}"] (the operator approves it in the dialog); or ` : ''}HARBOR_ACCESS_BROWSER_CONFIRM=${ref} harbor chrome ${verb} ${ref}`);
   if (confirmed) { try { fs.appendFileSync(path.join(wd, '.confirmed.tsv'), `${new Date().toISOString()}\t${ref}\t${hit || '-'}\t${lab}\n`); } catch { /* the dialog is the record */ } }
   return { root, frame: '-' + tf, box, label: lab, file: g };
-}
-
-// ── click by name (harbor#1507) ─────────────────────────────────────────────
-// find then click was the commonest pair of calls where the second waits on the first (1,659 of 6,251, 2026-10-18..11-14):
-// the click only carried the ref find returned. --text=<name> reads the ref from the guard snapshot; the click then takes
-// every guard a ref click does, the destructive label first. An exact name outranks partial ones; several left is a refusal listing them, none is a refusal pointing at find.
-const NAMED = /^\s*- ([a-z]+) "((?:[^"\\]|\\.)*)"/;
-const TEXT_LIST = 10;
-async function refForText(c: Conn, S: string, wd: string, verb: string, q: string): Promise<{ ref: string; what: string }> {
-  const want = q.replace(/\s+/g, ' ').trim().toLowerCase();
-  const { body } = await guardLines(c, S, wd, verb, `--text=${q}`);
-  const hits: { ref: string; what: string; exact: boolean }[] = [];
-  for (const line of body) {
-    const m = NAMED.exec(line); if (!m) continue;
-    const ref = (attrs(line).match(/\[ref=([a-z0-9]+)\]/g) ?? []).slice(-1)[0]?.slice(5, -1);
-    const box = /\[box=([-0-9.,]+)\]/.exec(attrs(line))?.[1];
-    if (!ref || (box && box.split(',').slice(2).some((n) => Number(n) <= 0))) continue;   // no ref, or zero-size: nothing to click
-    const name = m[2].replace(/\\"/g, '"').replace(/\s+/g, ' ').trim().toLowerCase();
-    if (name.includes(want)) hits.push({ ref, what: `${m[1]} "${m[2]}"`, exact: name === want });
-  }
-  const pick = hits.some((h) => h.exact) ? hits.filter((h) => h.exact) : hits;
-  if (pick.length === 1) return pick[0];
-  if (!pick.length) refuse(`${verb} --text=${q}: no element on the page has that name`, `mcp__harbor_chrome__find with args ["${q}"]`);
-  const list = pick.slice(0, TEXT_LIST).map((h) => `${h.what} (${h.ref})`).join('; ');
-  return refuse(`${verb} --text=${q}: ${pick.length} elements match — ${list}${pick.length > TEXT_LIST ? '; …' : ''}`, `mcp__harbor_chrome__${verb} with args ["<one of those refs>"]`);
 }
 
 // --force: Playwright's force by hand, a real mouse press at the box centre, skipping the visible/stable/receives-events wait.
@@ -469,13 +458,9 @@ function optionGuards(verb: string, args: string[], wd: string) {
     else if (['--modifiers=Alt', '--modifiers=Control', '--modifiers=ControlOrMeta', '--modifiers=Meta', '--modifiers=Shift'].includes(a)) {
       if (verb !== 'click' && verb !== 'dblclick') refuse(`option refused: ${a} — --modifiers is for click and dblclick`);
     } else if (a === '--force') { if (verb !== 'click') refuse('option refused: --force is for click only; the mouse verbs it uses carry no click count'); }
-    else if (a.startsWith('--text=')) {
-      if (verb !== 'click' && verb !== 'dblclick') refuse(`option refused: ${a} — --text= is for click and dblclick`);
-      if (!/[^\s]/.test(a.slice(7)) || a.length > 207) refuse(`option refused: --text= takes the element's visible name, 1..200 characters`);
-    }
     else if (a === '--submit') { if (verb !== 'fill' && verb !== 'type') refuse('option refused: --submit is for fill and type'); }
     else if (a === '--real') { if (!SCRIPTED.has(verb) || verb === 'scroll') refuse('option refused: --real is for click, dblclick, hover, check, uncheck and select'); }
-    else if (a.startsWith('-')) refuse(`option refused: ${a} — only --filename=<name>, on fill and type --submit, on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>, on click and dblclick --text=<name>, and --real on the scripted verbs`);
+    else if (a.startsWith('-')) refuse(`option refused: ${a} — only --filename=<name>, on fill and type --submit, on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>, and --real on the scripted verbs`);
   }
 }
 const lc = (s: string) => asciiLower(s);
@@ -496,11 +481,13 @@ function uploadGuards(args: string[]) {
     if (links !== 1) refuse(`upload refused: '${a}' has ${links} hard links, so where else it lives cannot be checked`, `cp '${a}' "$TMPDIR/" and upload the copy`);
   }
 }
-function hostGuard(verb: string, args: string[]) {
-  if (verb === 'goto' && args.length !== 1) refuse('goto takes exactly one https url', "harbor chrome goto 'https://ads.reddit.com/'");
-  if (verb !== 'goto' || hostOk(args[0])) return;
+function hostGuard(verb: string, args: string[], headless: boolean) {
+  if (verb === 'goto' && args.length !== 1) refuse('goto takes exactly one url: https on an allowed host, or a dev server in a headless lane', "harbor chrome goto 'https://ads.reddit.com/'");
+  if (verb !== 'goto' || hostOk(args[0], headless)) return;
+  if (loopbackOk(args[0])) refuse(`loopback refused: '${args[0]}' is a dev server, opened in a headless lane only (no profile, no cookies); in the operator's logged-in profile an agent-written page could send credentialed cross-site requests`,
+    'mcp__harbor_chrome__attach with lane set and args ["--headless"], then goto in that lane');
   // The live-walk repo is the private layer's own (harbor.toml live_walk_repo, harbor#1273), its checkout the registry's (harbor#966).
-  const m = `host refused: '${args[0]}' is not https on a host in contracts/browser-agent-hosts.txt or the private layer's browser-hosts.txt; client live sites go through the live-walk repo`;
+  const m = `host refused: '${args[0]}' is not https on a host in contracts/browser-agent-hosts.txt or the private layer's browser-hosts.txt, nor, in a headless lane, a loopback dev server (http://localhost:<port> or http://127.0.0.1:<port>, port 1024-65535); client live sites go through the live-walk repo`;
   const sr = (...a: string[]) => spawnSync('sh', [path.join(HERE, 'scope-roots.sh'), ...a], { encoding: 'utf8', env: scopeEnv() });
   const lw = sr('--conf', 'live_walk_repo');
   if (lw.status === 2) handoff(m, 'harbor-private/harbor.toml did not read: sh bin/scope-roots.sh --conf live_walk_repo');
@@ -524,7 +511,7 @@ function cliArgs(verb: string, args: string[]): Record<string, unknown> {
   return o;
 }
 
-type Timing = { guards: number; rpc: number; settle: number; inner?: boolean };   // inner: steps logged each step itself
+type Timing = { guards: number; rpc: number; settle: number };
 // A scripted verb: the guard snapshot (destructive label, stale ref) as for click, then one fixed script on the ref.
 async function scripted(c: Conn, S: string, wd: string, verb: string, args: string[], ref: string, tm: Timing, t0: number, confirmed: boolean): Promise<Res> {
   const isRef = (a: string) => /^(e[0-9]+|f[0-9]+e[0-9]+)$/.test(a);
@@ -576,6 +563,18 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
     if (r.isError) goneCheck(S, r.text);
     return { text: scrub(r.text), isError: !!r.isError };
   }
+  if (verb === 'timing') {
+    // One fixed, read-only function from contracts/browser-script.tsv, the row the shell route reads too: eval stays refused.
+    if (args.length) refuse('timing takes no arguments; its expression is fixed', 'harbor chrome timing');
+    const fn = SCRIPTS.timing;
+    if (!fn) refuse('no timing row in contracts/browser-script.tsv', 'git checkout -- contracts/browser-script.tsv');
+    const c = await connectOrGone(S);
+    tm.guards = performance.now() - t0;
+    const r = await c.run({ _: ['eval', fn] }, wd, true).catch((e) => { if (e instanceof Gone) goneRefusal(S); throw e; });
+    tm.rpc = performance.now() - t0 - tm.guards;
+    if (r.isError) goneCheck(S, r.text);
+    return { text: scrub(r.text ?? ''), isError: !!r.isError };
+  }
   if (verb === 'text') {
     if (args.length > 1) refuse('text takes [] or [ref]', 'harbor chrome text');
     if (args.length === 1 && !/^(e[0-9]+|f[0-9]+e[0-9]+)$/.test(args[0])) refuse(`text takes a snapshot ref (e12, f3e12), not '${args[0]}'`, 'harbor chrome snapshot');
@@ -591,28 +590,21 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
     return { text: out, isError: !!r.isError };
   }
   optionGuards(verb, args, wd);
-  let ref = '', btn = '', force = false, mods = false, byText = '';
+  let ref = '', btn = '', force = false, mods = false;
   if (verb === 'click' || verb === 'dblclick') {
     for (const a of args) {
       if (a === '--force') force = true;
       else if (a.startsWith('--modifiers=')) mods = true;
-      else if (a.startsWith('--text=')) { if (byText) refuse(`${verb} takes one --text=`); byText = a.slice(7); }
       else if (a === '' || /^-[0-9]/.test(a)) refuse(`${verb} takes <ref> [button]; '${a}' would shift the CLI's own reading of the target`);
       else if (a.startsWith('-')) continue;
-      else if (!ref && !byText) ref = a; else if (!btn) btn = a; else refuse(`${verb} takes <ref> [button]`);
+      else if (!ref) ref = a; else if (!btn) btn = a; else refuse(`${verb} takes <ref> [button]`);
     }
-    if (byText && ref) refuse(`${verb} takes a ref or --text=<name>, not both`);
-    if (!ref && !byText) refuse(`${verb} takes a snapshot ref or --text=<name>`, 'harbor chrome snapshot');
+    if (!ref) refuse(`${verb} takes a snapshot ref`, 'harbor chrome snapshot');
     if (force && mods) refuse('--force cannot carry --modifiers; the mouse verbs it uses take none');
   }
   if (verb === 'upload') uploadGuards(args);
-  hostGuard(verb, args);
+  hostGuard(verb, args, headlessLane(S, wd));
   const c = await connectOrGone(S);
-  if (byText) {   // the ref goes first in --text='s place, and the call runs again as the ref click it now is
-    const t = await refForText(c, S, wd, verb, byText);
-    const r = await hot(S, verb, [t.ref, ...args.filter((a) => !a.startsWith('--text='))], tm, confirmed, shown);
-    return { text: `[--text=${byText} is ${t.what} (${t.ref})]\n${r.text}`, isError: r.isError };
-  }
   const real = args.includes('--real');
   if (SCRIPTED.has(verb) && !real && !force && !mods && (!btn || btn === 'left')) return scripted(c, S, wd, verb, args, ref, tm, t0, confirmed);
   if (real) args = args.filter((a) => a !== '--real');
@@ -770,7 +762,7 @@ async function steps(S: string, list: { verb: string; args: string[] }[]): Promi
       const pre = e instanceof PrefixedRefusal ? e.prefix : '';
       r = { text: (pre ? pre + '\n' : '') + refusalText(e), isError: true };
     }
-    appendTiming(S, `steps/${verb}`, performance.now() - t0, tm, r.isError);
+    appendTiming(workdirOf(S), verb, performance.now() - t0, tm);
     const last = i === list.length - 1 || r.isError;
     const body = last || r.text.length <= STEP_ECHO ? r.text : r.text.slice(0, STEP_ECHO) + ` [${r.text.length - STEP_ECHO} more characters; only the last step returns in full]`;
     out.push(`${head} → ${r.isError ? 'FAILED' : 'ok'}\n${body}`);
@@ -781,21 +773,12 @@ async function steps(S: string, list: { verb: string; args: string[] }[]): Promi
 
 // ── tool calls, one at a time per browser session ───────────────────────────
 const queues = new Map<string, Promise<unknown>>();
-// Per-call timings, kept across sessions (harbor#1507): a click took 8.9 s end to end and ~1.2 s in this server, and the
-// per-session file died with the session, so the rest could not be placed. One line per call, no URL, argument or page text:
-// time, session, verb (steps/<verb> for a step), total, guards, rpc, settle (ms), ok|error. Trimmed to its newest lines.
-const TIMINGS: string = SEAMS.timingsFile ?? path.join(HOME, '.local', 'state', 'harbor', 'chrome-timings.tsv');
-const TIMINGS_MAX: number = SEAMS.timingsMax ?? 4 << 20, TIMINGS_KEEP: number = SEAMS.timingsKeep ?? 20000;
-function appendTiming(S: string, verb: string, total: number, tm: Timing, isError: boolean) {
+function appendTiming(wd: string, verb: string, total: number, tm: Timing) {
   try {
-    fs.mkdirSync(path.dirname(TIMINGS), { recursive: true });
-    if (fs.existsSync(TIMINGS) && fs.statSync(TIMINGS).size > TIMINGS_MAX) {
-      const tmp = TIMINGS + '.tmp';   // trimmed by rename, so a reader never sees half a file
-      fs.writeFileSync(tmp, readText(TIMINGS).split('\n').filter(Boolean).slice(-TIMINGS_KEEP).join('\n') + '\n'); fs.renameSync(tmp, TIMINGS);
-    }
-    fs.appendFileSync(TIMINGS, [new Date().toISOString(), S, verb, total, tm.guards, tm.rpc, tm.settle].map((x) => (typeof x === 'number' ? x.toFixed(0) : x)).join('\t') +
-      `\t${isError ? 'error' : 'ok'}\n`);
-  } catch { /* timing is a courtesy; a call never fails for it */ }
+    const f = path.join(wd, '.timings.tsv');
+    if (fs.existsSync(f) && fs.statSync(f).size > 65536) fs.writeFileSync(f, readText(f).split('\n').slice(-200).join('\n'));
+    fs.appendFileSync(f, `${new Date().toISOString()}\t${verb}\t${total.toFixed(0)}\t${tm.guards.toFixed(0)}\t${tm.rpc.toFixed(0)}\t${tm.settle.toFixed(0)}\n`);
+  } catch { /* timing is a courtesy */ }
 }
 async function call(name: string, argsIn: unknown): Promise<Res> {
   const verb = TOOLS[name];
@@ -811,14 +794,6 @@ async function call(name: string, argsIn: unknown): Promise<Res> {
   const prev = queues.get(S) ?? Promise.resolve();
   const run = prev.then(async (): Promise<Res> => {
     const t0 = performance.now(), tm: Timing = { guards: 0, rpc: 0, settle: 0 };
-    const r = await once(tm);
-    if (!tm.inner) appendTiming(S, verb, performance.now() - t0, tm, r.isError);
-    return r;
-  });
-  queues.set(S, run.catch(() => undefined));
-  return run;
-
-  async function once(tm: Timing): Promise<Res> {
     try {
       if (AGENT_VERBS.has(verb)) {
         const r = await viaAgent(S, verb, args as string[], lane);
@@ -828,7 +803,6 @@ async function call(name: string, argsIn: unknown): Promise<Res> {
       if (verb === 'steps') {
         const list = stepsOf(a);
         let r: Res;
-        tm.inner = true;   // each step has its own line; a second for the whole would count it twice
         r = await steps(S, list);   // a gone session is the hand-off, naming the goto that re-attaches
         return { text: r.text.slice(0, OUT_MAX), isError: r.isError };
       }
@@ -840,13 +814,16 @@ async function call(name: string, argsIn: unknown): Promise<Res> {
         if (!ra) throw e;
         r = ra;
       }
+      appendTiming(workdirOf(S), verb, performance.now() - t0, tm);
       return { text: r.text.slice(0, OUT_MAX), isError: r.isError };
     } catch (e) {
       if (!(e instanceof Refusal)) return { text: `harbor chrome ${verb} failed: ${(e as Error).message}`, isError: true };
       const pre = e instanceof PrefixedRefusal ? e.prefix : '';
       return { text: ((pre ? pre + '\n' : '') + refusalText(e)).slice(0, OUT_MAX), isError: true };
     }
-  }
+  });
+  queues.set(S, run.catch(() => undefined));
+  return run;
 }
 
 // ── JSON-RPC over stdio ─────────────────────────────────────────────────────

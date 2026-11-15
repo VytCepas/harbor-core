@@ -2,7 +2,7 @@
 # finished.test.sh (harbor#1050) — work that ends with no <task-notification> carrying a tool-use id and a status: a Monitor's
 # expiry notice (task id only), a Monitor that died with its subagent, an agent stopped after a resume, and the age the statusline shows.
 # Each case runs against the real script (must print ok) and against the script as it was before this fix (must not): the
-# old copy is `git show` of the merge base, so a case that cannot fail on the old code fails the suite.
+# old copy is fixtures/status-obligations/status-obligations-pre-fix.sh, so a case that cannot fail on the old code fails the suite.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 
 BIN="$T_ROOT/bin/status-obligations.sh"; KINDS="$T_ROOT/contracts/obligation-kinds.tsv"
@@ -13,10 +13,9 @@ for _d in "$OLD" "$MUTD"; do for _l in library-log.sh library-fs.sh event-bus.sh
 # The old copy is the parent of the commit that added this suite with its fix: a merge base or a script's last change is
 # a later, already-fixed copy once a rename touches the script (harbor#961). It sources the libraries by their pre-W3 names.
 ln -sf "$T_ROOT/bin/library-log.sh" "$OLD/log-lib.sh"; ln -sf "$T_ROOT/bin/library-fs.sh" "$OLD/fs-lib.sh"
-_fix="$(git -C "$T_ROOT" log --follow --diff-filter=A --format=%H -- tests/status/obligations/finished.test.sh 2>/dev/null | tail -1)"
-_base="${_fix:+$_fix^}"
-[ -n "$_base" ] && git -C "$T_ROOT" show "$_base:bin/status-obligations.sh" > "$OLD/status-obligations.sh" 2>/dev/null
-[ -s "$OLD/status-obligations.sh" ] || t_fail "no pre-fix commit to show the old script from"
+# A fixture, not `git show`: the public export is one snapshot commit with no history to show it from (harbor#1149).
+cp "$T_ROOT/fixtures/status-obligations/status-obligations-pre-fix.sh" "$OLD/status-obligations.sh" 2>/dev/null
+[ -s "$OLD/status-obligations.sh" ] || t_fail "the pre-fix fixture is missing: fixtures/status-obligations/status-obligations-pre-fix.sh"
 cat > "$T_TMP/sessions" <<'STUB'
 #!/bin/sh
 printf '[{"sessionId":"S6","pid":1}]'

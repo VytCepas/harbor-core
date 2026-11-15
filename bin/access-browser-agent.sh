@@ -8,13 +8,17 @@
 #                                  the extension token is registered (ref playwright-extension-token)
 #   harbor chrome status           this session's name, pin, profile, workdir
 #   harbor chrome state            the page's own visibility, focus and load state (fixed probe)
+#   harbor chrome timing           the page's own clock as JSON: navigation, LCP, now, own-origin resources (fixed probe,
+#                                  contracts/browser-script.tsv): a prod-vs-rebuild timing parity check needs the page's numbers
 #   harbor chrome doctor           is row 4 ready on this box
 #   harbor chrome detach           release the operator's Chrome
 #   harbor chrome tabs             every Chrome tab, by window, query strings cut; `=` marks this session's page
 #   HARBOR_ACCESS_BROWSER_LANE=<a-z0-9> harbor chrome …   a parallel agent's own browser session, <session>-<lane>
 #   harbor chrome front            show this session's tab (only in a window of its own tabs; never raises)
 #   harbor chrome wait-signin [s]  wait (default 300 s) while the operator signs in, then carry on
-#   harbor chrome hosts            the allow-list goto/tab-new reads: core, then the private layer
+#   harbor chrome hosts            the allow-list goto/tab-new reads: core, then the private layer; plus http://localhost:<port>
+#                                  and http://127.0.0.1:<port> (1024-65535), headless lane only: in the logged-in profile an
+#                                  agent-written page could send credentialed cross-site requests and read localhost cookies
 #   harbor chrome click <ref>      by script (contracts/browser-script.tsv): needs no paint, so a covered window takes it;
 #                                  so do dblclick, hover, check, uncheck and select; --real is the CLI's own verb
 #   harbor chrome scroll <px> [ref] | <ref>   scroll the page or an element at once, or a ref into view
@@ -201,9 +205,36 @@ _allowed() {
   return 1
 }
 
+# A dev server (harbor#1507). The authority must equal localhost:<port> or 127.0.0.1:<port> (1024-65535) whole, so userinfo,
+# a suffix host, an encoded byte or [::1]/0.0.0.0/127.1 never match; a backslash, space or control byte anywhere is refused.
+_loopback_ok() {
+  case "$1" in http://*) ;; *) return 1 ;; esac
+  case "$1" in *\\*|*' '*|*[[:cntrl:]]*) return 1 ;; esac
+  _a="${1#http://}"; _a="${_a%%[/?#]*}"
+  case "$_a" in localhost:*|127.0.0.1:*) ;; *) return 1 ;; esac
+  _p="${_a#*:}"
+  case "$_p" in [1-9][0-9][0-9][0-9]|[1-9][0-9][0-9][0-9][0-9]) ;; *) return 1 ;; esac
+  [ "$_p" -ge 1024 ] && [ "$_p" -le 65535 ]
+}
+
+# Loopback is the headless lane's only (operator, 2026-11-15): in the logged-in profile an agent-written page could send
+# credentialed cross-site requests and read localhost cookies. Harbor's marker is a $TMPDIR file anyone can write, so the
+# daemon's own record must agree: the CLI writes attached: true for the operator's Chrome. No record, or no jq: not headless.
+_headless_lane() {
+  [ -e "$WORKDIR/.headless" ] && command -v jq >/dev/null 2>&1 || return 1
+  _sfs="$(for _c in "${XDG_CACHE_HOME:-$HOME/.cache}" "$HOME/Library/Caches"; do
+    [ ! -d "$_c/ms-playwright/daemon" ] || find "$_c/ms-playwright/daemon" -name "$S.session" 2>/dev/null; done)"
+  [ -n "$_sfs" ] || return 1
+  printf '%s\n' "$_sfs" | while IFS= read -r _sf; do
+    [ "$(jq -r '.attached // false' "$_sf" 2>/dev/null)" = false ] || echo attached
+  done | grep -q . && return 1
+  return 0
+}
+
 # https, host plain [a-z0-9.-] (a backslash once made Node load a different host
-# than this check saw), equal to a listed host or a subdomain of one.
+# than this check saw), equal to a listed host or a subdomain of one; or, in a headless lane only, a loopback dev server.
 _host_ok() {
+  if _loopback_ok "$1"; then _headless_lane; return; fi
   case "$1" in https://*) ;; *) return 1 ;; esac
   case "$1" in *\\*|*' '*|*'	'*) return 1 ;; esac
   _h="${1#https://}"; _h="${_h%%/*}"; _h="${_h%%\?*}"; _h="${_h%%#*}"
@@ -499,6 +530,7 @@ case "$VERB" in
       [ -n "$_hf" ] && [ -f "$_hf" ] || continue
       printf '# %s\n' "$_hf"; grep -vE '^[[:space:]]*(#|$)' "$_hf"
     done
+    printf '# built in (_loopback_ok), headless lane only: http://localhost:<port> and http://127.0.0.1:<port>, port 1024-65535, for local dev servers\n'
     exit 0 ;;
 esac
 
@@ -652,6 +684,17 @@ OSA
       esac
     fi
     exit "$_rc"
+    ;;
+  timing)
+    [ $# -eq 0 ] || _refuse 'timing takes no arguments; its expression is fixed' 'harbor chrome timing'
+    # One fixed, read-only function from contracts/browser-script.tsv, which the MCP route reads too: eval stays refused.
+    _fn="$(awk -F '\t' '$1 == "timing" { print substr($0, 8); exit }' "$ROOT/contracts/browser-script.tsv" 2>/dev/null)"
+    [ -n "$_fn" ] || _refuse 'no timing row in contracts/browser-script.tsv' 'git checkout -- contracts/browser-script.tsv'
+    mkdir -p "$WORKDIR"; _o="$(mktemp "$WORKDIR/.out.XXXXXX")"
+    trap 'rm -f "$_o"' EXIT INT TERM HUP
+    _rc=0; _cli_run "-s=$S" --raw eval "$_fn" > "$_o" || _rc=$?
+    [ "$_rc" -eq 0 ] || _gone_check "$_o"
+    _scrub < "$_o"; exit "$_rc"
     ;;
   state)
     [ $# -eq 0 ] || _refuse 'state takes no arguments; its expression is fixed' 'harbor chrome state'
@@ -958,13 +1001,17 @@ EOF
         [ "$_links" = 1 ] || _refuse "upload refused: '$_a' has $_links hard links, so where else it lives cannot be checked" "cp '$_a' \"\$TMPDIR/\" and upload the copy"
       done
     fi
-    if [ "$VERB" = goto ] && [ $# -ne 1 ]; then _refuse 'goto takes exactly one https url' "harbor chrome goto 'https://ads.reddit.com/'"; fi
-    if [ "$VERB" = tab-new ] && [ $# -gt 1 ]; then _refuse 'tab-new takes at most one https url' 'harbor chrome tab-new'; fi
+    if [ "$VERB" = goto ] && [ $# -ne 1 ]; then _refuse 'goto takes exactly one url: https on an allowed host, or a dev server in a headless lane' "harbor chrome goto 'https://ads.reddit.com/'"; fi
+    if [ "$VERB" = tab-new ] && [ $# -gt 1 ]; then _refuse 'tab-new takes at most one url: https on an allowed host, or a dev server in a headless lane' 'harbor chrome tab-new'; fi
     if { [ "$VERB" = goto ] || [ "$VERB" = tab-new ]; } && [ $# -eq 1 ]; then
+      if _loopback_ok "$1" && ! _headless_lane; then
+        _refuse "loopback refused: '$1' is a dev server, opened in a headless lane only (no profile, no cookies); in the operator's logged-in profile an agent-written page could send credentialed cross-site requests" \
+          "HARBOR_ACCESS_BROWSER_LANE=dev harbor chrome attach --headless   # then $VERB in that lane"
+      fi
       if ! _host_ok "$1"; then
         # The live-walk repo is the private layer's (harbor.toml live_walk_repo, harbor#1273), its checkout the
         # registry's (harbor#966); unset or unregistered, the hint says which, never a guessed path.
-        _m="host refused: '$1' is not https on a host in contracts/browser-agent-hosts.txt or the private layer's browser-hosts.txt; client live sites go through the live-walk repo"
+        _m="host refused: '$1' is not https on a host in contracts/browser-agent-hosts.txt or the private layer's browser-hosts.txt, nor, in a headless lane, a loopback dev server (http://localhost:<port> or http://127.0.0.1:<port>, port 1024-65535); client live sites go through the live-walk repo"
         _lr=0; _lw="$(sh "$HERE/scope-roots.sh" --conf live_walk_repo 2>/dev/null)" || _lr=$?
         [ "$_lr" -ne 2 ] || _handoff "$_m" "harbor-private/harbor.toml did not read: sh bin/scope-roots.sh --conf live_walk_repo"
         [ -n "$_lw" ] || _handoff "$_m" "no live-walk repo is set on this box: live_walk_repo in harbor-private/harbor.toml (contracts/private-layer.md)"

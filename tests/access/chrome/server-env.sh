@@ -17,7 +17,7 @@ CTL="$T_TMP/ctl"; mkdir -p "$CTL"; SOCK="$T_TMP/d.sock"; PH="$T_TMP/priv-hosts.t
 DD="$T_TMP/daemons"; mkdir -p "$DD/0123"; WD="$T_TMP/harbor-browser/claude-abc123def456"
 sess() { printf '{"name":"claude-abc123def456","version":"1.64.0","timestamp":%s,"socketPath":"%s"}\n' "$1" "$SOCK" > "$DD/0123/claude-abc123def456.session"; }
 SETF="$T_TMP/settings.json"
-seams() { printf '{"daemonDir":"%s","timingsFile":"'"$T_TMP/timings.tsv"'","settingsFile":"'"$SETF"'","settleMs":%s,"privHosts":"%s","accessDir":"%s","scopeEnv":{"HARBOR_SCOPE_PRIVATE":"%s","PORT_ROOT":"%s"},"agentEnv":{"STUB_TABS":"%s","STUB_CTL":"%s"}}\n' \
+seams() { printf '{"daemonDir":"%s","settingsFile":"'"$SETF"'","settleMs":%s,"privHosts":"%s","accessDir":"%s","scopeEnv":{"HARBOR_SCOPE_PRIVATE":"%s","PORT_ROOT":"%s"},"agentEnv":{"STUB_TABS":"%s","STUB_CTL":"%s"}}\n' \
   "$DD" "$1" "$PH" "$ACC" "${PRIV:-$T_TMP/nopriv}" "$T_TMP/pr" "$T_TMP/tabs-out" "$CTL" > "$X/bin/access-chrome-mcp.seams.json"; }
 PRIV="$T_TMP/nopriv"; mkdir -p "$PRIV"; seams 0; sess 1
 # the stub shell agent: what the verbs that are Chrome's own run (attach, tabs, ...), and the tab list the sign-in stop reads

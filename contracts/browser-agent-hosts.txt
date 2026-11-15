@@ -11,6 +11,10 @@
 # One operator's own stack is not core's: its ad, data, commerce and training vendors, a company's
 # internal UIs, a client's tools and its tenants are the private layer's browser-hosts.txt
 # (contracts/private-layer.md, harbor#1273), read beside this list.
+# Loopback dev servers are a rule in the agent, not a line here (lines are https hosts):
+# http://localhost:<port> and http://127.0.0.1:<port>, port 1024-65535, exact, in a headless lane
+# only: in the logged-in profile an agent-written page could send credentialed cross-site requests
+# and read localhost cookies (_loopback_ok, _headless_lane in bin/access-browser-agent.sh).
 
 # Google — accounts, Workspace (Gmail, Drive, Docs), the Cloud console and its other
 # product UIs; its sign-in hop (accounts.youtube.com), Gmail and Forms short links,

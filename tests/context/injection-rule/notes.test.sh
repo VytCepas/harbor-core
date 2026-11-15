@@ -79,9 +79,7 @@ BARE="$T/bare";   make_repo "$BARE" box plain
 git -C "$OTHER" remote add origin https://github.com/fixture/other.git
 # A fixture access book, or access-route-pointer would read the live one under $HOME.
 mkdir -p "$T/access"
-printf '# example — fixture\n\n    identity: owner@example.com via gcx me\n    account:  owner@example.com | primary | fixture | gcx me\n    via:      api > browser\n    ui-hosts: app.example.invalid, Console.Example.Invalid\n    use:      curl -sS https://api.example.invalid/v1/me. Then read the list.\n' > "$T/access/example.md"
-# browser-last-tier (harbor#1507): a browser-only card whose UI host must stay silent, beside the api one above.
-printf '# uionly — fixture\n\n    identity: owner@example.com via a browser\n    via:      browser\n    ui-hosts: ui.uionly.invalid\n    use:      https://ui.uionly.invalid/\n' > "$T/access/uionly.md"
+printf '# example — fixture\n\n    account:  owner@example.com | primary | fixture | gcx me\n' > "$T/access/example.md"
 printf 'example-project\texample\n' > "$T/access/routes.tsv"
 # repo-not-adopted reads PORT_ROOT (here $T): a registry with one governed row, so the fixture repos beside it are unregistered.
 mkdir -p "$T/harbor-private"
@@ -139,48 +137,6 @@ REPO="$T/repo"; make_repo "$REPO" box plain
 _st="$(printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"stm-write","tool_input":{"command":"ls"}}' \
   | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$ENGINE" 2>&1)"
 t_has "session-title-missing tells the model to use the Write tool" "$_st" 'Write tool'
-
-t_section "browser-last-tier (harbor#1507): one note per system per session, and a broken mapping is not \"no route\""
-BL='/bin/sh'; BLR="$T/repo"; make_repo "$BLR" box plain
-bl() { # <session> <tool> <tool_input json> [access dir] -> the hook's stdout
-  printf '{"hook_event_name":"PreToolUse","tool_name":"%s","session_id":"%s","tool_input":%s}' "$2" "$1" "$3" \
-    | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$BLR" PORT_ROOT="$T" HARBOR_SCOPE_REPO="$T_ROOT" ACCESS_DIR="${4:-$T/access}" $BL "$ENGINE" 2>&1
-}
-_b1="$(bl bl-s1 mcp__harbor_chrome__goto '{"args":["https://app.example.invalid/a"]}')"
-t_has "the first open of a mapped host speaks" "$_b1" "context:browser-last-tier"
-t_has "...names the tier the card ranks above the browser" "$_b1" 'tier `api`'
-t_has "...names the card's first move, cut at its first sentence" "$_b1" 'curl -sS https://api.example.invalid/v1/me.'
-t_has "...(the fixture card does carry a second sentence)" "$(cat "$T/access/example.md")" 'Then read the list'
-t_hasnt "...and only the first sentence" "$_b1" 'Then read the list'
-t_has "...says the browser is the last tier and that it may proceed" "$_b1" 'LAST tier'
-t_hasnt "...and is never a denial" "$_b1" 'permissionDecision'
-_b2="$(bl bl-s1 mcp__harbor_chrome__tab_new '{"args":["https://console.example.invalid/b"]}')"
-t_eq "a second open of the same system's UI (a listed host in capitals, a tab_new) is silent" 0 "$(printf '%s' "$_b2" | grep -c 'context:browser-last-tier')"
-_b3="$(bl bl-s2 mcp__harbor_chrome__steps '{"steps":[{"verb":"goto","args":["https://app.example.invalid/c"]},{"verb":"snapshot"}]}')"
-t_has "a new session hears it again, through a goto inside steps" "$_b3" "context:browser-last-tier"
-_b4="$(bl bl-s3 mcp__harbor_chrome__steps '{"steps":[{"verb":"type","args":["https://app.example.invalid/c"]}]}')"
-t_eq "a URL in a step that opens no page is not an open" 0 "$(printf '%s' "$_b4" | grep -c 'context:browser-last-tier')"
-_b5="$(bl bl-s4 mcp__harbor_chrome__goto '{"args":["https://ui.uionly.invalid/"]}')"
-t_eq "a UI host whose card's top tier IS the browser is silent" 0 "$(printf '%s' "$_b5" | grep -c 'context:browser-last-tier')"
-mkdir -p "$T/access-noui"; sed '/ui-hosts:/d' "$T/access/example.md" > "$T/access-noui/example.md"
-_b6="$(bl bl-s5 mcp__harbor_chrome__goto '{"args":["https://app.example.invalid/a"]}' "$T/access-noui")"
-t_has "a register of cards with no ui-hosts anywhere says the mapping is broken" "$_b6" 'not one `ui-hosts:` line'
-_b7="$(bl bl-s5 mcp__harbor_chrome__goto '{"args":["https://app.example.invalid/a"]}' "$T/access-noui")"
-t_eq "...once a session" 0 "$(printf '%s' "$_b7" | grep -c 'context:browser-last-tier')"
-_b8="$(bl bl-s6 mcp__harbor_chrome__goto '{"args":["https://app.example.invalid/a"]}' "$T/no-such-register")"
-t_eq "no register at all is silent, like its siblings" 0 "$(printf '%s' "$_b8" | grep -c 'context:browser-last-tier')"
-# Review of harbor#1536: a login in the URL is not the host, a long first move is cut, and old ledgers go.
-_b9="$(bl bl-s7 mcp__harbor_chrome__goto '{"args":["https://user:pw@app.example.invalid/a"]}')"
-t_has "a URL carrying user:password@ still names its host's route" "$_b9" "context:browser-last-tier"
-_x237="$(printf '%237s' '' | tr ' ' 'x')"
-mkdir -p "$T/access-long"; sed "s|^\\( *use: *\\).*|\\1${_x237}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|" "$T/access/example.md" > "$T/access-long/example.md"
-_b10="$(bl bl-s8 mcp__harbor_chrome__goto '{"args":["https://app.example.invalid/a"]}' "$T/access-long")"
-t_has "a first move past 240 characters is cut with ..." "$_b10" "${_x237}..."
-t_has "...(the card's line does run past 240)" "$(cat "$T/access-long/example.md")" "${_x237}x"
-t_hasnt "...at 240" "$_b10" "${_x237}x"
-mkdir -p "$T/cfg/state/browser-last-tier"; : > "$T/cfg/state/browser-last-tier/ancient.seen"; touch -t 202001010000 "$T/cfg/state/browser-last-tier/ancient.seen"
-bl bl-s9 mcp__harbor_chrome__goto '{"args":["https://app.example.invalid/a"]}' >/dev/null
-t_eq "a ledger older than 7 days is removed on the way past" gone "$([ -e "$T/cfg/state/browser-last-tier/ancient.seen" ] && echo present || echo gone)"
 
 t_section "the suggest packs are born shadow: recorded, and nothing reaches the person (harbor#1485)"
 REPO="$T/repo"; make_repo "$REPO" box plain
