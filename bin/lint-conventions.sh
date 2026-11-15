@@ -3968,9 +3968,10 @@ if [ -f "$ROOT/docs/reference/citations.md" ]; then
   # carve-out: the failure direction is stricter, never looser.
   _t7_routes=''
   if [ -f "$ROOT/skills/access-ledger/bin/check-routes.sh" ]; then
-    _t7_routes="$(awk "/^REQUIRED_FIELDS='/,/'[[:space:]]*\$/" \
+    # OPTIONAL_FIELDS too: `ui-hosts:` is a route field a card may omit, and its hosts are addresses (harbor#1507).
+    _t7_routes="$(awk "/^(REQUIRED|OPTIONAL)_FIELDS='/,/'[[:space:]]*\$/" \
         "$ROOT/skills/access-ledger/bin/check-routes.sh" 2>/dev/null \
-      | tr -d "'" | sed 's/^REQUIRED_FIELDS=//' \
+      | tr -d "'" | sed -E 's/^(REQUIRED|OPTIONAL)_FIELDS=//' \
       | awk 'NF { printf "%s%s", sep, $1; sep = "|" }')"
   fi
   while IFS= read -r _f; do
