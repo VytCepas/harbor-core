@@ -50,7 +50,7 @@ const DESTRUCTIVE = ('delete remove archive pause publish unpublish discard pay 
 const LONG: Record<string, number> = { attach: 900, 'wait-signin': 900 };   // seconds
 const AGENT_VERBS = new Set(['attach', 'status', 'doctor', 'detach', 'tabs', 'front', 'wait-signin', 'hosts', 'tab-new']);
 // Run here. Default-deny: absent on purpose are run-code, eval, cookie-*, *storage-*, state-save/load, requests, route, install...
-const HOT_VERBS = new Set(['state', 'text', 'goto', 'tab-list', 'tab-select', 'tab-close', 'snapshot', 'find', 'screenshot', 'pdf',
+const HOT_VERBS = new Set(['state', 'timing', 'text', 'goto', 'tab-list', 'tab-select', 'tab-close', 'snapshot', 'find', 'screenshot', 'pdf',
   'go-back', 'go-forward', 'reload', 'console', 'resize', 'click', 'dblclick', 'hover', 'fill', 'type', 'select', 'check', 'uncheck',
   'drag', 'press', 'keydown', 'keyup', 'mousemove', 'mousedown', 'mouseup', 'mousewheel', 'dialog-accept', 'dialog-dismiss', 'upload', 'scroll']);
 const INPUT_VERBS = new Set(['click', 'dblclick', 'fill', 'type', 'select', 'check', 'uncheck', 'drag', 'press', 'keydown', 'keyup',
@@ -68,6 +68,8 @@ const VERBS: Record<string, string> = {
     'or, with args ["--headless"] and a lane, a throwaway headless Chrome with no login on the same host allow-list',
   status: "this session's browser name, pin, profile and workdir",
   state: "the page's own visibility, focus and load state",
+  timing: "the page's own clock as JSON (no args): navigation timing, the latest LCP, now, and every own-origin resource as " +
+    '{path, initiatorType, startTime, responseEnd, duration, transferSize}, in whole ms; for a prod-vs-rebuild timing parity check',
   text: 'the visible text of the page, or of one element (args: [] or [ref]); cheaper than snapshot or screenshot for reading',
   steps: 'run several verbs in one call, in order, stopping at the first failure (steps: [{verb, args}], at most 25; every guard runs per step; ' +
     'not attach, detach, front, tabs, wait-signin or confirm_click). Only the last step returns its full output',
@@ -77,8 +79,8 @@ const VERBS: Record<string, string> = {
   front: "make this session's tab the visible one, then give focus back",
   'wait-signin': 'wait (args: [seconds], default 300) while the operator signs in',
   hosts: 'the host allowlist goto and tab_new read: core, then the private layer',
-  goto: 'open one https url (args: [url]) on an allowed host',
-  'tab-new': 'open a tab (args: [] or [url] on an allowed host)',
+  goto: 'open one url (args: [url]): https on an allowed host; in a headless lane only, also a dev server at http://localhost:<port> or http://127.0.0.1:<port> (1024-65535)',
+  'tab-new': 'open a tab (args: [] or [url] on an allowed host; a dev server in a headless lane only)',
   'tab-list': "this session's tabs", 'tab-select': 'select a tab (args: [index])', 'tab-close': 'close a tab (args: [index])',
   snapshot: 'the page as an accessibility tree with refs', find: 'find on the page (args: [text])',
   screenshot: 'a screenshot (args: [] or [--filename=<bare name>]); it lands in the session workdir',
@@ -224,7 +226,23 @@ function signinUrl(url: string): boolean {   // a login host, or a sign-in path 
   if (/^(login|signin|accounts|auth|sso|id|identity|passport)\./.test(host)) return true;
   return sp.split('/').some((seg) => /^(login|signin|sign-in|log-in|logon|authorize|accountchooser|servicelogin|uas|checkpoint|oauth2?|sso)(\.(php|html?|aspx?|jsp))?$/.test(seg));
 }
-function hostOk(url: string): boolean {   // https, a plain host, equal to a listed host or a subdomain of one
+// A dev server (harbor#1507). The authority must equal localhost:<port> or 127.0.0.1:<port> (1024-65535) whole, so userinfo,
+// a suffix host, an encoded byte or [::1]/0.0.0.0/127.1 never match; a backslash, space or control byte anywhere is refused.
+function loopbackOk(url: string): boolean {
+  if (!url.startsWith('http://') || /[\\ \x00-\x1f\x7f]/.test(url)) return false;
+  const m = /^(?:localhost|127\.0\.0\.1):([1-9][0-9]{3,4})$/.exec(url.slice(7).split(/[/?#]/)[0]);
+  return !!m && Number(m[1]) >= 1024 && Number(m[1]) <= 65535;
+}
+// Loopback is the headless lane's only (operator, 2026-11-15): in the logged-in profile an agent-written page could send credentialed
+// cross-site requests and read localhost cookies. The .headless marker is a $TMPDIR file anyone can write, so the daemon's own record
+// must agree: the CLI writes attached: true for the operator's Chrome (access-browser-agent.sh _headless_lane).
+function headlessLane(S: string, wd: string): boolean {
+  if (!fs.existsSync(path.join(wd, '.headless'))) return false;
+  const f = sessionFile(S) as { attached?: unknown } | null;
+  return !!f && f.attached !== true;
+}
+function hostOk(url: string, headless = false): boolean {   // https on a listed host or a subdomain of one; or, headless only, a dev server
+  if (loopbackOk(url)) return headless;
   if (!url.startsWith('https://') || /[\\ \t]/.test(url)) return false;
   let h = url.slice(8);
   h = h.split('/')[0].split('?')[0].split('#')[0];
@@ -463,11 +481,13 @@ function uploadGuards(args: string[]) {
     if (links !== 1) refuse(`upload refused: '${a}' has ${links} hard links, so where else it lives cannot be checked`, `cp '${a}' "$TMPDIR/" and upload the copy`);
   }
 }
-function hostGuard(verb: string, args: string[]) {
-  if (verb === 'goto' && args.length !== 1) refuse('goto takes exactly one https url', "harbor chrome goto 'https://ads.reddit.com/'");
-  if (verb !== 'goto' || hostOk(args[0])) return;
+function hostGuard(verb: string, args: string[], headless: boolean) {
+  if (verb === 'goto' && args.length !== 1) refuse('goto takes exactly one url: https on an allowed host, or a dev server in a headless lane', "harbor chrome goto 'https://ads.reddit.com/'");
+  if (verb !== 'goto' || hostOk(args[0], headless)) return;
+  if (loopbackOk(args[0])) refuse(`loopback refused: '${args[0]}' is a dev server, opened in a headless lane only (no profile, no cookies); in the operator's logged-in profile an agent-written page could send credentialed cross-site requests`,
+    'mcp__harbor_chrome__attach with lane set and args ["--headless"], then goto in that lane');
   // The live-walk repo is the private layer's own (harbor.toml live_walk_repo, harbor#1273), its checkout the registry's (harbor#966).
-  const m = `host refused: '${args[0]}' is not https on a host in contracts/browser-agent-hosts.txt or the private layer's browser-hosts.txt; client live sites go through the live-walk repo`;
+  const m = `host refused: '${args[0]}' is not https on a host in contracts/browser-agent-hosts.txt or the private layer's browser-hosts.txt, nor, in a headless lane, a loopback dev server (http://localhost:<port> or http://127.0.0.1:<port>, port 1024-65535); client live sites go through the live-walk repo`;
   const sr = (...a: string[]) => spawnSync('sh', [path.join(HERE, 'scope-roots.sh'), ...a], { encoding: 'utf8', env: scopeEnv() });
   const lw = sr('--conf', 'live_walk_repo');
   if (lw.status === 2) handoff(m, 'harbor-private/harbor.toml did not read: sh bin/scope-roots.sh --conf live_walk_repo');
@@ -543,6 +563,18 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
     if (r.isError) goneCheck(S, r.text);
     return { text: scrub(r.text), isError: !!r.isError };
   }
+  if (verb === 'timing') {
+    // One fixed, read-only function from contracts/browser-script.tsv, the row the shell route reads too: eval stays refused.
+    if (args.length) refuse('timing takes no arguments; its expression is fixed', 'harbor chrome timing');
+    const fn = SCRIPTS.timing;
+    if (!fn) refuse('no timing row in contracts/browser-script.tsv', 'git checkout -- contracts/browser-script.tsv');
+    const c = await connectOrGone(S);
+    tm.guards = performance.now() - t0;
+    const r = await c.run({ _: ['eval', fn] }, wd, true).catch((e) => { if (e instanceof Gone) goneRefusal(S); throw e; });
+    tm.rpc = performance.now() - t0 - tm.guards;
+    if (r.isError) goneCheck(S, r.text);
+    return { text: scrub(r.text ?? ''), isError: !!r.isError };
+  }
   if (verb === 'text') {
     if (args.length > 1) refuse('text takes [] or [ref]', 'harbor chrome text');
     if (args.length === 1 && !/^(e[0-9]+|f[0-9]+e[0-9]+)$/.test(args[0])) refuse(`text takes a snapshot ref (e12, f3e12), not '${args[0]}'`, 'harbor chrome snapshot');
@@ -571,7 +603,7 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
     if (force && mods) refuse('--force cannot carry --modifiers; the mouse verbs it uses take none');
   }
   if (verb === 'upload') uploadGuards(args);
-  hostGuard(verb, args);
+  hostGuard(verb, args, headlessLane(S, wd));
   const c = await connectOrGone(S);
   const real = args.includes('--real');
   if (SCRIPTED.has(verb) && !real && !force && !mods && (!btn || btn === 'left')) return scripted(c, S, wd, verb, args, ref, tm, t0, confirmed);

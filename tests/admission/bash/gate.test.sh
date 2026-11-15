@@ -57,7 +57,7 @@ t_eq "the allow rules name the installed gate-merge.sh and gate-queue.sh" true \
      '(.permissions.allow | index($m) != null) and (.permissions.allow | index($q) != null)' "$_s")"
 chrome_allow() { jq -r '.permissions.allow[] | select(startswith("mcp__harbor_chrome__")) | sub("^mcp__harbor_chrome__"; "")' "$1" | sort | tr '\n' ' '; }
 t_eq "harbor chrome: the read verbs and fill/find/press/type are allowed, nothing else (harbor#1507)" \
-  "console doctor fill find hosts press screenshot snapshot state status tab_list tabs text type " "$(chrome_allow "$_s")"
+  "console doctor fill find hosts press screenshot snapshot state status tab_list tabs text timing type " "$(chrome_allow "$_s")"
 t_eq "harbor chrome: confirm_click stays an ask" true "$(jq '.permissions.ask | index("mcp__harbor_chrome__confirm_click") != null' "$_s")"
 jq '.permissions.allow += ["mcp__harbor_chrome__click"]' "$_s" > "$T_TMP/wide"
 t_eq "RED-PROOF: an allowed click is seen" yes "$([ "$(chrome_allow "$T_TMP/wide")" != "$(chrome_allow "$_s")" ] && echo yes || echo no)"
