@@ -69,6 +69,10 @@ build a.md b.md c.md; printf 'a note nothing points at\n' > "$S/orphan.md"; r="$
 t_has "4d an unindexed note is reported" "$r" 'ORPHAN'
 t_has "4e ORPHAN names orphan.md" "$r" "${NL}    orphan.md"
 t_eq "4f --strict on an orphan note" 1 "$(rc --strict)"
+# Two pointers on one index line: both are pointers, so neither note is an orphan.
+build a.md; printf 'body\n' > "$S/b.md"; printf 'body\n' > "$S/c.md"
+printf -- '- [b](b.md) — hook; see [c](c.md)\n' >> "$S/MEMORY.md"; r="$(run)"
+t_hasnt "4g a line's first pointer is not an orphan" "$r" 'ORPHAN'
 
 t_section "5 · an index that links OUT is not a dangling pointer"
 build a.md b.md

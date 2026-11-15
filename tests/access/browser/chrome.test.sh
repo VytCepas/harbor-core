@@ -14,6 +14,13 @@ t_eq "it runs one fixed expression through --raw eval" "$((_st0 + 1))" "$(called
 t_has "and prints the page's answer" "$(out)" 'business.facebook.com'
 t_eq "state with an argument is refused" "exit 1" "$(ag state 'document.cookie')"
 t_eq "eval itself stays refused" "exit 1" "$(ag eval 'document.cookie')"
+_tm0="$(called "--raw eval async () => { const ms = ")"
+t_eq "timing passes" "exit 0" "$(ag timing)"
+t_eq "it runs the fixed timing row of browser-script.tsv through --raw eval" "$((_tm0 + 1))" "$(called "--raw eval async () => { const ms = ")"
+t_eq "CONTROL: that row reads navigation, LCP and resource entries" 1 "$(grep -c "^timing	.*'navigation'.*'largest-contentful-paint'.*'resource'" "$T_ROOT/contracts/browser-script.tsv")"
+t_eq "timing with an argument is refused" "exit 1" "$(ag timing 'document.cookie')"
+t_has "as fixed" "$(out)" "timing takes no arguments"
+t_eq "...and never reached the CLI" "$((_tm0 + 1))" "$(called "--raw eval async () => { const ms = ")"
 _ev0="$(called ' eval ')"
 t_eq "a fill on a live page passes" "exit 0" "$(ag fill e9 hello)"
 t_eq "and is followed by one state probe" "$((_ev0 + 1))" "$(called ' eval ')"
@@ -260,4 +267,50 @@ printf '11\n' > "$OWN"
 t_eq "a shared window is never moved to uncover it" "exit 1" "$(STUB_URL="$U1"; STUB_COVERED="$T_TMP/covered"; export STUB_URL STUB_COVERED; ag front)"
 rm -f "$OWN"
 
+
+
+t_section "agent: loopback dev servers, headless lane only (harbor#1507, operator 2026-11-15)"
+DL="$T_TMP/harbor-browser/claude-abc123def456-dev"; DSF="$HOME/Library/Caches/ms-playwright/daemon/0123/claude-abc123def456-dev.session"
+lag() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_LANE=dev HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "${LAG_AGENT:-$AGENT}" "$@"; }
+mkdir -p "$DL" "${DSF%/*}"; : > "$DL/.headless"; printf '{"name":"claude-abc123def456-dev","attached":null}\n' > "$DSF"
+: > "$CALLS"
+for u in http://localhost:3000/app/overview http://127.0.0.1:1024/ 'http://localhost:65535/a?b=1#c' http://localhost:8080; do
+  t_eq "headless lane: goto $u passes" "exit 0" "$(lag goto "$u")"
+  t_eq "profile: goto $u is refused" "exit 1" "$(ag goto "$u")"
+done
+t_has "the refusal names the headless lane as the way in" "$(out)" "HARBOR_ACCESS_BROWSER_LANE=dev harbor chrome attach --headless"
+t_eq "headless lane: tab-new on a dev server passes" "exit 0" "$(lag tab-new http://127.0.0.1:5173/)"
+t_eq "profile: tab-new on a dev server is refused" "exit 1" "$(ag tab-new http://127.0.0.1:5173/)"
+t_eq "the lane's five reached the CLI" 5 "$(called '=claude-abc123def456-dev goto http://\|=claude-abc123def456-dev tab-new http://')"
+t_eq "the profile's none" 0 "$(called '=claude-abc123def456 goto http://\|=claude-abc123def456 tab-new http://')"
+printf '{"name":"claude-abc123def456-dev","attached":true}\n' > "$DSF"
+t_eq "a marker over a daemon attached to the operator's Chrome is refused" "exit 1" "$(lag goto http://localhost:3000/)"
+rm -f "$DSF"
+t_eq "a marker with no daemon record is refused" "exit 1" "$(lag goto http://localhost:3000/)"
+printf '{"name":"claude-abc123def456-dev"}\n' > "$DSF"; rm -f "$DL/.headless"
+t_eq "a daemon record with no marker is refused" "exit 1" "$(lag goto http://localhost:3000/)"
+: > "$DL/.headless"; : > "$CALLS"
+for u in 'http://localhost:3000@evil.example/' 'http://evil.example@localhost:3000/' 'http://localhost.evil.example:3000/' \
+  'http://localhost:3000.evil.example/' 'http://localhost:3000\@evil.example/' 'http://localhost:3000\evil.example/' \
+  'http://%6cocalhost:3000/' 'http://localhost%3a3000/' 'http://127.0.0.1%2e:3000/' 'http://[::1]:3000/' 'http://0.0.0.0:3000/' \
+  'http://127.1:3000/' 'http://localhost/' 'http://localhost:/' 'http://localhost:80/' 'http://localhost:1023/' 'http://localhost:65536/' \
+  'http://localhost:03000/' 'http://localhost:3000:4000/' 'http://localhost:3000/a b' "$(printf 'http://local\thost:3000/')" \
+  "$(printf 'http://localhost:3000\n@evil.example/')" 'http://evil.example:3000/' 'http://ads.reddit.com:3000/'; do
+  t_eq "headless lane refuses: $u" "exit 1" "$(lag goto "$u")"
+  t_eq "profile refuses: $u" "exit 1" "$(ag goto "$u")"
+done
+t_eq "headless lane: tab-new to a userinfo-smuggled host is refused" "exit 1" "$(lag tab-new 'http://localhost:3000@evil.example/')"
+t_has "naming the loopback rule" "$(out)" "nor, in a headless lane, a loopback dev server"
+t_eq "none of those reached the CLI" 0 "$(grep -c . "$CALLS")"
+t_has "hosts names the rule and the lane" "$(ag hosts >/dev/null; out)" "headless lane only: http://localhost:<port>"
+# Mutants: the authority line removed, or the lane check made always true: the refusals above can fail.
+LM="$T_TMP/lmutant"; mkdir -p "$LM/bin" "$LM/contracts"; cp "$T_ROOT/bin/library-log.sh" "$LM/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$T_ROOT/contracts/browser-script.tsv" "$LM/contracts/"
+sed '/^  case "\$_a" in localhost:\*|127.0.0.1:\*) ;; \*) return 1 ;; esac$/d' "$AGENT" > "$LM/bin/access-browser-agent.sh"
+t_eq "the authority mutant differs from the script" yes "$(cmp -s "$AGENT" "$LM/bin/access-browser-agent.sh" || echo yes)"
+t_eq "and without the authority line http://evil.example:3000/ goes through in the lane" "exit 0" "$(LAG_AGENT="$LM/bin/access-browser-agent.sh" lag goto http://evil.example:3000/)"
+sed 's/^_headless_lane() {$/_headless_lane() { return 0/' "$AGENT" > "$LM/bin/access-browser-agent.sh"
+t_eq "the lane mutant differs from the script" yes "$(cmp -s "$AGENT" "$LM/bin/access-browser-agent.sh" || echo yes)"
+t_eq "and with the lane check always true the profile opens a dev server" "exit 0" \
+  "$(rc env HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$LM/bin/access-browser-agent.sh" goto http://localhost:3000/)"
+rm -f "$DL/.headless" "$DSF"
 t_done

@@ -4,7 +4,8 @@
 #   sh bin/deploy.sh --apply --live          preflight, one [y/N], snapshot, install, verify, re-pin [y/N]
 #   --only C[,C…]   just these components: constitution shim sec0 runtime floor prod-guard skills inject packs
 #                   yard fleet (each repo's own just install; the harbor verbs route here; one snapshot, same gates).
-#                   A component this run cannot install FAILS preflight; its fix is --only without it
+#                   A component this run cannot install FAILS preflight; its fix is --only without it.
+#                   inject also runs packs (dry run and install), so a refusing pack fails --only inject too
 #   no --only      core (constitution shim sec0 runtime floor skills inject packs) plus the optional components harbor.toml
 #                   `components` names: yard fleet prod-guard collector; key unset = every component (harbor#1149)
 #   --with-b6, --with-stop-gate   opt the floor into B6 or the Stop gate; a box already wired keeps them

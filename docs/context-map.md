@@ -33,7 +33,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | decision-record | docs/decisions/ | element | source | dated | 94 |
 | hook | hooks/ | component | source | living | 50 |
 | skill | skills/ | component | source | living | 62 |
-| fixture | fixtures/ | element | source | living | 445 |
+| fixture | fixtures/ | element | source | living | 446 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 82 |
 | test | tests/ | component | source | living | 671 |
@@ -59,7 +59,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `context-rules/` | 68 | 6 | 1 |
 | `contracts/` | 129 | 15 | 2 |
 | `docs/` | 325 | 26 | 9 |
-| `fixtures/` | 445 | 12 | 1 |
+| `fixtures/` | 446 | 12 | 1 |
 | `hooks/` | 46 | 7 | 1 |
 | `launchd/` | 22 | 10 | 1 |
 | `mods/` | 7 | 1 | 2 |
@@ -109,7 +109,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | session | data-plane | 14 | 5 | 0 | 8 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 16 |
 | standard | policy-function | 18 | 29 | 126 | 16 | 14 | 61 |
-| status | observability | 13 | 29 | 0 | 10 | 0 | 0 |
+| status | observability | 13 | 29 | 0 | 11 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
 

@@ -244,6 +244,15 @@ t_eq "[cleanup-ok] as the last line: nothing printed to the operator" "" "$(cat 
 cleaned; t_has "...the sweep applies on the live box" "$(cat "$T/clean.calls")" '--apply --live'
 t_has "...then re-records the count" "$(cat "$T/clean.calls")" '--record --live'
 t_has "...and logs what it reclaimed" "$(cat "$ST"/backups/session-cleanup/*/log)" 'reclaimed: finished-worktrees'
+# harbor#1532: a sweep whose action failed prints no RECLAIM row for it, says FAIL, and exits 1: the log must say so.
+printf '#!/bin/sh\ncase "$*" in *--apply*) echo "  RECLAIM  session-env  0B  ok-dir"; echo "  KEEP     finished-worktrees  0B  wt-bad"; echo "  FAIL: 1 RECLAIM action(s) did not complete: those rows are NOT reclaimed"; echo "  note:   wt-bad: error: Permission denied"; exit 1 ;; esac\n' > "$T/clean-fail"; chmod +x "$T/clean-fail"
+rm -rf "$ST/backups/session-cleanup"
+HARBOR_SESSION_CLEANUP_TOOL="$T/clean-fail" CLAUDE_CONFIG_DIR="$CFG" sh "$T_ROOT/bin/session-cleanup.sh" cl-fail >/dev/null 2>&1
+_cl="$(cat "$ST"/backups/session-cleanup/*/log)"
+t_has "a failed action is logged as not completed" "$_cl" 'cleanup did not complete'
+t_has "...naming the row it left" "$_cl" 'not reclaimed: wt-bad: error: Permission denied'
+t_eq "...and the failed row is never logged as reclaimed" 0 "$(printf '%s\n' "$_cl" | grep -c 'cl-fail reclaimed: .*wt-bad')"
+t_has "...while the row that did complete still is" "$_cl" 'reclaimed: session-env'
 : > "$T/clean.calls"; : > "$T/osa.calls"
 export HARBOR_SESSION_AUTOCOMPACT_TTY=ttys999 HARBOR_SESSION_AUTOCOMPACT_OSASCRIPT="$T/osa" HARBOR_SESSION_AUTOCOMPACT_DELAY=0
 run cl-2 plain 'All done.

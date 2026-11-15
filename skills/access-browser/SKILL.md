@@ -103,6 +103,7 @@ harbor chrome find 'Pixel ID'
 harbor chrome click <ref>
 harbor chrome detach        # when done; idle-timeout releases it anyway after 30 min
 harbor chrome text [ref]    # the visible text, cheaper than snapshot or screenshot for reading
+harbor chrome timing        # the page's own clock as JSON (navigation, LCP, own-origin resources): prod-vs-rebuild parity
 harbor chrome attach --headless   # in a lane: throwaway headless Chrome, no login, same allow-list
 ```
 
@@ -117,7 +118,9 @@ As MCP tools, `mcp__harbor_chrome__steps` runs a known sequence in one call (har
 - **Read-only unless the operator names the write.** A click that saves, creates,
   publishes or invites is a write in his account; ask in chat first.
 - **Work UIs only.** `goto`/`tab-new` refuse any host not in
-  `contracts/browser-agent-hosts.txt`. A client's live site goes through the tag debugger,
+  `contracts/browser-agent-hosts.txt`, except a local dev server at exactly
+  `http://localhost:<port>` or `http://127.0.0.1:<port>` (1024-65535), and that in a headless lane only
+  (`attach --headless`): in his profile an agent-written page could send credentialed cross-site requests. A client's live site goes through the tag debugger,
   never this verb — his logged-in cookies would land in the client's analytics.
 - **Refused verbs stay refused.** No `run-code`, `eval`, cookies, storage or state,
   request bodies. If a job seems to need one, stop and say which and why.

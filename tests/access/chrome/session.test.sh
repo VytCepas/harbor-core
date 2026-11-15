@@ -19,11 +19,12 @@ t_eq "a list for a tool name, a list for params, no method; then a ping" "-32602
   "$(printf '%s\n' "$OUT" | jq -rc '.error.code // .result' | tr '\n' ' ' | sed 's/ $//')"
 TL="$(rpc '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq -r '.result.tools[].name' | sort)"
 ALLOWED="$(awk '/^_allowed\(\) \{/ { f = 1; next } f && /case "\$1" in/ { next } f && /return 0/ { sub(/\).*/, ""); gsub(/[ \t\\]/, ""); print; exit } f { gsub(/[ \t\\]/, ""); printf "%s", $0 }' "$AG" | tr '|' '\n' | sed '/^$/d')"
-WANT="$(printf '%s\n' $ALLOWED attach status state text steps doctor detach tabs front wait-signin hosts confirm-click | tr '-' '_' | sort -u)"
+WANT="$(printf '%s\n' $ALLOWED attach status state timing text steps doctor detach tabs front wait-signin hosts confirm-click | tr '-' '_' | sort -u)"
 t_eq "CONTROL: the shell agent's allowlist parses" yes "$([ "$(printf '%s\n' "$ALLOWED" | grep -c .)" -ge 20 ] && echo yes || echo no)"
 t_eq "the tools are exactly the shell agent's allowed verbs and its session verbs" "$WANT" "$TL"
 t_hasnt "no tool runs code in a logged-in page" "$TL" "eval"
 t_eq "an unknown tool is an error result, the daemon untouched" "exit 1" "$(mcp run_code)"
+t_eq "eval is no tool either" "exit 1" "$(mcp eval 'document.cookie')"
 t_eq "args that are not strings are an error result" true "$(printf '%s\n' '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"goto","arguments":{"args":[1]}}}' | envs bun "$SRV" | jq -r .result.isError)"
 t_eq "...and nothing reached the daemon" 0 "$(grep -c . "$CALLS")"
 
@@ -64,6 +65,29 @@ t_eq "the private layer's host opens" "exit 0" "$(mcp goto https://partner.examp
 t_eq "...and does not widen to a lookalike" "exit 1" "$(mcp goto https://partner.example.net.evil.example/)"
 : > "$PH"
 t_eq "...and core alone refuses it" "exit 1" "$(mcp goto https://partner.example.net/roadmap)"
+# Loopback dev servers, headless lane only (operator 2026-11-15): the .headless marker AND a daemon record not attached.
+sessa() { printf '{"name":"claude-abc123def456","version":"1.64.0","timestamp":%s,"socketPath":"%s","attached":true}\n' "$1" "$SOCK" > "$DD/0123/claude-abc123def456.session"; }
+LOOP_OK='http://localhost:3000/app/overview http://127.0.0.1:1024/ http://localhost:65535/a?b=1#c'
+: > "$CALLS"; rm -f "$WD/.headless"
+for u in $LOOP_OK; do t_eq "profile: loopback refused: $u" "exit 1" "$(mcp goto "$u")"; done
+t_has "naming the headless lane as the way in" "$(txt)" 'attach with lane set and args ["--headless"]'
+: > "$WD/.headless"; sessa 4
+t_eq "a marker over a daemon attached to the operator's Chrome is refused" "exit 1" "$(mcp goto http://localhost:3000/)"
+t_eq "none of those reached the daemon" 0 "$(grep -c . "$CALLS")"
+sess 4
+for u in $LOOP_OK; do t_eq "headless lane: loopback passes: $u" "exit 0" "$(mcp goto "$u")"; done
+t_eq "the daemon got all three" 3 "$(n '^goto http://localhost:\|^goto http://127.0.0.1:')"
+: > "$CALLS"
+for u in 'http://localhost:3000@evil.example/' 'http://evil.example@localhost:3000/' 'http://localhost.evil.example:3000/' \
+  'http://localhost:3000\@evil.example/' 'http://%6cocalhost:3000/' 'http://localhost%3a3000/' 'http://[::1]:3000/' 'http://0.0.0.0:3000/' \
+  'http://127.1:3000/' 'http://localhost/' 'http://localhost:80/' 'http://localhost:1023/' 'http://localhost:65536/' 'http://localhost:03000/' \
+  "$(printf 'http://localhost:3000\n@evil.example/')" 'http://evil.example:3000/'; do
+  t_eq "headless lane refuses: $u" "exit 1" "$(: > "$WD/.headless"; mcp goto "$u")"
+  t_eq "profile refuses: $u" "exit 1" "$(rm -f "$WD/.headless"; mcp goto "$u")"
+done
+t_has "naming the loopback rule" "$(txt)" "nor, in a headless lane, a loopback dev server"
+t_eq "none of those reached the daemon" 0 "$(grep -c . "$CALLS")"
+rm -f "$WD/.headless"
 # the live-walk hint is the private layer's own and the registry's (harbor#966, #1273)
 PRIV="$T_TMP/priv"; mkdir -p "$PRIV"; printf 'live_walk_repo = "walker"\n' > "$PRIV/harbor.toml"; printf 'walker\tw-checkout\tworkload\t-\n' > "$PRIV/repos.tsv"; seams 0
 t_eq "registry row: the refusal still exits 1" "exit 1" "$(mcp goto https://www.autogidas.lt/)"
@@ -356,6 +380,21 @@ t_eq "...through the fixed element function on that ref" 1 "$(n 'eval (el) => el
 t_eq "text with a script is refused" "exit 1" "$(mcp text 'document.cookie')"
 t_eq "text with two refs is refused" "exit 1" "$(mcp text e3 e4)"
 t_eq "...and neither reached the daemon" 0 "$(grep -c . "$CALLS")"
+TFN="$(awk -F '\t' '$1 == "timing" { print substr($0, 8) }' "$X/contracts/browser-script.tsv")"
+t_eq "timing reads the page's clock" "exit 0" "$(mcp timing)"
+t_eq "...through the fixed timing row of browser-script.tsv, raw" 1 "$(awk -v w="eval $TFN [raw]" '$0 == w { c++ } END { print c + 0 }' "$CALLS")"
+: > "$CALLS"
+t_eq "timing with a script is refused" "exit 1" "$(mcp timing 'document.cookie')"
+t_has "...as fixed" "$(txt)" "timing takes no arguments"
+t_eq "...and never reached the daemon" 0 "$(grep -c . "$CALLS")"
+mkdir -p "$T_TMP/tmut/bin" "$T_TMP/tmut/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$T_TMP/tmut/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$T_TMP/tmut/contracts/"
+sed -e "/^    if (args.length) refuse('timing takes no arguments/d" -e 's/(?:localhost|127\\.0\\.0\\.1)/[a-z.]*/' -e 's/^  if (loopbackOk(url)) return headless;$/  if (loopbackOk(url)) return true;/' "$SRV" > "$T_TMP/tmut/bin/access-chrome-mcp.ts"
+t_eq "the mutant (no argument check, no loopback host check, no lane check) differs from the server in three lines" 3 "$(diff "$SRV" "$T_TMP/tmut/bin/access-chrome-mcp.ts" | grep -c '^<')"
+_old="$SRV"; SRV="$T_TMP/tmut/bin/access-chrome-mcp.ts"
+t_eq "and without the argument check timing with a script reaches the daemon" "exit 0" "$(mcp timing 'document.cookie')"
+t_eq "and without the loopback host check http://evil.example:3000/ goes through" "exit 0" "$(mcp goto http://evil.example:3000/)"
+t_eq "and without the lane check the profile opens a dev server" "exit 0" "$(rm -f "$WD/.headless"; mcp goto http://localhost:3000/)"
+SRV="$_old"
 : > "$CTL/download"
 t_eq "a goto that starts a download is not a failure" "exit 0" "$(mcp goto https://business.facebook.com/export.xlsx)"
 t_has "...it says where the file goes" "$(txt)" "download started"
@@ -377,6 +416,7 @@ t_eq "...nor confirm_click" "exit 1" "$(steps '[{"verb":"confirm_click","args":[
 t_eq "...nor eval" "exit 1" "$(steps '[{"verb":"eval","args":["1"]}]')"
 t_eq "26 steps are refused" "exit 1" "$(steps "$(jq -cn '[range(26) | {verb:"tab_list"}]')")"
 t_eq "...and none of them reached the daemon" 0 "$(grep -c . "$CALLS")"
+t_eq "timing runs inside steps, through the same guard" "exit 0 exit 1" "$(steps '[{"verb":"timing"}]') $(steps '[{"verb":"timing","args":["x"]}]')"
 mcp goto https://business.facebook.com/adsmanager >/dev/null
 t_eq "a goto records the page a re-attach reopens" "https://business.facebook.com/adsmanager" "$(cat "$WD/.last-url" 2>/dev/null)"
 SF="$DD/0123/claude-abc123def456.session"; cp "$SF" "$SF.keep"; rm -f "$SF"
