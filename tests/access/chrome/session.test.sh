@@ -38,8 +38,8 @@ mcp tab_list >/dev/null
 t_has "the verb runs from the session workdir, so --filename lands there" "$(txt)" "pwd=$WD"
 sess 2; : > "$CTL/conns"; mcp tab_list >/dev/null; mcp tab_list >/dev/null
 t_eq "a daemon the shell agent restarted (a new session file) is reconnected to" 2 "$(grep -c . "$CTL/conns")"
-t_eq "the timings of a call are kept for the operator: verb, total, guards, daemon, settle (ms)" yes \
-  "$(awk -F '\t' '$2 == "tab-list" && $3 + 0 >= 0 && NF == 6 { f = 1 } END { print f ? "yes" : "no" }' "$WD/.timings.tsv")"
+t_eq "the timings of a call are kept for the operator: session, verb, total, guards, daemon, settle (ms), ok" yes \
+  "$(awk -F '\t' '$3 == "tab-list" && $4 + 0 >= 0 && $8 == "ok" && NF == 8 { f = 1 } END { print f ? "yes" : "no" }' "$T_TMP/timings.tsv")"
 
 t_section "the host allowlist (goto)"
 : > "$CALLS"
@@ -278,10 +278,10 @@ t_eq "with the settle a tab that goes blank 0.3 s after the fill is caught" "exi
 clean; rm -f "$CTL/late_blank_now"
 # the daemon's own post-action wait counts toward the settle: a daemon that took 0.6 s needs no sleep after it
 seams 500; : > "$CTL/delay_ms"; printf 600 > "$CTL/delay_ms"
-mcp press Tab >/dev/null; _row="$(tail -n 1 "$WD/.timings.tsv")"
-t_eq "a verb the daemon took 0.6 s over is not slept on again (settle column under 100 ms)" yes "$(printf '%s' "$_row" | awk -F '\t' '$5 + 0 >= 600 && $6 + 0 < 100 { print "yes" }')"
-rm -f "$CTL/delay_ms"; mcp press Tab >/dev/null; _row="$(tail -n 1 "$WD/.timings.tsv")"
-t_eq "an instant daemon is waited out to the settle (500 ms)" yes "$(printf '%s' "$_row" | awk -F '\t' '$6 + 0 >= 450 { print "yes" }')"
+mcp press Tab >/dev/null; _row="$(tail -n 1 "$T_TMP/timings.tsv")"
+t_eq "a verb the daemon took 0.6 s over is not slept on again (settle column under 100 ms)" yes "$(printf '%s' "$_row" | awk -F '\t' '$6 + 0 >= 600 && $7 + 0 < 100 { print "yes" }')"
+rm -f "$CTL/delay_ms"; mcp press Tab >/dev/null; _row="$(tail -n 1 "$T_TMP/timings.tsv")"
+t_eq "an instant daemon is waited out to the settle (500 ms)" yes "$(printf '%s' "$_row" | awk -F '\t' '$7 + 0 >= 450 { print "yes" }')"
 seams 0
 t_section "the stops after a verb: signed out, the other extension's frame, a gone session"
 printf '    account:  tools@example.lt | primary | Business Admin | ads.reddit.com in Chrome via harbor chrome\n' > "$ACC/reddit.md"
@@ -380,7 +380,7 @@ t_eq "...and none of them reached the daemon" 0 "$(grep -c . "$CALLS")"
 mcp goto https://business.facebook.com/adsmanager >/dev/null
 t_eq "a goto records the page a re-attach reopens" "https://business.facebook.com/adsmanager" "$(cat "$WD/.last-url" 2>/dev/null)"
 SF="$DD/0123/claude-abc123def456.session"; cp "$SF" "$SF.keep"; rm -f "$SF"
-rseams() { printf '{"daemonDir":"%s","settingsFile":"%s","settleMs":0,"privHosts":"%s","tokenRegistered":%s,"scopeEnv":{"HARBOR_SCOPE_PRIVATE":"%s","PORT_ROOT":"%s"},"agentEnv":{"STUB_TABS":"%s","STUB_REATTACH":"%s"}}\n' \
+rseams() { printf '{"daemonDir":"%s","timingsFile":"'"$T_TMP/timings.tsv"'","settingsFile":"%s","settleMs":0,"privHosts":"%s","tokenRegistered":%s,"scopeEnv":{"HARBOR_SCOPE_PRIVATE":"%s","PORT_ROOT":"%s"},"agentEnv":{"STUB_TABS":"%s","STUB_REATTACH":"%s"}}\n' \
   "$DD" "$SETF" "$PH" "$1" "$PRIV" "$T_TMP/pr" "$T_TMP/tabs-out" "$SF" > "$X/bin/access-chrome-mcp.seams.json"; }
 ERRF="$DD/0123/claude-abc123def456.err"
 closed() { printf '2026-11-11T10:00:00.000Z pw:mcp:relay ws closed> Extension WebSocket closed: %s\n' "$1" > "$ERRF"; }

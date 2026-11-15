@@ -16,6 +16,7 @@ path	layer	note
 ACCESS/	core	account routing; red at zero until the private data moves out
 contracts/	core	interface contracts
 bin/	core	the tools
+agents/	core	subagent definitions
 commands/	core	slash commands
 context-rules/	core	session injectors (inject.d/ before harbor#1010)
 docs/audits/	core	documentation
