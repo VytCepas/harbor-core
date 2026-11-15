@@ -36,16 +36,17 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | fixture | fixtures/ | element | source | living | 446 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 82 |
-| test | tests/ | component | source | living | 671 |
+| test | tests/ | component | source | living | 673 |
 | report | docs/reports/ | element | report | dated | 2 |
-| design | docs/design/ | component | source | living | 9 |
+| design | docs/design/ | component | source | living | 10 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
 | script | bin/ | component | source | living | 298 |
+| agent | agents/ | component | source | living | 1 |
 | how-to | docs/how-to/ | component | source | living | 7 |
 | reference | docs/reference/ | component | generated | generated | 91 |
 | explanation | docs/explanation/ | component | source | living | 106 |
-| (no kind) | - | - | - | - | 288 |
+| (no kind) | - | - | - | - | 290 |
 
 ## Folders
 
@@ -54,11 +55,12 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | (repo root) | 12 | 1 | 1 |
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
+| `agents/` | 1 | 1 | 1 |
 | `bin/` | 302 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
-| `context-rules/` | 68 | 6 | 1 |
+| `context-rules/` | 70 | 6 | 1 |
 | `contracts/` | 129 | 15 | 2 |
-| `docs/` | 325 | 26 | 9 |
+| `docs/` | 326 | 26 | 9 |
 | `fixtures/` | 446 | 12 | 1 |
 | `hooks/` | 46 | 7 | 1 |
 | `launchd/` | 22 | 10 | 1 |
@@ -72,7 +74,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 671 | 30 | 1 |
+| `tests/` | 673 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -81,7 +83,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 12 | 32 | 2 | 6 | 0 | 0 |
+| access | control-plane | 12 | 34 | 2 | 6 | 0 | 0 |
 | admission | control-plane | 27 | 90 | 0 | 6 | 0 | 176 |
 | agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
@@ -89,7 +91,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | bq | observability | 3 | 6 | 0 | 2 | 0 | 0 |
 | check | observability | 2 | 5 | 0 | 1 | 60 | 0 |
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
-| context | control-plane | 6 | 16 | 1 | 3 | 0 | 51 |
+| context | control-plane | 6 | 16 | 1 | 3 | 0 | 52 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
 | doc | control-plane | 16 | 13 | 0 | 44 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
@@ -850,11 +852,12 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | (repo root) | 12 |
 | `.agents/` | 4 |
 | `.github/` | 2 |
+| `agents/` | 1 |
 | `bin/` | 12 |
 | `commands/` | 2 |
-| `context-rules/` | 56 |
+| `context-rules/` | 58 |
 | `contracts/` | 96 |
-| `docs/` | 134 |
+| `docs/` | 135 |
 | `fixtures/` | 264 |
 | `hooks/` | 33 |
 | `mods/` | 7 |
@@ -880,6 +883,7 @@ Every tracked top-level entry, its kind and layer from `contracts/layout-map.tsv
 | `contracts/` | contract | source | core |
 | `evals/` | eval | source | dev |
 | `bin/` | script | source | core |
+| `agents/` | agent | source | core |
 | `commands/` | command | source | core |
 | `context-rules/` | injection-rule | source | core |
 | `docs/` | explanation | source | dev |
