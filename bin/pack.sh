@@ -193,7 +193,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
     # A managed root is flat and carries no register to compose into, so these are refused for what they are, not on a core path it lacks (harbor#1278).
     # A tree check judges as that laptop does: a hub pack lands only on a member box.
     if [ -e "$SRC/harbor-member-mode" ] || [ -n "$HUBTREE" ]; then
-      case "$_r" in checks.md|controls.tsv|terms.tsv) refuse "$_r composes into a core register, which a member laptop doesn't carry" "the admin takes $_r out of the hub pack (contracts/hub.md, extension.json)" || return 1 ;; esac
+      case "$_r" in checks.md|controls.tsv|terms.tsv|verbs/*) refuse "$_r composes into a core register, which a member laptop doesn't carry" "the admin takes $_r out of the hub pack (contracts/hub.md, extension.json)" || return 1 ;; esac
     fi
     case "$_r" in
       pack.toml|tests/*|README*) ;;
@@ -203,6 +203,11 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       shims.tsv) printf '%s\t%s\n' "$_p" "shims.d/$ID.tsv" >> "$WORK/plan" ;;
       conf-keys.txt) printf '%s\t%s\n' "$_p" "conf-keys.d/$ID.txt" >> "$WORK/plan" ;;
       terms.tsv) printf '%s\t%s\n' "$_p" "terms.d/$ID.tsv" >> "$WORK/plan" ;;
+      # Verb registers (harbor#1541): the permission rows of the pack's own commands, read beside core's contracts/verbs/.
+      verbs/*/*) refuse "verbs/ is flat; $_r is nested" || return 1 ;;
+      verbs/README.md) ;;
+      verbs/*.md) printf '%s\t%s\n' "$_p" "verbs.d/$ID/${_r#verbs/}" >> "$WORK/plan" ;;
+      verbs/*) refuse "$_r: verbs/ holds <command>.md registers and nothing else" || return 1 ;;
       skills/*/*)
         _s="${_r#skills/}"; _s="${_s%%/*}"
         [ ! -e "$ROOT/skills/$_s" ] || refuse "skill $_s shadows a core skill" || return 1
@@ -325,6 +330,25 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       { seen[$1] = 1 }
       END { if (!hdr) print "it has no header row" }')"
     [ -z "$_sm" ] || refuse "shims.tsv: $_sm" "the shape is contracts/pack.md: name TAB bin/<file>, with the header row" || return 1
+  fi
+
+  # Verb registers (harbor#1541): every row names a command THIS pack's shims.tsv puts on PATH, so a pack can never grant
+  # or gate git, gh or another pack's command; and every row parses in the columns gate-verbs.sh reads.
+  if [ -d "$WORK/stage/verbs.d/$ID" ]; then
+    _vn="$(awk -F'\t' '!/^[ \t]*#/ && NF >= 2 && $1 != "name" { print $1 }' "$WORK/stage/shims.d/$ID.tsv" 2>/dev/null | tr -d '\r')"
+    for _vf in "$WORK/stage/verbs.d/$ID"/*.md; do
+      [ -f "$_vf" ] || continue
+      _vr="$(sh "$SRC/gate-verbs.sh" rows "$_vf" 2>/dev/null)" || _vr=''
+      [ -n "$_vr" ] || refuse "verbs/${_vf##*/}: no row parses (a | spelling | class | perm | table, gate-verbs.sh rows)" "the shape is contracts/verbs/mail.md" || return 1
+      # The names go through the environment: BSD awk refuses a newline in a -v value, and two shims are two lines.
+      _vm="$(printf '%s\n' "$_vr" | PK_SHIMS="$_vn" awk -F'\t' '
+        BEGIN { n = split(ENVIRON["PK_SHIMS"], a, "\n"); for (i = 1; i <= n; i++) own[a[i]] = 1 }
+        { c = $2; sub(/ .*/, "", c)
+          if (!(c in own)) { print "`" $2 "` names " c ", which is not a command this pack ships (shims.tsv)"; exit }
+          if ($3 !~ /^(read|write|gated)$/) { print "`" $2 "` has class " $3 " (read, write or gated)"; exit }
+          if ($4 !~ /^(builtin|allow|ask|deny|classifier)$/) { print "`" $2 "` has perm " $4; exit } }')" || _vm="the row check itself failed"
+      [ -z "$_vm" ] || refuse "verbs/${_vf##*/}: $_vm" "a pack registers only its own shims (contracts/pack.md)" || return 1
+    done
   fi
 
   # harbor.toml keys (#949): a pack declares the keys its own tools read, so core names none of them. One key per line,
@@ -536,7 +560,7 @@ remove_one() { # <id>
   done
   rm -f "$MFD/$ID.tsv"
   # checks.d is shared by every pack, so only the pack that created it holds its D row: the last pack out takes it if empty.
-  if rmdir "$MFD" 2>/dev/null; then rmdir "$T/checks.d" "$T/shims.d" "$T/conf-keys.d" "$T/terms.d" 2>/dev/null || :; fi
+  if rmdir "$MFD" 2>/dev/null; then rmdir "$T/checks.d" "$T/shims.d" "$T/conf-keys.d" "$T/terms.d" "$T/verbs.d" 2>/dev/null || :; fi
   log_ok "removed $ID"
   if [ "$_hadck" -eq 1 ]; then recompose || return 1; fi
 }

@@ -43,8 +43,10 @@ const OWNED_NAME = '.owned-tabs';
 const TEXT_PAGE = '() => document.body ? document.body.innerText : ""';
 const TEXT_EL = '(el) => el.innerText ?? el.textContent ?? ""';
 const TEXT_MAX = 40000;
-const DESTRUCTIVE = ('delete remove archive pause publish unpublish discard pay purchase buy unlink disconnect ' +
-  'ištrinti pašalinti archyvuoti sustabdyti pristabdyti publikuoti paskelbti išjungti apmokėti').split(' ');
+// The labels that commit a change to a live system (harbor#1541): one list for both routes, read once. Empty or missing,
+// every guarded verb is refused (guardLive), never waved through.
+const DESTRUCTIVE: string[] = (() => { try { return fs.readFileSync(path.join(ROOT, 'contracts', 'live-change-words.txt'), 'utf8'); } catch { return ''; } })().split('\n')
+  .map((l) => l.replace(/#.*/, '').trim().replace(/\s+/g, ' ')).filter((l) => l !== '');
 
 // Run by the shell agent: the verbs that touch Chrome's windows or wait on the operator.
 const LONG: Record<string, number> = { attach: 900, 'wait-signin': 900 };   // seconds
@@ -296,10 +298,15 @@ function relayErr(s: string): string {   // this session's daemon log (written u
 const lines = (p: string) => { const a = p ? readText(p).split('\n') : []; if (a[a.length - 1] === '') a.pop(); return a; };   // wc -l's count
 
 // ── the destructive-label check (access-browser-agent.sh _words, _destructive) ──
-function words(t: string): string {   // lower-cased, ASCII non-letters to spaces; non-ASCII stays a letter (š, ė)
-  return ' ' + asciiLower(t).replace(/Š/g, 'š').replace(/Ė/g, 'ė').replace(/[\u0000-\u007f]/g, (c) => (/[a-z0-9]/.test(c) ? c : ' ')) + ' ';
+const LT_UPPER: Record<string, string> = { Ą: 'ą', Č: 'č', Ę: 'ę', Ė: 'ė', Į: 'į', Š: 'š', Ų: 'ų', Ū: 'ū', Ž: 'ž' };
+function words(t: string): string {   // lower-cased, ASCII non-letters to one space; non-ASCII stays a letter (š, ė, Į → į)
+  return (' ' + asciiLower(t).replace(/[ĄČĘĖĮŠŲŪŽ]/g, (c) => LT_UPPER[c]).replace(/[\u0000-\u007f]/g, (c) => (/[a-z0-9]/.test(c) ? c : ' ')) + ' ')
+    .replace(/ +/g, ' ');
 }
 const destructive = (label: string): string => { const w = words(label); return DESTRUCTIVE.find((d) => w.includes(` ${d} `)) ?? ''; };
+function guardLive() {   // the list itself: without it no label can be judged, so nothing that commits runs
+  if (!DESTRUCTIVE.length) refuse('no live-change words: contracts/live-change-words.txt is missing or empty, so no label can be checked', 'git checkout -- contracts/live-change-words.txt');
+}
 const attrs = (s: string) => s.replace(/"([^"\\]|\\.)*"/g, '').replace(/:( .*)?$/, '');
 const frameOf = (s: string) => { const m = /\[ref=(f[0-9]+)e/.exec(s); return m ? m[1] : ''; };
 const indentOf = (s: string) => s.length - s.trimStart().length;
@@ -321,6 +328,7 @@ async function guardLines(c: Conn, S: string, wd: string, verb: string, target: 
 async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: string, confirmed = false): Promise<Target> {
   if (/^(e[0-9]|f[0-9].*e[0-9])/s.test(ref)) { if (/[^a-z0-9]/.test(ref)) refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref`); }
   else refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref (e12, f3e12) or --text=<name>; a selector carries no label for the destructive check`, 'harbor chrome snapshot');
+  guardLive();
   const { file: g, body } = await guardLines(c, S, wd, verb, ref);
   let root = '', found = false, ind = 0, tf = '', box = '', label = '';
   for (const line of body) {
@@ -341,6 +349,30 @@ async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: 
   if (hit && !confirmed) handoff(`destructive ${verb} refused: '${lab}' (${ref}) matches '${hit}' — the operator confirms one call`, `${verb === 'click' ? `mcp__harbor_chrome__confirm_click with args ["${ref}"] (the operator approves it in the dialog); or ` : ''}HARBOR_ACCESS_BROWSER_CONFIRM=${ref} harbor chrome ${verb} ${ref}`);
   if (confirmed) { try { fs.appendFileSync(path.join(wd, '.confirmed.tsv'), `${new Date().toISOString()}\t${ref}\t${hit || '-'}\t${lab}\n`); } catch { /* the dialog is the record */ } }
   return { root, frame: '-' + tf, box, label: lab, file: g };
+}
+
+// Enter, Space and --submit commit what the focus sits on (harbor#1541): press, keydown and type --submit ask the focused
+// element, fill --submit its ref, through the fixed submit-focus/submit-of probes, and a live-change label is refused the
+// way a click on it is. The way through is confirm_click on that button. A probe that cannot answer refuses too.
+const SUBMIT_KEY = /^(?:[A-Za-z]+\+)*(Enter|NumpadEnter|Space| )$/;
+async function submitGuard(c: Conn, S: string, wd: string, verb: string, args: string[]): Promise<void> {
+  const pos = args.filter((a) => !a.startsWith('--'));
+  let ref = '';
+  if (verb === 'press' || verb === 'keydown') { if (!SUBMIT_KEY.test(pos[0] ?? '')) return; }
+  else if (verb === 'type') { if (!args.includes('--submit')) return; }
+  else if (verb === 'fill') { if (!args.includes('--submit')) return; ref = pos[0] ?? ''; if (!/^(e[0-9]+|f[0-9]+e[0-9]+)$/.test(ref)) refuse(`fill --submit takes a snapshot ref, not '${ref}': a selector carries no label for the live-change check`, 'harbor chrome snapshot'); }
+  else return;
+  guardLive();
+  const fn = SCRIPTS[ref ? 'submit-of' : 'submit-focus'];
+  if (!fn) refuse(`no ${ref ? 'submit-of' : 'submit-focus'} row in contracts/browser-script.tsv, so ${verb} cannot be checked`, 'git checkout -- contracts/browser-script.tsv');
+  let r: { isError: boolean; text: string };
+  try { r = await c.run({ _: ['eval', fn, ...(ref ? [ref] : [])] }, wd, true); } catch (e) { if (!c.dead) throw e; return goneRefusal(S); }
+  if (r.isError) { goneCheck(S, r.text); refuse(`no answer from the submit probe, so ${verb} cannot be checked for a live change`, 'harbor chrome snapshot'); }
+  let lab = r.text ?? '';
+  try { const j = JSON.parse(lab); if (typeof j === 'string') lab = j; } catch { /* already plain */ }
+  const hit = destructive(lab);
+  if (hit) handoff(`destructive ${verb} refused: ${verb === 'fill' || verb === 'type' ? '--submit' : `'${pos[0]}'`} would commit '${lab.slice(0, 200)}', which matches '${hit}' — the operator confirms one click`,
+    'harbor chrome snapshot, then mcp__harbor_chrome__confirm_click with args ["<ref of that button>"] (the operator approves it in the dialog)');
 }
 
 // ── click by name (harbor#1507) ─────────────────────────────────────────────
@@ -640,6 +672,7 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
   if (verb === 'upload') uploadGuards(args);
   hostGuard(verb, args, headlessLane(S, wd));
   const c = await connectOrGone(S);
+  await submitGuard(c, S, wd, verb, args);
   if (byText) {   // the ref goes first in --text='s place, and the call runs again as the ref click it now is
     const t = await refForText(c, S, wd, verb, byText);
     const r = await hot(S, verb, [t.ref, ...args.filter((a) => !a.startsWith('--text='))], tm, confirmed, shown);
