@@ -1,0 +1,10 @@
+{"id":"C1-L7-gf-431","rule":"git-reset-hard","want":"ask","cmd":"git reset --har HEAD~1","why":"harbor#1313: git takes an unambiguous abbreviation of the hard-reset flag"}
+{"id":"C1-L7-var-17","rule":"git-reset-hard","want":"ask","cmd":"git reset --ha HEAD~1","why":"harbor#1313: git takes an unambiguous abbreviation of the hard-reset flag (a variant spelling)"}
+{"id":"C1-L7-var-18","rule":"git-reset-hard","want":"ask","cmd":"git reset --h HEAD~1","why":"harbor#1313: git takes an unambiguous abbreviation of the hard-reset flag (a variant spelling)"}
+{"id":"C1-L7-var-29","rule":"git-reset-hard","want":"ask","cmd":"trap 'git reset --hard' EXIT","why":"harbor#1313: a trap action is run as an eval line is, so it is read as commands (a variant spelling)"}
+{"id":"C1-L7-ok-6","rule":"git-reset-hard","want":"allow","cmd":"git reset --soft HEAD~1","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-7","rule":"git-reset-hard","want":"allow","cmd":"git reset HEAD README.md","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-8","rule":"git-reset-hard","want":"allow","cmd":"git reset --mixed HEAD~1","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-28","rule":"git-reset-hard","want":"allow","cmd":"git reset --keep HEAD~1","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-25","rule":"git-reset-hard","want":"allow","cmd":"git reset --me HEAD~1","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-26","rule":"git-reset-hard","want":"allow","cmd":"git reset --merg HEAD~1","why":"harbor#1313: ordinary work beside the fix stays allowed"}

@@ -1,0 +1,10 @@
+{"schema":1,"hub":"your-hub","serial":1,"issued":"2026-01-01T00:00:00Z",
+ "core":{"commit":"0000000000000000000000000000000000000000","contract":1},
+ "rollout":{"mode":"shadow"},
+ "approval":{"approvers":["your-admin-login"],"ttl_hours":24},
+ "silent_days":5,
+ "tiers":{},
+ "rules":[],
+ "packs":[],
+ "hooks":[],
+ "revoked":[]}

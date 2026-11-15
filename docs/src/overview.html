@@ -1,0 +1,106 @@
+<section id="overview-sec">
+<p class="eyebrow">Architecture</p>
+<h1>Harbor</h1>
+<p class="lede">A governance layer for coding sessions on one machine. It answers a
+narrow question — <em>what does the assistant know, and what can it do, at the exact
+moment it acts</em> — and it answers it with mechanisms rather than documents.</p>
+
+<h2 id="overview">What it is</h2>
+
+<p>Harbor is four layers wrapped around a coding assistant, each intervening at a
+different point in a session's life. They are independent: any one can be removed
+without the others stopping, which is deliberate, because a governance system that
+fails as a unit fails completely.</p>
+
+<figure>
+<svg viewBox="0 0 860 300" role="img" aria-label="A session timeline showing which Harbor layer intervenes at each hook event: the injector above the line delivering rules at SessionStart, tool calls and tool results; the security floor below the line refusing tool calls before they run.">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- the spine -->
+  <line x1="60" y1="150" x2="800" y2="150" stroke="currentColor" stroke-width="1.5"/>
+  <text x="60" y="176" font-size="11" font-family="ui-monospace, monospace" fill="currentColor" opacity=".65">session opens</text>
+  <text x="800" y="176" font-size="11" font-family="ui-monospace, monospace" text-anchor="end" fill="currentColor" opacity=".65">session ends</text>
+
+  <!-- event ticks -->
+  <g stroke="currentColor" stroke-width="1.5">
+    <line x1="130" y1="142" x2="130" y2="158"/>
+    <line x1="320" y1="142" x2="320" y2="158"/>
+    <line x1="510" y1="142" x2="510" y2="158"/>
+    <line x1="690" y1="142" x2="690" y2="158"/>
+  </g>
+  <g font-size="10.5" font-family="ui-monospace, monospace" fill="currentColor" text-anchor="middle">
+    <text x="130" y="196">SessionStart</text>
+    <text x="320" y="196">PreToolUse</text>
+    <text x="510" y="196">PostToolUse</text>
+    <text x="690" y="196">SessionStart</text>
+    <text x="690" y="209" opacity=".6">source=compact</text>
+  </g>
+
+  <!-- injector, above -->
+  <rect x="60" y="40" width="740" height="62" fill="none" stroke="currentColor" stroke-width="1" opacity=".35" rx="4"/>
+  <text x="72" y="60" font-size="11" font-family="ui-monospace, monospace" fill="currentColor" letter-spacing="1.2">THE INJECTOR — adds what the model knows</text>
+  <g font-size="11" fill="currentColor" text-anchor="middle">
+    <text x="130" y="80">what this repo</text>
+    <text x="130" y="93">holds</text>
+    <text x="320" y="80">the rule for</text>
+    <text x="320" y="93">this command</text>
+    <text x="510" y="80">is this content</text>
+    <text x="510" y="93">an instruction?</text>
+    <text x="690" y="80">re-derive, do</text>
+    <text x="690" y="93">not trust recall</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1.2" marker-end="url(#ar)" opacity=".8">
+    <line x1="130" y1="102" x2="130" y2="138"/>
+    <line x1="320" y1="102" x2="320" y2="138"/>
+    <line x1="510" y1="102" x2="510" y2="138"/>
+    <line x1="690" y1="102" x2="690" y2="138"/>
+  </g>
+
+  <!-- floor, below -->
+  <rect x="60" y="228" width="740" height="52" fill="none" stroke="currentColor" stroke-width="1" opacity=".35" rx="4"/>
+  <text x="72" y="248" font-size="11" font-family="ui-monospace, monospace" fill="currentColor" letter-spacing="1.2">THE SECURITY FLOOR — subtracts what it can do</text>
+  <text x="320" y="270" font-size="11" fill="currentColor" text-anchor="middle">refuses the call before it runs</text>
+  <!-- slanted so it clears the PreToolUse tick label rather than striking through it -->
+  <g stroke="currentColor" stroke-width="1.2" marker-end="url(#ar)" opacity=".8" fill="none">
+    <path d="M 430 226 L 328 166"/>
+  </g>
+</svg>
+<figcaption>The two layers that act inside a turn, and the only event that can stop
+one. <code>PreToolUse</code> is the sole hook able to refuse a tool call, which is why
+the floor lives there and the injector — which only ever <em>adds</em> text — is wired
+across all four.</figcaption>
+</figure>
+
+<h3>The four layers</h3>
+
+<ul>
+<li><strong>The security floor.</strong> Hook-invoked guards that refuse tool calls:
+pipe-to-shell, writes to protected instruction surfaces, egress carrying identity or
+secrets. It is the only layer that can say no, and it is written in POSIX
+<code>sh</code> so that it still runs when everything else is broken.</li>
+<li><strong>The injector.</strong> Declarative rule packs that deliver a sentence to
+the model <em>at the moment it acts</em> rather than at the top of a session. This is
+the layer the rest of the document spends the most time on, because
+<a href="#timing">a measurement</a> says it is the one that changes behaviour.</li>
+<li><strong>Governance and the record.</strong> The <code>harbor</code> CLI, the
+session work-log, and the marker mechanism that decides which repository's rules
+govern a given session.</li>
+<li><strong>Doc-truth.</strong> The lint rules, generated documents and CI jobs whose
+only job is to make the other three layers' claims about themselves checkable.
+<a href="#truth">This page is part of that layer.</a></li>
+</ul>
+
+<div class="note why">
+<span class="tag">The governing idea</span>
+<p><strong>A rule with no mechanism is a wish.</strong> Every claim Harbor makes about
+itself names the thing that fails when the claim stops being true — a lint rule id, a
+test case, a CI job, a guard. Where nothing enforces a rule, that is stated rather
+than implied. The tables on this page are generated from the repository for the same
+reason: a count written into prose is a copy, and copies drift while reading
+perfectly.</p>
+</div>
+</section>

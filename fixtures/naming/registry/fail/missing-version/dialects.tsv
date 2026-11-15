@@ -1,0 +1,5 @@
+# dialects.tsv (harbor#950) — a whole-file fixture: it opens with #, so it replaces the registry's.
+#
+# WHY: a registry file with no standard_version line must go red on name.registry-shape.
+id	repo	layers	example	note
+flow	flow	stg_<src>__<entity>	stg_shopify__orders	the version line above is missing on purpose

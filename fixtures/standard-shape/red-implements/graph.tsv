@@ -1,0 +1,6 @@
+# graph.tsv (harbor#996 G2 fixture) - red-implements: fx:ok carries implements; fx:bad has one inbound and an edge of another relation, neither of which counts
+# relation	implements	fixture
+edge	from	to	site
+implements	fx:ok	fx:t	fx:ok:1
+implements	fx:t	fx:bad	fx:t:1
+references	fx:bad	fx:t	fx:bad:1

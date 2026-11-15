@@ -1,0 +1,38 @@
+{
+ "_": "A hosted MCP atlas: the worked example this skill was built from, with its names made neutral.",
+ "specs": "./diagrams",
+ "describe": "components.json",
+ "out": "estate.html",
+ "title": "MCP Estate Atlas",
+ "brand": ["Example hosted MCP", "Architecture atlas"],
+ "diagrams": {
+  "estate": {
+   "spec": "estate.architecture.json",
+   "parts": "components",
+   "edges": "connections",
+   "tab": "The estate",
+   "blurb": "What exists, and who talks to whom"
+  },
+  "admission": {
+   "spec": "admission.sequence.json",
+   "parts": "participants",
+   "edges": "messages",
+   "tab": "Admission",
+   "blurb": "How a client nobody configured gets a token"
+  },
+  "warehouse": {
+   "spec": "warehouse.sequence.json",
+   "parts": "participants",
+   "edges": "messages",
+   "tab": "One read",
+   "blurb": "Every gate a single query passes"
+  },
+  "collection": {
+   "spec": "collection.dataflow.json",
+   "parts": "nodes",
+   "edges": "flows",
+   "tab": "What is recorded",
+   "blurb": "Every field one call writes, and where it lands"
+  }
+ }
+}

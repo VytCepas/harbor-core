@@ -1,0 +1,1 @@
+probe-ok	controls.tsv	type=lint	lines:fixtures/naming/registry/pass/unusual-rows/ids.txt	a fixture census whose id controls.tsv does hold

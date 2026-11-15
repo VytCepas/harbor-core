@@ -1,0 +1,5 @@
+# terms.tsv for a lint-module fixture: only id, class and depends_on are read
+id	class	pref	broader	vsm	stability	successor	src	alt	depends_on	definition
+alpha	family	alpha	-	-	experimental	-	fixture	-	beta	first fixture family
+beta	family	beta	-	-	experimental	-	fixture	-	alpha	second fixture family
+gamma	family	gamma	-	-	experimental	-	fixture	-	-	third fixture family

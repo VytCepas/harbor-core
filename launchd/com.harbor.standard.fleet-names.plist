@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- harbor:template-only
+     THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: render it.
+
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.standard.fleet-names.plist > ~/Library/LaunchAgents/com.harbor.standard.fleet-names.plist
+
+     This block is not installed; bin/deploy-launchd-render.sh drops it. -->
+<!-- docs/reference/checks.md `standard.fleet-names` (harbor#967, harbor#957): once a week, judge the fleet's names, each
+     vendored naming package and every release title, and file the delta through the findings channel. Approved by the
+     operator on 2026-10-29: weekly, Monday 08:00 Vilnius, as the operator's own user, read only.
+
+     It runs the INSTALLED standard-fleet-names-run.sh, never the checkout (see its header); that copy clones main
+     fresh and runs the clone's standard-fleet-names.sh over the local checkouts. It writes only under the config
+     dir's cache (a receipt for the daily `findings` job, its own state, one checks.log line); gh is read only,
+     for releases.
+
+     An agent cannot install this, by design. Operator steps, in order:
+
+       the normal runtime deploy (bin/deploy-runtime-install.sh) ships the installed script, then
+       render this plist into ~/Library/LaunchAgents and bootstrap it under gui/$(id -u)
+
+     See it work: `launchctl kickstart -k gui/$(id -u)/com.harbor.standard.fleet-names`, then
+     `cat /tmp/com.harbor.standard.fleet-names.out` and `jq . ~/.claude/cache/checks/standard.fleet-names.json`.
+
+     IT NEEDS THE KEYCHAIN for `gh`'s token (the clone and the release reads), hence Aqua. MONDAY 08:00 LOCAL
+     (the box runs Vilnius time), an hour ahead of redteam-corpus and clear of findings at 09:23.
+
+     Disable (docs/reference/checks.md's two-lookup rule):
+       launchctl bootout gui/$(id -u)/com.harbor.standard.fleet-names
+       rm ~/Library/LaunchAgents/com.harbor.standard.fleet-names.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harbor.standard.fleet-names</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>@HOME@/.claude/bin/standard-fleet-names-run.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>1</integer>
+    <key>Hour</key><integer>8</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>RunAtLoad</key><false/>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>ProcessType</key><string>Background</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- System dirs first and no ~/.local/bin, as com.harbor.findings: /opt/homebrew/bin last, for gh and jq. -->
+    <key>PATH</key><string>/usr/bin:/bin:/opt/homebrew/bin</string>
+    <key>HOME</key><string>@HOME@</string>
+  </dict>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.standard.fleet-names.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.standard.fleet-names.err</string>
+</dict>
+</plist>

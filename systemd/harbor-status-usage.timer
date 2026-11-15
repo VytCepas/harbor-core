@@ -1,0 +1,12 @@
+# harbor#617 — the schedule of launchd/com.harbor.status.usage.plist; docs/reference/checks.md row `status.usage`.
+[Unit]
+Description=Harbor check usage (schedule)
+
+[Timer]
+OnActiveSec=30s
+OnCalendar=*-*-* 04:17:00
+Persistent=true
+Unit=harbor-status-usage.service
+
+[Install]
+WantedBy=timers.target

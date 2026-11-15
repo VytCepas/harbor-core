@@ -1,0 +1,34 @@
+{"id":"C1-L2-gf-35","rule":"device-wipe-verb","want":"block","cmd":"blkdiscard /dev/sda","why":"harbor#1313 L2: a raw-device wipe/discard/overwrite verb that named no rule"}
+{"id":"C1-L2-gf-131","rule":"dd-variant-to-device","want":"block","cmd":"dcfldd if=/dev/zero of=/dev/sda","why":"harbor#1313 L2: a dd-variant output operand to a device node the dd rule missed"}
+{"id":"C1-L2-gf-132","rule":"dd-to-system-file","want":"block","cmd":"dcfldd if=/dev/zero of=/etc/passwd","why":"harbor#1313 L2: a dd-family output operand onto a critical /etc account file, which redirect and tee already refuse"}
+{"id":"C1-L2-gf-133","rule":"dd-to-system-file","want":"block","cmd":"dcfldd if=/dev/zero of=/etc/shadow","why":"harbor#1313 L2: a dd-family output operand onto a critical /etc account file, which redirect and tee already refuse"}
+{"id":"C1-L2-gf-136","rule":"dd-to-system-file","want":"block","cmd":"dd if=/dev/zero of=//etc/passwd","why":"harbor#1313 L2: a dd-family output operand onto a critical /etc account file, which redirect and tee already refuse"}
+{"id":"C1-L2-gf-138","rule":"dd-to-system-file","want":"block","cmd":"dd if=/dev/zero of=/etc/passwd","why":"harbor#1313 L2: a dd-family output operand onto a critical /etc account file, which redirect and tee already refuse"}
+{"id":"C1-L2-gf-140","rule":"dd-to-system-file","want":"block","cmd":"dd if=/dev/zero of=/etc/shadow","why":"harbor#1313 L2: a dd-family output operand onto a critical /etc account file, which redirect and tee already refuse"}
+{"id":"C1-L2-gf-146","rule":"dd-to-system-file","want":"block","cmd":"dd of=/etc/passwd if=/dev/zero","why":"harbor#1313 L2: a dd-family output operand onto a critical /etc account file, which redirect and tee already refuse"}
+{"id":"C1-L2-gf-38","rule":"device-wipe-verb","want":"block","cmd":"busybox mkswap /dev/sda1","why":"harbor#1313 L2: formatting swap on a disk/partition overwrites its header like mkfs"}
+{"id":"C1-L2-gf-196","rule":"redirect-to-device","want":"block","cmd":"echo x > /dev/dm-0","why":"harbor#1313 L2: a redirect to a device-mapper node missing from the device-name list"}
+{"id":"C1-L2-gf-197","rule":"redirect-to-device","want":"block","cmd":"echo x > /dev/mapper/root","why":"harbor#1313 L2: a redirect to a device-mapper node missing from the device-name list"}
+{"id":"C1-L2-gf-202","rule":"redirect-to-device","want":"block","cmd":"echo x > /dev/xvda","why":"harbor#1313 L2: a redirect to a Xen virtual disk missing from the device-name list"}
+{"id":"C1-L2-gf-850","rule":"device-wipe-verb","want":"block","cmd":"shred /dev/sda","why":"harbor#1313 L2: a raw-device wipe/discard/overwrite verb that named no rule"}
+{"id":"C1-L2-gf-935","rule":"device-wipefs","want":"block","cmd":"wipefs -a /dev/sda","why":"harbor#1313 L2: a raw-device wipe/discard/overwrite verb that named no rule"}
+{"id":"C1-L2-gf-936","rule":"device-wipefs","want":"block","cmd":"wipefs -o 512 /dev/sda","why":"harbor#1313 L2: a raw-device wipe/discard/overwrite verb that named no rule"}
+{"id":"C1-L2-ccg-35","rule":"device-wipefs","want":"block","cmd":"wipefs -a /dev/sdb","why":"harbor#1313 L2: a raw-device wipe/discard/overwrite verb that named no rule"}
+{"id":"C1-L2-ccg-109","rule":"device-wipe-verb","want":"block","cmd":"mke2fs /dev/sda1","why":"harbor#1313 L2: a filesystem-creation verb on a raw device the mkfs rule did not name"}
+{"id":"C1-L2-ccg-110","rule":"device-wipe-verb","want":"block","cmd":"shred /dev/sda","why":"harbor#1313 L2: a raw-device wipe/discard/overwrite verb that named no rule"}
+{"id":"C1-L2-ccg-111","rule":"device-sgdisk","want":"block","cmd":"sgdisk -Z /dev/sda","why":"harbor#1313 L2: zapping a device partition table, a wipe class only diskutil spelled"}
+{"id":"C1-L2-ccg-112","rule":"device-wipe-verb","want":"block","cmd":"blkdiscard /dev/nvme0n1","why":"harbor#1313 L2: a raw-device wipe/discard/overwrite verb that named no rule"}
+{"id":"C1-L2-ccg-113","rule":"device-parted","want":"block","cmd":"parted /dev/sda mklabel gpt","why":"harbor#1313 L2: writing a new partition label to a raw device destroys its table"}
+{"id":"C1-L2-ccg-115","rule":"device-wipe-verb","want":"block","cmd":"mkswap /dev/sdb","why":"harbor#1313 L2: formatting swap on a disk/partition overwrites its header like mkfs"}
+{"id":"C1-L2-ccg-116","rule":"device-badblocks","want":"block","cmd":"badblocks -w /dev/sdb","why":"harbor#1313 L2: a destructive write-mode surface scan of a raw device"}
+{"id":"C1-L2-allow-lsblk","rule":"device-wipe-verb","want":"allow","cmd":"lsblk","why":"harbor#1313 L2: read-only device inspection must stay allowed"}
+{"id":"C1-L2-allow-blkid","rule":"device-wipe-verb","want":"allow","cmd":"blkid /dev/sda","why":"harbor#1313 L2: read-only device inspection must stay allowed"}
+{"id":"C1-L2-allow-fdiskl","rule":"device-wipe-verb","want":"allow","cmd":"fdisk -l /dev/sda","why":"harbor#1313 L2: read-only device inspection must stay allowed"}
+{"id":"C1-L2-allow-wipefs-list","rule":"device-wipefs","want":"allow","cmd":"wipefs /dev/sda","why":"harbor#1313 L2: read-only device inspection must stay allowed"}
+{"id":"C1-L2-allow-badblocks-ro","rule":"device-badblocks","want":"allow","cmd":"badblocks /dev/sdb","why":"harbor#1313 L2: read-only device inspection must stay allowed"}
+{"id":"C1-L2-allow-parted-print","rule":"device-parted","want":"allow","cmd":"parted /dev/sda print","why":"harbor#1313 L2: read-only device inspection must stay allowed"}
+{"id":"C1-L2-allow-sgdisk-print","rule":"device-sgdisk","want":"allow","cmd":"sgdisk -p /dev/sda","why":"harbor#1313 L2: read-only device inspection must stay allowed"}
+{"id":"C1-L2-allow-dd-image","rule":"dd-to-device","want":"allow","cmd":"dd if=/dev/sda of=disk.img bs=1M","why":"harbor#1313 L2: ordinary dd imaging a disk to a file stays allowed"}
+{"id":"C1-L2-allow-dd-tofile","rule":"dd-to-device","want":"allow","cmd":"dd if=/dev/zero of=./scratch.bin count=1","why":"harbor#1313 L2: ordinary dd imaging a disk to a file stays allowed"}
+{"id":"C1-L2-allow-dd-copy-out","rule":"dd-to-system-file","want":"allow","cmd":"dd if=/etc/hosts of=./hosts.copy bs=4k","why":"harbor#1313 L2: dd READING a system file into a local copy is ordinary work"}
+{"id":"C1-L2-allow-ddvariant-image","rule":"dd-variant-to-device","want":"allow","cmd":"dcfldd if=./disk.img of=./copy.img","why":"harbor#1313 L2: a dd-family tool copying an image file to a file is ordinary work"}

@@ -1,0 +1,9 @@
+# registries/context-ratchet.tsv: the deploy gate for the CORE always-on surface (bin/context-budget.sh --ratchet).
+# Format: <bytes><TAB><date><TAB><why>, one row, the LAST row counts. It may only go down.
+# Raise it deliberately by editing the row and saying why in the commit; lower it when --ratchet reports a saving.
+# Covers policy/constitution.md + tracked ambient skill descriptions only; not the memory index, plugins, commands or injection.
+18823	2026-11-01	lowered 12455 B from 31278: the constitution's rationale moved to docs/explanation/ in harbor#1392
+18826	2026-11-02	raised 3 B: the constitution names the renamed skill-catalog (was skill-book) in harbor#966
+19624	2026-11-05	raised 798 B: constitution №2.13 (a second reader for answers that decide something) and the ambient audit-claims description, operator ask on harbor#1478
+19829	2026-11-07	raised 205 B: the ambient status-suggest-scan description, so a person with no mod can ask what they repeat (decision 28 on harbor#1485, harbor#1278 step 10)
+20014	2026-11-11	raised 185 B: the ambient member-setup description, so an agent knows organisation adoption exists and where it starts (operator ask on harbor#1278, adopt docs)

@@ -1,0 +1,3 @@
+id	strength	binding	modality	subject	target	relation	min	max	enforced_by	motivated_by	falsifier	anchor
+t.1	constitutional	box	duty	governance	clause	-	-	-	fx.one	-	x	Do the thing.
+t.2	policy	box	duty	governance	clause	-	-	-	judgment	-	x	Never do the other.

@@ -1,0 +1,13 @@
+# family-entries.tsv (harbor#1245) — a file of a family that module.private-use would take for private, declared its public entry.
+#
+# WHY THIS FILE EXISTS. standards/modularity.md M3 reads a `-lib` file as private to its family, and bin/deploy-install-lib.sh is the
+# one the install path of four other families (drift, lint, skill) calls by design: four subjects of module.private-use for a file
+# that is the deploy family's interface in fact. The operator decided on 2026-11-03 that it is the entry, so the file says so
+# rather than the rule being loosened for every `-lib` file.
+#
+# COLUMNS  system <TAB> path <TAB> reason
+#   system   the graph input the path belongs to (harbor)
+#   path     repo-relative file; it is public to every family, and module.private-use stops judging it
+#   reason   why this file, not a copy of it, is the family's interface
+system	path	reason
+harbor	bin/deploy-install-lib.sh	the deploy family's entry (operator decision 2026-11-03, harbor#1245): drift, lint and skill call its install functions on purpose

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- harbor:template-only
+     THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: render it.
+
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.agent.idle.plist > ~/Library/LaunchAgents/com.harbor.agent.idle.plist
+
+     This block is not installed; bin/deploy-launchd-render.sh drops it. -->
+<!-- docs/reference/checks.md `agent.idle` (harbor#1437): a subagent that is running and has written nothing for an hour, every 15 minutes (read only over the event bus, the session records and the subagent transcripts). Scheduled on the operator's word of 2026-11-02 ("everything
+     must be run automatically without asking me to turn something on"): INSTALLED BY DEPLOY (harbor:deploy-installs is the marker
+     bin/deploy-launchd-sync.sh reads; `sh bin/deploy.sh --apply --live` renders this file into ~/Library/LaunchAgents and loads it).
+     A Claude session cannot install this, by design (#555 decision 3).
+
+     It runs the INSTALLED agent-idle-check.sh, which reads only local state; no network, no keychain.
+
+     See it work: `launchctl kickstart -k gui/$(id -u)/com.harbor.agent.idle`, then `cat /tmp/com.harbor.agent.idle.out` and
+     `jq . ~/.claude/cache/checks/agent.idle.json`.
+
+     Disable (docs/reference/checks.md's two-lookup rule):
+       launchctl bootout gui/$(id -u)/com.harbor.agent.idle
+       rm ~/Library/LaunchAgents/com.harbor.agent.idle.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harbor.agent.idle</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>@HOME@/.claude/bin/agent-idle-check.sh</string>
+  </array>
+  <key>StartInterval</key><integer>900</integer>
+  <key>RunAtLoad</key><true/>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>ProcessType</key><string>Background</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/opt/homebrew/bin</string>
+    <key>HOME</key><string>@HOME@</string>
+  </dict>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.agent.idle.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.agent.idle.err</string>
+</dict>
+</plist>

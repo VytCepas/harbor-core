@@ -1,0 +1,158 @@
+# bq-schema.tsv (harbor#1278) — every table and field harbor's logs may hold in BigQuery, as data.
+#
+# WHY THIS FILE EXISTS. Release 2 sends structured rows only: a closed schema, enum or numeric fields, no free text (#1278, "Log scope").
+# So a fact table has no STRING column at all: every enum is an INT64 code into dim_enum, every time truncated. Free text then has no
+# column to land in, even past the validator. bin/bq-format.sh judges rows against this file, and the BigQuery table schemas are
+# generated from it (bq-format.sh bqschema), so the warehouse and the validator can't disagree.
+# IDENTITY (#1278 "Log scope", amended again 2026-11-09: level 2). The one per-person field is person_id, a random id made once per
+#   laptop account at install (or per Mac), never derived from a login or e-mail and never rotated. BigQuery holds no login, no HMAC
+#   and no mapping: nothing here leads back to a person, and the loader drops the GitHub author before staging.
+# GRAIN (D4, legal/dpia.md R3): a row that carries person_id is a day, never an hour or a minute. Finer times exist only in an
+#   agg_ table, which carries no id and counts the people behind each cell. Anything shared beyond the operator is an anonymous
+#   total with groups under 5 suppressed (templates/bq/views.sql, the v_shared_ views).
+#   A per-person row is replaced whole for its (source, person, day) on every load, so a replay never adds and no comment id is kept.
+#
+# COLUMNS  table <TAB> field <TAB> type <TAB> set <TAB> nullable <TAB> source <TAB> question
+#   type   code (INT64, a value of `set`) | codes (ARRAY<INT64>) | int, float (`set` is the range a..b) | bool | hour, minute
+#          (TIMESTAMP with the lower parts zero; never beside person_id) | day (DATE) | rid (BYTES 16, the random id) | hex6, hex8
+#          (BYTES 6 or 8: a core commit, a floor hash) | label (STRING: only in a dim_ table, only from this repo or the signed
+#          policy). Nothing else: `bq-format.sh schema` refuses any other type, so a `string` row is red.
+#   set    a set of contracts/bq-values.tsv; `a|b` accepts either. rule and check also take hub:<serial>:<index>, pack takes
+#          hubpack:<index> (D6): the admin's names stay on the board
+#   source where the value comes from on the laptop (member), the board, the loader or the Mac (operator)
+table	field	type	set	nullable	source	question
+heartbeat	schema_v	int	1..1	no	constant	a schema change is a new version, never a silent reshape
+heartbeat	source	code	source	no	loader	member and operator populations differ
+heartbeat	person_id	rid	-	no	the account's random id, decrypted by the loader from the heartbeat; the Mac's logs.id	per-account drift and silence, at day grain; the only per-person field, linked to nothing
+heartbeat	core	hex6	-	no	the day's last heartbeat core	version cohort
+heartbeat	load_id	int	1..9007199254740991	no	loader	joins ingest_audit
+heartbeat	day	day	-	no	GitHub comment created_at, the day	silent laptops by GitHub's clock, at day grain
+heartbeat	heartbeats	int	1..1000	no	valid comments that day	how often a laptop checks in
+heartbeat	contract	int	0..9999	no	the day's last heartbeat contract	contract drift
+heartbeat	floor	hex8	-	no	the day's last heartbeat floor	a floor unlike its commit's is tampered or broken
+heartbeat	serial	int	0..1000000	no	the day's last heartbeat serial	policy not applied
+heartbeat	mode	code	mode	no	the day's last heartbeat mode	who still runs shadow
+heartbeat	refusals	int	0..10000000	no	the day's heartbeat refusals, summed	quick totals, a cross-check on decision
+heartbeat	asks	int	0..10000000	no	the day's heartbeat asks, summed	quick totals
+heartbeat	requests	int	0..10000000	no	the day's heartbeat requests, summed	quick totals
+heartbeat	packs	codes	pack	no	the day's last heartbeat packs, as hubpack:<index> of that serial's policy	pack rollout
+decision	schema_v	int	1..1	no	constant	a schema change is a new version
+decision	source	code	source	no	loader or projector	populations differ
+decision	person_id	rid	-	no	the account's random id, decrypted by the loader from the heartbeat; the Mac's logs.id	per-account drift and silence, at day grain; the only per-person field, linked to nothing
+decision	core	hex6	-	no	the comment's heartbeat core, or the Mac's checkout	version cohort
+decision	load_id	int	1..9007199254740991	no	loader or projector	joins ingest_audit
+decision	day	day	-	no	event ts or ledger ts, the day	the grain (D4)
+decision	kind	code	hub_kind	no	event kind, or guard for a Mac ledger row	refusal, ask, request or guard
+decision	rule	code	rule	no	event rule (hub ids as hub:<serial>:<index>), or ledger r	block rate per rule
+decision	tier	code	tier	yes	event tier	tier tuning
+decision	target	code	target	yes	event target	what kind of thing rules stop
+decision	outcome	code	outcome	yes	event outcome	asks that proceeded, approvals
+decision	guard	code	guard	yes	ledger g (Mac)	which guard
+decision	verdict	code	verdict	yes	ledger d (Mac)	shadow would-blocks, wrapper denies
+decision	shape	code	shape	yes	ledger s (Mac)	flat against argv per rule
+decision	tool	code	tool	yes	ledger t (Mac)	which tool's calls a rule fires on
+decision	confinement	code	confinement	yes	ledger c (Mac)	the unconfined-escape census
+decision	verb_class	code	verb_class	yes	ledger x (Mac)	what an unconfined call was
+decision	count	int	1..10000000	no	event count, or rows	volume
+decision	distinct_subjects	int	1..10000000	yes	distinct ledger h, computed on the Mac; the digest never leaves	one command 40 times is not 40 commands
+decision	max_repeat	int	1..10000000	yes	the most rows of one h, computed on the Mac	false-positive candidates
+activity	schema_v	int	1..1	no	constant	a schema change is a new version
+activity	source	code	source	no	loader or projector	populations differ
+activity	person_id	rid	-	no	the account's random id, decrypted by the loader from the heartbeat; the Mac's logs.id	per-account drift and silence, at day grain; the only per-person field, linked to nothing
+activity	core	hex6	-	no	the comment's heartbeat core, or the Mac's checkout	version cohort
+activity	load_id	int	1..9007199254740991	no	loader or projector	joins ingest_audit
+activity	day	day	-	no	activity event ts (folded per day, D4), or the ledger day	day grain per person (D4)
+activity	tool	code	tool	no	activity event tool, or ledger t, or the failure's tool	which tools run
+activity	verb_class	code	verb_class	yes	activity event verb_class, or ledger x	what kind of command
+activity	verdict	code	verdict	yes	activity event verdict, or the call's strongest ledger verdict	the denominator of a block rate
+activity	calls	int	0..10000000	yes	activity event count, or distinct calls in the ledger	the denominator
+activity	error_class	code	error_class	yes	tool-failures e (Mac)	broken tools against blocked tools
+activity	failures	int	0..10000000	yes	tool-failures rows (Mac)	maintenance
+check_run	schema_v	int	1..1	no	constant	a schema change is a new version
+check_run	source	code	source	no	loader	populations differ
+check_run	person_id	rid	-	no	the account's random id, decrypted by the loader from the heartbeat; the Mac's logs.id	per-account drift and silence, at day grain; the only per-person field, linked to nothing
+check_run	core	hex6	-	no	the comment's heartbeat core	version cohort
+check_run	load_id	int	1..9007199254740991	no	loader	joins ingest_audit
+check_run	day	day	-	no	event ts, the day	the grain (D4)
+check_run	check	code	check|rule	no	event check (a hub rule as hub:<serial>:<index>)	floor-integrity, sync, dropped events
+check_run	outcome	code	outcome	no	event outcome	passed or failed
+check_run	count	int	1..10000000	no	events	volume
+lifecycle	schema_v	int	1..1	no	constant	a schema change is a new version
+lifecycle	source	code	source	no	loader	populations differ
+lifecycle	person_id	rid	-	no	the account's random id, decrypted by the loader from the heartbeat; the Mac's logs.id	per-account drift and silence, at day grain; the only per-person field, linked to nothing
+lifecycle	core	hex6	-	no	the comment's heartbeat core	version cohort
+lifecycle	load_id	int	1..9007199254740991	no	loader	joins ingest_audit
+lifecycle	day	day	-	no	event ts, the day	the grain (D4)
+lifecycle	kind	code	hub_kind	no	event kind: token or support	tokens about to lapse, support use
+lifecycle	outcome	code	outcome	no	event outcome	expiring, accepted, declined
+lifecycle	reason	code	reason	yes	support reason	why people ask for help
+lifecycle	days_left	int	0..400	yes	token days_left, the day's least	tokens about to lapse
+lifecycle	count	int	1..10000000	no	events	volume
+session	schema_v	int	1..1	no	constant	a schema change is a new version
+session	source	code	source	no	loader or projector	populations differ
+session	person_id	rid	-	no	the account's random id, decrypted by the loader from the heartbeat; the Mac's logs.id	per-account drift and silence, at day grain; the only per-person field, linked to nothing
+session	core	hex6	-	no	the comment's heartbeat core, or the Mac's checkout	version cohort
+session	load_id	int	1..9007199254740991	no	loader or projector	joins ingest_audit
+session	day	day	-	no	session event ts (folded per day, D4), or the bus day	usage cohorts
+session	started	int	0..100000	no	session events outcome=started, or bus session.start	sessions begun
+session	ended	int	0..100000	no	session events outcome=ended, or bus session.stop	sessions ended
+session	agents	int	0..1000000	yes	bus agent.spawn (Mac)	agent fan-out
+usage_daily	schema_v	int	1..1	no	constant	a schema change is a new version
+usage_daily	source	code	source	no	projector	operator only
+usage_daily	person_id	rid	-	no	the Mac's random id (logs.id)	per-account drift and silence, at day grain; the only per-person field, linked to nothing
+usage_daily	core	hex6	-	no	the Mac's checkout	version cohort
+usage_daily	load_id	int	1..9007199254740991	no	projector	joins ingest_audit
+usage_daily	day	day	-	no	usage.jsonl day	the grain
+usage_daily	model	code	model	no	usage.jsonl model	model mix
+usage_daily	entry	code	entry	no	usage.jsonl entry	which client
+usage_daily	msgs	int	0..1000000000000	no	usage.jsonl msgs	volume
+usage_daily	inp	int	0..1000000000000	no	usage.jsonl inp	tokens in
+usage_daily	out	int	0..1000000000000	no	usage.jsonl out	tokens out
+usage_daily	cc	int	0..1000000000000	no	usage.jsonl cc	cache writes
+usage_daily	cr	int	0..1000000000000	no	usage.jsonl cr	cache reads
+bus_counts	schema_v	int	1..1	no	constant	a schema change is a new version
+bus_counts	source	code	source	no	projector	operator only
+bus_counts	person_id	rid	-	no	the Mac's random id (logs.id)	per-account drift and silence, at day grain; the only per-person field, linked to nothing
+bus_counts	core	hex6	-	no	the Mac's checkout	version cohort
+bus_counts	load_id	int	1..9007199254740991	no	projector	joins ingest_audit
+bus_counts	day	day	-	no	bus ts, the day	the grain (D4)
+bus_counts	kind	code	bus_kind	no	bus kind; subject, repo and data never read	CI health, PR flow, agent fan-out
+bus_counts	count	int	1..10000000	no	rows	volume
+agg_approval	schema_v	int	1..1	no	constant	a schema change is a new version
+agg_approval	source	code	source	no	loader	which pipeline
+agg_approval	load_id	int	1..9007199254740991	no	loader	joins ingest_audit
+agg_approval	week	day	-	no	the Monday of the request issue's created_at week	latency over time, never per person
+agg_approval	rule	code	rule	no	the issue body rule (hub ids as hub:<serial>:<index>)	latency per rule
+agg_approval	tier	code	tier	no	the issue body tier	latency per tier
+agg_approval	people	int	1..100000	no	distinct requesters in the cell	small-cell suppression: a shared view hides a cell under 5
+agg_approval	requests	int	1..1000000	no	request issues opened	volume
+agg_approval	approved	int	0..1000000	no	of them, approved	approval rate
+agg_approval	used	int	0..1000000	no	of them, used	time from approval to use
+agg_approval	expired	int	0..1000000	no	of them, approved and never used before the issue closed	expiry rate
+agg_approval	latency_p50_min	int	0..1000000	yes	median minutes from issue to approve comment, GitHub's clock	approval latency
+agg_approval	latency_p90_min	int	0..1000000	yes	90th percentile of the same	approval latency
+agg_approval	use_p50_min	int	0..1000000	yes	median minutes from approve to used comment	time from approval to use
+ingest_audit	schema_v	int	1..1	no	constant	a schema change is a new version
+ingest_audit	load_id	int	1..9007199254740991	no	loader or projector	one row per load
+ingest_audit	run_at	minute	-	no	the load's clock	its absence is the alarm (J2)
+ingest_audit	source	code	source	no	loader or projector	which pipeline
+ingest_audit	rows_in	int	0..1000000000	no	rows projected	pipeline health
+ingest_audit	rows_loaded	int	0..1000000000	no	rows that passed	pipeline health
+ingest_audit	rows_refused	int	0..1000000000	no	rows refused, by bq-format.sh or the receipt gate	pipeline health
+ingest_audit	members_seen	int	0..100000	no	distinct logins read	members reached
+ingest_audit	laptop_dropped	int	0..1000000000	no	hub-events-dropped check events	what laptops dropped
+ingest_refusal	schema_v	int	1..1	no	constant	a schema change is a new version
+ingest_refusal	load_id	int	1..9007199254740991	no	loader or projector	joins ingest_audit
+ingest_refusal	run_at	minute	-	no	the load's clock	partition
+ingest_refusal	reason	code	ingest_reason	no	the first reason a row was refused	why rows were refused, never their value
+ingest_refusal	count	int	1..1000000000	no	rows refused for it	volume
+dim_enum	set	label	-	no	contracts/bq-values.tsv set	what a code means
+dim_enum	code	int	1..9007199254740991	no	contracts/bq-values.tsv code, or the hub code rule	append-only: a code never changes meaning
+dim_enum	value	label	-	no	contracts/bq-values.tsv value, or hub:<serial>:<index>	the readable value
+dim_policy	serial	int	1..1000000	no	signed policy serial	which policy rules a day
+dim_policy	issued	minute	-	no	policy issued, truncated	when it was signed
+dim_policy	mode	code	mode	no	policy rollout.mode	shadow or enforce
+dim_policy	silent_days	int	1..90	no	policy silent_days	v_silent
+dim_policy	pinned_core	hex6	-	no	policy core.commit	v_drift
+dim_policy	contract	int	0..9999	no	policy core.contract	v_drift
+dim_policy	load_id	int	1..9007199254740991	no	loader	joins ingest_audit

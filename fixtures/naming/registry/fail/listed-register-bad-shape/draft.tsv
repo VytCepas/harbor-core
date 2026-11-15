@@ -1,0 +1,7 @@
+# draft.tsv (harbor#950) — a listed register whose rows are the wrong width.
+#
+# WHY: a fixture for name.registry-shape. Its row has one column more than its header, so the file is read and judged, not skipped.
+#
+# standard_version: 2.0.0
+id	note
+morning	first	extra

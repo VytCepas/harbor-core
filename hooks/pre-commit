@@ -1,0 +1,85 @@
+#!/usr/bin/env sh
+# GOVERNANCE — the floor's behavioural gate, at the commit boundary.
+# Removed notes: docs/explanation/code-cases/hooks-pre-commit.md
+# Install:  ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
+# Bypass:   git commit --no-verify   (deliberate, visible, and rare)
+# The conventions linter lives in hooks/pre-push: it is repo-wide, so a staged-path filter cannot make it honest, and a minute per commit makes a hook bypass-bait. CI also requires it.
+# What stays is what cannot move: the smoke suite judges the STAGED tree (`git checkout-index`), a fact only this hook can see.
+set -eu
+ROOT="$(git rev-parse --show-toplevel)"
+
+# harbor#824: the smoke suite goes through hook_scrub_run (hooks/lib.sh), which drops the GIT_* vars git exports into this hook; the git calls here keep the real GIT_DIR to see the tree being committed.
+# hooks/lib.sh is resolved BESIDE THIS FILE, never under $ROOT (see hooks/pre-push).
+_hk_self="$0"
+while [ -L "$_hk_self" ]; do
+  _hk_link="$(readlink "$_hk_self")"
+  case "$_hk_link" in /*) _hk_self="$_hk_link" ;; *) _hk_self="$(dirname "$_hk_self")/$_hk_link" ;; esac
+done
+_hk_here="$(CDPATH= cd -- "$(dirname -- "$_hk_self")" && pwd)"
+if [ -f "$_hk_here/lib.sh" ]; then . "$_hk_here/lib.sh"
+else hook_scrub_run() { env "$@"; }  # same calling convention as the real one (VAR=val leading args), just no -u
+fi
+
+# -- M11 (harbor#44) · guard BEHAVIOUR, not just style, when the floor is touched --
+# The linter checks style; floor-test.sh asserts guards still BLOCK, but only in CI. Conditional, so the smoke cost lands only on a commit that stages a floor surface (2.11).
+# STAGED paths only (`--cached`), `--diff-filter=ACMR` so a deleted guard does not trigger a suite that fails for the wrong reason.
+# `case`, not grep: this box's grep is a ugrep wrapper that silently skips gitignored and binary-looking input.
+_floor_staged=""
+while IFS= read -r _p; do
+  [ -n "$_p" ] || continue
+  case "$_p" in
+    # deploy-harden.sh is a floor surface here (PR #124): the smoke set asserts its B1 deny guarantees.
+    bin/admission-*.sh|bin/library-admission.sh|bin/guard-*.sh|bin/floor-*.sh|bin/floor-*.awk|bin/admission-*.awk|bin/deploy-harden.sh|hooks/*)
+      _floor_staged="$_floor_staged$_p
+" ;;
+  esac
+done <<EOF
+$(git diff --cached --name-only --diff-filter=ACMR)
+EOF
+
+# control: git.pre-commit-admission-smoke
+if [ -n "$_floor_staged" ]; then
+  echo ""
+  echo "pre-commit: a floor surface is staged — running the guard smoke suite."
+  printf '%s' "$_floor_staged" | sed 's/^/            /'
+
+  # The suite runs against the INDEX, not the working tree (PR #124): with a broken guard staged and a fix unstaged, the checkout's copy passed and the commit recorded the broken blob.
+  # `git checkout-index -a` materialises exactly the staged tree.
+  _idx="$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")" || { echo "pre-commit: could not create a temp dir" >&2; exit 1; }
+  # Inside the confinement no .github/workflows directory may be made (harbor#555): the smoke suite does not judge workflows, so the second try omits them.
+  if ! git checkout-index -a -f --prefix="$_idx/" 2>/dev/null \
+     && ! { rm -rf "$_idx" && mkdir "$_idx" && git ls-files -z -- . ':(exclude).github/workflows' \
+            | git checkout-index -z --stdin -f --prefix="$_idx/" 2>/dev/null; }; then
+    rm -rf "$_idx"
+    echo "pre-commit: could not materialise the index — refusing to certify the working tree instead." >&2
+    exit 1
+  fi
+  _smoke_red() {
+    rm -rf "$_idx"
+    echo ""
+    echo "pre-commit: a GUARD REGRESSED — the smoke suite went red on the STAGED floor changes."
+    echo "            This is behaviour, not style, and it is the staged bytes, not your worktree."
+    echo "            Run the full suites before pushing:  sh tests/admission/baseline/*.test.sh, sh tests/admission/<guard>/*.test.sh"
+    echo "            Bypass only if you know why: git commit --no-verify"
+    exit 1
+  }
+  hook_scrub_run T_SMOKE=1 sh "$_idx/tests/admission/baseline/baseline.test.sh" || _smoke_red  # harbor#727: the main part's smoke
+  # harbor#667: the guards' verdicts are tables in tests/admission/<guard>/; smoke the staged guards' suites (a shared floor file stages every guard).
+  _gs=""
+  for _p in $_floor_staged; do
+    case "$_p" in
+      bin/library-admission.sh|bin/floor-*|bin/admission-normalize.awk|bin/deploy-harden.sh|hooks/*) _gs=" all"; break ;;
+      bin/admission-deny.sh|bin/admission-equivalence.sh|bin/admission-install.sh|bin/admission-observe.sh|bin/admission-remove.sh|bin/admission-verify.sh) _gs=" all"; break ;;   # the floor-* tools W7 renamed: no guard of their own
+      bin/admission-*.sh|bin/guard-*.sh) _g="${_p#bin/*-}"; _g="${_g%.sh}"   # the guard is its tests/admission/ directory (harbor#961 W6)
+        case "$_g" in self-edit) _g=selfedit ;; api-route) _g=apiroute ;; esac; _gs="$_gs $_g" ;;
+    esac
+  done
+  for _t in "$_idx"/tests/admission/bash/*.test.sh "$_idx"/tests/admission/cloud/*.test.sh \
+            "$_idx"/tests/admission/deliverables/*.test.sh "$_idx"/tests/admission/destroy/*.test.sh \
+            "$_idx"/tests/admission/egress/*.test.sh "$_idx"/tests/admission/self-edit/*.test.sh; do
+    [ -f "$_t" ] || continue
+    _n="${_t%/*}"; _n="${_n##*/}"
+    case "$_gs " in *" all "*|*" $_n "*) hook_scrub_run T_SMOKE=1 T_JOBS=8 sh "$_t" || _smoke_red ;; esac
+  done
+  rm -rf "$_idx"
+fi

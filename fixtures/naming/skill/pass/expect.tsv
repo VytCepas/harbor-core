@@ -1,0 +1,9 @@
+# fixtures/naming/skill/pass (harbor#950) — skill directories that MUST stay green. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> -
+name	rule
+tracking-standards	-
+tracking-cli	-
+skill-book	-
+access-ledger	-
+product	-
+measurement-audit	-

@@ -1,0 +1,16 @@
+# core-writes-allow.tsv (harbor#1275) - core scripts that may write into the checkout because the write is not a stray file.
+# Columns, tab-separated, one header row:  path  target  reason
+#   path    a tracked file, or a directory prefix ending in "/"
+#   target  the path under the tree the script writes, or * for every target of that script
+#   reason  required: why the write cannot leave an untracked file in a harbor-core clone
+# Read by bin/lint-core-writes.sh; a row without a reason refuses the run. A tracked core file, a gitignored path and a mkdir of a
+# tracked directory are never counted, so they need no row: a row is for what the rules cannot see (a file the script creates
+# and the repo does not track, written because the operator ran the command that says so).
+path	target	reason
+bin/status-plan-generate.sh	docs/generated/plan.md	writes only when its dev-layer source docs/reports/platform-build-tickets.md exists; in a core clone it refuses before any write (harbor#1275)
+bin/doc-shape.sh	*	--write only rewrites a docs/**/*.md that git already tracks, adding front matter in place; it never creates a file (harbor#1434)
+vendor/naming/doc-shape.sh	*	vendored copy of bin/doc-shape.sh; same in-place rewrite of tracked docs, never a new file (harbor#1434)
+bin/standard-inventory.sh	*	the page subcommand writes the two generated pages it owns (docs/reference/env.md, contracts/cli.md) only under --write, the fix column of contracts/fresh-checks.tsv (harbor#1431, harbor#1432)
+relay/install.sh	*	writes only under --root, which it refuses unless absolute (the tests pass a temp dir), or with no --root under / on the relay VM as root: etc/ and usr/local/bin/ are never paths in the checkout (harbor#1278)
+bin/bq-format.sh	contracts/bq-values.tsv	values --write regenerates the tracked file it owns, the fix line of its own --check; it never creates an untracked file (harbor#1278)
+bin/standard-vendor-scaffolder.sh	vendor/scaffolder	--write regenerates the vendored templates it owns, the fix line of its own --check; it never creates a stray file (harbor#1278)

@@ -1,0 +1,72 @@
+{"id":"C1-L8-gf-67-1","rule":"unit-file-write","want":"block","cmd":"cd /etc && echo x >> crontab","why":"harbor#1313: a relative crontab write after a cd into the system config dir"}
+{"id":"C1-L8-gf-105-1","rule":"startup-file-overwrite","want":"block","cmd":"cp evil /etc/profile.d","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-106-1","rule":"startup-file-overwrite","want":"block","cmd":"cp evil /etc/profile.d/","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-107-1","rule":"startup-file-overwrite","want":"block","cmd":"cp evil /etc/zsh","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-108-1","rule":"startup-file-overwrite","want":"block","cmd":"cp evil /etc/zsh/","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-109-1","rule":"unit-file-install","want":"block","cmd":"cp evil /var/spool/cron","why":"harbor#1313: a scheduler dir the SCHED list left out (cron spool, XDG autostart)"}
+{"id":"C1-L8-gf-110-1","rule":"unit-file-install","want":"block","cmd":"cp evil /var/spool/cron/","why":"harbor#1313: a scheduler dir the SCHED list left out (cron spool, XDG autostart)"}
+{"id":"C1-L8-gf-113-1","rule":"unit-file-install","want":"block","cmd":"cp evil ~/.config/autostart","why":"harbor#1313: a scheduler dir the SCHED list left out (cron spool, XDG autostart)"}
+{"id":"C1-L8-gf-114-1","rule":"unit-file-install","want":"block","cmd":"cp evil ~/.config/autostart/","why":"harbor#1313: a scheduler dir the SCHED list left out (cron spool, XDG autostart)"}
+{"id":"C1-L8-gf-115-1","rule":"startup-file-overwrite","want":"block","cmd":"cp evil ~/.config/fish/conf.d","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-116-1","rule":"startup-file-overwrite","want":"block","cmd":"cp evil ~/.config/fish/conf.d/","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-117-1","rule":"startup-file-overwrite","want":"block","cmd":"cp evil ~/.config/fish/conf.d/x.fish","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-145-1","rule":"unit-file-install","want":"block","cmd":"dd of=/etc/cron.d/x if=evil","why":"harbor#1313: dd writing a scheduler path, which the install writers did not list"}
+{"id":"C1-L8-gf-147-1","rule":"startup-file-dd","want":"block","cmd":"dd of=/etc/zsh/zshrc if=evil","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-213-1","rule":"startup-file-write","want":"block","cmd":"echo x >> ~/.ssh/authorized_keys","why":"harbor#1313: a Bash write into the ssh login-grant or client-config files, which only the file tools denied"}
+{"id":"C1-L8-gf-444-1","rule":"startup-file-overwrite","want":"block","cmd":"install -m 644 evil ~/.config/fish/conf.d/x.fish","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-456-1","rule":"startup-file-overwrite","want":"block","cmd":"install -m 755 evil /etc/profile.d","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-457-1","rule":"startup-file-overwrite","want":"block","cmd":"install -m 755 evil /etc/profile.d/","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-458-1","rule":"startup-file-overwrite","want":"block","cmd":"install -m 755 evil /etc/zsh","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-459-1","rule":"startup-file-overwrite","want":"block","cmd":"install -m 755 evil /etc/zsh/","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-460-1","rule":"unit-file-install","want":"block","cmd":"install -m 755 evil /var/spool/cron","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-461-1","rule":"unit-file-install","want":"block","cmd":"install -m 755 evil /var/spool/cron/","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-462-1","rule":"unit-file-install","want":"block","cmd":"install -m 755 evil ~/.config/autostart","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-463-1","rule":"unit-file-install","want":"block","cmd":"install -m 755 evil ~/.config/autostart/","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-464-1","rule":"startup-file-overwrite","want":"block","cmd":"install -m 755 evil ~/.config/fish/conf.d","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-465-1","rule":"startup-file-overwrite","want":"block","cmd":"install -m 755 evil ~/.config/fish/conf.d/","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-474-1","rule":"startup-file-rewrite","want":"block","cmd":"ln -sf evil ~/.ssh/rc","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-511-1","rule":"startup-file-overwrite","want":"block","cmd":"mv evil /etc/profile.d","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-512-1","rule":"startup-file-overwrite","want":"block","cmd":"mv evil /etc/profile.d/","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-513-1","rule":"startup-file-overwrite","want":"block","cmd":"mv evil /etc/zsh","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-514-1","rule":"startup-file-overwrite","want":"block","cmd":"mv evil /etc/zsh/","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-515-1","rule":"startup-file-overwrite","want":"block","cmd":"mv evil /etc/zsh/zprofile","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-516-1","rule":"unit-file-install","want":"block","cmd":"mv evil /var/spool/cron","why":"harbor#1313: a scheduler dir the SCHED list left out (cron spool, XDG autostart)"}
+{"id":"C1-L8-gf-517-1","rule":"unit-file-install","want":"block","cmd":"mv evil /var/spool/cron/","why":"harbor#1313: a scheduler dir the SCHED list left out (cron spool, XDG autostart)"}
+{"id":"C1-L8-gf-518-1","rule":"unit-file-install","want":"block","cmd":"mv evil ~/.config/autostart","why":"harbor#1313: a scheduler dir the SCHED list left out (cron spool, XDG autostart)"}
+{"id":"C1-L8-gf-519-1","rule":"unit-file-install","want":"block","cmd":"mv evil ~/.config/autostart/","why":"harbor#1313: a scheduler dir the SCHED list left out (cron spool, XDG autostart)"}
+{"id":"C1-L8-gf-520-1","rule":"startup-file-overwrite","want":"block","cmd":"mv evil ~/.config/fish/conf.d","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-521-1","rule":"startup-file-overwrite","want":"block","cmd":"mv evil ~/.config/fish/conf.d/","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-819-1","rule":"unit-file-install","want":"block","cmd":"sed -i 's/x/y/' /etc/crontab","why":"harbor#1313: a scheduler dir the SCHED list left out (cron spool, XDG autostart)"}
+{"id":"C1-L8-gf-838-1","rule":"startup-file-inplace","want":"block","cmd":"sed -nI '' 's/x/y/' ~/.bashrc","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-877-1","rule":"startup-file-rewrite","want":"block","cmd":"tee -a /etc/profile.d/x.sh evil","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-878-1","rule":"startup-file-rewrite","want":"block","cmd":"tee -a /etc/zsh/zshrc evil","why":"harbor#1313: a startup dir or file the RCFILE list left out (profile.d, system zsh, fish conf.d, ssh rc)"}
+{"id":"C1-L8-gf-879-1","rule":"unit-file-install","want":"block","cmd":"tee -a /var/spool/cron/root evil","why":"harbor#1313: a scheduler dir the SCHED list left out (cron spool, XDG autostart)"}
+{"id":"C1-L8-gf-884-1","rule":"startup-file-rewrite","want":"block","cmd":"tee -a ~/.ssh/authorized_keys evil","why":"harbor#1313: a Bash write into the ssh login-grant or client-config files, which only the file tools denied"}
+{"id":"C1-L8-gf-885-1","rule":"startup-file-rewrite","want":"block","cmd":"tee -a ~/.ssh/config evil","why":"harbor#1313: a Bash write into the ssh login-grant or client-config files, which only the file tools denied"}
+{"id":"C1-L8-gf-886-1","rule":"startup-file-rewrite","want":"block","cmd":"tee -a ~/.ssh/rc evil","why":"harbor#1313: a Bash write into the ssh login-grant or client-config files, which only the file tools denied"}
+{"id":"C1-L8-ok-1","rule":"startup-file-overwrite","want":"allow","cmd":"cp notes.txt ./profile.d/x.sh","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-2","rule":"startup-file-overwrite","want":"allow","cmd":"cp notes.txt ./zsh/aliases","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-3","rule":"startup-file-overwrite","want":"allow","cmd":"cp notes.txt /tmp/zshrc.bak","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-4","rule":"startup-file-overwrite","want":"allow","cmd":"cp /etc/zshrc /tmp/zshrc.bak","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-5","rule":"startup-file-overwrite","want":"allow","cmd":"cp notes.txt ./fish/conf.d/x.fish","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-6","rule":"startup-file-overwrite","want":"allow","cmd":"cp ~/.ssh/config /tmp/ssh-config.bak","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-7","rule":"startup-file-write","want":"allow","cmd":"cat /etc/profile.d/x.sh","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-8","rule":"startup-file-write","want":"allow","cmd":"ls /etc/zsh /etc/profile.d","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-9","rule":"startup-file-write","want":"allow","cmd":"cat ~/.ssh/config","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-10","rule":"startup-file-write","want":"allow","cmd":"echo x >> ~/.ssh/known_hosts","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-11","rule":"startup-file-write","want":"allow","cmd":"ssh-keyscan example.org >> ~/.ssh/known_hosts","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-12","rule":"startup-file-write","want":"allow","cmd":"echo x >> ./ssh/config","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-13","rule":"startup-file-inplace","want":"allow","cmd":"sed -n 1p ~/.bashrc","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-14","rule":"startup-file-inplace","want":"allow","cmd":"sed --silent p ~/.bashrc","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-15","rule":"startup-file-inplace","want":"allow","cmd":"sed -i 's/a/b/' ./src/app.py","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-16","rule":"startup-file-inplace","want":"allow","cmd":"sed -ne p ~/.bashrc","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-17","rule":"unit-file-install","want":"allow","cmd":"cp notes.txt ./autostart/x.desktop","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-18","rule":"unit-file-install","want":"allow","cmd":"cp notes.txt proj/crontab","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-19","rule":"unit-file-install","want":"allow","cmd":"dd if=/etc/cron.d/x of=/tmp/y","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-20","rule":"unit-file-install","want":"allow","cmd":"sed -n 1p /etc/crontab","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-21","rule":"unit-file-install","want":"allow","cmd":"sed -i 's/a/b/' ./crontab.txt","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-22","rule":"unit-file-install","want":"allow","cmd":"ls ~/.config/autostart /var/spool/cron","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-23","rule":"unit-file-write","want":"allow","cmd":"cd /tmp && echo x >> crontab","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-24","rule":"unit-file-write","want":"allow","cmd":"cd /etc && cat crontab","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-25","rule":"unit-file-write","want":"allow","cmd":"cd /tmp && echo x >> profile","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L8-ok-26","rule":"unit-file-write","want":"allow","cmd":"cat /var/spool/cron/root","why":"harbor#1313: ordinary work beside the fix stays allowed"}

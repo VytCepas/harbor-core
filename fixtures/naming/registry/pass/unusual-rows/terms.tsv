@@ -1,0 +1,5 @@
+cli-funnel	concept,domain	CLI funnel	cli	-	experimental	-	fixture	CLI funnel; funnel	-	a multi-class term whose word starts with an acronym
+legacy-widget	concept	legacy widget	-	-	deprecated	widget-store	fixture	-	-	a deprecated term naming its successor
+widget-store	concept	widget store	-	-	experimental	-	fixture	-	-	the successor
+probefam	family	probe family	policy	-	experimental	-	fixture	-	audit,lint	a family that depends on two registered families
+gizmo	kind	gizmo	-	-	experimental	-	fixture	-	-	a kind whose shapes take each bound form

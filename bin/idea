@@ -1,0 +1,138 @@
+#!/usr/bin/env sh
+# idea — extends G2 (harbor#26): append one idea to MEMORY/IDEAS.md and sync
+# it at event time, riding the same log repo, token and secret gate as the
+# Stop-hook work-log push.
+#
+# Event-time counterpart to worklog-push.sh's Stop-hook batch: the event IS the command, so no watcher, daemon or schedule.
+# Removed notes: docs/explanation/code-cases/bin-idea.md
+#   idea "some thought"        append → commit → push
+#   idea -n "some thought"     append → commit, stay local
+#   idea -l                    print the pool
+# Env: IDEA_NO_SCAN=1 skips the gitleaks gate (see the note at the gate).
+
+set -u
+
+# --help before any work (S4, harbor#140): the text is this header, read at runtime.
+case "${1:-}" in
+  -h|--help) awk 'NR<2{next} /^#/{ sub(/^# ?/,""); if ($0=="") exit; print; next } {exit}' "$0"
+             printf '\n(flags, if any, are in the header above and the source below.)\n'
+             exit 0 ;;
+esac
+# guard-lib for floor_gitleaks_staged ONLY: house practice, and keeps the scanner-dialect probe to one implementation.
+# shellcheck source=/dev/null
+. "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-admission.sh"
+# Status lines are log-lib's, on stderr: stdout is `idea -l`'s pool and nothing else (contracts/logging.md).
+# shellcheck source=/dev/null
+. "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
+log_init idea
+# shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
+LOG_FD=2
+
+CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+POOL_DIR="${HARBOR_MEMORY_LOG_DIR:-$CFG/MEMORY}"
+TOKEN_FILE="${HARBOR_MEMORY_LOG_TOKEN_FILE:-$CFG/.helm-log-token}"
+FILE="$POOL_DIR/IDEAS.md"
+SECRET="${HARBOR_ACCESS_SECRET_BIN:-${HARBOR_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}}"; [ -n "$SECRET" ] || SECRET="$HOME/.local/bin/secret"
+
+# idea_git: git with the work-log token as a header, never in the URL (No.4). The token is the store's `worklog-token`
+# only (harbor#1205, decided 2026-10-23); a leftover plaintext file is never read, only named with the command that moves it. Returns 3 when the store has no token.
+idea_git() {
+  if [ -f "$SECRET" ] && sh "$SECRET" run worklog-token IDEA_TOKEN -- true >/dev/null 2>&1; then
+    sh "$SECRET" run worklog-token IDEA_TOKEN -- sh -c \
+      'git -c http.extraHeader="Authorization: Basic $(printf "x-access-token:%s" "$IDEA_TOKEN" | base64 | tr -d "\n")" "$@"' idea-git "$@"  # secret-seam: entry worklog-token, injected by secret run
+    return
+  fi
+  return 3
+}
+
+die() {
+  log_fail "$1"
+  if [ -n "${2:-}" ]; then log_fix "$2"; else log_nofix "the header of bin/idea"; fi
+  log_end || :
+  exit 1
+}
+
+[ -d "$POOL_DIR/.git" ] || die "no log repo at $POOL_DIR"
+REPO="${HARBOR_MEMORY_LOG_REPO:-$(slug_of_url "$(git -C "$POOL_DIR" config --get remote.origin.url 2>/dev/null)")}"
+
+PUSH=1
+case "${1:-}" in
+  -l|--list)  if [ -f "$FILE" ]; then cat "$FILE"; exit 0; fi
+              log_note "pool is empty"; log_end; exit $? ;;
+  -n|--local) PUSH=0; shift ;;
+  -*)         die "unknown flag: $1" "idea -h" ;;
+esac
+
+[ $# -gt 0 ] || die "no idea given" 'idea "the idea"   # or: idea -n "the idea" to stay local, idea -l to list'
+TEXT="$*"
+case "$TEXT" in *[!\ ]*) ;; *) die "empty idea" 'idea "the idea"' ;; esac
+
+cd "$POOL_DIR" || die "cannot enter $POOL_DIR"
+
+# Pull first: one shared file across devices is where the work-log's host-partitioning does not apply. Offline is fine; the next idea or the Stop hook carries it up.
+if [ -n "$REPO" ]; then
+  idea_git pull --rebase --quiet "https://github.com/${REPO}.git" main >/dev/null 2>&1 || true
+fi
+
+if [ ! -f "$FILE" ]; then
+  cat > "$FILE" <<'HDR'
+---
+kind: idea-pool
+scope: L0
+---
+
+# Ideas
+
+Append-only. One line per idea, newest at the bottom, written by `idea`.
+
+Status is the whole lifecycle: `open` is the default; promote by editing the
+status word in place and appending a link to wherever the idea grew up —
+an epic, a ticket, a research note, or `dropped` with the reason.
+
+    - `i-0001` · 2026-07-29 · open · the raw thought
+    - `i-0002` · 2026-07-29 · epic · grew into [[harbor-epic]] section 4
+
+HDR
+fi
+
+# Snapshot BEFORE the append: a rejected idea must leave no trace, and `git reset` only unstages, so the secret would stay on disk and gitleaks would re-find it on every run, bricking the pool.
+SNAP=$(mktemp "${TMPDIR:-/tmp}/harbor.XXXXXX") || die "cannot create snapshot"
+cp "$FILE" "$SNAP" || die "cannot snapshot $FILE"
+revert() { cp "$SNAP" "$FILE" 2>/dev/null; git reset -q 2>/dev/null; rm -f "$SNAP"; }
+
+# grep -c prints 0 and exits 1 on no match, so `|| echo 0` would print two zeros; default only when stdout is empty.
+N=$(grep -c '^- `i-' "$FILE" 2>/dev/null) || true
+ID=$(printf 'i-%04d' $(( ${N:-0} + 1 )))
+printf -- '- `%s` · %s · open · %s\n' "$ID" "$(date +%Y-%m-%d)" "$TEXT" >> "$FILE"
+
+git add -- IDEAS.md >/dev/null 2>&1 || { revert; die "could not stage IDEAS.md"; }
+git diff --cached --quiet 2>/dev/null && { revert; log_note "nothing to commit"; log_end; exit $?; }
+
+# Fail-closed secret gate, as worklog-push.sh: an idea pool is where a pasted key goes to die. IDEA_NO_SCAN=1 bypasses deliberately.
+if [ "${IDEA_NO_SCAN:-0}" != "1" ]; then
+  if ! command -v gitleaks >/dev/null 2>&1; then
+    revert; die "gitleaks missing — blocked (fail-closed)" "$(pkg_hint gitleaks)   # or IDEA_NO_SCAN=1 to bypass deliberately"
+  fi
+  # One implementation of the subcommand probe, in guard-lib: gitleaks 8.18.4 has no `gitleaks git`, and an absent subcommand read as a secret and reverted every idea.
+  if ! floor_gitleaks_staged "$POOL_DIR" >/dev/null 2>&1; then
+    revert
+    die "that idea looks like it contains a secret — NOT written, pool unchanged" 'idea "the idea, without the secret"'
+  fi
+fi
+
+git commit -q -m "idea: $ID" || { revert; die "commit failed"; }
+rm -f "$SNAP"
+log_ok "$ID recorded"
+
+[ "$PUSH" = "1" ] || { log_note "local only (-n)"; log_end; exit $?; }
+[ -n "$REPO" ] || { log_warn "the log repo has no GitHub origin — committed locally"; log_end; exit $?; }
+_ir=0; idea_git push --quiet "https://github.com/${REPO}.git" main >/dev/null 2>&1 || _ir=$?
+case "$_ir" in
+  0) log_ok "pushed" ;;
+  3) log_warn "no token — committed locally"
+     if [ -f "$TOKEN_FILE" ]; then log_fix "sh $SECRET adopt $TOKEN_FILE worklog-token   # the plaintext file is no longer read; this moves it into the store"
+     else log_fix "copy the work-log token on GitHub, then: sh $(dirname -- "$0")/memory-log-token-save.sh   # stores worklog-token"; fi ;;
+  # Network is the only fail-open leg: the commit is safe locally and the Stop hook retries it.
+  *) log_warn "push failed (offline?) — commit is local, Stop hook will retry" ;;
+esac
+log_end; exit $?

@@ -1,0 +1,9 @@
+# fixtures/naming/commit/pass (harbor#978) — commit subjects and PR titles that MUST stay green. Read by bin/lint-name.sh --self-test.
+# COLUMNS  name <TAB> -
+name	rule
+fix(admission): stop exit-127	-
+feat(standard)!: drop the old alias	-
+chore(drift,standard): align both	-
+test(standard): a red fixture	-
+perf(admission): cache the registry read	-
+feat(tracking): a domain is a scope too	-

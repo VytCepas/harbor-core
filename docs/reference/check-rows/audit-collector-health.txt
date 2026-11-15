@@ -1,0 +1,4 @@
+watches: the collector's `status.json`, read as the operator by `bin/audit-collector-check.sh`: a heartbeat older than 15 min (the newer of a pass's end, `status.json`, and its start, `pass.started`, so a slow pass is not a dead collector), an unreadable source, or a new tamper event
+schedule: inside `status.fleet-snapshot`'s run; stands down with no collector installed; falsifier: `tests/audit/collector-check/collector-check.test.sh`
+notifies: `checks.log` and the `audit.collector-health` receipt, on red only
+red: the collector stopped, lost its read access, or recorded tampering: `sudo cat "/Library/Application Support/Harbor/collector/events.jsonl"`. Disable: delete `audit-collector-check.sh` from `~/.claude/bin` and this row

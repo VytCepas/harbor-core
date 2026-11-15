@@ -1,0 +1,4 @@
+watches: **the scaffolder templates a member laptop renders**, vendored in `vendor/scaffolder/` against the scaffolder checkout (harbor#1278), by `bin/standard-vendor-scaffolder.sh --check`, run by `bin/doc-fresh-verify.sh`: stale (differs from the scaffolder now), edited (differs from its manifest row), missing or extra
+schedule: not scheduled: runs with `sh bin/doc-fresh-verify.sh`; falsifier: `tests/member/standard/standard.test.sh` (one changed byte in a scratch checkout is red; no checkout is exit 3)
+notifies: a `FAIL` and a `fix` line on stderr, and a summary line in the terminal; exit 1 stale, 3 when there is no scaffolder checkout (one line, not a pass)
+red: the vendored copy differs from the scaffolder: run `sh bin/standard-vendor-scaffolder.sh --write` and commit. Disable: remove the `vendor/scaffolder/MANIFEST.tsv` row from `contracts/fresh-checks.tsv`

@@ -1,0 +1,106 @@
+# w3-bin.tsv (harbor#961, lane E): the mapping for the unwired bin/ PR; "decide" rows are not imported
+#
+# WHY THIS FILE EXISTS. The six-wave rename needs one reviewed table per wave before any file moves; the operator approves it wholesale at sitting B
+# (SITTING-B.md lists only the rows that need a decision). Names come from registered terms only (standards/naming/terms.tsv).
+#
+# COLUMNS  old_path TAB new_path TAB wave TAB recommendation TAB confidence TAB reason TAB remove_by TAB frozen TAB surface TAB reader
+#   recommendation  rename (imported) or decide (a question in SITTING-B.md; the importer skips it)
+#   confidence      high, med or low; low rows are asked in SITTING-B.md
+#   remove_by       the date the old name stops working. The importer ignores this column and writes "-": set it after the import (sitting-b.md has the command).
+#                   "-" here means no outside reader was found, a case-only move (a forwarder would be the file itself) or an internal constant (plain rename, no dual-read window)
+#   frozen          the frozen.tsv name this row touches (a stranger types it); such a row keeps an alias until remove_by
+#   surface         empty = bin or path (the importer picks); env and rule-id are not file moves
+#   reader          what outside the repo reads the old path (hook command, loaded LaunchAgent, deployed copy, PATH link, another repo, a memory note, frozen.tsv); "none found" means remove_by is - and no symlink is left. Checked 2026-10-27.
+#
+# standard_version: 2.0.0
+old_path	new_path	wave	recommendation	confidence	reason	remove_by	frozen	surface	reader
+bin/eval-tally.sh	bin/eval-tally.sh	W3	rename	high	A/B tally of two arms is an eval study (eval family)	-			none found
+bin/lint-adoption.sh	bin/lint-adoption.sh	W3	rename	high	asserts every vendored asset has an intake row, a lint over tracked files	-			none found
+bin/deploy-bootstrap.sh	bin/deploy-bootstrap.sh	W3	rename	high	takes a fresh machine to a passing deploy dry run	-			none found
+bin/access-browser-agent.sh	bin/access-browser-agent.sh	W3	rename	high	browser has no registered family; access (routes) is the closest (approved at sitting B)	2027-02-14			memory notes; ~/.claude/settings.json hook command
+bin/access-browser-cdp.mjs	bin/access-browser-cdp.mjs	W3	rename	high	same family as access-browser.sh (approved at sitting B)	-			none found
+bin/access-browser-hosts-add.sh	bin/access-browser-hosts-add.sh	W3	rename	high	same family as access-browser.sh (approved at sitting B)	-			none found
+bin/access-browser.sh	bin/access-browser.sh	W3	rename	high	the browser router; access (routes) is the closest family (approved at sitting B)	2027-02-14			memory notes; repo azimuth
+bin/doc-cite-verify.sh	bin/doc-cite-verify.sh	W3	rename	high	verifies the external URLs the docs cite (doc family, verify verb)	2027-02-14			repo harbor-private
+bin/doc-cited-paths.awk	bin/doc-cited-paths.awk	W3	rename	high	helper of the doc citation checks	2027-02-14			deployed copy ~/.claude/bin/
+bin/audit-collector-check.sh	bin/audit-collector-check.sh	W3	rename	high	the collector's findings destination; the collector is an independent inspection (audit)	2027-02-14			deployed copy ~/.claude/bin/
+bin/audit-collector-install.sh	bin/audit-collector-install.sh	W3	rename	high	installs the second-uid collector; install is the registered verb	2027-02-14			memory notes
+bin/context-compaction-digest.sh	bin/context-compaction-digest.sh	W3	rename	high	chooses what survives compaction into context	-			none found
+bin/status-dashboard-generate.sh	bin/status-dashboard-generate.sh	W3	rename	high	renders the local status dashboard; gen is a banned abbreviation	-			none found
+bin/doc-drive-push.sh	bin/doc-drive-push.sh	W3	rename	high	copies a deliverable into Drive; no deliverable family exists (approved at sitting B)	2027-02-14			memory notes
+bin/admission-deny-hash.sh	bin/admission-deny-hash.sh	W3	rename	med	derives the deny hashes the admission filter uses	-			none found
+bin/doc-index-generate.sh	bin/doc-index-generate.sh	W3	rename	high	generates docs/index.html; gen is a banned abbreviation	2027-02-14			repo azimuth
+bin/deploy-doctor.sh	bin/deploy-doctor.sh	W3	rename	med	probes the external tools a deploy depends on	-			none found
+bin/audit-triage.sh	bin/audit-triage.sh	W3	rename	high	failure-capture is a legacy alias of triage (D-38)	2027-02-14			deployed copy ~/.claude/bin/; memory notes; ~/Library/LaunchAgents plist
+bin/lint-findings.sh	bin/lint-findings.sh	W3	rename	high	the lint tier of the finding contract	2027-02-14			~/Library/LaunchAgents plist
+bin/status-fleet-glyph.sh	bin/status-fleet-glyph.sh	W3	rename	high	statusline glyph (status family)	2027-02-14			deployed copy ~/.claude/bin/; ~/.claude/settings.json hook command; ~/Library/LaunchAgents plist
+bin/context-peers.sh	bin/context-peers.sh	W3	rename	high	named in #961: fleet-sessions becomes context-peers	2027-02-14			deployed copy ~/.claude/bin/
+bin/doc-fresh-verify.sh	bin/doc-fresh-verify.sh	W3	rename	high	checks every generated file is current	-			none found
+bin/doc-freshness.sh	bin/doc-freshness.sh	W3	rename	high	per-document staleness over governing files	2027-02-14			memory notes
+bin/standard-frozen-generate.sh	bin/standard-frozen-generate.sh	W3	rename	high	generates frozen.tsv; gen is a banned abbreviation	-			none found
+bin/library-fs.sh	bin/library-fs.sh	W3	rename	high	the shared stat helper joins the registered library family (sitting B Q2)	2027-02-14			deployed copy ~/.claude/bin/
+bin/ci-github-plan.sh	bin/ci-github-plan.sh	W3	rename	med	watches the GitHub plan and branch protection that CI depends on	2027-02-14			deployed copy ~/.claude/bin/
+bin/doc-graph-generate.sh	bin/doc-graph-generate.sh	W3	rename	high	generates the reference graph; gen is a banned abbreviation	-			none found
+bin/access-github-app-install.sh	bin/access-github-app-install.sh	W3	rename	high	harbor is not allowed in a path; the script installs the in-session GitHub App (approved at sitting B)	-			none found
+bin/housekeeping-clean.sh	bin/housekeeping-clean.sh	W3	rename	high	the machine-decidable half of the housekeeping skill	2027-02-14			deployed copy ~/.claude/bin/
+bin/eval-hook-replay.sh	bin/eval-hook-replay.sh	W3	rename	high	measures the hook layer against real traffic	-			none found
+bin/context-injection-install.sh	bin/context-injection-install.sh	W3	rename	high	inject is a legacy alias of injection-rule	-			none found
+bin/drift-install.sh	bin/drift-install.sh	W3	rename	high	named in the standard-catalog fixture	2027-02-14			memory notes
+bin/deploy-install-lib.sh	bin/deploy-install-lib.sh	W3	rename	high	the install standard's shared half	2027-02-14			deployed copy ~/.claude/bin/; memory notes
+bin/deploy-install-stamp.sh	bin/deploy-install-stamp.sh	W3	rename	high	refuses a deploy that would remove installed work	2027-02-14			deployed copy ~/.claude/bin/; repo azimuth
+bin/doc-isa-index.sh	bin/doc-isa-index.sh	W3	rename	med	slug to repo to PR to ADR pointer table	-			none found
+bin/standard-issue-label.sh	bin/standard-issue-label.sh	W3	rename	high	labels an issue from the one taxonomy (approved at sitting B)	-			none found
+bin/deploy-live-verify.sh	bin/deploy-live-verify.sh	W3	rename	high	does the installed box work	-			none found
+bin/library-log.sh	bin/library-log.sh	W3	rename	high	the shared log format joins the registered library family (sitting B Q2)	2027-02-14			deployed copy ~/.claude/bin/; repo azimuth; repo harbor-private
+bin/ci-main-tip-verdict.sh	bin/ci-main-tip-verdict.sh	W3	rename	high	CI verdict of recent main commits	2027-02-14			deployed copy ~/.claude/bin/
+bin/scope-managed-mods.sh	bin/scope-managed-mods.sh	W3	rename	med	root-owned managed settings are a scope (where config applies)	-			none found
+bin/scope-managed-retention.sh	bin/scope-managed-retention.sh	W3	rename	med	managed-settings scope	-			none found
+bin/scope-managed-telemetry.sh	bin/scope-managed-telemetry.sh	W3	rename	med	managed-settings scope	-			none found
+bin/scope-marker-backfill.sh	bin/scope-marker-backfill.sh	W3	rename	high	declares the project-scope marker across the installed base	-			none found
+bin/gate-merge-check.sh	bin/gate-merge-check.sh	W3	rename	high	refuses a merge without a green verdict	2027-02-14			deployed copy ~/.claude/bin/; memory notes
+bin/gate-merged-check.sh	bin/gate-merged-check.sh	W3	rename	high	is this branch's work already in base	2027-02-14			deployed copy ~/.claude/bin/
+bin/lint-module-shape.sh	bin/lint-module-shape.sh	W3	rename	med	measures the module-shape questions; sits beside lint-module.sh	-			none found
+bin/admission-mutation-tier.sh	bin/admission-mutation-tier.sh	W3	rename	med	classifies a path by what writing it lets an agent do	-			none found
+bin/admission-observe-report.sh	bin/admission-observe-report.sh	W3	rename	high	reads the decision ledger	2027-02-14			deployed copy ~/.claude/bin/
+bin/eval-pass-score.sh	bin/eval-pass-score.sh	W3	rename	high	confidence gating over adversarial passes	2027-02-14			memory notes
+bin/status-plan-generate.sh	bin/status-plan-generate.sh	W3	rename	high	derives docs/generated/plan.md from falsifiers	-			none found
+bin/lint-port-paths.sh	bin/lint-port-paths.sh	W3	rename	high	flags pre-move repo addresses	2027-02-14			memory notes; repo harbor-private
+bin/gate-pr-wait.sh	bin/gate-pr-wait.sh	W3	rename	high	gate family covers PR wait	-			none found
+bin/eval-redteam-corpus.sh	bin/eval-redteam-corpus.sh	W3	rename	high	scores external red-team corpora against the guards	2027-02-14			~/Library/LaunchAgents plist
+bin/drift-reference-check.sh	bin/drift-reference-check.sh	W3	rename	med	validates the installed surface against the source	2027-02-14			deployed copy ~/.claude/bin/; repo harbor-private
+bin/drift-renew-check.sh	bin/drift-renew-check.sh	W3	rename	med	what is built and not running	2027-02-14			deployed copy ~/.claude/bin/; memory notes; ~/Library/LaunchAgents plist
+bin/eval-replay-corpus.sh	bin/eval-replay-corpus.sh	W3	rename	high	builds the real-traffic replay corpus	-			none found
+bin/eval-replay-worker.sh	bin/eval-replay-worker.sh	W3	rename	high	adjudicates one corpus record	-			none found
+bin/eval-replay.sh	bin/eval-replay.sh	W3	rename	high	measures a rule change against real traffic	-			none found
+bin/doc-report-verify.sh	bin/doc-report-verify.sh	W3	rename	high	does a generated artefact meet reports.md	2027-02-14			memory notes; repo azimuth
+bin/deploy-restore.sh	bin/deploy-restore.sh	W3	rename	high	puts a config dir back from a deploy snapshot	2027-02-14			deployed copy ~/.claude/bin/; memory notes
+bin/scope-roots.sh	bin/scope-roots.sh	W3	rename	med	resolves the named roots	2027-02-14			memory notes; repo azimuth; repo harbor-private (+1)
+bin/lint-rule-health.sh	bin/lint-rule-health.sh	W3	rename	high	which lint rules earn their keep	-			none found
+bin/ci-runner-switch.sh	bin/ci-runner-switch.sh	W3	rename	high	CI runner fallback	2027-02-14			deployed copy ~/.claude/bin/; memory notes
+bin/deploy-runtime-install.sh	bin/deploy-runtime-install.sh	W3	rename	high	installs the runtime, not the floor	2027-02-14			memory notes; repo harbor-private; ~/Library/LaunchAgents plist
+bin/test-sandbox-make.sh	bin/test-sandbox-make.sh	W3	rename	high	builds a disposable config copy for development	2027-02-14			deployed copy ~/.claude/bin/
+bin/memory-log-token-save.sh	bin/memory-log-token-save.sh	W3	rename	high	saves the work-log token (memory-store)	2027-02-14			deployed copy ~/.claude/bin/; memory notes
+bin/deploy-harden.sh	bin/deploy-harden.sh	W3	rename	med	hand-hardens the config dir before a deploy	2027-02-14			deployed copy ~/.claude/bin/; memory notes; repo studio
+bin/skill-collision-verify.sh	bin/skill-collision-verify.sh	W3	rename	high	pre-install collision scan	-			none found
+bin/skill-install.sh	bin/skill-install.sh	W3	rename	high	installs a tracked skill	2027-02-14			memory notes
+bin/status-generate.sh	bin/status-generate.sh	W3	rename	high	generates STATUS; gen is a banned abbreviation	2027-02-14			memory notes; repo azimuth
+bin/memory-store-check.sh	bin/memory-store-check.sh	W3	rename	high	bounds the memory store	2027-02-14			deployed copy ~/.claude/bin/
+bin/audit-stream-export.py	bin/audit-stream-export.py	W3	rename	high	makes one registered stream releasable	-			none found
+bin/audit-stream-lib.sh	bin/audit-stream-lib.sh	W3	rename	high	the append contract of the telemetry streams	2027-02-14			deployed copy ~/.claude/bin/
+bin/status-subagent-glyph.sh	bin/status-subagent-glyph.sh	W3	rename	high	subagent statusline	2027-02-14			deployed copy ~/.claude/bin/; ~/.claude/settings.json hook command
+bin/test-suite-cache.sh	bin/test-suite-cache.sh	W3	rename	high	test family: suites	-			none found
+bin/test-suite-run.sh	bin/test-suite-run.sh	W3	rename	high	test family: suites	2027-02-14			memory notes
+bin/test-suite-select.sh	bin/test-suite-select.sh	W3	rename	high	test family: suites	2027-02-14			memory notes
+bin/status-telemetry-report.sh	bin/status-telemetry-report.sh	W3	rename	med	turns captured signals into answers	-			none found
+bin/doc-visual-check.mjs	bin/doc-visual-check.mjs	W3	rename	high	renders and asserts generated HTML surfaces	2027-02-14			repo azimuth
+bin/doc-visual-check.sh	bin/doc-visual-check.sh	W3	rename	high	renders and asserts generated HTML surfaces	2027-02-14			repo azimuth
+bin/session-workflow-progress.sh	bin/session-workflow-progress.sh	W3	rename	high	is a workflow running or wedged; wf is a banned abbreviation	-			none found
+bin/scope-layers.sh	bin/scope-layers.sh	W3	rename	med	which paths are core and which stay dev (the share axis is scope)	-			none found
+bin/access-github-app/gh	bin/access-github-app/gh	W3	rename	high	the in-session GitHub App scripts; harbor is not allowed in a path (approved at sitting B)	-			none found
+bin/access-github-app/git-credential.sh	bin/access-github-app/git-credential.sh	W3	rename	high	same directory as harbor-app/gh (approved at sitting B)	-			none found
+bin/access-github-app/mint-token.sh	bin/access-github-app/mint-token.sh	W3	rename	high	same directory as harbor-app/gh (approved at sitting B)	-			none found
+bin/library-alert.sh	bin/library-alert.sh	W3	rename	high	the alert helpers join the registered library family (sitting B Q2)	2027-02-14			deployed copy ~/.claude/bin/
+bin/library-gate.sh	bin/library-gate.sh	W3	rename	high	the gate helpers join the registered library family (sitting B Q2)	2027-02-14			deployed copy ~/.claude/bin/
+commands/context-budget.md	commands/context-budget.md	W3	rename	high	slash command approved at sitting B Q5; harbor is not allowed in a path; the old name stays until remove_by	2027-02-14			deployed copy ~/.claude/commands/
+commands/gate-merge.md	commands/gate-merge.md	W3	rename	high	slash command approved at sitting B Q5; harbor is not allowed in a path; the old name stays until remove_by	2027-02-14			deployed copy ~/.claude/commands/; memory notes
+commands/skill-catalog.md	commands/skill-catalog.md	W3	rename	high	slash command approved at sitting B Q5; harbor is not allowed in a path; the old name stays until remove_by	2027-02-14			deployed copy ~/.claude/commands/

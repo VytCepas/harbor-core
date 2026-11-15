@@ -1,0 +1,18 @@
+# w6b-admission-hook-and-integrity.tsv (harbor#961, lane E): the mapping for admission-hook.sh and admission-integrity.sh behind a forwarder
+#
+# WHY THIS FILE EXISTS. The six-wave rename needs one reviewed table per wave before any file moves; the operator approves it wholesale at sitting B
+# (SITTING-B.md lists only the rows that need a decision). Names come from registered terms only (standards/naming/terms.tsv).
+#
+# COLUMNS  old_path TAB new_path TAB wave TAB recommendation TAB confidence TAB reason TAB remove_by TAB frozen TAB surface TAB reader
+#   recommendation  rename (imported) or decide (a question in SITTING-B.md; the importer skips it)
+#   confidence      high, med or low; low rows are asked in SITTING-B.md
+#   remove_by       the date the old name stops working. The importer ignores this column and writes "-": set it after the import (sitting-b.md has the command).
+#                   "-" here means no outside reader was found, a case-only move (a forwarder would be the file itself) or an internal constant (plain rename, no dual-read window)
+#   frozen          the frozen.tsv name this row touches (a stranger types it); such a row keeps an alias until remove_by
+#   surface         empty = bin or path (the importer picks); env and rule-id are not file moves
+#   reader          what outside the repo reads the old path (hook command, loaded LaunchAgent, deployed copy, PATH link, another repo, a memory note, frozen.tsv); "none found" means remove_by is - and no symlink is left. Checked 2026-10-27.
+#
+# standard_version: 2.0.0
+old_path	new_path	wave	recommendation	confidence	reason	remove_by	frozen	surface	reader
+bin/admission-hook.sh	bin/admission-hook.sh	W6b	rename	high	guard is a legacy alias of admission-hook (D-2); the fail-closed wrapper	2027-03-14			deployed copy ~/.claude/bin/; memory notes; ~/.claude/settings.json hook command
+bin/admission-integrity.sh	bin/admission-integrity.sh	W6b	rename	high	B6 integrity gate, renamed behind a forwarder (W6b)	2027-03-14			deployed copy ~/.claude/bin/; memory notes; ~/.claude/settings.json hook command

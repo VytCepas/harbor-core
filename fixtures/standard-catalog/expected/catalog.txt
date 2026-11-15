@@ -1,0 +1,23 @@
+harbor:README.md	README.md	harbor	platform	-	-	-	-	-	-	Fixture repo
+harbor:bin/deploy-push.sh	bin/deploy-push.sh	harbor	platform	control-plane	deploy	script	source	living	deploy	pushes the core set to a target.
+harbor:bin/drift-install.sh	bin/drift-install.sh	harbor	platform	control-plane	drift	script	source	living	drift	tells the installed bin apart from the tracked bin.
+harbor:bin/drift-skills.sh	bin/drift-skills.sh	harbor	platform	control-plane	drift	script	source	living	drift	tells installed skills apart from tracked skills.
+harbor:bin/legacy-thing.sh	bin/legacy-thing.sh	harbor	platform	-	-	script	source	living	-	a script whose name starts with no family.
+harbor:bin/lint-all.sh	bin/lint-all.sh	harbor	platform	control-plane	lint	script	source	living	lint	runs the conventions across the tree and reports each finding once.
+harbor:bin/old-sync.sh	bin/old-sync.sh	harbor	platform	control-plane	drift	script	source	living	drift	syncs, under a name from before the family led it.
+harbor:contracts/suite-paths.txt	contracts/suite-paths.txt	harbor	platform	-	-	-	-	-	-	fixture suite manifest: test, then what it reads
+harbor:docs/context-map.md	docs/context-map.md	harbor	platform	-	-	context-map	generated	generated	-	Context map
+harbor:docs/design/drift-model.md	docs/design/drift-model.md	harbor	platform	control-plane	drift	design	source	living	drift	Drift model
+harbor:docs/generated/summary.md	docs/generated/summary.md	harbor	platform	-	-	generated-doc	generated	generated	-	Summary
+harbor:docs/reports/2026-10-01-drift-audit.md	docs/reports/2026-10-01-drift-audit.md	harbor	platform	control-plane	drift	report	report	dated	drift	Drift audit
+harbor:generated-counts.md	generated-counts.md	harbor	platform	-	-	generated-doc	generated	generated	-	generated, do not edit
+harbor:skills/drift-check/SKILL.md	skills/drift-check/SKILL.md	harbor	platform	control-plane	drift	skill	source	living	drift	Check whether the installed skills match the tracked ones.
+harbor:skills/drift-check/notes.md	skills/drift-check/notes.md	harbor	platform	control-plane	drift	skill	source	living	drift	Notes
+harbor:standards/naming/aliases.tsv	standards/naming/aliases.tsv	harbor	platform	control-plane	standard	standard	source	versioned	standard	fixture aliases: the system's codename and the term it stands for
+harbor:standards/naming/controls.tsv	standards/naming/controls.tsv	harbor	platform	control-plane	standard	standard	source	versioned	standard	fixture controls: owner is the family that answers for the control
+harbor:standards/naming/kinds.tsv	standards/naming/kinds.tsv	harbor	platform	control-plane	standard	standard	source	versioned	standard	fixture kinds: folder, layer, level and lifecycle per kind
+harbor:standards/naming/renames.tsv	standards/naming/renames.tsv	harbor	platform	control-plane	standard	standard	source	versioned	standard	fixture renames: the new name carries the family
+harbor:standards/naming/terms.tsv	standards/naming/terms.tsv	harbor	platform	control-plane	standard	standard	source	versioned	standard	fixture terms: the smallest registry the catalog tests read
+harbor:tests/drift/install/basic.sh	tests/drift/install/basic.sh	harbor	platform	control-plane	drift	test	source	living	drift	drift install: a lagging copy is reported.
+harbor:tests/drift/skills/basic.sh	tests/drift/skills/basic.sh	harbor	platform	control-plane	drift	test	source	living	drift	drift skills: a changed skill is reported.
+harbor:tests/misc/legacy.sh	tests/misc/legacy.sh	harbor	platform	control-plane	drift	test	source	living	drift	a test in a directory that is no family; the suite manifest names its subject.

@@ -1,0 +1,18 @@
+# kinds.tsv (harbor#996 G2 fixture) - the shapes bin/standard-shape.sh --self-test judges: one kind per relation, plus
+# three with bounds. The columns are standards/naming/kinds.tsv; only id and required_relations are read.
+id	folder	path_pattern	surface	required_fields	layer	level	lifecycle	generator	share	required_relations	note
+k-registered-in	-	-	path	-	source	element	living	-	core	registered-in	a bare name is 1..*
+k-notifies	-	-	path	-	source	element	living	-	core	notifies	a bare name is 1..*
+k-disabled-by	-	-	path	-	source	element	living	-	core	disabled-by	a bare name is 1..*
+k-findings-land-in	-	-	path	-	source	element	living	-	core	findings-land-in	a bare name is 1..*
+k-enforced-by	-	-	path	-	source	element	living	-	core	enforced-by	a bare name is 1..*
+k-enforces	-	-	path	-	source	element	living	-	core	enforces	a bare name is 1..*
+k-red-proof	-	-	path	-	source	element	living	-	core	red-proof	a bare name is 1..*
+k-listed-in	-	-	path	-	source	element	living	-	core	listed-in	a bare name is 1..*
+k-derived-by	-	-	path	-	source	element	living	-	core	derived-by	a bare name is 1..*
+k-motivated-by	-	-	path	-	source	element	living	-	core	motivated-by	a bare name is 1..*
+k-implements	-	-	path	-	source	element	living	-	core	implements	a bare name is 1..*
+k-owned-by	-	-	path	-	source	element	living	-	core	owned-by	a bare name is 1..*
+k-one	-	-	path	-	source	element	living	-	core	registered-in:1..1	exactly one
+k-unusual	-	-	path	-	source	element	living	-	core	notifies:0..1 owned-by:2..*	optional, and open from two
+k-none	-	-	path	-	source	element	living	-	core	-	no shape at all

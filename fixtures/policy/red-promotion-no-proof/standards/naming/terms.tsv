@@ -1,0 +1,15 @@
+id	class	pref
+constitutional	tier,strength	constitutional
+policy	family,strength	policy
+duty	modality	duty
+prohibition	modality	prohibition
+enforced-by	relation	enforced by
+red-proof	relation	red proof
+write	moment	write
+session	moment	session
+commit	moment	commit
+pr	moment	pr
+merge	moment	merge
+schedule	moment	schedule
+deploy	moment	deploy
+judgment	moment	judgment

@@ -1,0 +1,4 @@
+watches: every repo `fleet.yaml` names: its `just test`, one row per repo — passed, failed, exit — read from the test contract's summary line (projects-orchestrator#316, `contracts/test-contract.md` rule 3)
+schedule: **not scheduled — `projects-orchestrator test-fleet` in a terminal**
+notifies: exit 1 + stdout, every line stamped
+red: a governed repo's tests are red on this box, or its `just test` ended without the contract's summary line

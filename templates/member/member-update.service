@@ -1,0 +1,25 @@
+# TEMPLATE, NOT INSTALLED (harbor#1278, step 12). Nothing installs this file, and nothing may until the operator says yes to this
+# schedule in so many words: a job that rewrites root-owned floor code is its own decision, apart from the rest of the install.
+#
+# To install after that yes, as root, by hand (Linux; WSL2 needs [boot] systemd=true in /etc/wsl.conf):
+#   copy this file as /etc/systemd/system/harbor-member-update.service and member-update.timer as harbor-member-update.timer, then:
+#   systemctl daemon-reload && systemctl enable --now harbor-member-update.timer
+# To see it work once:  systemctl start harbor-member-update.service ; journalctl -u harbor-member-update
+# To turn it off:       systemctl disable --now harbor-member-update.timer ; rm /etc/systemd/system/harbor-member-update.*
+#
+# One run per start, then it exits (bin/member-update.sh). It verifies the policy itself against the root-owned hub-signers, and <managed root>/member.conf
+# says whose policy that is, so this file needs no member named in it.
+[Unit]
+Description=Harbor member floor update: move the floor code to the core commit the hub pins, once
+ConditionPathExists=/etc/claude-code/harbor/bin/harbor-member-mode
+
+[Service]
+Type=oneshot
+User=root
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/bin/sh /etc/claude-code/harbor/bin/member-update.sh
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/etc/claude-code

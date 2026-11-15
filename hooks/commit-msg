@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+# GOVERNANCE (harbor#7) — the no-AI-attribution rule, as a mechanism.
+# Removed notes: docs/explanation/code-cases/hooks-commit-message.md
+# Install:  ln -sf ../../hooks/commit-msg .git/hooks/commit-msg
+# The single definition of the pattern (read by lint C2 and bin/lint-pr.sh), anchored at line start so a message may still discuss attribution.
+set -eu
+
+HARBOR_LINT_ATTRIBUTION_ERE='^[[:space:]]*(Co-Authored-By:.*(Claude|Anthropic)|(Generated|Created) with.*Claude|🤖 Generated|Claude-Session:)'
+
+MSG="${1:?commit-msg: no message file}"
+[ -f "$MSG" ] || exit 0
+
+# control: git.commit-message-no-ai-attribution
+if grep -vE '^[[:space:]]*#' "$MSG" | grep -qiE "${HARBOR_LINT_ATTRIBUTION_ERE:-}"; then
+  echo "" >&2
+  echo "commit-msg: AI attribution in the commit message." >&2
+  grep -nvE '^[[:space:]]*#' "$MSG" | grep -iE "${HARBOR_LINT_ATTRIBUTION_ERE:-}" | sed 's/^/            /' >&2
+  echo "" >&2
+  echo "            policy/constitution.md: no AI-attribution trailers in commits or PRs." >&2
+  echo "            Remove the trailer. Bypass deliberately with: git commit --no-verify" >&2
+  exit 1
+fi
+
+exit 0

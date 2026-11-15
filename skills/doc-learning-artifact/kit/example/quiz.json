@@ -1,0 +1,14 @@
+[
+  { "topic": "Cache layers", "sec": "u01", "type": "multi", "conf": "sure",
+    "q": "Which layers are caches?", "q2": "Second-language wording goes here.",
+    "opts": [["Browser cache", true], ["CDN edge", true], ["Origin database", false]],
+    "why": "The origin holds the real data; the other two keep copies." },
+  { "topic": "Write policies", "sec": "u02", "type": "match", "conf": "check",
+    "q": "Match the policy to its risk.",
+    "items": [["Write-back", "data loss on crash"], ["Write-through", "slower writes"]],
+    "choices": ["data loss on crash", "slower writes"],
+    "why": "Write-back delays the store write; write-through pays for it on every write." },
+  { "topic": "Write policies", "sec": "u02", "type": "number", "conf": "sure", "unit": "%", "answer": 90,
+    "q": "9 of 10 reads are served from the cache. What is the hit rate?",
+    "why": "9 / 10 = 90%." }
+]

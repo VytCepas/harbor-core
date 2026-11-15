@@ -1,0 +1,159 @@
+<section>
+<h2 id="monitor">Monitoring: what the box says about itself</h2>
+
+<p>A floor that cannot be observed is a floor nobody can tell is off. Every layer
+above answers <em>what should happen</em>; this one answers <em>what did</em>, and
+it is deliberately split by <strong>cadence</strong> rather than by subject —
+because the failure mode of self-monitoring is not missing data, it is a true
+statement shown so often that the reader stops seeing it.</p>
+
+<h3>Four rhythms, and why there are four</h3>
+
+<p>Each of these answers "what is true right now", and they differ only in when
+they are allowed to speak.</p>
+
+<ul>
+<li><strong>Every statusline tick</strong> — the numbers that <em>move</em>, over a
+cache, because a figure that changes between two glances is worth a glance.</li>
+<li><strong>Once per session, loudly</strong> — the verdicts that do <em>not</em>
+move: the work-log is dead, no guard is wired, the floor teeth drifted, the
+instruction surfaces are unpinned. Those stay true until a human fixes them, so a
+statusline row for them is wallpaper by the third session — and once the operator
+has learned to look past a row, that row can never carry an alarm again.</li>
+<li><strong>On demand</strong> — everything at once, rendered as a page, when the
+question is "what state is this box in" rather than "did anything change".</li>
+<li><strong>Between sessions</strong> — the health probe that runs when nobody is
+looking. The other three run only while the operator is already watching, which
+means a box left alone for a week reports nothing about the week.</li>
+</ul>
+
+<h4>What is armed, and by which installer</h4>
+<div class="scroll">
+<!--gen:cadence-->
+</div>
+
+<div class="note hazard">
+<span class="tag">Two installers, disjoint payloads, neither a superset</span>
+<p>"Is it on the box?" has two answers and no single list to read them off. A
+script present in this tree is not a script that runs on the machine, and the gap
+between the two is exactly where a guard can look installed and be inert. The
+table above is read out of the installers themselves rather than maintained beside
+them, because the wrong version of this fact is the expensive one: a document
+claiming a guard is wired, on a box where it is not, reads as coverage and is its
+opposite.</p>
+</div>
+
+<h3>What the table cannot show: opt-in, and unwired</h3>
+
+<p>Two guards are absent from the wiring above by design, because each is
+installed only when the operator asks for it by flag. One pins its own content and
+refuses to be edited out from under itself; the other <strong>can refuse to let a
+turn end</strong>, which is a behaviour nobody should acquire as a side effect of
+running an installer. An opt-in guard on a box that never opted in is not a guard,
+and the honest way to render that is a row that is not there.</p>
+
+<div class="note hazard">
+<span class="tag">An instrument in neither payload has never recorded a row</span>
+<p>One measurement tool here is in neither installer's file list, is reachable only
+as a script inside a repository checkout, and its ledger does not exist on this
+machine. Its stated falsifier is exactly right — <em>if this surface carries no
+verdicts after two weeks of ordinary use, close it on that evidence rather than by
+argument</em> — and the clock started the day it landed, so it is not yet due. But
+an empty ledger has two explanations and only one of them is about whether the
+instrument is wanted: nothing on the box can reach it. Waiting out the clock would
+score a plumbing gap as a verdict on the idea.</p>
+</div>
+
+<h4>The runtime payload</h4>
+<div class="scroll">
+<!--gen:runtime-->
+</div>
+
+<h3>The guard-decision ledger: write, read, judge</h3>
+
+<p>Three scripts, deliberately separated, because the thing that records must not
+be the thing that decides whether the record is bad news.</p>
+
+<p><strong>The writer runs even when the floor is switched off</strong>, and that is
+its entire point. Every guard opens with a kill-switch line, and the installer
+wires each of them through a single dispatcher — so under an override the wrapper
+returns immediately and the guard is never spawned: zero processes, zero rule
+evaluations, and nothing anywhere in the floor that could record that the operator
+walked past it. An override is the operator saying <em>this rule is wrong</em> with
+their hands instead of their mouth, which is the highest-quality feedback signal
+the system produces, and it was structurally unobservable. A hook that runs
+regardless of the switch is the only shape that can see it.</p>
+
+<p><strong>The writer is redacted by construction.</strong> Everything the reader
+can answer is answerable without any command text ever having been stored — which
+rules fire and how often, flat versus argv per rule, the override rate, and repeat
+blocks of the same shape. That last one is the interesting query: a rule blocking
+the same shape over and over is a <em>false-positive candidate</em>, and a guard
+that blocks ordinary work gets switched off, after which it protects nothing.</p>
+
+<p><strong>The judge is a third script</strong> — ten independent rules over one
+parsed record set, where no rule can affect another. Exit zero means nothing in the
+ledger says the floor is failing; it does not mean the floor is right.</p>
+
+<h3>The documents that are outputs, not sources</h3>
+
+<p>Several of this repository's own documents are generated — the counts file, the
+plan, and the architecture page you are reading — each with a lint rule that fails
+the build when it has been hand-edited or left stale. They are generated for the
+same reason: a count in prose is a copy of
+a fact that lives in code, and copies drift while reading perfectly. A sweep found
+the same fact stated three different ways in three documents, none of them wrong
+when written — one said eighteen rules where there were twenty-one, one said
+nineteen skills where there were twenty-eight, and one listed as open the risks
+another section of the same file said had shipped.</p>
+
+<p>The same argument settled a second question: which of the plan was actually
+built. Asked once, three methods gave three answers — parsing the ticket document
+for "DONE" said several workstreams were open, parsing each ticket's whole block
+agreed, and probing for the artifacts found every one of them already existed. The
+prose and the repository disagreed and the prose lost. So that document is derived
+too.</p>
+
+<div class="note why">
+<span class="tag">Staleness is a priority signal, not a failure flag</span>
+<p>A two-hundred-day-old contract may be exactly right. The per-document age report
+produces the question "still right?" rather than the verdict "wrong", and its age
+source is the version-control history, which already knows — so there is no second
+copy of a date to keep current.</p>
+</div>
+
+<div class="note why">
+<span class="tag">The cost of being always-on is measured, against a recorded prior</span>
+<p>Everything this repository loads into every session costs bytes on every turn,
+so the always-on surface is measured rather than estimated. The check compares
+today's figure with the last recorded measurement and fails when the deliberate
+surface has moved off it. It is deliberately <em>not</em> a ceiling: a ceiling is a
+number somebody invented, and it starts being argued with the first time real work
+needs to cross it.</p>
+</div>
+
+<h3>Unavailable is not zero</h3>
+
+<p>The rendered page states no counts of its own — every figure on it comes from
+the generators, the staleness probe or the version-control history, at render time,
+and the page itself is git-ignored because it is output rather than source. It is
+self-contained: inline styles, inline vector graphics, no fonts and no network at
+view time, because the moment you most want to know what state the floor is in is
+the moment the connection is gone.</p>
+
+<p>That property forces a rule. When the ticket source cannot be reached, the panel
+<strong>says so</strong> rather than rendering an empty chart. A burn-down showing
+zero open tickets because the network was down is the same class of lie as a test
+that cannot fail — it reads as good news, and a chart is a worse place for a stale
+number than prose is, because nobody greps a chart to find it.</p>
+
+<div class="note hazard">
+<span class="tag">External dependencies fail open, and silently</span>
+<p>A missing JSON processor once made every guard exit zero on a recursive delete
+of the root filesystem — the floor did not fail loudly, it failed <em>open</em>.
+That one dependency was fixed; nothing enumerated the other nineteen. The
+dependency prober therefore names <em>what breaks</em> on every row rather than
+whether the binary is present, because "gitleaks: missing" is only the cheap half
+of the sentence.</p>
+</div>
+</section>

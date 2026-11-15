@@ -1,0 +1,22 @@
+diff --git a/bin/access-token-probe.sh b/bin/access-token-probe.sh
+new file mode 100644
+--- /dev/null
++++ b/bin/access-token-probe.sh
+@@ -0,0 +1,7 @@
++#!/usr/bin/env sh
++# access-token-probe.sh — does the vendor API accept our token? Prints the HTTP status; files an issue when it does not.
++set -eu
++ACCOUNT="${1:?usage: access-token-probe.sh <account-id>}"
++CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://api.example.com/v2/accounts/$ACCOUNT?access_token=$VENDOR_TOKEN")"
++printf '%s\n' "$CODE"
++[ "$CODE" = 200 ] || sh -c "gh issue create --title 'token probe failed for $ACCOUNT' --body 'status $CODE'"
+diff --git a/docs/how-to/token-probe.md b/docs/how-to/token-probe.md
+new file mode 100644
+--- /dev/null
++++ b/docs/how-to/token-probe.md
+@@ -0,0 +1,5 @@
++# Probe a vendor token
++
++Every vendor token must be probed once a week, and a failed probe must always be fixed the same day.
++
++Run `sh bin/access-token-probe.sh <account-id>`.

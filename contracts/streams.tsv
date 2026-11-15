@@ -1,0 +1,51 @@
+# streams.tsv (harbor#1181) — every log, ledger and state file Harbor writes, one row each. Lane 1 records the
+# estate AS IT IS; later lanes move each row onto the one envelope, store and retention rule (docs/design/telemetry.md).
+# Checked by tests/audit/stream/registry.test.sh: the writer exists and its source names the needle, ids are
+# unique, enums are closed. A new writer without a row is the gap lane 3's lint closes.
+#
+# FORMAT  id <TAB> path <TAB> writer <TAB> needle <TAB> shape <TAB> retention <TAB> sensitivity <TAB> on_fail <TAB> target_on_fail <TAB> lane
+#   path        relative to the config dir unless it starts with ~/ or / (<host>, <id>, YYYY-MM-DD are placeholders)
+#   needle      a literal the writer's source must contain, so a moved or renamed sink fails the test
+#   retention   rotate-1 | archive | prune-14d | prune-15d | none | overwrite | rewrite-merge | truncate-prune | git
+#   sensitivity digest-only | derived | free-text | secret-adjacent
+#   on_fail     what happens today when the write fails: open (silent) | warn | closed
+#   target_on_fail  the decided policy (operator, 2026-10-09): spill everywhere except approvals and deploys -> block
+#   lane        the #1181 lane that moves the row onto the one system
+id	path	writer	needle	shape	retention	sensitivity	on_fail	target_on_fail	lane
+guard.decisions	MEMORY/OBSERVABILITY/<host>/guard-decisions.jsonl	bin/library-admission.sh	guard-decisions.jsonl	{v,ts,g,d,r,s,t,h,sk}	archive	digest-only	open	spill	3
+tool.failures	MEMORY/OBSERVABILITY/<host>/tool-failures.jsonl	hooks/failure-observe/failure-observe.sh	tool-failures.jsonl	{v,ts,t,e,k,h,s,ms}	archive	digest-only	open	spill	3
+events	~/.local/state/harbor/events/YYYY-MM-DD.jsonl	bin/event-bus.sh	KEEP_DAYS	{id,ts,src,kind,subject,repo,cause,data}	prune-14d	free-text	open	spill	4
+obligations	~/.local/state/harbor/obligations/ledger.jsonl	bin/status-obligations.sh	ledger.jsonl	{ts,obligation,to,event,closed_by}	none	derived	warn	spill	4
+usage.daily	MEMORY/USAGE/<host>/usage.jsonl	bin/status-usage-aggregate.sh	usage.jsonl	{day,model,entry,msgs,inp,out,cc,cr}	rewrite-merge	derived	closed	spill	4
+usage.sessions	MEMORY/USAGE/<host>/sessions.jsonl	bin/status-usage-aggregate.sh	sessions.jsonl	per-session counts and byte shares	rewrite-merge	derived	closed	spill	4
+checks.log	cache/checks.log	bin/lint-findings-run.sh	checks.log	[check:<id>] <ts> <msg>	none	free-text	open	spill	4
+check.receipts	cache/checks/<id>.json	bin/library-log.sh	receipt_dir	{id,ran_at,status,subjects}	overwrite	derived	warn	spill	4
+approvals	.helm-approvals/ledger.tsv	bin/library-gate.sh	.helm-approvals	time action args sha256 outcome	none	derived	warn	block	3
+approvals.queue	~/.local/state/harbor/approvals/queue.jsonl	bin/library-gate.sh	queue.jsonl	{id,ts,kind,repo,pr,sha,reason,command}	none	derived	open	block	3
+ci.reruns	cache/ci-reruns.tsv	bin/ci-runners-github-lib.sh	ci-reruns.tsv	slug id epoch	truncate-prune	derived	open	spill	4
+ci.lost	cache/ci-lost-reruns.tsv	bin/ci-runners-github-lib.sh	ci-lost-reruns.tsv	slug id epoch	truncate-prune	derived	open	spill	4
+ci.governor	cache/ci-governor/state	bin/ci-governor.sh	ci-governor	key=value current state	overwrite	derived	open	spill	2
+fleet.snapshot	cache/fleet-snapshot.json	bin/status-fleet-snapshot-refresh.sh	fleet-snapshot.json	per-repo snapshot array	overwrite	derived	warn	spill	2
+sweep	.helm-sweep.jsonl	bin/housekeeping-clean.sh	.helm-sweep.jsonl	{action,class,reason,verdict,subject,bytes}	overwrite	free-text	open	spill	4
+replay.baseline	.helm-replay/baseline.tsv	bin/eval-replay.sh	baseline.tsv	digest verdict rule	none	digest-only	closed	spill	4
+dispatch	.helm-dispatch/ledger	bin/event-dispatch.sh	.helm-dispatch	7-column TSV	prune-15d	derived	warn	spill	4
+worklog	MEMORY/WORK/sessions/<host>/<date>-<sid>.md	bin/library-admission.sh	WORK/sessions	markdown, one line per Stop	git	free-text	closed	spill	4
+fleet.snapshots	MEMORY/OBSERVABILITY/<host>/streams/fleet.snapshots/YYYY-MM-DD/<writer>.jsonl	bin/status-fleet-snapshot-refresh.sh	harbor_emit fleet.snapshots	envelope; attrs {repos,dirty,ahead,behind}, counts only	none	derived	warn	spill	3
+collector.store	/Library/Application Support/Harbor/collector/data/<inode>.jsonl	bin/audit-collector.sh	STORE/data/	byte copies of every source stream	none	digest-only	open	spill	5
+collector.events	/Library/Application Support/Harbor/collector/events.jsonl	bin/audit-collector.sh	EVENTS=	{ts,kind,path,detail}: truncated, edited, unreadable	none	derived	open	spill	5
+cc.events	/Library/Application Support/Harbor/collector/cc/YYYY-MM-DD.jsonl	bin/audit-otlp-receiver.py	cc-summary.json	{ts,event,attrs}: Claude Code events, allowlisted attributes only	none	derived	open	spill	5
+reconcile.state	cache/reconcile/<id>.tsv	bin/library-log.sh	cache/reconcile	key epoch (first seen)	overwrite	derived	warn	spill	4
+hub.sync	~/.local/state/harbor/hub/last-sync	bin/hub-sync.sh	last-sync	epoch<TAB>result (updated, unchanged, refused, unreachable)	overwrite	derived	open	spill	4
+hub.outbox	~/.local/state/harbor/hub/outbox.jsonl	bin/hub-events.sh	outbox.jsonl	{v,kind,ts,member,...}: closed vocabulary, contracts/hub.md Events; the only stream that leaves a member laptop	truncate-prune	derived	open	spill	5
+hub.tally	~/.local/state/harbor/hub/tally.jsonl	bin/hub-events.sh	tally.jsonl	{v,kind,ts,member,...}: activity and session counts (D9), day ts, folded in place when full; sent in the same comment as the outbox	truncate-prune	derived	open	spill	5
+hub.logs-id	<managed dir>/harbor-ids/<account>.id	bin/member-install.sh	harbor-ids	one line: 32 hex, the laptop account's random logs id (harbor#1278 Log scope level 2); root-owned, kept across reinstalls, never rotated; read by hub-events.sh and harbor hub id	none	derived	open	spill	5
+hub.notice	<managed dir>/harbor/notice-received	bin/member-install.sh	notice-received	one line: the day IT recorded the signed receipt of the logs notice; without it the sender keeps and sends no counts (legal/dpia.md R11)	overwrite	derived	open	spill	5
+logs.id	~/.config/harbor/logs.id	bin/bq-logs.sh	logs.id	one line: 32 hex, the Mac's random logs id, made once by harbor logs push	none	derived	open	spill	5
+logs.cursor	~/.local/state/harbor/logs/last-push	bin/bq-logs.sh	last-push	one line: the last day harbor logs push --apply sent	overwrite	derived	open	spill	5
+hub.send	~/.local/state/harbor/hub/last-send	bin/hub-events.sh	last-send	epoch of the last comment; beside it dropped, token-days-left, heartbeat-issue	overwrite	derived	open	spill	5
+hub.requests	~/.local/state/harbor/hub/requests/<id>.json	bin/hub-approval.sh	$HS/requests	{id,issue,rule,label,tier,target}: a hint, the board is checked every time	truncate-prune	derived	open	spill	5
+hub.used	~/.local/state/harbor/hub/used/<id>	bin/hub-approval.sh	$HS/used	one comment id per line: an advisory mark, expiry bounds replay	truncate-prune	derived	open	spill	5
+hub.board	~/.local/state/harbor/hub/board-state	bin/hub-board.sh	board-state	one word: ok, unreachable, token-expired, rate-limited	overwrite	derived	open	spill	5
+hub.open	~/.local/state/harbor/hub/open/<id>	bin/member-dispatch.sh	$STATE/open/$CALL_ID	session, asked, rule, tier, target, request id: one open call, closed by bin/member-post.sh	overwrite	derived	open	spill	5
+hub.opened	~/.local/state/harbor/hub/opened/<id>	bin/member-dispatch.sh	$STATE/opened/$RID	empty mark: this request's opened event was recorded	none	digest-only	open	spill	5
+hub.support	~/.local/state/harbor/hub/sup.<pid>/	bin/member-support.sh	$HS/sup.$$	one session's authorized_keys, known_hosts, session key and upterm state: gone when it ends	none	secret-adjacent	closed	spill	5

@@ -1,0 +1,14 @@
+find drift (family; subsystem control-plane): 13 entries
+script	bin/drift-install.sh	tells the installed bin apart from the tracked bin.
+script	bin/drift-skills.sh	tells installed skills apart from tracked skills.
+script	bin/old-sync.sh	syncs, under a name from before the family led it.
+test	tests/drift/install/basic.sh	drift install: a lagging copy is reported.
+test	tests/drift/skills/basic.sh	drift skills: a changed skill is reported.
+test	tests/misc/legacy.sh	a test in a directory that is no family; the suite manifest names its subject.
+check	drift.undeployed	warn is every tracked script installed
+doc	docs/design/drift-model.md	Drift model
+doc	docs/reports/2026-10-01-drift-audit.md	Drift audit
+control	drift.config-bin	warn lint: the live bin does not lag the repo
+control	drift.sandbox-copy	block lint: the sandbox copy is byte-identical
+skill	skills/drift-check/SKILL.md	Check whether the installed skills match the tracked ones.
+skill	skills/drift-check/notes.md	Notes

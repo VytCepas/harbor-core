@@ -1,0 +1,9 @@
+# fixtures/naming/repo-kind/fail/justfile-is-a-directory.txt (harbor#950) — justfile is a directory where the kind requires a file.
+# A repo-kind fixture is a manifest, built into a real directory before --check repo-kind reads it: one entry per line, docs/ for a directory,
+# <file> TAB <text> for a file with content. See bin/lint-name.sh rk_build.
+README.md
+AGENTS.md
+CLAUDE.md
+.agents/config.yaml	repo-kind: workload
+docs/
+justfile/

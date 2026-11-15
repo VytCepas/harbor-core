@@ -1,0 +1,6 @@
+# fixtures/naming/mcp-tool/fail (harbor#1301) — MCP tool names that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> rule ids
+name	rule
+mcp__harbor-chrome__goto	name.mcp-tool
+harbor_chrome__goto	name.mcp-tool
+mcp__harbor_chrome__Goto	name.mcp-tool

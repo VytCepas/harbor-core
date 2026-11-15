@@ -1,0 +1,4 @@
+watches: **Claude Code's own telemetry** (harbor#1181 lane 5b): `bin/audit-otlp-receiver.py` receives OTLP/HTTP JSON log events on 127.0.0.1:4318 and stores an allowlist of their attributes in the collector's store, with per-day counts in `cc-summary.json`
+schedule: **always on, launchd system daemon `com.harbor.audit.otlp-receiver` (KeepAlive)**, installed by `sudo sh bin/audit-collector-install.sh`; Claude Code sends to it once `sudo sh bin/scope-managed-telemetry.sh` pins the env; falsifier: `tests/audit/otlp-receiver/otlp-receiver.test.sh`
+notifies: read by `audit.collector-health` (guard-silent: 20+ client tool decisions in a UTC day and no guard row)
+red: nothing of its own: a stopped receiver shows as missing counts. Disable: `sudo launchctl bootout system/com.harbor.audit.otlp-receiver`, `sudo sh bin/scope-managed-telemetry.sh --uninstall`

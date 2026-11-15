@@ -1,0 +1,5 @@
+# lint-core-writes-baseline.txt (harbor#1275) - (core script, in-tree write target) pairs. Only goes down.
+# Derive:  sh bin/lint-core-writes.sh --count
+# (redirects, tee, touch, mkdir and the last argument of mv/cp/install/ln aimed at $ROOT or a variable built from it, in core shell
+#  scripts; minus gitignored paths, tracked core files and contracts/core-writes-allow.tsv. None open: status-plan-generate.sh is allow-listed.)
+0

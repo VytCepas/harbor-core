@@ -1,0 +1,8 @@
+# graph.tsv (harbor#996 G2 fixture) - over-max: registered-in is 1..1, counted over DISTINCT targets
+# relation	registered-in	fixture
+edge	from	to	site
+registered-in	fx:one	fx:reg	fx:one:1
+registered-in	fx:twice	fx:reg	fx:twice:1
+registered-in	fx:twice	fx:reg	fx:twice:2
+registered-in	fx:two	fx:reg-a	fx:two:1
+registered-in	fx:two	fx:reg-b	fx:two:1

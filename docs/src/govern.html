@@ -1,0 +1,88 @@
+<section>
+<h2 id="govern">Governance and the record</h2>
+
+<p>The third layer is the part an operator touches directly: one command-line
+entry point, a session record that survives the session, and the mechanism that
+decides <em>whose</em> rules apply where.</p>
+
+<h4>The CLI</h4>
+<p class="derived">One dispatcher over the scripts. The verb table is frozen under
+a lint rule — adding a verb is a contract change, which is why several capable
+scripts here are deliberately reachable only by name.</p>
+<div class="scroll">
+<!--gen:verbs-->
+</div>
+
+<h3>Detect and defer</h3>
+
+<p>Several repositories on this machine carry their own governance. When a session
+is standing inside one, the machine-wide rules <strong>stand down</strong> and the
+repository's own rules win. That deferral has to be one signal that every layer
+reads identically, or the layers disagree about who is in charge — which is worse
+than either answer.</p>
+
+<p>The resolution is a walk up from the working directory looking for a marker, and
+it has three properties worth stating because each was a decision:</p>
+
+<ul>
+<li><strong>The innermost marker wins</strong> for nested repositories.</li>
+<li><strong>Ambiguous resolves toward the repository</strong> for anything that
+writes the machine-wide log. When it is unclear whether a session is inside a
+governed tree, the safe answer is the one that writes less.</li>
+<li>The marker's value is constrained to two spellings, because for a key that
+three implementations in two languages read, the realistic failure is not a
+missing key — it is a near-miss value that looks marked to a human and resolves to
+nothing in code.</li>
+</ul>
+
+<div class="note hazard">
+<span class="tag">The seam's open edge</span>
+<p>Deferring to a repository's own governance means trusting the copy of the guard
+that <em>that</em> repository deployed — and a scaffolded repo keeps whatever
+version it was born with. One tree on this machine still runs a production guard
+from before a security fix landed six weeks earlier, because nothing back-fills a
+deployed hook after creation. An advisory lint rule compares every deployed copy
+against the authoritative one and names the direction of the difference, which is
+the only reason this is visible at all. It is advisory because it reads paths
+outside the repository, so it reports and never turns the build red.</p>
+</div>
+
+<h3>The work-log</h3>
+
+<p>Sessions write a record at their end: what was worked on, in a host-partitioned
+file, committed and pushed to a private repository. Two design points carry most of
+the value.</p>
+
+<p><strong>The push gate is fail-closed on secrets and fail-open on network.</strong>
+A secret scanner runs before anything leaves the machine, and a finding — or a
+<em>missing scanner</em> — stops the push. A network failure does not: the commit
+stays local and the next session's push retries it. Those two failures deserve
+opposite defaults, and collapsing them into one behaviour would either leak or lose
+the record.</p>
+
+<p><strong>Sessions that never reached the end are reconciled separately.</strong>
+A crash, a kill, or a sleeping machine means the end-of-session hook never ran. A
+second pass compares the log against the transcript index and writes a record for
+any session that is missing one, reading only filenames, directory names and
+modification times — it never opens a transcript.</p>
+
+<div class="note hazard">
+<span class="tag">A hazard this machine actually has</span>
+<p>The record is partitioned by hostname, and the hostname here intermittently
+answers something else. That flip has already forked host-sharded ledgers in this
+estate, so anything reading the log must union both host directories rather than
+trusting one. The injector's own ledger avoids the class entirely by keying on the
+session id instead.</p>
+</div>
+
+<h3>Where state lives</h3>
+
+<p>The machine's configuration directory holds identity, credentials, session
+history and work-log content, and it is treated as permanently private: nothing
+from it goes to a public remote, a web tool, or any service that caches or
+indexes. The boundary is the directory root and applies to everything beneath it.
+What enforces it is a deny list in the machine's settings — which binds subagent
+tool calls too — the fail-closed scanner on the work-log push, and the egress guard
+wired over both the write tools and the network channel, so it sees both halves of
+an exfiltration path.</p>
+</section>

@@ -1,0 +1,3 @@
+# Local scratch only. The gate refuses a hub file that is not part of the layout (contracts/hub.md).
+*.swp
+.DS_Store

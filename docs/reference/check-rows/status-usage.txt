@@ -1,0 +1,4 @@
+watches: durable per-day token usage, attributed
+schedule: 04:17 daily
+notifies: none — cache only
+red: —

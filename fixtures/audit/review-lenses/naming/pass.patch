@@ -1,0 +1,15 @@
+diff --git a/bin/access-rotate-report.sh b/bin/access-rotate-report.sh
+new file mode 100644
+--- /dev/null
++++ b/bin/access-rotate-report.sh
+@@ -0,0 +1,10 @@
++#!/usr/bin/env sh
++# access-rotate-report.sh — how many days since each access card was last reviewed, read from the cards' own front matter.
++set -eu
++DAYS="${HARBOR_ACCESS_ROTATE_DAYS:-30}"
++DIR="${1:?usage: access-rotate-report.sh <cards-dir>}"
++for f in "$DIR"/*.md; do
++  [ -f "$f" ] || continue
++  d="$(awk -F': ' '/^reviewed:/ { print $2; exit }' "$f")"
++  printf '%s reviewed %s (limit %s days)\n' "${f##*/}" "${d:-never}" "$DAYS"
++done

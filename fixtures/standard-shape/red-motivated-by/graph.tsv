@@ -1,0 +1,6 @@
+# graph.tsv (harbor#996 G2 fixture) - red-motivated-by: fx:ok carries motivated-by; fx:bad has one inbound and an edge of another relation, neither of which counts
+# relation	motivated-by	fixture
+edge	from	to	site
+motivated-by	fx:ok	fx:t	fx:ok:1
+motivated-by	fx:t	fx:bad	fx:t:1
+references	fx:bad	fx:t	fx:bad:1

@@ -1,0 +1,152 @@
+{
+  "heartbeat": {
+    "schema_v": 1,
+    "source": "member-hub",
+    "core": "0123456789ab",
+    "load_id": 7,
+    "day": "2026-11-07",
+    "heartbeats": 3,
+    "contract": 1,
+    "floor": "0123456789abcdef",
+    "serial": 3,
+    "mode": "shadow",
+    "refusals": 2,
+    "asks": 1,
+    "requests": 0,
+    "packs": [
+      "hubpack:0"
+    ],
+    "person_id": "0123456789abcdef0123456789abcdef"
+  },
+  "decision": {
+    "schema_v": 1,
+    "source": "member-hub",
+    "core": "0123456789ab",
+    "load_id": 7,
+    "day": "2026-11-07",
+    "kind": "refusal",
+    "rule": "admission.key-material-egress",
+    "tier": "very-high",
+    "target": "credential",
+    "count": 1,
+    "person_id": "0123456789abcdef0123456789abcdef"
+  },
+  "activity": {
+    "schema_v": 1,
+    "source": "member-hub",
+    "core": "0123456789ab",
+    "load_id": 7,
+    "day": "2026-11-07",
+    "tool": "Bash",
+    "verb_class": "readonly",
+    "verdict": "allow",
+    "calls": 40,
+    "person_id": "0123456789abcdef0123456789abcdef"
+  },
+  "check_run": {
+    "schema_v": 1,
+    "source": "member-hub",
+    "core": "0123456789ab",
+    "load_id": 7,
+    "day": "2026-11-07",
+    "check": "floor-integrity",
+    "outcome": "failed",
+    "count": 1,
+    "person_id": "0123456789abcdef0123456789abcdef"
+  },
+  "lifecycle": {
+    "schema_v": 1,
+    "source": "member-hub",
+    "core": "0123456789ab",
+    "load_id": 7,
+    "day": "2026-11-07",
+    "kind": "token",
+    "outcome": "expiring",
+    "days_left": 6,
+    "count": 1,
+    "person_id": "0123456789abcdef0123456789abcdef"
+  },
+  "session": {
+    "schema_v": 1,
+    "source": "member-hub",
+    "core": "0123456789ab",
+    "load_id": 7,
+    "day": "2026-11-07",
+    "started": 2,
+    "ended": 1,
+    "person_id": "0123456789abcdef0123456789abcdef"
+  },
+  "usage_daily": {
+    "schema_v": 1,
+    "source": "operator-mac",
+    "core": "0123456789ab",
+    "load_id": 7,
+    "day": "2026-11-07",
+    "model": "claude-opus-5-5",
+    "entry": "cli",
+    "msgs": 3,
+    "inp": 10,
+    "out": 20,
+    "cc": 30,
+    "cr": 40,
+    "person_id": "0123456789abcdef0123456789abcdef"
+  },
+  "bus_counts": {
+    "schema_v": 1,
+    "source": "operator-mac",
+    "core": "0123456789ab",
+    "load_id": 7,
+    "day": "2026-11-07",
+    "kind": "pr.opened",
+    "count": 2,
+    "person_id": "0123456789abcdef0123456789abcdef"
+  },
+  "agg_approval": {
+    "schema_v": 1,
+    "source": "member-hub",
+    "load_id": 7,
+    "week": "2026-11-02",
+    "rule": "hub:3:0",
+    "tier": "very-high",
+    "people": 3,
+    "requests": 4,
+    "approved": 3,
+    "used": 2,
+    "expired": 1,
+    "latency_p50_min": 42,
+    "latency_p90_min": 300,
+    "use_p50_min": 5
+  },
+  "ingest_audit": {
+    "schema_v": 1,
+    "load_id": 7,
+    "run_at": "2026-11-07T11:04:00Z",
+    "source": "member-hub",
+    "rows_in": 10,
+    "rows_loaded": 9,
+    "rows_refused": 1,
+    "members_seen": 2,
+    "laptop_dropped": 0
+  },
+  "ingest_refusal": {
+    "schema_v": 1,
+    "load_id": 7,
+    "run_at": "2026-11-07T11:04:00Z",
+    "reason": "not-in-set",
+    "count": 1
+  },
+  "dim_enum": {
+    "set": "rule",
+    "code": 1000003000,
+    "value": "hub:3:0"
+  },
+  "dim_policy": {
+    "serial": 3,
+    "issued": "2026-11-07T08:00:00Z",
+    "mode": "shadow",
+    "silent_days": 7,
+    "pinned_core": "0123456789ab",
+    "contract": 1,
+    "load_id": 7
+  }
+}

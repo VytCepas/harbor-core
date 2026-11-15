@@ -1,0 +1,486 @@
+{
+ "schema_version": 1,
+ "diagram_type": "architecture",
+ "meta": {
+  "title": "A wide fan whose checker report passes 64 KB",
+  "output": "fanout.html",
+  "quality_profile": "standard"
+ },
+ "layout": {
+  "mode": "grid",
+  "cellW": 168,
+  "cellH": 74,
+  "gapX": 120,
+  "gapY": 96,
+  "origin": [
+   100,
+   56
+  ],
+  "cols": 3
+ },
+ "components": [
+  {
+   "id": "n0",
+   "type": "backend",
+   "label": "Part 0 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 0,
+   "row": 0,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n1",
+   "type": "backend",
+   "label": "Part 1 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 0,
+   "row": 1,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n2",
+   "type": "backend",
+   "label": "Part 2 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 0,
+   "row": 2,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n3",
+   "type": "backend",
+   "label": "Part 3 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 0,
+   "row": 3,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n4",
+   "type": "backend",
+   "label": "Part 4 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 0,
+   "row": 4,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n5",
+   "type": "backend",
+   "label": "Part 5 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 0,
+   "row": 5,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n6",
+   "type": "backend",
+   "label": "Part 6 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 0,
+   "row": 6,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n7",
+   "type": "security",
+   "label": "Part 7 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 1,
+   "row": 0,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n8",
+   "type": "frontend",
+   "label": "Part 8 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 1,
+   "row": 1,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n9",
+   "type": "frontend",
+   "label": "Part 9 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 1,
+   "row": 2,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n10",
+   "type": "frontend",
+   "label": "Part 10 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 1,
+   "row": 3,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n11",
+   "type": "frontend",
+   "label": "Part 11 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 1,
+   "row": 4,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n12",
+   "type": "frontend",
+   "label": "Part 12 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 1,
+   "row": 6,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n13",
+   "type": "security",
+   "label": "Part 13 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 2,
+   "row": 0,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n14",
+   "type": "cloud",
+   "label": "Part 14 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 2,
+   "row": 1,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n15",
+   "type": "external",
+   "label": "Part 15 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 2,
+   "row": 2,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n16",
+   "type": "external",
+   "label": "Part 16 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 2,
+   "row": 3,
+   "size": [
+    160,
+    72
+   ]
+  },
+  {
+   "id": "n17",
+   "type": "database",
+   "label": "Part 17 of the fan",
+   "sublabel": "a neutral sublabel here",
+   "tag": "neutral tag text",
+   "col": 2,
+   "row": 6,
+   "size": [
+    160,
+    72
+   ]
+  }
+ ],
+ "connections": [
+  {
+   "id": "n0-n7",
+   "from": "n0",
+   "to": "n7",
+   "label": "edge 0",
+   "variant": "default"
+  },
+  {
+   "id": "n1-n7",
+   "from": "n1",
+   "to": "n7",
+   "label": "edge 1",
+   "variant": "emphasis"
+  },
+  {
+   "id": "n1-n8",
+   "from": "n1",
+   "to": "n8",
+   "label": "edge 2",
+   "variant": "default"
+  },
+  {
+   "id": "n1-n9",
+   "from": "n1",
+   "to": "n9",
+   "label": "edge 3",
+   "variant": "default"
+  },
+  {
+   "id": "n2-n8",
+   "from": "n2",
+   "to": "n8",
+   "label": "edge 4",
+   "variant": "default"
+  },
+  {
+   "id": "n2-n9",
+   "from": "n2",
+   "to": "n9",
+   "label": "edge 5",
+   "variant": "default"
+  },
+  {
+   "id": "n2-n10",
+   "from": "n2",
+   "to": "n10",
+   "label": "edge 6",
+   "variant": "default"
+  },
+  {
+   "id": "n2-n11",
+   "from": "n2",
+   "to": "n11",
+   "label": "edge 7",
+   "variant": "default"
+  },
+  {
+   "id": "n3-n8",
+   "from": "n3",
+   "to": "n8",
+   "label": "edge 8",
+   "variant": "default"
+  },
+  {
+   "id": "n3-n9",
+   "from": "n3",
+   "to": "n9",
+   "label": "edge 9",
+   "variant": "default"
+  },
+  {
+   "id": "n3-n10",
+   "from": "n3",
+   "to": "n10",
+   "label": "edge 10",
+   "variant": "default"
+  },
+  {
+   "id": "n3-n11",
+   "from": "n3",
+   "to": "n11",
+   "label": "edge 11",
+   "variant": "default"
+  },
+  {
+   "id": "n4-n8",
+   "from": "n4",
+   "to": "n8",
+   "label": "edge 12",
+   "variant": "default"
+  },
+  {
+   "id": "n4-n9",
+   "from": "n4",
+   "to": "n9",
+   "label": "edge 13",
+   "variant": "default"
+  },
+  {
+   "id": "n4-n10",
+   "from": "n4",
+   "to": "n10",
+   "label": "edge 14",
+   "variant": "default"
+  },
+  {
+   "id": "n5-n8",
+   "from": "n5",
+   "to": "n8",
+   "label": "edge 15",
+   "variant": "default"
+  },
+  {
+   "id": "n5-n9",
+   "from": "n5",
+   "to": "n9",
+   "label": "edge 16",
+   "variant": "default"
+  },
+  {
+   "id": "n5-n10",
+   "from": "n5",
+   "to": "n10",
+   "label": "edge 17",
+   "variant": "default"
+  },
+  {
+   "id": "n6-n10",
+   "from": "n6",
+   "to": "n10",
+   "label": "edge 18",
+   "variant": "default"
+  },
+  {
+   "id": "n6-n12",
+   "from": "n6",
+   "to": "n12",
+   "label": "edge 19",
+   "variant": "default"
+  },
+  {
+   "id": "n7-n13",
+   "from": "n7",
+   "to": "n13",
+   "label": "edge 20",
+   "variant": "default"
+  },
+  {
+   "id": "n8-n14",
+   "from": "n8",
+   "to": "n14",
+   "label": "edge 21",
+   "variant": "default"
+  },
+  {
+   "id": "n8-n15",
+   "from": "n8",
+   "to": "n15",
+   "label": "edge 22",
+   "variant": "default"
+  },
+  {
+   "id": "n9-n16",
+   "from": "n9",
+   "to": "n16",
+   "label": "edge 23",
+   "variant": "default"
+  },
+  {
+   "id": "n10-n16",
+   "from": "n10",
+   "to": "n16",
+   "label": "edge 24",
+   "variant": "default"
+  },
+  {
+   "id": "n11-n16",
+   "from": "n11",
+   "to": "n16",
+   "label": "edge 25",
+   "variant": "default"
+  },
+  {
+   "id": "n12-n17",
+   "from": "n12",
+   "to": "n17",
+   "label": "edge 26",
+   "variant": "default"
+  }
+ ],
+ "boundaries": [
+  {
+   "kind": "region",
+   "label": "Zone 0",
+   "wraps": [
+    "n0",
+    "n1",
+    "n2",
+    "n3",
+    "n4",
+    "n5",
+    "n6"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "Zone 1",
+   "wraps": [
+    "n7",
+    "n8",
+    "n9",
+    "n10",
+    "n11",
+    "n12"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "Zone 2",
+   "wraps": [
+    "n13",
+    "n14",
+    "n15",
+    "n16",
+    "n17"
+   ]
+  }
+ ]
+}

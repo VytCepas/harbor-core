@@ -1,0 +1,7 @@
+id	kind	tools	word	recogniser	quiet	line	switch_to	safe	install	requires	source
+fixture-verb	verb	Bash	fixturectl	^fixturectl report	^fixturectl report --dry-run	The agent can use a ready-made report for this job. Say stop suggesting this if you would rather not see it.	fixture-report	yes	-	-	core
+fixture-skill	skill	Bash	fixturetool	^fixturetool audit	-	There is a ready-made routine for this job. Say stop suggesting this if you would rather not see it.	fixture-routine	yes	-	@CFG@/skills/fixture-routine/SKILL.md	core
+fixture-connector	tool	mcp__fixture__export	-	^mcp__fixture__export 	-	A ready-made export already does this job. Say stop suggesting this if you would rather not see it.	fixture-export	no	-	-	core
+fixture-file	tool	Write	-	^Write csv deliverables$	-	A ready-made sheet already does this job. Say stop suggesting this if you would rather not see it.	fixture-sheet	yes	-	-	core
+fixture-mod	mod	mcp__fixture__panel	-	^mcp__fixture__panel 	-	A side panel would show this all the time. Ask your admin to add it.	fixture-panel	no	the admin setup	-	core
+fixture-intro	intro	-	-	-	-	Harbor can look over recent sessions for repeated work. Open /status-pane and press Scan to try it.	-	no	-	-	core

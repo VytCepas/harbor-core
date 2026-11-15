@@ -1,0 +1,4 @@
+watches: **a member project's own files and its governance marker after `harbor hub project register`** (harbor#1278), by `bin/member-standard.sh`: every file it may touch is compared with what it was before the run
+schedule: not scheduled: it runs inside `harbor hub project register`; falsifier: `tests/member/standard/standard.test.sh` (a planted overwrite and a planted marker, each seen red)
+notifies: a `FAIL` and a `fix` line on stderr, in the terminal of the person or agent that ran register; exit 1, no receipt
+red: a file the person had was changed, or `.agents/config.yaml`, `.agents/project-init.md` or `.claude/config.yaml` was written: restore it from git and report the run. Disable: remove the `member-standard.sh` call from `cmd_project` in `bin/hub.sh`

@@ -1,0 +1,26 @@
+tree: metasystem › domain › system › subsystem › family › component › element (D-57)
+metasystem
+  domain  platform
+    system  harbor
+      subsystem  control-plane
+        family  drift  (10 files)
+          component  design  (1)
+            docs/design/drift-model.md
+          component  script  (3)
+            bin/drift-install.sh
+            bin/drift-skills.sh
+            bin/old-sync.sh
+          component  skill  (2)
+            skills/drift-check/SKILL.md
+            skills/drift-check/notes.md
+          component  test  (3)
+            tests/drift/install/basic.sh
+            tests/drift/skills/basic.sh
+            tests/misc/legacy.sh
+            element  check  (1)
+              drift.undeployed
+            element  lint-rule  (2)
+              drift.config-bin
+              drift.sandbox-copy
+            element  report  (1)
+              docs/reports/2026-10-01-drift-audit.md

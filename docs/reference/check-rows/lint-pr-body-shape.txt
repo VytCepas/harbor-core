@@ -1,0 +1,4 @@
+watches: whether a PR body carries the six bold-labelled lines What, Touches, Breaks, Tested, BPN and Merge (harbor#978), by `bin/lint-pr.sh`
+schedule: not scheduled: run on a PR by hand or by a workflow that calls `bin/lint-pr.sh`; the mode is the rule's row in `standards/naming/controls.tsv` (warn prints, never fails). Falsifier: `sh tests/lint/pr/pr.test.sh`
+notifies: the tool's WARN line naming `[lint.pr-body-shape]`
+red: a PR body lacks a labelled line. Disable: delete the `lint.pr-body-shape` rows in `standards/naming/controls.tsv`, `bin/lint-pr.sh`, `tests/lint/pr/pr.test.sh` and their lines in `contracts/suites.txt` and `contracts/suite-paths.txt`

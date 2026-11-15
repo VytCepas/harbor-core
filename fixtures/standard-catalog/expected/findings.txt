@@ -1,0 +1,6 @@
+README.md	kind,layer,lifecycle,family,subsystem,owner	kind: README.md sits at the repo root, in no kinds.tsv row; layer: needs a kind; lifecycle: needs a kind; family: first word 'readme' of README.md is not a registered family; subsystem: needs a family; owner: needs a family
+bin/legacy-thing.sh	family,subsystem,owner	family: first word 'legacy' of legacy-thing.sh is not a registered family; subsystem: needs a family; owner: needs a family
+contracts/suite-paths.txt	kind,layer,lifecycle,family,subsystem,owner	kind: no kinds.tsv folder holds contracts/; layer: needs a kind; lifecycle: needs a kind; family: first word 'suite' of suite-paths.txt is not a registered family; subsystem: needs a family; owner: needs a family
+docs/context-map.md	family,subsystem,owner	family: first word 'context' of context-map.md is not a registered family; subsystem: needs a family; owner: needs a family
+docs/generated/summary.md	family,subsystem,owner	family: first word 'summary' of summary.md is not a registered family; subsystem: needs a family; owner: needs a family
+generated-counts.md	family,subsystem,owner	family: first word 'generated' of generated-counts.md is not a registered family; subsystem: needs a family; owner: needs a family

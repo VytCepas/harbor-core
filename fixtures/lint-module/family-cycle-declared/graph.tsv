@@ -1,0 +1,5 @@
+# graph.tsv (harbor#996) - a lint-module fixture, not a real graph
+# input	sysa	~/fixture/sysa	3 files
+# input	sysb	~/fixture/sysb	3 files
+edge	from	to	site
+references	sysa:bin/alpha-run.sh	sysa:bin/alpha-lib.sh	sysa:bin/alpha-run.sh:4

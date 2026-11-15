@@ -1,0 +1,5 @@
+{"id":"suggests-dated-folder","tool":"Write","path":"{home}/Desktop/Quarterly Report.html","has":"-quarterly-report/Quarterly Report.html"}
+{"id":"home-shown-as-tilde","tool":"Write","path":"{home}/report.html","has":"not loose in ~"}
+{"id":"slug-drops-trailing-date","tool":"Write","path":"{home}/notes-2026-09-01.md","has":"-notes/notes-2026-09-01.md"}
+{"id":"empty-slug-fallback","tool":"Write","path":"{home}/---.md","has":"-deliverable/---.md"}
+{"id":"bash-arm-names-the-file","cmd":"cp /tmp/a.html ~/dest.html","has":"~/dest.html"}

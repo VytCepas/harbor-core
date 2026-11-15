@@ -1,0 +1,2 @@
+// the engine
+const p = "src/internal/engine";   // read from sysb

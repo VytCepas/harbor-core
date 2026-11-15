@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- harbor:template-only
+     THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: render it.
+
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.gate.repo-drift.plist > ~/Library/LaunchAgents/com.harbor.gate.repo-drift.plist
+
+     This block is not installed; bin/deploy-launchd-render.sh drops it. -->
+<!-- docs/reference/checks.md `gate.repo-drift` (harbor#1437): each governed repo's GitHub rules against what the repo declares, weekly (Monday 08:40 local, read only: it applies nothing). Scheduled on the operator's word of 2026-11-02 ("everything
+     must be run automatically without asking me to turn something on"): INSTALLED BY DEPLOY (harbor:deploy-installs is the marker
+     bin/deploy-launchd-sync.sh reads; `sh bin/deploy.sh --apply --live` renders this file into ~/Library/LaunchAgents and loads it).
+     A Claude session cannot install this, by design (#555 decision 3).
+
+     It runs the INSTALLED check-run.sh (fresh clone of main); check-run.sh writes the receipt from the exit code. NEEDS THE KEYCHAIN for gh, hence Aqua.
+
+     See it work: `launchctl kickstart -k gui/$(id -u)/com.harbor.gate.repo-drift`, then `cat /tmp/com.harbor.gate.repo-drift.out` and
+     `jq . ~/.claude/cache/checks/gate.repo-drift.json`.
+
+     Disable (docs/reference/checks.md's two-lookup rule):
+       launchctl bootout gui/$(id -u)/com.harbor.gate.repo-drift
+       rm ~/Library/LaunchAgents/com.harbor.gate.repo-drift.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harbor.gate.repo-drift</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>@HOME@/.claude/bin/check-run.sh</string>
+    <string>gate.repo-drift</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>1</integer>
+    <key>Hour</key><integer>8</integer>
+    <key>Minute</key><integer>40</integer>
+  </dict>
+  <key>RunAtLoad</key><false/>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>ProcessType</key><string>Background</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/opt/homebrew/bin</string>
+    <key>HOME</key><string>@HOME@</string>
+  </dict>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.gate.repo-drift.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.gate.repo-drift.err</string>
+</dict>
+</plist>

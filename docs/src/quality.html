@@ -1,0 +1,66 @@
+<section>
+<h2 id="quality">Suites, CI and the merge gate</h2>
+
+<p>Every guard, every generator and every contract here has a suite, and the suites
+are selected by what changed rather than all run every time.</p>
+
+<h4>The suites, and what selects them</h4>
+<div class="scroll">
+<!--gen:suites-->
+</div>
+
+<h3>Change-class selection, and the direction it fails in</h3>
+
+<p>A docs-only pull request does not need the shell-guard corpus. A selector reads
+the changed paths against a declared mapping and runs only the suites that could be
+affected. <strong>Every uncertainty it meets resolves to running everything</strong>
+— a broken selector then costs CI time rather than coverage, which is the only
+acceptable direction for that failure.</p>
+
+<h4>The CI jobs</h4>
+<div class="scroll">
+<!--gen:ci-->
+</div>
+
+<div class="note why">
+<span class="tag">Jobs run even when their dependency failed</span>
+<p>A continuous-integration system skips a job whose prerequisite failed — and a
+<em>skipped</em> required check does not block a merge, because nothing about it
+reads as failing. A red suite could therefore hide behind a check that looked
+satisfied precisely because it never ran. The fan-in jobs here run regardless and
+decide for themselves, which is the same defect class as a test that cannot
+fail.</p>
+</div>
+
+<h3>Two things learned the expensive way</h3>
+
+<p><strong>A cancelled check scores as a failure and never clears.</strong> Not as
+pending, not as neutral — as a permanent red that blocks every merge until the
+workflow that produced it is changed. This cost a morning here, and the merge
+backstop now uses the platform's own required-check oracle rather than
+reimplementing the scoring, because that oracle already encodes the rule.</p>
+
+<p><strong>Branch protection can lapse silently.</strong> On some plan and
+visibility combinations the protection endpoint simply returns an error, every rule
+stops applying, nothing turns red, and the next red merge succeeds. The backstop
+therefore checks that protection <em>exists</em>, not only that the checks are
+green. An override is written into the merge commit rather than only the terminal,
+because "was this merged red, and did someone decide that?" is answerable six weeks
+later only from the history.</p>
+
+<h3>A test that cannot fail is worse than no test</h3>
+
+<p>This is the rule the rest of the quality layer is organised around, and it is
+enforced by habit and by mutation testing rather than by a linter: break the thing
+a test guards, watch it go red, restore. That is the only evidence a test tests
+anything.</p>
+
+<p>It is not hypothetical here. The injector's compaction rule had a passing
+assertion for its entire broken life, because the assertion checked that the engine
+produced output rather than that the output was accepted. A second class is
+quieter still: a group of silence-assertions once sat <em>above</em> the fixture
+whose absence they would pass without, making every one of them vacuous — exposed
+only because the paired must-still-fire half went red. <strong>Falsification proves
+discrimination, not correctness</strong>, so a new rule is asserted in both
+directions: the shape that must fire, and the near-miss that must not.</p>
+</section>

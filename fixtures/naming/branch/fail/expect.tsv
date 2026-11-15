@@ -1,0 +1,7 @@
+# fixtures/naming/branch/fail (harbor#978) — branches that MUST go red. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> rule ids
+name	rule
+Feature/foo	name.branch
+fix/admission-missing-hook	name.branch
+wip/949-x	name.branch
+fix/949-Mixed_Case	name.branch

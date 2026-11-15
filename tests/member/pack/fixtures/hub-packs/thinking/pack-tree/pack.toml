@@ -1,0 +1,4 @@
+name = "thinking"
+version = "1.0.0"
+harbor_version = ">=1"
+description = "Three reasoning methods: first principles, red team, systems thinking (MIT, vendored)"

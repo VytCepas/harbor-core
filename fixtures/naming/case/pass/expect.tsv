@@ -1,0 +1,16 @@
+# fixtures/naming/case/pass (harbor#950) — paths that MUST stay green on the case rule, the unusual ones first. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# A path that breaks another rule (a separator, a digit-led word, an unregistered extension) is no case finding: --check case reports name.case alone.
+# COLUMNS  name <TAB> -
+name	rule
+docs/my_notes.md	-
+docs/4ga-report.md	-
+x.final.v2.md	-
+docs/helm-log-export.md	-
+README.md	-
+LICENSE	-
+CHANGELOG.md	-
+SKILL.md	-
+skills/tracking-standards/SKILL.md	-
+CLAUDE.md.tmpl	-
+.github/ISSUE_TEMPLATE/bug.md	-
+docs/reports/2026-10-03-review.md	-

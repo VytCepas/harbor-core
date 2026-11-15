@@ -1,0 +1,11 @@
+# SUITES RUN UNDER dash AS WELL (harbor#961) — macOS /bin/sh forgives bashisms dash will not.
+# Read by .github/workflows/governance.yml, step "Statusline golden output (dash)": each line is
+# asked of bin/test-suite-select.sh and, when selected, run as `sh <suite> --dash`. A suite run WITH
+# ARGUMENTS cannot go through the bin/test-suite-run.sh pool, which is why this is its own list.
+#
+# FORMAT: one suite path per line, `#` comments. An empty list FAILS the step rather than passing
+# with nothing run. tests/test/suite-select/suite-select.test.sh checks every line is a manifest suite on disk.
+tests/status/statusline/statusline.test.sh
+tests/status/statusline/fleet.test.sh
+tests/status/statusline/row2.test.sh
+tests/status/statusline/subagent.test.sh

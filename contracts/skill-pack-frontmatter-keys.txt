@@ -1,0 +1,11 @@
+# Allowed top-level front-matter keys in an .md a pack installs under skill-packs/ (bin/pack.sh; harbor#1149). These files are
+# data a core skill's checker reads (skills/topology/packs/README.md), never a skill or a command: the harness does not load them,
+# so the keys are the checker's own, derived from the pack_field calls in skills/topology/bin/check-topology.sh, and the general
+# list in pack-frontmatter-keys.txt does not apply to them. hooks is never listed.
+pack
+triggers
+layers
+requires
+enums
+requires-cells
+requires-cells-if-identifier

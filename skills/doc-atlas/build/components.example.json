@@ -1,0 +1,190 @@
+{
+ "estate": {
+  "claude": {
+   "kind": "The only client",
+   "role": "Every Claude surface that reaches this estate.",
+   "facts": [["Hosted", "4 connectors on claude.ai"], ["Native", "Claude Code, on a laptop"], ["Admission", "pre-registered, or CIMD"]],
+   "why": "Nothing else calls these servers, so admission is the whole perimeter. There is no second door."
+  },
+  "mcpauth": {
+   "kind": "Authorization server",
+   "role": "Issues every token this estate accepts.",
+   "facts": [["Protocol", "OAuth 2.1 + PKCE"], ["Signing key", "Secret Manager"], ["Identity", "Google, behind /callback"], ["Cold start", "min-instances 1"]],
+   "why": "A cold start inside Claude's 10-second discovery budget is a failed sign-in, not a slow one."
+  },
+  "google": {
+   "kind": "Identity check",
+   "role": "Answers one question: is this a real @example.invalid person?",
+   "facts": [["Reached at", "/callback, after consent"], ["Domain", "@example.invalid only"], ["Is the issuer", "no — we are"]],
+   "why": "A Google token is never accepted here. It proves the person, and nothing else."
+  },
+  "secrets": {
+   "kind": "Secret store",
+   "role": "Holds the six secrets the auth server needs.",
+   "facts": [["Holds", "signing key, Google creds"], ["Also", "cookie and state keys"], ["Readable by", "mcp-auth alone"]],
+   "why": "Keeps the signing key out of the image and out of every other service's environment."
+  },
+  "warehouse": {
+   "kind": "Resource server",
+   "role": "Read-only MCP over the reporting warehouse.",
+   "facts": [["Tools", "3, none take SQL"], ["Grant", "7 dimensions per person"], ["Upstream", "Warehouse, read-only"]],
+   "why": "Makes a permission a sentence about a read, rather than a grant on a dataset."
+  },
+  "workqueue": {
+   "kind": "Resource server",
+   "role": "Files work into the intake queue.",
+   "facts": [["Tools", "3"], ["Grant", "1 dimension"], ["Upstream", "GitHub, one shared token"]],
+   "why": "The token is shared, so GitHub cannot say who filed anything. The audit line is the only attribution."
+  },
+  "roster": {
+   "kind": "Policy store",
+   "role": "Says who may do what, per service.",
+   "facts": [["Where", "GCS, one object per service"], ["Read", "every call, never cached"], ["Absent key", "denied, not unlimited"]],
+   "why": "Removing a row takes effect on that person's next call, not their next login."
+  },
+  "wh": {
+   "kind": "Warehouse",
+   "role": "Holds the numbers the reports are built from.",
+   "facts": [["Project", "example-data-project"], ["Reachable", "23 report tables"], ["Access", "read-only"]],
+   "why": "Read-only means the worst outcome of a bug here is a wrong answer, never a changed one."
+  },
+  "gh": {
+   "kind": "Work queue",
+   "role": "Receives filed cards.",
+   "facts": [["Repo", "the intake repo"], ["Credential", "one shared token"], ["Attribution", "from our audit line"]],
+   "why": "One token for everybody, so every allow has to be logged on our side to be attributable at all."
+  }
+ },
+ "admission": {
+  "claudecode": {
+   "kind": "Native client",
+   "role": "Proves which client it is with no configuration.",
+   "facts": [["Redirect", "loopback :3118"], ["Client id", "a URL it publishes"], ["Registration", "none typed by anyone"]],
+   "why": "It has no field to type a client id into. The whole sequence exists because of that."
+  },
+  "warehouse": {
+   "kind": "Resource server",
+   "role": "Refuses the first call, correctly.",
+   "facts": [["Answers", "401 + resource_metadata"], ["Carries", "the auth server's address"], ["Then accepts", "an audience-bound token"]],
+   "why": "Its refusal is how a client that knows nothing finds its way in."
+  },
+  "mcpauth": {
+   "kind": "Authorization server",
+   "role": "Decides whether an unconfigured client may be admitted.",
+   "facts": [["Advertises", "CIMD supported, auth none"], ["Fetches", "the client's metadata"], ["Asks", "the person, before Google"]],
+   "why": "Makes the person the one who approves an unknown client, rather than the protocol."
+  },
+  "claudeai": {
+   "kind": "Publishing host",
+   "role": "Publishes Claude Code's client metadata document.",
+   "facts": [["Document", "317 bytes, naming itself"], ["Fetched", "no redirects followed"], ["Allowed hosts", "one, set once"]],
+   "why": "Which hosts may publish is the entire trust decision — it admits clients this repo has never heard of."
+  },
+  "person": {
+   "kind": "The approver",
+   "role": "Meets a consent page and approves, or does not.",
+   "facts": [["Shown", "client, host, redirect"], ["Bound by", "a __Host- cookie"], ["Cross-site POST", "arrives without it"]],
+   "why": "After an existing Google session the forward completes silently. Not asked here means never asked."
+  },
+  "google": {
+   "kind": "Identity check",
+   "role": "Verifies the person is @example.invalid.",
+   "facts": [["Reached", "only after consent"], ["Returns", "a verified email"], ["Never", "before approval"]],
+   "why": "Consent precedes identity, so approving an unknown client is deliberate, not a side effect of being signed in."
+  },
+  "audit": {
+   "kind": "Audit stream",
+   "role": "Records the two moments that matter.",
+   "facts": [["Writes", "consent-approved"], ["Writes", "signed-in · who, which resource"], ["On refusal", "a line too"]],
+   "why": "A refusal that reaches no log is a refusal nobody can count."
+  }
+ },
+ "warehouse": {
+  "claude": {
+   "kind": "The caller",
+   "role": "Asks for a report by name.",
+   "facts": [["Holds", "an audience-bound token"], ["Sends", "report, metrics, dates"], ["Cannot send", "SQL — no such argument"]],
+   "why": "There is no argument that would carry SQL, so there is nothing to escape."
+  },
+  "warehouse": {
+   "kind": "Resource server",
+   "role": "Builds the SQL rather than accepting it.",
+   "facts": [["Identifiers", "from a frozen catalogue"], ["Values", "query parameters"], ["Answer", "grouped, LIMIT 5000"]],
+   "why": "Membership of an allowlist is the defence, rather than quoting and hoping."
+  },
+  "roster": {
+   "kind": "Policy store",
+   "role": "Supplies this person's seven limits.",
+   "facts": [["Scope", "clients, tables, columns"], ["Shape", "row_level, max_days"], ["Cost", "max_bytes, max_staleness"], ["Absent", "denied; only null is unscoped"]],
+   "why": "\"Not decided\" and \"decided to allow everything\" have to look different in a grant."
+  },
+  "wh": {
+   "kind": "Warehouse",
+   "role": "Asked three questions in one call.",
+   "facts": [["First", "schema and last modified"], ["Then", "dry run the built SQL"], ["Then", "execute, with a ceiling"]],
+   "why": "A 7-day scoped read scans 186,625 bytes; the same read unbounded scans 169 times more."
+  },
+  "audit": {
+   "kind": "Audit stream",
+   "role": "Records the allow, before the rows go back.",
+   "facts": [["Carries", "who, report, clients, bytes"], ["Logs", "allows as well as denials"], ["Because", "the upstream account is shared"]],
+   "why": "Warehouse's own log names one service account for everybody. Ours names the person."
+  }
+ },
+ "collection": {
+  "person": {
+   "kind": "The subject",
+   "role": "A colleague whose verified email arrives with the call.",
+   "facts": [["Domain", "@example.invalid"], ["Stored as", "a keyed HMAC"], ["Name", "never lands"]],
+   "why": "An analyst can count a person across weeks without ever being able to read who they are."
+  },
+  "tool": {
+   "kind": "The event",
+   "role": "One tool call: its arguments, and a declared purpose.",
+   "facts": [["Purpose", "closed six-value list"], ["Arguments", "hashed, not stored"], ["The question", "never recorded"]],
+   "why": "Carries the why alongside the what. Only the shape of the call is kept, never the words typed."
+  },
+  "gate": {
+   "kind": "Policy gate",
+   "role": "The roster grant and the domain scope, together.",
+   "facts": [["Posture", "fail closed"], ["Writes", "a line either way"], ["Only thing", "that can deny"]],
+   "why": "The one component that can turn a call into a refusal, so it is the one that must always log."
+  },
+  "decision": {
+   "kind": "Record",
+   "role": "Allow or deny — who, which tool, the verdict.",
+   "facts": [["Fields", "email hash, arguments hash"], ["Feeds", "the refusal curriculum"], ["Ordered by", "distinct people"]],
+   "why": "One person retrying ten times is a conversation. Six people once each is a missing feature."
+  },
+  "completion": {
+   "kind": "Record",
+   "role": "What the call cost.",
+   "facts": [["Fields", "latency, rows, bytes"], ["Records", "sizes only"], ["Never", "answer values"]],
+   "why": "No answer content leaves the process in a log line, whatever the call returned."
+  },
+  "outcome": {
+   "kind": "Record",
+   "role": "The caller's own verdict on whether it worked.",
+   "facts": [["Fields", "verdict, comment"], ["Typed by", "the person"], ["Asked", "once per 90 minutes"]],
+   "why": "The one thing no instrument can measure. Asked rarely enough to stay answerable."
+  },
+  "logging": {
+   "kind": "Transport",
+   "role": "Carries the lines off the box.",
+   "facts": [["Source", "stdout"], ["Cap", "256 KB per entry"], ["Delivery", "at least once"]],
+   "why": "Measured here as 23 rows carrying 17 distinct insert ids — a 35% over-count if you trust it."
+  },
+  "audit": {
+   "kind": "At rest",
+   "role": "Holds the lines, in Warehouse.",
+   "facts": [["Dataset", "mcp_audit"], ["Region", "EU"], ["Dedupe on", "insert_id"]],
+   "why": "Never dedupe on timestamp — two genuine calls in one millisecond would collapse into one."
+  },
+  "tracking": {
+   "kind": "The reader",
+   "role": "The one view anything else should query.",
+   "facts": [["Joins", "Google's own request log"], ["Adds", "remote_ip and more"], ["Use", "instead of the raw table"]],
+   "why": "The request log carries fields the process never saw, so the join is where the picture completes."
+  }
+ }
+}

@@ -1,0 +1,4 @@
+watches: the INSTALLED surface: every hook command names a file that exists, every pin has its file, the statusline resolves, every path the constitution (REF-5, which also reports each `.harbor-manifest` row whose installed file is gone, from `doc-graph-generate.sh --dangling`, harbor#996 C2) **and every installed skill** (REF-9) cites resolves from where that copy is READ — except `skills/synced/`, which the harness rewrites on every sync and which is therefore counted in the verdict line and not examined — and the run reports **what it examined** — an extractor that returned nothing from a document that plainly cites is REF-10, a finding, never a pass
+schedule: SessionStart, inline — 0.31s, measured
+notifies: the SessionStart verdict line
+red: a session is loading a config dir whose own references do not resolve; ten dead constitution pointers and three dead skill pointers went undetected from 2026-08-03 to 2026-09-06 because nothing ran this

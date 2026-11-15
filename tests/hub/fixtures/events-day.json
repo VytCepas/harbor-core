@@ -1,0 +1,3 @@
+[{"v":1,"kind":"activity","ts":"2026-11-07T00:00:00Z","member":"alice","tool":"Bash","verb_class":"readonly","verdict":"allow","count":12},
+ {"v":1,"kind":"activity","ts":"2026-11-07T00:00:00Z","member":"alice","tool":"mcp","verb_class":"na","verdict":"deny","count":1},
+ {"v":1,"kind":"session","ts":"2026-11-07T00:00:00Z","member":"alice","outcome":"started","count":3}]

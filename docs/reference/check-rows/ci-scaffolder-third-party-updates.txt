@@ -1,0 +1,4 @@
+watches: the yard repo's weekly third-party-updates workflow (harbor#1433): newer upstream releases of the vetted pinned tools, each security-scanned, proposed as a PR that is never auto-merged
+schedule: **not scheduled on this box: GitHub Actions runs it at 07:00 UTC Mondays, `yard/.github/workflows/third-party-updates.yml`** (a bridge row, as `ci.scaffolder-nightly`); falsifier: `sh tests/standard/inventory/schedule.test.sh`
+notifies: the PR it opens, and GitHub's failed-run notice to whoever last edited the workflow
+red: the check or the scan failed, or a pinned tool has a newer release waiting for review. Disable: `gh workflow disable third-party-updates.yml` in a yard checkout

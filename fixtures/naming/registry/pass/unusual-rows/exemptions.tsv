@@ -1,0 +1,1 @@
+tool-9002	name.case	**/Widget*.md	tool-required	never	a glob row that names no file, which is fine for a tool-required row

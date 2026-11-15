@@ -1,0 +1,6 @@
+[{"v":1,"kind":"heartbeat","ts":"2026-11-07T10:00:00Z","member":"alice","core":"0123456789ab","contract":1,"floor":"0123456789abcdef","serial":1,"mode":"shadow","refusals":2,"asks":1,"requests":0,"packs":["fixture-pack"]},
+ {"v":1,"kind":"refusal","ts":"2026-11-07T10:00:00Z","member":"alice","rule":"admission.rm-root","tier":"very-high","target":"command","count":1},
+ {"v":1,"kind":"ask","ts":"2026-11-07T10:00:00Z","member":"alice","rule":"prod-bucket","tier":"high","target":"cloud","outcome":"not-run","count":1},
+ {"v":1,"kind":"request","ts":"2026-11-07T10:00:00Z","member":"alice","id":"r-0123456789abcdef","rule":"prod-bucket","tier":"very-high","target":"cloud","outcome":"opened"},
+ {"v":1,"kind":"check","ts":"2026-11-07T10:00:00Z","member":"alice","check":"floor-integrity","outcome":"failed"},
+ {"v":1,"kind":"token","ts":"2026-11-07T10:00:00Z","member":"alice","days_left":6,"outcome":"expiring"}]

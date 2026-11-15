@@ -1,0 +1,3 @@
+id	clause	moment	mode	control	since	promoted_by	checkable_at	later_why
+t.1/fx.one	t.1	pr	block	fx.one	2020-01-01	alice	pr	-
+t.2/judgment	t.2	judgment	-	-	-	-	judgment	-

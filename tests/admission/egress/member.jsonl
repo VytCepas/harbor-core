@@ -1,0 +1,15 @@
+{"id":"hub-token-secret-tool-lookup","rule":"hub-token-read","want":"block","cmd":"secret-tool lookup service harbor-hub","why":"harbor#1278: contracts/hub.md denies the hub token to the agent"}
+{"id":"hub-token-secret-tool-search-wrapped","rule":"hub-token-read","want":"block","cmd":"sh -c 'secret-tool search service harbor-hub'","why":"harbor#1278: a wrapper does not hide the command word"}
+{"id":"hub-token-floor-secret-ref","rule":"hub-token-read","want":"block","cmd":"secret get hub-token","why":"harbor#1278: the floor's own secret tool naming the ref"}
+{"id":"hub-token-quoted-name","rule":"hub-token-read","want":"block","cmd":"sec\"\"ret-tool lookup service harbor-hub","why":"harbor#1278: quotes are dropped as a shell reads them"}
+{"id":"hub-token-commit-message","rule":"hub-token-read","want":"allow","cmd":"git commit -m 'secret-tool lookup is denied to the agent'","why":"harbor#1278: a commit message naming it is not a read"}
+{"id":"hub-token-list-store","rule":"hub-token-read","want":"allow","cmd":"ls ~/.local/share/keyrings","why":"harbor#1278: an inert command beside the store reads nothing"}
+{"id":"hub-token-secret-tool-version","rule":"hub-token-read","want":"allow","cmd":"secret-tool --version","why":"harbor#1278: secret-tool that neither looks up nor searches"}
+{"id":"hub-token-key-after-cd","rule":"hub-token-read","want":"block","cmd":"cd ~/.local/share && cat secret/hub-token.key","why":"harbor#1278 W7: the member file store's key, named past a cd"}
+{"id":"hub-token-key-bare","rule":"hub-token-read","want":"block","cmd":"base64 hub-token.enc","why":"harbor#1278 W7: Bash keeps its cwd between calls, so a bare name is a read"}
+{"id":"hub-token-store-glob","rule":"hub-token-read","want":"block","cmd":"cat ~/.local/share/s*/hub-token.key","why":"harbor#1278 W7: a glob that matches the store folder reads it"}
+{"id":"hub-token-store-glob-mid","rule":"hub-token-read","want":"block","cmd":"tail -c 99 ~/.local/sh?re/secret/*","why":"harbor#1278 W7: a glob in any part of the store path"}
+{"id":"hub-token-store-bracket","rule":"hub-token-read","want":"block","cmd":"od -c ~/.local/share/[s]ecret/x","why":"harbor#1278 W7: a bracket class, read as any one character"}
+{"id":"hub-token-other-share-glob","rule":"hub-token-read","want":"allow","cmd":"cat ~/.local/share/*.desktop","why":"harbor#1278 W7: a glob in .local/share that can't match the store"}
+{"id":"hub-token-dot-glob","rule":"hub-token-read","want":"allow","cmd":"cat ~/*/share/secret/notes.txt","why":"harbor#1278 W7: a shell glob never matches a leading dot, so this is not .local"}
+{"id":"hub-token-ls-key","rule":"hub-token-read","want":"allow","cmd":"ls -la hub-token.key","why":"harbor#1278 W7: an inert command naming the key reads nothing"}

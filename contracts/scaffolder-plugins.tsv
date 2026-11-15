@@ -1,0 +1,16 @@
+# scaffolder-plugins.tsv (harbor#999, #966) - the names yard publishes its Claude Code plugins under.
+#
+# They are yard's interface, not harbor's: a marketplace name and two plugin names that a box's
+# plugins/ tree and installed_plugins.json carry. Core reads them here, never as a literal at the
+# use site, so yard's rename is one edit in this file (or none, while yard keeps the old names).
+#
+# READERS. bin/prod-guard-install.sh (the marketplace mirror of prod_guard.py and the installed
+# plugin it compares) and lint drift.prod-policy-copy in bin/lint-conventions.sh. The floor does not
+# read it: bin/guard-bash.sh keeps its own copy of `lifecycle` for floor_repo_wires (hash-pinned, no I/O
+# it does not control), the same split contracts/roots.tsv makes with ROOT1.
+#
+# COLUMNS  key <TAB> name
+key	name
+marketplace	project-init
+workflow	project-init-workflow
+lifecycle	project-init-lifecycle

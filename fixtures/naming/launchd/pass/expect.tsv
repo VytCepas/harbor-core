@@ -1,0 +1,7 @@
+# fixtures/naming/launchd/pass (harbor#950) — launchd labels that MUST stay green. Read by bin/lint-name.sh --self-test; red status comes from LINT_REDLOG.
+# COLUMNS  name <TAB> -
+name	rule
+com.harbor.audit.triage	-
+com.harbor.check.api-property	-
+com.harbor.drift.undeployed.plist	-
+com.fleet.check.orphan-repo	-

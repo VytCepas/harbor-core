@@ -1,0 +1,6 @@
+# launchd-wall-exempt.tsv (harbor#1442) — a com.harbor.* launchd job allowed to run code from inside the confinement's
+# write list. drift-launchd.sh fails on every such path unless a row here covers the job and the path.
+# One row per line, three TAB-separated columns: <launchd label> <path or path prefix> <reason>. A row without a reason is
+# refused (the check cannot judge). The reason says why the job may run code an agent can edit, and what ends the exemption.
+# Core holds none: every core job runs from ~/.claude/bin, which is write-denied. A job that belongs to a workload is
+# either moved to an installed copy (the fix) or exempted in the private layer's launchd-wall-exempt.tsv, read after this file.

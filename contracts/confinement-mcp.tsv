@@ -1,0 +1,12 @@
+# confinement-mcp.tsv (harbor#1442, #1440) — every LOCAL (stdio) MCP server, and how it holds the main-files invariant.
+# A local MCP server runs outside Seatbelt as the operator, so a tool call it serves can write anywhere the operator can.
+# Two verdicts, three TAB-separated columns: <server name> <wrap|exempt> <reason>.
+#   wrap    the server must start under srt: `command` is `srt` and `args` are `["--settings", "<profile>", "<its own command>", ...]`
+#           (anthropic-experimental/sandbox-runtime README, read 2026-11-02). drift-wall.sh reads the registered config
+#           and says `does not hold` for a wrap row whose config is not that.
+#   exempt  the server cannot run under srt, and the reason says why and what bounds it instead. An exempt server shows as
+#           `does not hold (exempt: ...)` in the per-surface table: an exemption is a recorded decision, never a pass.
+# A server with no row, here or in the private layer's confinement-mcp.tsv (read after this file), is `does not hold` and red.
+# Remote (http, sse) servers are not local and not listed. Workload servers belong in the private layer (lint.domain).
+# The inventory behind this file: `sh bin/drift-wall.sh --mcp` (user config, project configs, each governed repo's .mcp.json).
+harbor_chrome	exempt	drives the operator's own logged-in Chrome through a local relay (bin/access-chrome-mcp.py); srt would deny the relay's socket and the profile, which is the point of the server. Bounded instead by one tool per verb, a host allow-list and default-deny verbs (contracts/browser-routing.md row 4). Ends when a per-server srt profile can admit exactly that relay

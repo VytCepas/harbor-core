@@ -1,0 +1,1 @@
+probe	controls.tsv	type=lint	lines:fixtures/naming/registry/fail/control-unregistered/ids.txt	a fixture census: one id the tree carries and controls.tsv does not
