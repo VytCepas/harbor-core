@@ -194,8 +194,14 @@ fi
 
 # The base first, so the head's commit diffs against it. Its gates are deploy-push's leak, secrets, history and domain rows.
 git -C "$ROOT" worktree add -q --detach "$WTB" "$BASE_SHA" || refuse "cannot check out the base $BASE_SHA" ""
-HARBOR_SCOPE_ROOT="$WTB" sh "$SRC/deploy-push.sh" --ci-base "$TDIR" || refuse "the PR's base $(printf '%s' "$BASE_SHA" | cut -c1-12) failed a gate; nothing was pushed" "the release gate rows above name the fix"
-BASE_COMMIT="$(git -C "$TDIR" rev-parse HEAD)"
+# A red base falls back to $CORE main's tree (harbor#1149 lane 5): refusing locked main whenever a new private term hit it,
+# the PR removing the hits included. Main is already public, and the head below still passes every gate.
+if HARBOR_SCOPE_ROOT="$WTB" sh "$SRC/deploy-push.sh" --ci-base "$TDIR"; then BASE_COMMIT="$(git -C "$TDIR" rev-parse HEAD)"
+else
+  log_warn "the PR's base $(printf '%s' "$BASE_SHA" | cut -c1-12) failed a gate, so it is not pushed; $CORE main stands in as the base, and hosted CI selects against it"
+  BASE_COMMIT="$(git -C "$TDIR" commit-tree "refs/remotes/origin/main^{tree}" -p HEAD -m "ci base for harbor#$PR: $CORE main (the PR's base failed a gate)")" &&
+    git -C "$TDIR" reset -q --hard "$BASE_COMMIT" || refuse "cannot stand $CORE main in as the base" ""
+fi
 
 # Staging, history scan and every gate: deploy-push's, unchanged. Refused or red, it wrote nothing and nothing is pushed.
 gate "$TDIR" || refuse "deploy-push refused or a gate is red; nothing was pushed" "the release gate rows above name the fix"

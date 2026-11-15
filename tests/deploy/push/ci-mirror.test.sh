@@ -300,14 +300,23 @@ t_eq "closing again is green" "0" "$RC"
 NOTOKEN=1; run "$S" --close 7
 t_eq "--close without the token is refused" "1" "$RC"
 
-t_section "the base is pushed to the public repo, so it passes the leak gate too"
+t_section "the base is pushed to the public repo, so a red base is never pushed: harbor-core main stands in (harbor#1149 lane 5)"
 S="$(mk baseleak)"; core baseleak
 printf 'a Zorblax line\n' > "$S/docs/leak.md"; git -C "$S" add -A >/dev/null 2>&1; git -C "$S" commit -qm leak >/dev/null 2>&1
 git -C "$S" checkout -q -b fixer >/dev/null 2>&1; git -C "$S" rm -q docs/leak.md >/dev/null 2>&1; git -C "$S" commit -qm unleak >/dev/null 2>&1
 git -C "$S" rev-parse HEAD > "$STUB/head_sha"; git -C "$S" checkout -q - >/dev/null 2>&1
 run "$S" 7
-t_eq "a PR that removes a leak from its base: refused" "1" "$RC"
-t_has "...naming the base" "$OUT" "the PR's base"
+t_eq "a PR that removes a leak from its base: mirrored, not locked out" "0" "$RC"
+t_has "...warning that the base failed a gate" "$OUT" "failed a gate, so it is not pushed"
+t_eq "...ci/base-7 carries harbor-core main's tree, not the leaking base" "$(git -C "$BARE" rev-parse 'refs/heads/main^{tree}')" "$(git -C "$BARE" rev-parse 'refs/heads/ci/base-7^{tree}')"
+_leaky=0; for _r in $(git -C "$BARE" for-each-ref --format='%(refname)' refs/heads); do git -C "$BARE" grep -q -I Zorblax "$_r" -- && _leaky=$((_leaky + 1)); done
+t_eq "...no pushed ref carries the leak" "0" "$_leaky"
+t_eq "...the head is still one commit above its base" "$(tip ci/base-7)" "$(git -C "$BARE" rev-parse refs/heads/ci/harbor-7~1)"
+# The head is not excused: a PR that leaves the leak in is refused by the head's own gate.
+git -C "$S" checkout -q -b keeper >/dev/null 2>&1; printf 'more\n' > "$S/docs/more.md"; git -C "$S" add -A >/dev/null 2>&1; git -C "$S" commit -qm more >/dev/null 2>&1
+git -C "$S" rev-parse HEAD > "$STUB/head_sha"; git -C "$S" checkout -q - >/dev/null 2>&1
+core baseleak2; run "$S" 8
+t_eq "a PR whose head still leaks: refused" "1" "$RC"
 t_eq "...nothing pushed" "0" "$(nbranches)"
 t_section "--publish (harbor#1437): main's tip lands on harbor-core main as one fast-forward snapshot; nothing else moves main"
 S="$(mk pub)"; core pub; MAIN0="$(tip main)"; SRC1="$(git -C "$S" rev-parse HEAD)"

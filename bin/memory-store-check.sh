@@ -154,7 +154,8 @@ harvest_pointers() {
   [ -f "$1" ] || return 0
   # Once, not two forks per pointer (harbor#559: ~1,000 basename forks at session start).
   _hp_idx="$(basename "$INDEX")"; _hp_full="$(basename "${FULL_INDEX:-/nonexistent}")"
-  sed -n 's/.*](\([^)]*\)).*/\1/p' "$1" | LC_ALL=C sort -u > "$TMP/ptr_raw"
+  # Every `](target)` on a line: a greedy sed kept only the last, so a line's first link read as an orphan.
+  awk '{ s = $0; while ((i = index(s, "](")) > 0) { s = substr(s, i + 2); j = index(s, ")"); if (j == 0) break; print substr(s, 1, j - 1); s = substr(s, j + 1) } }' "$1" | LC_ALL=C sort -u > "$TMP/ptr_raw"
   while IFS= read -r t; do
     case "$t" in
       ''|*://*|'#'*) continue ;;
