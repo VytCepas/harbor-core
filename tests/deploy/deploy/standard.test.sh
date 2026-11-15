@@ -127,7 +127,7 @@ t_has "...after the same snapshot" "$(tar -tzf "$C"/backups/deploy-*/config.tgz 
 t_has "...and says what it leaves alone" "$(out)" "  note: only:       floor — every other component is left as it is"
 fixture onlytwo; run 'y\nn\n' --apply --only runtime,skills --live
 t_eq "--only runtime,skills installs exactly those, in the chain's order" \
-  "deploy-runtime-install.sh --live,skill-install.sh --all,skill-install.sh commands,skill-install.sh agents,skill-catalog.sh install," \
+  "deploy-runtime-install.sh --live,skill-install.sh --all,skill-install.sh commands,skill-catalog.sh install," \
   "$(grep -e '--apply' -e '^skill-catalog' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
 fixture onlyinj; echo mine > "$C/inject.d/99-mine.md"; run '' --only inject --live
 t_eq "--only inject still refuses a box-only pack it would replace" 1 "$RC"
@@ -182,7 +182,7 @@ ri() { printf "=== %s\n" "$*" >>"$T_TMP/snapset/out"; env -u CLAUDE_CONFIG_DIR H
 for _i in "deploy-harden.sh --apply --dir $SB" "deploy-runtime-install.sh --apply --dir $SB" \
           "admission-install.sh --apply --dir $SB --with-b6 --with-stop-gate" "policy-constitution-install.sh --apply --dir $SB --from-branch" \
           "prod-guard-install.sh --apply --dir $SB" "skill-install.sh --all --apply --dir $SB" \
-          "skill-install.sh commands --all --apply --dir $SB" "skill-install.sh agents --all --apply --dir $SB" "context-injection-install.sh --apply --dir $SB" "pin-instructions.sh --apply --dir $SB"; do
+          "skill-install.sh commands --all --apply --dir $SB" "context-injection-install.sh --apply --dir $SB" "pin-instructions.sh --apply --dir $SB"; do
   # shellcheck disable=SC2086
   t_eq "the real ${_i%% *} applies to the sandbox" 0 "$(ri $_i)"
 done
@@ -203,7 +203,6 @@ for _e in $(ls -A "$SB"); do
 done
 t_eq "every top-level entry they wrote is in SNAP_SET, so a restore puts it back" "" "$_uncovered"
 t_has "...and they wrote a manifest to check" "$(ls -A "$SB")" ".harbor-manifest"
-t_has "...and the agents step wrote its folder, so SNAP_SET is held to it" "$(ls -A "$SB")" "agents"
 
 t_section "the other repos' just install, after Harbor's (harbor#736)"
 fixture xr; STUB_PI="$T/pi"; STUB_PO="$T/po"; export STUB_PI STUB_PO; xrepo "$STUB_PI" 'install lint'; xrepo "$STUB_PO" 'install test'

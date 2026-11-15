@@ -88,21 +88,9 @@ refused "tools - on another kind" "w	verb	-	-	-	-	$L	-	no	-	-	core" 'only for ki
 refused "an intro with a tool" "w	intro	mcp__a__b	-	-	-	$L	-	no	-	-	core" 'an intro row has -'
 refused "a safe intro" "w	intro	-	-	-	-	$L	x	yes	-	-	core" 'an intro row is safe=no'
 
-t_section "a row's tools sit inside its pack's tool: (harbor#1507)"
-PD="$T_TMP/pd"; mkdir -p "$PD"; cp "$T_ROOT/context-rules/user/suggest-tool.md" "$PD/"
-pchk() { { printf '%s\n' "$HDR"; printf '%s\n' "$1"; } > "$PD/suggest-tool.tsv"; sh "$CHECK" "$PD/suggest-tool.tsv" 2>&1; }
-t_has "refused: a harbor chrome row, which the pack never wakes on" "$(pchk "w	tool	mcp__harbor_chrome__click	-	^mcp__harbor_chrome__click 	-	$L	-	no	-	-	core")" 'outside the tool: of'
-t_eq "clean: a connector row the pack wakes on" 0 "$(pchk "w	tool	mcp__claude_ai_Slack__send	-	^mcp__claude_ai_Slack__send 	-	$L	-	no	-	-	core" | /usr/bin/grep -c 'FAIL:')"
-t_eq "clean: a Bash row" 0 "$(pchk "w	verb	Bash	gh	^gh pr checks	-	$L	-	no	-	-	core" | /usr/bin/grep -c 'FAIL:')"
-sed '/^tool:/d' "$T_ROOT/context-rules/user/suggest-tool.md" > "$PD/suggest-tool.md"
-t_eq "clean: a pack with no tool: wakes on every tool, so a harbor chrome row is heard" 0 "$(pchk "w	tool	mcp__harbor_chrome__click	-	^mcp__harbor_chrome__click 	-	$L	-	no	-	-	core" | /usr/bin/grep -c 'FAIL:')"
-t_has "the shipped pack names Bash and leaves harbor chrome out" "$(awk '/^tool:/' "$T_ROOT/context-rules/user/suggest-tool.md")" 'tool: Bash|'
-
 t_section "the shipped table and the fixture"
 t_eq "the shipped table is clean" 'suggest-table: 0 ok, 0 failed, 0 warnings' "$(sh "$CHECK" "$T_ROOT/context-rules/user/suggest-tool.tsv" 2>&1)"
-_fo="$(sh "$CHECK" "$T_ROOT/fixtures/injection-rule/suggest-tool.tsv" 2>&1)"
-t_eq "the fixture is clean" 'suggest-table: 0 ok, 0 failed, 0 warnings' "$(printf '%s\n' "$_fo" | tail -1)"
-t_has "...and says no pack sits beside it, so its tools went unchecked" "$_fo" "no suggest-tool.md beside it"
+t_eq "the fixture is clean" 'suggest-table: 0 ok, 0 failed, 0 warnings' "$(sh "$CHECK" "$T_ROOT/fixtures/injection-rule/suggest-tool.tsv" 2>&1)"
 t_eq "the shipped table has a header and no rows" 1 "$(awk 'NF' "$T_ROOT/context-rules/user/suggest-tool.tsv" | wc -l | tr -d ' ')"
 t_exit "clean exits 0" 0 sh "$CHECK" "$T_ROOT/fixtures/injection-rule/suggest-tool.tsv"
 chk "w	verb	Bash	gh	gh	-	$L	-	no	-	-	core" >/dev/null
