@@ -290,6 +290,16 @@ row() {
 
 days() { printf '%s' $(( (NOW - $1) / 86400 )); }
 
+# apply_failed <subject> <why> — a RECLAIM action under --apply that did not complete. Shown as FAIL on every
+# output path (text and --json) and makes the run exit 1; the row itself is never counted as a RECLAIM.
+apply_failed() { printf '%s\t%s\n' "$1" "$2" >> "$TMPD/apply-failed"; }
+report_apply_failed() {
+  [ -s "$TMPD/apply-failed" ] || return 0
+  log_fail "$(cut -f1 "$TMPD/apply-failed" | sort -u | wc -l | tr -d ' ') RECLAIM action(s) did not complete: those rows are NOT reclaimed"
+  log_fix "remove what is named below by hand, or re-run --apply outside the sandbox"
+  while IFS='	' read -r _fs _fe; do log_note "  $_fs: $_fe"; done < "$TMPD/apply-failed"
+}
+
 # mtime and size through fs-lib (harbor#618); when unreadable, now and 0, so an unreadable file reads as
 # fresh and empty, never as garbage in the report's arithmetic.
 mtime() { _hm="$(fs_mtime "$1")"; printf '%s' "${_hm:-$NOW}"; }
@@ -796,9 +806,18 @@ gh_worktrees() {
         row DECIDE finished-worktrees 0 "$_sub" "PR #$_n was $_did; its head is not in this clone, so containment is unproven" "$_rm"
       elif [ "$_did" = merged ]; then
         # Operator decision 2026-10-27: merged, every commit in the PR, clean, no live session — reclaimable. No --force.
-        row RECLAIM finished-worktrees 0 "$_sub" "PR #$_n was merged and carried every commit on it"
-        if [ "$APPLY" -eq 1 ] && git -C "$_r" worktree remove "$_w" >/dev/null 2>&1; then
-          [ "$_b" = "-" ] || git -C "$_r" branch -D "$_b" >/dev/null 2>&1 || true
+        # --apply acts BEFORE the row, so a remove that fails is never printed, counted or recorded as a RECLAIM.
+        if [ "$APPLY" -eq 1 ] && ! _err="$(git -C "$_r" worktree remove "$_w" 2>&1)"; then
+          # git can unregister the tree and then fail to delete its files: an orphan no later scan sees.
+          _why="$(printf '%s' "$_err" | head -n 1)"
+          if [ -d "$_w" ] && ! git -C "$_r" worktree list --porcelain | grep -qxF "worktree $_w"; then
+            _why="$_why; unregistered but left on disk: rm -rf '$_w'"
+          fi
+          apply_failed "$_sub" "$_why"
+          row KEEP finished-worktrees 0 "$_sub" "NOT reclaimed: $_why"
+        else
+          row RECLAIM finished-worktrees 0 "$_sub" "PR #$_n was merged and carried every commit on it"
+          if [ "$APPLY" -eq 1 ] && [ "$_b" != "-" ]; then git -C "$_r" branch -D "$_b" >/dev/null 2>&1 || true; fi
         fi
       else
         row DECIDE finished-worktrees 0 "$_sub" "PR #$_n was $_did and carried every commit on it" "$_rm"
@@ -1132,6 +1151,7 @@ if [ "$JSON" -eq 0 ]; then
     log_fix "gh auth status"
   fi
   log_note "The KEEP rows are the point: read them before widening anything."
+  report_apply_failed
   # NO GRAND TOTAL of "space on the box". A headline number invites the sweep
   # this tool exists to prevent, and the class size is not the cut size — the
   # runner-log class was 859 MB where the >14d cut returned 210 MB.
@@ -1142,4 +1162,6 @@ if [ "$JSON" -eq 0 ]; then
   fi
   log_end; exit $?
 fi
+# --json is data on stdout: the FAIL goes to stderr and the exit code carries it.
+if [ -s "$TMPD/apply-failed" ]; then LOG_FD=2; report_apply_failed; log_end; exit 1; fi
 exit 0
