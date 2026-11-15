@@ -298,6 +298,34 @@ t_eq "--apply keeps a DECIDE worktree (later work pushed, in no PR)" present "$(
 t_eq "--apply keeps a RISK worktree (uncommitted changes)" present "$(there "$H/widget-wt-dirty")"
 t_exit "--apply keeps a DECIDE branch" 0 git -C "$GR" rev-parse --verify -q merged-clean
 
+t_section "23e a RECLAIM that fails is a FAIL, not a quiet success (harbor#1532)"
+# The same merged, clean worktree, with a directory git cannot empty (the sandbox's protected paths did this). Git
+# deletes the files, then unregisters the tree: a refused delete leaves an ORPHAN, registered nowhere, still on disk.
+stuck() { chmod 755 "$H/widget-wt-done" 2>/dev/null; rm -rf "$H/widget-wt-done"; git -C "$GR" worktree prune
+  git -C "$GR" branch -q -D wt-done 2>/dev/null; git -C "$GR" branch -q wt-done "$W1"
+  gg worktree add -q "$H/widget-wt-done" wt-done; chmod 555 "$H/widget-wt-done"; }
+stuck
+_ap="$(GHR --apply)"; _apr=$?
+chmod 755 "$H/widget-wt-done"
+t_eq "--apply exits 1 when a RECLAIM action failed" 1 "$_apr"
+t_has "...and names the row that was not reclaimed" "$_ap" "widget-wt-done"
+t_has "...and says the row is NOT reclaimed" "$_ap" "NOT reclaimed"
+t_has "...and names the orphan git unregistered but could not delete" "$_ap" "unregistered but left on disk"
+_rc_rows="$(printf '%s\n' "$_ap" | grep '^  RECLAIM ' | grep -vc 'widget-wt-done')"
+t_eq "...and the failed row is not a RECLAIM row" 0 "$(printf '%s\n' "$_ap" | grep '^  RECLAIM ' | grep -c 'widget-wt-done')"
+t_eq "...nor counted: the summary's reclaimable total is the other RECLAIM rows" "$_rc_rows" \
+  "$(printf '%s\n' "$_ap" | sed -n 's/.*note: \([0-9]*\) reclaimable row.*/\1/p')"
+stuck
+# `with` folds stderr into stdout, so this one run keeps the two streams apart.
+_j="$(env HARBOR_HOUSEKEEPING_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/gh" sh "$TOOL" --json --apply 2>"$T_TMP/jerr")"; _jr=$?
+chmod 755 "$H/widget-wt-done"
+t_eq "--json --apply exits 1 when a RECLAIM action failed" 1 "$_jr"
+t_has "...the FAIL is on stderr, stdout stays data" "$(cat "$T_TMP/jerr")" "NOT reclaimed"
+t_eq "...and the failed row is not reported as RECLAIM" 0 \
+  "$(printf '%s\n' "$_j" | jq -r 'select(.subject == "widget-wt-done" and .verdict == "RECLAIM") | .subject' | wc -l | tr -d ' ')"
+t_eq "...it is a KEEP row saying so" "KEEP" "$(printf '%s\n' "$_j" | jq -r 'select(.subject == "widget-wt-done") | .verdict')"
+t_eq "--json without --apply still exits 0" 0 "$(GHR --json >/dev/null 2>&1; echo $?)"
+
 t_section "24 a failed GitHub read is UNREAD, never clean (harbor#626)"
 Ju="$(with HARBOR_HOUSEKEEPING_CLEAN_GH="$T_BIN/gh" STUB_FAIL=prs sh "$TOOL" --json)"
 t_has "a failed PR read reports the repo unread" "$Ju" '"class":"unread"'
