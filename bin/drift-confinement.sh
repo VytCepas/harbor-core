@@ -28,7 +28,7 @@ done
 [ "$STATE$STATUS" != 11 ] || { LOG_FD=2; log_fail "--state and --status are two different reads"; log_fix "sh $0 --help"; exit 2; }
 ID=drift.confinement; P="[check:$ID]"
 [ "$STATUS" = 0 ] || status_init "$ID" "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" || exit 3
-if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then MF="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
+if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then MF="${HARBOR_SCOPE_MANAGED_SETTINGS}"
 elif [ "$(uname -s)" = Darwin ]; then MF='/Library/Application Support/ClaudeCode/managed-settings.json'
 else MF=/etc/claude-code/managed-settings.json; fi
 MK="$(dirname "$MF")/harbor-confinement"

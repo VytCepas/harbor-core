@@ -16,7 +16,7 @@ STREAM_MAX=4096   # bytes per line, envelope included: one write(), nothing a re
 [ -n "${_LOG_LIB:-}" ] || . "${HERE:?audit-stream-lib.sh: set HERE to the caller bin/ before sourcing}/library-log.sh"
 
 stream_root() {
-  if [ -n "${HARBOR_AUDIT_STREAM_SINK:-${HARBOR_SINK:-}}" ]; then printf '%s\n' "${HARBOR_AUDIT_STREAM_SINK:-$HARBOR_SINK}"; return 0; fi
+  if [ -n "${HARBOR_AUDIT_STREAM_SINK:-}" ]; then printf '%s\n' "${HARBOR_AUDIT_STREAM_SINK}"; return 0; fi
   _src="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; _srh=""
   { [ -f "$_src/.helm-obs-host" ] && IFS= read -r _srh < "$_src/.helm-obs-host"; } 2>/dev/null || :
   case "$_srh" in ''|*[!A-Za-z0-9-]*) _srh=unknown-host ;; esac
@@ -31,7 +31,7 @@ stream_spill() {
   case "$_spn" in ''|*[!0-9]*) _spn=0 ;; esac
   printf '%s\n' "$((_spn + 1))" > "$_sp/$2.dropped" 2>/dev/null || :
   log_warn "[check:stream.spill] $2: $3"
-  [ "${HARBOR_AUDIT_STREAM_STRICT:-${HARBOR_EMIT_STRICT:-0}}" != 1 ]
+  [ "${HARBOR_AUDIT_STREAM_STRICT:-0}" != 1 ]
 }
 
 harbor_emit() { # <stream> [<attrs-json>]
@@ -41,7 +41,7 @@ harbor_emit() { # <stream> [<attrs-json>]
   command -v jq >/dev/null 2>&1 || { stream_spill "$_er" "$_es" "jq missing" "$_ea"; return $?; }
   printf '%s' "$_ea" | jq -e 'type == "object"' >/dev/null 2>&1 \
     || { stream_spill "$_er" "$_es" "attrs is not a JSON object" "$_ea"; return $?; }
-  _ew="${HARBOR_AUDIT_STREAM_WRITER:-${HARBOR_WRITER:-${0##*/}}}.${HARBOR_AUDIT_STREAM_SESSION:-${HARBOR_SESSION:-${CLAUDE_SESSION_ID:-$$}}}"
+  _ew="${HARBOR_AUDIT_STREAM_WRITER:-${0##*/}}.${HARBOR_AUDIT_STREAM_SESSION:-${CLAUDE_SESSION_ID:-$$}}"
   _ew="$(printf '%s' "$_ew" | tr -c 'A-Za-z0-9._-' '_')"
   _ed="$_er/$_es/$(date -u +%Y-%m-%d)"; _ef="$_ed/$_ew.jsonl"
   ( umask 077; mkdir -p "$_ed" ) 2>/dev/null || { stream_spill "$_er" "$_es" "cannot create $_ed" "$_ea"; return $?; }
@@ -61,8 +61,8 @@ harbor_emit() { # <stream> [<attrs-json>]
     _ep="$(tail -n 1 "$_ef" | stream_sha | cut -c1-16)"
   fi
   _el="$(jq -cn --arg id "$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-      --arg s "$_es" --arg sess "${HARBOR_AUDIT_STREAM_SESSION:-${HARBOR_SESSION:-${CLAUDE_SESSION_ID:-}}}" --argjson seq "$_eq" \
-      --arg src "${HARBOR_AUDIT_STREAM_WRITER:-${HARBOR_WRITER:-${0##*/}}}" --arg repo "${HARBOR_AUDIT_STREAM_REPO_NAME:-${HARBOR_REPO_NAME:-}}" --arg cause "${HARBOR_AUDIT_STREAM_CAUSE:-${HARBOR_CAUSE:-}}" \
+      --arg s "$_es" --arg sess "${HARBOR_AUDIT_STREAM_SESSION:-${CLAUDE_SESSION_ID:-}}" --argjson seq "$_eq" \
+      --arg src "${HARBOR_AUDIT_STREAM_WRITER:-${0##*/}}" --arg repo "${HARBOR_AUDIT_STREAM_REPO_NAME:-}" --arg cause "${HARBOR_AUDIT_STREAM_CAUSE:-}" \
       --argjson attrs "$_ea" --arg prev "$_ep" \
       '{v:1,id:$id,ts:$ts,stream:$s,sess:$sess,seq:$seq,src:$src,repo:$repo,cause:$cause,attrs:$attrs,prev:$prev}' 2>/dev/null)" \
     || { rm -f "$_lk" 2>/dev/null; stream_spill "$_er" "$_es" "envelope did not build" "$_ea"; return $?; }
