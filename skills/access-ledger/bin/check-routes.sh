@@ -16,6 +16,7 @@
 #   check-routes.sh [dir]              gate every route card      exit 0/1
 #   check-routes.sh --report [dir]     derive the "what we can do today" table
 #   check-routes.sh --accounts [dir]   derive ACCOUNTS.md: which account connects to what
+#   check-routes.sh --ui-hosts [dir]   derive host<TAB>card from the optional `ui-hosts:` fields (harbor#1507)
 #   check-routes.sh --coverage <corpus> [dir]  systems referenced with no route
 #   check-routes.sh --probe <cmd> <expect>  one check, one verdict word (harbor access status|rotate)
 #   check-routes.sh --self-test        prove it goes RED before trusting it GREEN
@@ -71,6 +72,13 @@ owner
 reaches
 cannot
 verified'
+
+# OPTIONAL: `ui-hosts:` — the hosts of the system's vendor UI (harbor#1507), so a session that opens one in the browser is
+# told the tier its card ranks above it. Bare lowercase hostnames, comma or space separated; a listed host also covers its
+# subdomains. Not in REQUIRED_FIELDS: most cards have no UI to name, and a card never has to list one.
+# Lint doc.urls-cited reads both lists, so an optional field's hosts are addresses, not citations (harbor#1507).
+OPTIONAL_FIELDS='ui-hosts'
+UI_HOST_RE='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$'
 
 # `account:` IS REPEATED, ONE LINE PER ACCOUNT, FOUR `|`-SEPARATED FIELDS:
 #
@@ -200,6 +208,7 @@ usage() {
   printf '       %s --report [dir]            derive the capability table\n' "$0" >&2
   printf '       %s --dispatch [dir]          derive the routing rules book\n' "$0" >&2
   printf '       %s --accounts [dir]          derive which account connects to what\n' "$0" >&2
+  printf '       %s --ui-hosts [dir]          derive host and card from the ui-hosts fields\n' "$0" >&2
   printf '       %s --coverage <corpus> [dir] systems referenced with no route\n' "$0" >&2
   printf '       %s --run [dir]               ACTUALLY RUN every check: (opt-in)\n' "$0" >&2
   printf '       %s --probe <cmd> <expect>    run ONE check: one verdict word, never its output\n' "$0" >&2
@@ -410,11 +419,59 @@ check_card() {
     esac
   done
 
+  # `ui-hosts:` is OPTIONAL (harbor#1507): a card that names none maps no vendor UI to itself. When present it is the
+  # hosts, and only the hosts, that context-rules/user/browser-last-tier.sh reads, so a line that is not a list of bare
+  # lowercase hostnames would be a mapping the note silently never matches.
+  if /usr/bin/grep -qiE '^[[:blank:]]*ui-hosts:' "$_rf"; then
+    _uh=$(field_of "$_rf" ui-hosts)
+    if [ -z "$_uh" ]; then
+      _rbad="${_rbad}${_rbad:+
+}       \`ui-hosts:\` is empty — name the vendor UI hosts, or delete the line"
+    else
+      set -f   # a host value is data: a `*` in it must not expand to file names (review of harbor#1536)
+      for _uhh in $(printf '%s' "$_uh" | tr ',' ' '); do
+        if ! printf '%s' "$_uhh" | /usr/bin/grep -qE "$UI_HOST_RE"; then
+          _rbad="${_rbad}${_rbad:+
+}       \`ui-hosts:\` has \"$_uhh\" — a bare lowercase hostname (no scheme, port or path), comma or space separated"
+        fi
+      done
+      set +f
+    fi
+  fi
+
   if [ -n "$_rbad" ]; then
     printf 'FAIL %s\n%s\n' "$_rname" "$_rbad"
     rc=1
   else
     printf 'ok   %s\n' "$_rname"
+  fi
+}
+
+# One line per (host, card) the register's `ui-hosts:` fields name: `<host><TAB><card>`. A host a card lists is the
+# vendor UI of that system, and a host listed on two cards is ambiguous, which the gate refuses (ui_hosts_dup).
+ui_hosts_map() {
+  for _uf in "$1"/*.md; do
+    [ -f "$_uf" ] || continue
+    not_a_card "$_uf" && continue
+    _uv=$(field_of "$_uf" ui-hosts)
+    [ -n "$_uv" ] || continue
+    set -f
+    for _uhh in $(printf '%s' "$_uv" | tr ',' ' '); do
+      printf '%s\t%s\n' "$_uhh" "$(basename "$_uf" .md)"
+    done
+    set +f
+  done
+}
+
+ui_hosts_dup() {
+  _udup=$(ui_hosts_map "$1" | awk -F'\t' '{ c[$1] = c[$1] " " $2; n[$1]++ } END { for (h in c) if (n[h] > 1) print h ":" c[h] }' | sort)
+  if [ -n "$_udup" ]; then
+    printf 'FAIL ui-hosts: a host on two cards cannot say which system owns it:\n'
+    printf '%s\n' "$_udup" | sed 's/^/       /'
+    rc=1
+  else
+    printf 'ok   ui-hosts: %s host(s) on %s card(s), none on two\n' \
+      "$(ui_hosts_map "$1" | wc -l | tr -d ' ')" "$(ui_hosts_map "$1" | cut -f2 | sort -u | wc -l | tr -d ' ')"
   fi
 }
 
@@ -437,6 +494,7 @@ gate_dir() {
   done
   printf '%s route card(s) checked\n' "$_gn"
   [ "$_gn" -gt 0 ] || { printf 'FAIL no route cards found in %s\n' "$_gdir"; exit 1; }
+  ui_hosts_dup "$_gdir"
   check_generated "$_gdir"
 }
 
@@ -854,6 +912,7 @@ VALID_CARD='# meta — Meta business portfolio
     account:  analytics@example.invalid | primary | ads_read on business 1234567 | a named human profile in the browser
     account:  tools@example.invalid | none | no asset assigned | -
     via:      api > browser
+    ui-hosts: business.example.invalid, www.example.invalid
     upgrade:  none - the connector grant is all-or-nothing and cannot be narrowed
     use:      curl -sS -H "Authorization: Bearer $TOK" https://graph.facebook.com/v21.0/me
     check:    curl -sS -H "Authorization: Bearer $TOK" https://graph.facebook.com/v21.0/me
@@ -1059,7 +1118,12 @@ account connect cell empty|s#| a named human profile in the browser#| #
 no role-check line|/^ *role-check:/d
 no role-expect line|/^ *role-expect:/d
 role-check none with no reason|s#^ *role-check:.*#    role-check: none#
-role-expect with nothing to match|s#^ *role-expect:.*#    role-expect: lists the permission as granted#'
+role-expect with nothing to match|s#^ *role-expect:.*#    role-expect: lists the permission as granted#
+ui-hosts carries a scheme and a path|s#^ *ui-hosts:.*#    ui-hosts: https://business.example.invalid/home#
+ui-hosts carries a port|s#^ *ui-hosts:.*#    ui-hosts: business.example.invalid:8443#
+ui-hosts is not lowercase|s#^ *ui-hosts:.*#    ui-hosts: Business.Example.Invalid#
+ui-hosts is a bare word, not a host|s#^ *ui-hosts:.*#    ui-hosts: business#
+ui-hosts is empty|s#^ *ui-hosts:.*#    ui-hosts:#'
 
   printf '%s\n' "$_muts" | while IFS='|' read -r _mname _mprog; do
     [ -n "$_mname" ] || continue
@@ -1072,6 +1136,27 @@ role-expect with nothing to match|s#^ *role-expect:.*#    role-expect: lists the
   done
   if [ -f "$_st/.p" ]; then _pass=$((_pass + $(wc -l < "$_st/.p" | tr -d ' '))); fi
   if [ -f "$_st/.f" ]; then _fail=$((_fail + $(wc -l < "$_st/.f" | tr -d ' '))); fi
+
+  printf 'self-test: the same ui-host on two cards must go RED, and a card with no ui-hosts must stay GREEN\n'
+  printf '%s' "$VALID_CARD" | sed "s/@TODAY@/$_today/" > "$_st/meta.md"
+  printf '%s' "$VALID_CARD" | sed "s/@TODAY@/$_today/" | sed 's/^# meta/# twin/' > "$_st/twin.md"
+  if sh "$0" "$_st" >/dev/null 2>&1; then _fail=$((_fail+1)); printf '  NOT CAUGHT: a host on two cards\n'; else _pass=$((_pass+1)); printf '  caught: a host on two cards\n'; fi
+  sed -i.bak '/^ *ui-hosts:/d' "$_st/twin.md"; rm -f "$_st/twin.md.bak"
+  if sh "$0" "$_st" >/dev/null 2>&1; then _pass=$((_pass+1)); else _fail=$((_fail+1)); printf '  FAILED: a card without ui-hosts was rejected\n'; fi
+  rm -f "$_st/twin.md"
+  if [ "$(sh "$0" --ui-hosts "$_st" 2>/dev/null | tr '\t' ' ' | head -1)" = "business.example.invalid meta" ]; then
+    _pass=$((_pass+1)); printf '  caught: --ui-hosts derives host and card\n'
+  else
+    _fail=$((_fail+1)); printf '  FAILED: --ui-hosts did not derive the map\n'
+  fi
+  # A `*` is data, never a glob: run from a folder holding files, it must come back as `*`, not as their names.
+  case "$0" in /*) _self="$0" ;; *) _self="$PWD/$0" ;; esac
+  printf '%s' "$VALID_CARD" | sed "s/@TODAY@/$_today/" | sed 's#^ *ui-hosts:.*#    ui-hosts: *#' > "$_st/meta.md"
+  if [ "$(cd "$_st" && sh "$_self" --ui-hosts "$_st" 2>/dev/null | cut -f1 | head -1)" = '*' ]; then
+    _pass=$((_pass+1)); printf '  caught: a * in ui-hosts is not expanded to file names\n'
+  else
+    _fail=$((_fail+1)); printf '  FAILED: a * in ui-hosts expanded to file names\n'
+  fi
 
   printf 'self-test: a fully BLOCKED route must NOT trip it\n'
   printf '%s' "$VALID_CARD" | sed "s/@TODAY@/$_today/" > "$_st/meta.md"
@@ -1215,6 +1300,7 @@ case "$1" in
   --report)    shift; want_dir "${1:-}"; report_dir "${1:-$ACCESS_DIR_DEFAULT}" ;;
   --dispatch)  shift; want_dir "${1:-}"; dispatch_dir "${1:-$ACCESS_DIR_DEFAULT}" ;;
   --accounts)  shift; want_dir "${1:-}"; accounts_dir "${1:-$ACCESS_DIR_DEFAULT}" ;;
+  --ui-hosts)  shift; want_dir "${1:-}"; ui_hosts_map "${1:-$ACCESS_DIR_DEFAULT}" ;;
   --run)       shift; want_dir "${1:-}"; run_dir "${1:-$ACCESS_DIR_DEFAULT}" ;;
   --probe)     [ $# -eq 3 ] || usage; probe_one "$2" "$3" && exit 0 || exit $? ;;
   --classify)  [ $# -eq 3 ] || usage; probe_class "$2" "$3" ;;

@@ -24,7 +24,7 @@ The target is chosen as every installer chooses it (`bin/deploy-install-lib.sh`)
 
 ```
 pack.toml   name, version, harbor_version, description - all four, each a quoted string (flat TOML, harbor/D-81)
-skills/<name>/...   bin/<file>   shims.tsv   conf-keys.txt   terms.tsv   context-rules/user/<file>.md   checks.md   controls.tsv   skill-packs/<core skill>/<name>.md   tests/ (never installed)   README* (ignored)
+skills/<name>/...   bin/<file>   shims.tsv   verbs/<command>.md   conf-keys.txt   terms.tsv   context-rules/user/<file>.md   checks.md   controls.tsv   skill-packs/<core skill>/<name>.md   tests/ (never installed)   README* (ignored)
 ```
 
 `checks.md` is a check-register fragment in exactly the shape of the private layer's [`checks.md`](./private-layer.md#checksmd):
@@ -39,6 +39,15 @@ it (the private layer's own pack: the layer's `jobs/`), and `drift.launchd-plist
 own (`scope-roots.sh --conf-keys`), so core names no pack's key. Install refuses a core key, a key another installed pack declares,
 and a malformed line; remove takes the keys back with the pack. Three keys core once read left it one release after
 their pack declared them (#1273): with no pack installed, `scope-roots.sh --conf <key>` refuses them (exit 2).
+
+`verbs/<command>.md` (optional, harbor#1541) are verb registers for the pack's own commands, in the row shape of core's
+[`contracts/verbs/`](./verbs/mail.md): spelling, class (`read`, `write`, `gated`), perm (`builtin`, `allow`, `ask`, `deny`,
+`classifier`), actor, instead. Install puts them at `verbs.d/<repo-id>/`, and `admission-deny.sh --apply` derives their `allow`
+and `ask` rules beside core's (`gate-verbs.sh` reads both). Every row must name a command this pack's `shims.tsv` puts on PATH;
+install refuses any other, and `gate-verbs.sh` returns a row that breaks it as BAD, so a file dropped into `verbs.d/` by hand
+grants nothing. An `ask` may lead with a flag (`<cli> --write *`), since a broader ask only prompts more. The rule this serves:
+a change to a live system asks the operator on the API path as it does in the browser (harbor/D-94, [`live-change-words.txt`](./live-change-words.txt)).
+A member laptop refuses `verbs/` with the other core registers.
 
 `terms.tsv` (optional) registers the workload's own system terms (harbor#950): core's `standards/naming/terms.tsv` header,
 then one row per system, class `system` alone. Install puts it at `terms.d/<repo-id>.tsv`, and `bin/lint-name.sh` reads it

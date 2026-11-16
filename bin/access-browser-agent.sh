@@ -66,11 +66,12 @@ esac
 CHROME_DATA="${HARBOR_ACCESS_CHROME_DATA:-$_chrome_data_default}"
 CLAUDE_JSON="${HARBOR_ACCESS_CLAUDE_JSON:-$HOME/.claude.json}"
 CONFIRM="${HARBOR_ACCESS_BROWSER_CONFIRM:-}"
-# Whole words a click/dblclick target's label may not carry without the operator's
-# per-call HARBOR_ACCESS_BROWSER_CONFIRM=<ref>. Whole words, so status text (Paused,
-# Removed, Payments) passes; the label comes from a fresh snapshot (_guard).
-DESTRUCTIVE='delete remove archive pause publish unpublish discard pay purchase buy unlink disconnect
-  ištrinti pašalinti archyvuoti sustabdyti pristabdyti publikuoti paskelbti išjungti apmokėti'
+# Whole words or phrases a click/dblclick target's label may not carry without the operator's
+# per-call HARBOR_ACCESS_BROWSER_CONFIRM=<ref>: the live-change list (harbor#1541), one per line, which
+# the MCP server reads too. Whole words, so status text (Paused, Removed, Payments) passes; the label
+# comes from a fresh snapshot (_guard). Missing or empty, every guarded verb is refused (_live_check).
+LIVE_WORDS="$ROOT/contracts/live-change-words.txt"
+DESTRUCTIVE="$(sed 's/#.*//' "$LIVE_WORDS" 2>/dev/null | tr -s ' 	' '  ' | sed 's/^ //; s/ $//' | grep -v '^$' || :)"
 
 _usage() { sed -n '/^#   harbor chrome attach/,/^#   harbor chrome <verb>/p' "$0" | sed 's/^# \{0,2\}//'; }
 
@@ -423,14 +424,47 @@ _hidden_check() { # <held output>
 
 # Lower-cased words of $1, space-padded; non-ASCII bytes stay letters (š, ė).
 _words() {
-  printf ' %s ' "$1" | LC_ALL=C tr 'A-Z' 'a-z' | LC_ALL=C sed 's/Š/š/g; s/Ė/ė/g' | LC_ALL=C tr -c 'a-z0-9\200-\377' ' '
+  printf ' %s ' "$1" | LC_ALL=C tr 'A-Z' 'a-z' | LC_ALL=C sed 's/Ą/ą/g; s/Č/č/g; s/Ę/ę/g; s/Ė/ė/g; s/Į/į/g; s/Š/š/g; s/Ų/ų/g; s/Ū/ū/g; s/Ž/ž/g' \
+    | LC_ALL=C tr -c 'a-z0-9\200-\377' ' ' | tr -s ' '
 }
-_destructive() { # <label> — prints the first word of $DESTRUCTIVE it carries
+_destructive() { # <label> — prints the first entry of $DESTRUCTIVE (a word or a phrase) it carries
   _w=" $(_words "$1") "
+  _old_ifs="$IFS"; IFS='
+'
   for _d in $DESTRUCTIVE; do
-    case "$_w" in *" $_d "*) printf '%s' "$_d"; return 0 ;; esac
+    case "$_w" in *" $_d "*) IFS="$_old_ifs"; printf '%s' "$_d"; return 0 ;; esac
   done
-  return 1
+  IFS="$_old_ifs"; return 1
+}
+_live_check() { # the list itself: without it no label can be judged, so nothing that commits runs
+  [ -n "$DESTRUCTIVE" ] || _refuse 'no live-change words: contracts/live-change-words.txt is missing or empty, so no label can be checked' 'git checkout -- contracts/live-change-words.txt'
+}
+# press/keydown Enter or Space, and fill/type --submit, commit what the focus sits on (harbor#1541): the fixed
+# submit-focus/submit-of probe of contracts/browser-script.tsv reads the label of that control and of its form's
+# submit buttons, and a live-change label is refused as a click on it is. A probe that cannot answer refuses too.
+_submit_guard() { # <arg>... of $VERB
+  _sk=''; _sr=''; _ss=''
+  for _a in "$@"; do case "$_a" in --submit) _ss=1 ;; -*) ;; *) [ -n "$_sk" ] || _sk="$_a" ;; esac; done
+  case "$VERB" in
+    press|keydown) printf '%s' "$_sk" | grep -Eq '^([A-Za-z]+\+)*(Enter|NumpadEnter|Space| )$' || return 0 ;;
+    type) [ -n "$_ss" ] || return 0; _sk='' ;;
+    fill) [ -n "$_ss" ] || return 0; _sr="$_sk"
+      case "$_sr" in e[0-9]*|f[0-9]*e[0-9]*) case "$_sr" in *[!abcdefghijklmnopqrstuvwxyz0-9]*) _sr='' ;; esac ;; *) _sr='' ;; esac
+      [ -n "$_sr" ] || _refuse "fill --submit takes a snapshot ref, not '$_sk': a selector carries no label for the live-change check" 'harbor chrome snapshot' ;;
+    *) return 0 ;;
+  esac
+  _live_check
+  _sn=submit-focus; [ -z "$_sr" ] || _sn=submit-of
+  _fn="$(awk -F '\t' -v k="$_sn" '$1 == k { print substr($0, length(k) + 2); exit }' "$ROOT/contracts/browser-script.tsv" 2>/dev/null)"
+  [ -n "$_fn" ] || _refuse "no $_sn row in contracts/browser-script.tsv, so $VERB cannot be checked" 'git checkout -- contracts/browser-script.tsv'
+  _o="$WORKDIR/.submit-probe"; mkdir -p "$WORKDIR"
+  _cli_run "-s=$S" --raw eval "$_fn" ${_sr:+"$_sr"} > "$_o" 2>/dev/null \
+    || { _gone_check "$_o"; _refuse "no answer from the submit probe, so $VERB cannot be checked for a live change" 'harbor chrome snapshot'; }
+  _sl="$({ jq -r 'if type == "string" then . else tostring end' "$_o" 2>/dev/null || cat "$_o"; } | tr -s ' \t\n' '   ' | sed 's/^ //; s/ $//' | cut -c1-200)"
+  if _hit="$(_destructive "$_sl")"; then
+    case "$VERB" in fill|type) _sw='--submit' ;; *) _sw="'$_sk'" ;; esac
+    _handoff "destructive $VERB refused: $_sw would commit '$_sl', which matches '$_hit' — the operator confirms one click" 'harbor chrome snapshot, then HARBOR_ACCESS_BROWSER_CONFIRM=<ref> harbor chrome click <ref> on that button'
+  fi
 }
 
 # click/dblclick: take a fresh full snapshot (a partial one replaces the CLI's ref
@@ -438,6 +472,7 @@ _destructive() { # <label> — prints the first word of $DESTRUCTIVE it carries
 # them), read the target's label and box, and refuse a destructive label unless
 # the operator confirmed this ref for this call. Sets G_LABEL, G_BOX.
 _guard() { # <verb> <ref>
+  _live_check
   case "$2" in
     e[0-9]*|f[0-9]*e[0-9]*) case "$2" in *[!abcdefghijklmnopqrstuvwxyz0-9]*) _refuse "target refused: '$2' — $1 takes a snapshot ref" ;; esac ;;
     *) _refuse "target refused: '$2' — $1 takes a snapshot ref (e12, f3e12); a selector carries no label for the destructive check" 'harbor chrome snapshot' ;;
@@ -910,6 +945,7 @@ EOF
         -*) _refuse "option refused: $_a — only --filename=<name>, on fill and type --submit, on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>, and --real on the scripted verbs" ;;
       esac
     done
+    case "$VERB" in press|keydown|type|fill) _submit_guard "$@" ;; esac
     # Script-first (harbor#1507, operator 2026-11-12): a fixed script from contracts/browser-script.tsv, which needs no
     # paint, so a window covered by another app still takes it. --real is the CLI's own verb, which waits for the tab to show.
     _real=''; _sfn=''; _sref=''; _sarg='null'

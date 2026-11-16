@@ -132,8 +132,11 @@ tests/admission/confinement/covered.test.sh
 tests/access/chrome/mcp.test.sh
 tests/access/chrome/session.test.sh
 tests/access/chrome/hidden.test.sh
+tests/access/chrome/click-text.test.sh
 tests/access/chrome/script.test.sh
+tests/access/chrome/live-change.test.sh
 tests/access/chrome/benchmark.test.sh
+tests/access/chrome/browser-runner.test.sh
 tests/context/injection-rule/notes.test.sh
 tests/context/injection-rule/agent-brief.test.sh
 tests/context/injection-rule/decision-question.test.sh
@@ -354,6 +357,7 @@ tests/lint/doc-shape/doc-shape.test.sh
 tests/scope/keys/read.test.sh
 tests/scope/pack/pack.test.sh
 tests/scope/pack/checks.test.sh
+tests/scope/pack/verbs.test.sh
 tests/scope/pack/deploy.test.sh
 tests/scope/pack/skill-catalog.test.sh
 tests/deploy/push/push.test.sh

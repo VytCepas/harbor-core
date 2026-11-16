@@ -717,7 +717,8 @@ if [ "$NTF" -gt 0 ]; then
     fi
     # `not-found` across 3+ sessions is harbor#462's shape and the one class whose repair is a one-line edit; everything else is warn, since a non-zero exit may be how the operator works.
     _sev=warn
-    [ "$_fe" = "not-found" ] && [ "$_fs" -ge 3 ] && _sev=crit
+    # A key-less record (`-`, every MCP call) names no pointer, so the one-line repair does not exist: warn.
+    [ "$_fe" = "not-found" ] && [ "$_fs" -ge 3 ] && [ "$_fk" != - ] && _sev=crit
     _fr="if the subject is a path, resolve or delete the pointer to it; the ledger is at MEMORY/OBSERVABILITY/<host>/tool-failures.jsonl and this tool repairs nothing"
     _fsub="$_ft → $_fk"
     case "$_ft" in

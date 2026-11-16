@@ -513,5 +513,6 @@ il_renamed_rewire() { # <settings-json> <repo root> <cfg dir> <installed name>â€
 IL_VERBS_DIR="${IL_SELF%/*}/../contracts/verbs"
 il_verbs() { # <allow|ask> -> "OK<TAB><spelling><TAB><register>" or "BAD<TAB>..." per register row with that perm
   [ -d "$IL_VERBS_DIR" ] && [ -f "${IL_SELF%/*}/gate-verbs.sh" ] || return 0
-  HARBOR_GATE_VERBS_DIR="$IL_VERBS_DIR" sh "${IL_SELF%/*}/gate-verbs.sh" rules "$1"
+  # A pack's registers (harbor#1541) are the target's verbs.d/, which `harbor pack install` writes.
+  HARBOR_GATE_VERBS_DIR="$IL_VERBS_DIR" HARBOR_GATE_VERBS_PACKS="${IL_TARGET:+$IL_TARGET/verbs.d}" sh "${IL_SELF%/*}/gate-verbs.sh" rules "$1"
 }
