@@ -43,7 +43,7 @@ if [ ! -f "$S" ]; then
   log_end; exit 1
 fi
 
-GUARDS='admission-hook.sh library-admission.sh admission-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh admission-decide.sh annotate-web.sh pin-instructions.sh context-resolve.sh admission-observe.sh admission-cloud.sh admission-destroy.sh admission-deliverables.sh admission-api-route.sh govern-hook.sh'
+GUARDS='admission-hook.sh library-admission.sh admission-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh admission-decide.sh annotate-web.sh pin-instructions.sh context-resolve.sh admission-observe.sh admission-cloud.sh admission-destroy.sh admission-deliverables.sh admission-api-route.sh admission-ask.sh govern-hook.sh'
 # RECOVERY PATH, separate from $GUARDS (harbor#275): not guards (nothing wires them), but B6's own block message is `sh $CFG/bin/deploy-restore.sh ...`, so the floor must ship them. Held apart because $GUARDS is read by X13's payload derivation, admission-integrity.sh's floor MINIMUM and admission-remove.sh's removal list.
 # library-log.sh and deploy-install-lib.sh are what deploy-restore.sh, deploy-harden.sh and pin-instructions.sh source (harbor#771, #765), so they are copied and content-pinned with it.
 RECOVERY='deploy-restore.sh deploy-harden.sh library-log.sh deploy-install-lib.sh'
@@ -80,6 +80,10 @@ PreToolUse;Write|Edit|MultiEdit;admission-hook.sh admission-self-edit.sh
 # session; they stay write-protected by guard-selfedit either way.
 PreToolUse;Bash;admission-cloud.sh
 PreToolUse;Bash;admission-destroy.sh
+# guard-ask (harbor#1545): a permissions.ask match gets a PreToolUse ask, so the dialog holds in auto mode, which was
+# measured running ask-matched calls unprompted. Standalone and fail-OPEN, as guard-destroy: it asks, it never vetoes.
+PreToolUse;Bash;admission-ask.sh
+PreToolUse;mcp__.*;admission-ask.sh
 # guard-deliverables — the FILING gate. Same standalone, fail-OPEN wiring and
 # the same reason: it denies a NEW loose .html/.md/.pdf in $HOME, Desktop,
 # Documents or Downloads and names ~/Deliverables/<date>-<slug>/ instead. A
@@ -111,6 +115,7 @@ PreToolUse;Monitor;admission-hook.sh admission-bash.sh
 PreToolUse;Monitor;admission-hook.sh admission-egress.sh
 PreToolUse;Monitor;admission-cloud.sh
 PreToolUse;Monitor;admission-destroy.sh
+PreToolUse;Monitor;admission-ask.sh
 PreToolUse;Monitor;admission-deliverables.sh
 PreToolUse;Monitor;govern-hook.sh --box
 # harbor#1313 L6: Grep returns file contents, and Read deny binds only the directory it searches. Its own

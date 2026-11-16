@@ -61,6 +61,7 @@ pack-toml:version	pack-toml	version	2026-10-17	core
 reserved:cli:hub	reserved	cli:hub	2026-10-17	hub
 reserved:path:hub/	reserved	path:hub/	2026-10-17	hub
 reserved:toml:[hub]	reserved	toml:[hub]	2026-10-17	hub
+rule:ask:ask-rule	rule	ask:ask-rule	2026-11-16	core
 rule:bash:api-route-ccr	rule	bash:api-route-ccr	2026-10-17	core
 rule:bash:api-route-config	rule	bash:api-route-config	2026-10-17	core
 rule:bash:api-route-router	rule	bash:api-route-router	2026-10-17	core
