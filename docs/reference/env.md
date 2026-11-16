@@ -187,6 +187,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_GATE_REPO_DRIFT_STATE` | path | `${XDG_STATE_HOME:-$HOME/.local/state` | TSV file where gate-repo-drift remembers drift it already reported (default ~/.local/state/harbor/repo-drift/seen.tsv) | gate |  | tests only |
 | `HARBOR_GATE_REQUIRED_CHECKS` | path | `$MC_DIR/../contracts/required-checks.tsv` | File listing the required CI checks the merge gates compare against (default contracts/required-checks.tsv) | gate |  | tests only |
 | `HARBOR_GATE_VERBS_DIR` | path | `computed` | directory of verb registers read by gate-verbs.sh (default contracts/verbs beside bin/) | gate |  | tests only |
+| `HARBOR_GATE_VERBS_PACKS` | path | none | the installed packs' verb registers, <dir>/<repo-id>/<cli>.md, read beside core's by gate-verbs.sh; the installer passes <config>/verbs.d (harbor#1541) | gate |  | tests only |
 | `HARBOR_GATE_VERBS_OWN_ORG` | value | `computed` | GitHub org treated as the App's own org by gate-verbs, default the owner of this checkout's repo slug | gate |  | tests only |
 | `HARBOR_HOUSEKEEPING_CLEAN_AGE` | tuning | `14` | Minimum age in days before housekeeping-clean removes log-class files; default 14 | housekeeping |  | tests only |
 | `HARBOR_HOUSEKEEPING_CLEAN_BOUND` | tuning | `$1` | Seconds before a GitHub read in housekeeping-clean is killed (default: each read's own bound) | housekeeping |  | tests only |

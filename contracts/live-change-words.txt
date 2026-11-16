@@ -1,0 +1,68 @@
+# live-change-words.txt (harbor#1541): the button labels that commit a change to a live system.
+#
+# WHY: the operator's decision of 2026-11-15 (harbor/D-94) — a change that reaches a live system asks in Claude Code's dialog on
+# BOTH paths, the API and the browser. The browser cannot tell an edit from a delete except by the label of what it
+# presses, so this list is that judgement, in one place. `harbor chrome` refuses click, dblclick, select, check and
+# uncheck on a target whose label carries one of these, and press Enter/Space and fill/type --submit when the focused
+# control or its form's submit button does; `confirm_click` (a permissions.ask rule) is the way through. The API
+# path's twin is the `ask` rows of the verb registers (contracts/verbs/, and a pack's verbs/): an apply or write flag.
+#
+# Both browser routes read this file (bin/access-chrome-mcp.ts, bin/access-browser-agent.sh), so they cannot drift.
+# One entry per line, lower case; a phrase is whole words separated by one space. Matched as whole words, so status
+# text passes (Paused, Removed, Payments, Saved). Missing or empty, every guarded verb is refused.
+#
+# Deliberately absent: accept (cookie banners), create and new (they open a form; its Save commits), update and edit
+# (navigation as often as commit), share (opens a dialog whose Send commits), done and ok (closing as often as commit).
+
+# remove or stop something
+delete
+remove
+archive
+discard
+unlink
+disconnect
+pause
+disable
+deactivate
+turn off
+revoke
+# put something live
+publish
+unpublish
+launch
+activate
+enable
+turn on
+resume
+# commit an edit
+save
+apply
+submit
+send
+confirm
+grant
+invite
+# money
+pay
+purchase
+buy
+# Lithuanian
+ištrinti
+pašalinti
+archyvuoti
+sustabdyti
+pristabdyti
+išjungti
+publikuoti
+paskelbti
+paleisti
+aktyvuoti
+įjungti
+išsaugoti
+taikyti
+pritaikyti
+pateikti
+siųsti
+išsiųsti
+patvirtinti
+apmokėti

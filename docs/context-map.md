@@ -30,13 +30,13 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | policy | policy/ | system | source | living | 3 |
 | standard | standards/ | system | source | versioned | 32 |
 | contract | contracts/ | system | source | versioned | 48 |
-| decision-record | docs/decisions/ | element | source | dated | 94 |
+| decision-record | docs/decisions/ | element | source | dated | 95 |
 | hook | hooks/ | component | source | living | 50 |
 | skill | skills/ | component | source | living | 62 |
-| fixture | fixtures/ | element | source | living | 450 |
+| fixture | fixtures/ | element | source | living | 446 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 83 |
-| test | tests/ | component | source | living | 674 |
+| test | tests/ | component | source | living | 675 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 10 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
@@ -44,7 +44,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | script | bin/ | component | source | living | 298 |
 | agent | agents/ | component | source | living | 1 |
 | how-to | docs/how-to/ | component | source | living | 7 |
-| reference | docs/reference/ | component | generated | generated | 92 |
+| reference | docs/reference/ | component | generated | generated | 91 |
 | explanation | docs/explanation/ | component | source | living | 106 |
 | (no kind) | - | - | - | - | 290 |
 
@@ -61,7 +61,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `context-rules/` | 70 | 6 | 1 |
 | `contracts/` | 130 | 15 | 2 |
 | `docs/` | 327 | 26 | 9 |
-| `fixtures/` | 450 | 12 | 1 |
+| `fixtures/` | 446 | 12 | 1 |
 | `hooks/` | 46 | 7 | 1 |
 | `launchd/` | 22 | 10 | 1 |
 | `mods/` | 7 | 1 | 2 |
@@ -74,7 +74,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 674 | 30 | 1 |
+| `tests/` | 675 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -91,7 +91,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | bq | observability | 3 | 6 | 0 | 2 | 0 | 0 |
 | check | observability | 2 | 5 | 0 | 1 | 60 | 0 |
 | ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
-| context | control-plane | 6 | 16 | 1 | 4 | 1 | 52 |
+| context | control-plane | 6 | 16 | 1 | 3 | 0 | 52 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
 | doc | control-plane | 16 | 13 | 0 | 44 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
@@ -107,10 +107,10 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 3 | 4 | 3 | 137 | 0 | 7 |
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
-| scope | coordination | 14 | 22 | 0 | 1 | 0 | 5 |
+| scope | coordination | 14 | 23 | 0 | 1 | 0 | 5 |
 | session | data-plane | 14 | 5 | 0 | 8 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 16 |
-| standard | policy-function | 18 | 29 | 126 | 16 | 14 | 63 |
+| standard | policy-function | 18 | 29 | 127 | 16 | 14 | 61 |
 | status | observability | 13 | 29 | 0 | 11 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
@@ -287,7 +287,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/context-resolve.sh`
 - `commands/context-budget.md`
 - `docs/context-map.md`
-- `docs/reference/check-rows/context-name-create.txt`
 - `hooks/injection-rule/context-rules.test.sh`
 - `registries/context-ratchet.tsv`
 
@@ -755,6 +754,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/decisions/0091-object-slot-open.md`
 - `docs/decisions/0092-promote-name-rules-on-evidence.md`
 - `docs/decisions/0093-knowledge-base-standard.md`
+- `docs/decisions/0094-live-changes-ask-on-both-paths.md`
 - `docs/decisions/README.md`
 - `docs/reference/check-rows/standard-coverage.txt`
 - `docs/reference/check-rows/standard-fleet-names.txt`
@@ -859,7 +859,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `context-rules/` | 58 |
 | `contracts/` | 97 |
 | `docs/` | 135 |
-| `fixtures/` | 268 |
+| `fixtures/` | 264 |
 | `hooks/` | 33 |
 | `mods/` | 7 |
 | `patches/` | 10 |

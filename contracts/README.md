@@ -109,6 +109,7 @@ hand-kept account of direction and status; this table is what exists.
 | [lint-name-baseline.txt](./lint-name-baseline.txt) | txt | lint-name-ratchet-baseline.txt (harbor#967) - the naming findings present on the day the ratchet was wired. Only shrinks. |
 | [lint-secrets-baseline.txt](./lint-secrets-baseline.txt) | txt | lint-secrets-baseline.txt (harbor#1205) - credential reads outside bin/secret, in the tree. Only goes down. |
 | [lint-siblings-baseline.txt](./lint-siblings-baseline.txt) | txt | lint-siblings-baseline.txt (harbor#966) - occurrences of another repo's path in the tree. Only goes down. |
+| [live-change-words.txt](./live-change-words.txt) | txt | live-change-words.txt (harbor#1541): the button labels that commit a change to a live system. |
 | [log-exempt.tsv](./log-exempt.tsv) | tsv | log-exempt.tsv (harbor#771) — every shell program in bin/ that does not yet log through |
 | [logging.md](./logging.md) | md | Logging — one log format for Harbor's tools and tests |
 | [main-folders.txt](./main-folders.txt) | txt | main-folders.txt (harbor#1442, #1440) — the folders an agent must never change through the file tools, because they |
@@ -121,7 +122,6 @@ hand-kept account of direction and status; this table is what exists.
 | [member-prereqs.txt](./member-prereqs.txt) | txt | member-prereqs.txt (harbor#1278) — everything a member laptop needs from its package manager, in one place. |
 | [memory-format.md](./memory-format.md) | md | Memory format (shared canonical) |
 | [merge-stack-union.txt](./merge-stack-union.txt) | txt | merge-stack-union.txt (harbor#1060) — the line lists whose pure additions `harbor merge-stack` keeps from both sides. |
-| [name-create.tsv](./name-create.tsv) | tsv | name-create.tsv (harbor#978) — core's own create commands whose new name context-rules/user/name-note-create.sh judges at birth. |
 | [obligation-kinds.tsv](./obligation-kinds.tsv) | tsv | obligation-kinds.tsv (harbor#1050) — every kind of unfinished work the obligations ledger tracks. |
 | [pack-frontmatter-keys.txt](./pack-frontmatter-keys.txt) | txt | Allowed top-level front-matter keys in an .md a pack installs (bin/pack.sh; harbor#1149). Derived 2026-10-11: union of the top-level keys of |
 | [pack.md](./pack.md) | md | The pack loader - `harbor pack` |
