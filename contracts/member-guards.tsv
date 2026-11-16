@@ -8,15 +8,12 @@ mcp__.*|Task|Agent|WebFetch|WebSearch|NotebookEdit	admission-hook.sh admission-e
 Write|Edit|MultiEdit	admission-hook.sh admission-self-edit.sh
 Bash	admission-cloud.sh
 Bash	admission-destroy.sh
-Bash	admission-ask.sh
-mcp__.*	admission-ask.sh
 Bash|Write|Edit|MultiEdit	admission-deliverables.sh
 Bash	govern-hook.sh --box
 Monitor	admission-hook.sh admission-bash.sh
 Monitor	admission-hook.sh admission-egress.sh
 Monitor	admission-cloud.sh
 Monitor	admission-destroy.sh
-Monitor	admission-ask.sh
 Monitor	admission-deliverables.sh
 Monitor	govern-hook.sh --box
 Grep	admission-hook.sh admission-egress.sh

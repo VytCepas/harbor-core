@@ -30,7 +30,6 @@ bin/access-github-app/gh	command	floor	gh shim (harbor#1018): inside a Claude Co
 bin/access-github-app/git-credential.sh	command	floor	git credential helper (harbor#1018): inside a Claude Code session (CLAUDECODE=1) github.com pushes and fetches authenticate as	harbor#1018
 bin/access-github-app/mint-token.sh	command	floor	a 1-hour installation token for the harbor-claude GitHub App, on stdout. Reuses the cached token while it has 10+ minutes left.	harbor#1018
 bin/access.sh	command	floor	`harbor access`: the access register, the one list of every identity an agent may use, and the only door to a secret's name.	harbor#1205
-bin/admission-ask.sh	command	floor	PreToolUse(Bash|Monitor|mcp__*) ASK gate: a permissions.ask match gets the dialog, auto mode included.	harbor#1545
 bin/admission-api-route.sh	command	floor	PostToolUse(Bash|Write|Edit|MultiEdit) and SessionStart. Claude Code's own API route is not a setting anything a session runs may	harbor#545
 bin/admission-bash.sh	command	floor	PreToolUse(Bash) shell-injection / local-exec guard. Ports upstream DANGEROUS_PATTERNS @ a4e8e74 (safety-classifier.ts:44-76)	harbor#3
 bin/admission-cloud.sh	command	floor	PreToolUse(Bash) ASK-gate for destructive cloud operations.	harbor#194
