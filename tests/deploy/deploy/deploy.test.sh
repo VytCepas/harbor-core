@@ -256,7 +256,7 @@ fixture unatt; HARBOR_DEPLOY_SNAPSHOT="$T/snap"; : > "$HARBOR_DEPLOY_SNAPSHOT"
 printf 'bbb  CLAUDE.md\n' > "$T/b8"  # B8 drift, so the re-pin is reached
 CC=1 run '' --apply --live --unattended; CC=''
 t_eq "inside a session, with no terminal, it installs" 0 "$RC"
-t_eq "...in the one order that works" "policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live,prod-guard-install.sh --live,skill-install.sh --all,skill-install.sh commands,context-injection-install.sh --live,deploy-shim-install.sh --live,skill-catalog.sh install,just $T/pi,just $T/po," \
+t_eq "...in the one order that works" "policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live,prod-guard-install.sh --live,skill-install.sh --all,skill-install.sh commands,skill-install.sh agents,context-injection-install.sh --live,deploy-shim-install.sh --live,skill-catalog.sh install,just $T/pi,just $T/po," \
   "$(grep -e '--apply' -e '^skill-catalog' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
 t_eq "the snapshot id the runner reads is this run's snapshot" "$(ls -d "$C"/backups/deploy-*)" "$(cat "$HARBOR_DEPLOY_SNAPSHOT")"
 t_has "the install question is answered yes, saying why" "$(out)" "yes: --unattended"
@@ -304,7 +304,7 @@ t_eq "...and no snapshot was taken" no "$(ls -d "$C"/backups/deploy-* >/dev/null
 
 t_section "the happy path: order, snapshot, the installed skill catalog written after the packs"
 fixture happy; mkdir -p "$C/lib"; echo core > "$C/lib/core.sh"; run 'y\n' --apply --live
-WANT='policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live,prod-guard-install.sh --live,skill-install.sh --all,skill-install.sh commands,context-injection-install.sh --live,deploy-shim-install.sh --live,skill-catalog.sh install,'"just $T/pi,just $T/po,"
+WANT='policy-constitution-install.sh --apply,deploy-shim-install.sh --live,deploy-harden.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live,prod-guard-install.sh --live,skill-install.sh --all,skill-install.sh commands,skill-install.sh agents,context-injection-install.sh --live,deploy-shim-install.sh --live,skill-catalog.sh install,'"just $T/pi,just $T/po,"
 t_eq "the happy path" 0 "$RC"
 t_eq "installs run in the one order that works" "$WANT" "$(grep -e '--apply' -e '^skill-catalog' "$LOGF" | awk '{print $1, $2}' | tr '\n' ',')"
 t_has "a snapshot of the config dir is taken first" "$(tar -tzf "$C"/backups/deploy-*/config.tgz 2>/dev/null)" "settings.json"
@@ -329,7 +329,7 @@ t_eq "no check-mark, cross or bar glyph in an apply's output" 0 "$(grep -cE '✓
 fixture happyloss; run 'y\n' --apply --live --accept-loss
 t_eq "an apply with --accept-loss" 0 "$RC"
 t_eq "--accept-loss reaches constitution, runtime, floor and the two skills-install runs" \
-  "policy-constitution-install.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live,skill-install.sh --all,skill-install.sh commands," \
+  "policy-constitution-install.sh --apply,deploy-runtime-install.sh --live,admission-install.sh --live,skill-install.sh --all,skill-install.sh commands,skill-install.sh agents," \
   "$(grep -- '--apply' "$LOGF" | grep -- ' --accept-loss' | awk '{print $1, $2}' | tr '\n' ',')"
 t_eq "...and no other installer" "" "$(grep -- '--apply' "$LOGF" | grep -- ' --accept-loss' | grep -E '^(deploy-shim-install|prod-guard-install|context-injection-install)' || true)"
 

@@ -7,7 +7,7 @@
 // Every request is logged to <ctl>/calls as `verb args --opt=v`. Behaviour is switched by files in <ctl>, read per request, so a
 // suite changes it with `: > $CTL/blank`: blank, hidden, eval_fail, tablist_fail, fail, upload_denied, late_blank, xerr (holds a log path),
 // page_url (holds a URL), delay_ms (holds a number), download,
-// fail_script, script_result (holds a first line). The shapes are agent-stub.sh's, which copied the real CLI's (0.1.22).
+// fail_script, script_result (holds a first line), submit_label (holds a label), submit_fail. The shapes are agent-stub.sh's, which copied the real CLI's (0.1.22).
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
@@ -34,6 +34,12 @@ function reply(args: any, cwd: string, raw: boolean): { isError: boolean; text: 
   if (verb === 'snapshot') {
     if (args.filename) { fs.copyFileSync(snap, path.join(cwd, args.filename)); return { isError: false, text: `### Snapshot\n[Snapshot](${args.filename})` }; }
     return { isError: false, text: '### Snapshot' };
+  }
+  // The submit-focus/submit-of probe (harbor#1541): submit_label holds what Enter would commit, submit_fail fails it.
+  if (verb === 'eval' && (pos[0] ?? '').includes('submit-target')) {
+    fs.appendFileSync(path.join(ctl, 'calls'), `probe submit${pos[1] ? ` ${pos[1]}` : ''}${raw ? ' [raw]' : ''}\n`);
+    if (flag('submit_fail')) return { isError: true, text: 'Error: Execution context was destroyed' };
+    return { isError: false, text: JSON.stringify(val('submit_label')) };
   }
   if (verb === 'eval') {
     if (flag('eval_fail')) return { isError: true, text: 'Error: Execution context was destroyed' };

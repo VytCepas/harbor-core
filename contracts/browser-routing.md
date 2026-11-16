@@ -114,6 +114,12 @@ it keeps those hosts. `harbor chrome` may still open them to read. **Sheets writ
 connector** (harbor#1507, decided 2026-11-11): cell-exact and with no grid focus to guess; pack 67
 `sheets-write-route` names it when a session opens a sheet in harbor chrome.
 
+**The browser is the last tier of the access ladder** (harbor#1507): opening a vendor UI in harbor chrome (`goto`, `tab_new`,
+or a `goto` inside `steps`) whose system's route card ranks `cli`, `api` or `mcp` first draws one note per system per session
+(pack 68 `browser-last-tier`): the tier, the card's first move, and that the browser may still be used when the task needs the
+UI. It informs and never denies. The host-to-system mapping is the card's own `ui-hosts:` field
+([access-card.md](./access-card.md)), so core holds no vendor host.
+
 The `claude-in-chrome` extension (now row 4's fallback; it was row 4 when this was
 measured) remains unable to run unattended and can disturb the operator's own browser.
 Its other two measured failures stand and are not re-tested here: Shopify admin
@@ -139,7 +145,7 @@ took 5-15 s) and carries the guardrails below for the hot verbs; attach, detach,
 wait-signin, doctor, status, hosts and tab-new are `access-browser-agent.sh`, run with an
 argument list, so those guardrails are the script's. The two are held to the same cases by
 `tests/access/chrome/session.test.sh` and `tests/access/browser/`. Each call's timings
-(total, guards, daemon, settle, in ms) append to `$TMPDIR/harbor-browser/<session>/.timings.tsv`. A session uses the tools when they are listed; `harbor chrome` in
+(total, guards, daemon, settle, in ms, then ok or error; no URL or argument) append to `~/.local/state/harbor/chrome-timings.tsv`, kept across sessions and cut to its newest lines past 4 MB, so the time a call spends outside the server can be told from its own (harbor#1507). `click` and `dblclick` also take `--text=<name>`: the ref is read from the guard snapshot and clicked with every guard a ref click takes, an exact name outranks partial ones, several left are refused listing their refs, and none is refused pointing at `find`. A `steps` call leaves one line per step (`steps/<verb>`) and none for the whole, so column 4 sums without counting a step twice. A session uses the tools when they are listed; `harbor chrome` in
 Bash stays for the operator's own terminal and an unconfined box. The operator
 registers the server once: `claude mcp add --scope user harbor_chrome -- python3 -I
 <checkout>/bin/access-chrome-mcp.py`.
@@ -173,7 +179,8 @@ boundary**; a click can still navigate anywhere.
 | default-deny verbs | no `run-code`, `eval`, `cookie-*`, `*storage-*`, `state-*`, `requests`/`request*`, `route`, `drop`, `install`, `open` (`upload` is allowed, row below) | suite, per verb |
 | official work UIs only | `goto`/`tab-new` need `https://` on a host in [`browser-agent-hosts.txt`](./browser-agent-hosts.txt), or, in a headless lane only, a loopback dev server (below): one line per vendor on the domain it owns outright (a line admits its subdomains), exact hosts where others live under the domain (`*.example.com`), each under a comment saying why; the operator's own stack, internal UIs and client tools are the private layer's `browser-hosts.txt`, read beside it; client live sites stay on the live-walk repo the private layer's `harbor.toml` names (`live_walk_repo`), and banking, payments and password managers stay off (2026-10-02) | suite: a goto loop over every vendor UI, a client site refused, a host line with no reason fails |
 | loopback dev servers, headless lane only | in a headless lane (`attach --headless`: no profile, no cookies), `goto`/`tab-new` also take `http://localhost:<port>` and `http://127.0.0.1:<port>` for ports 1024-65535, and nothing else on http: the authority must equal one of the two whole, so userinfo (`localhost:3000@evil.com`), a suffix host (`localhost.evil.com`), an encoded byte, `[::1]`, `0.0.0.0`, `127.1`, no port or a port below 1024 are refused, as is a backslash, space or control byte anywhere. **Headless lane only** (operator decision, 2026-11-15): in the logged-in profile an agent-written localhost page could send credentialed cross-site requests and read localhost cookies, so there it is refused, the refusal naming the headless lane. The lane is read from harbor's `.headless` marker **and** the daemon's own session record (`attached: true` is the operator's Chrome), since the marker is a `$TMPDIR` file anyone can write. Why loopback at all: a rebuild is checked against prod on its dev server | suite, both routes, incl. mutants |
-| no destructive click unconfirmed | `click`/`dblclick` take a snapshot ref only, take a fresh **full** snapshot, read the target's label (a nameless target: its subtree) and refuse whole words such as *delete, remove, pause, publish, pay* and their Lithuanian forms (`DESTRUCTIVE` in the script is the list); a stale ref or a selector is refused, because neither has a label to check | suite, incl. a mutant without the guard line |
+| no destructive click unconfirmed | `click`/`dblclick` take a snapshot ref only, take a fresh **full** snapshot, read the target's label (a nameless target: its subtree) and refuse whole words and phrases from [`live-change-words.txt`](./live-change-words.txt) (harbor#1541: *save, apply, turn on, submit, send, delete, pause, publish, pay* and their Lithuanian forms, capitals folded); a missing or empty list refuses every guarded verb; a stale ref or a selector is refused, because neither has a label to check | suite, incl. a mutant without the guard line |
+| Enter commits like a click (harbor#1541, harbor/D-94) | `press`/`keydown` of Enter, NumpadEnter or Space (with any modifiers), `type --submit` and `fill <ref> --submit` first run the fixed `submit-focus`/`submit-of` probe of [`browser-script.tsv`](./browser-script.tsv): the label of the focused control when it is a button, link or menu item, plus every submit button of its form. A live-change word there is refused as a click on it is, and the way through is `confirm_click` on that button. **Not covered:** a page whose Enter handler is script on a field outside any form, and focus inside an iframe (the probe sees the frame element) | suite `tests/access/chrome/live-change.test.sh`, both routes, each red against a mutant |
 | per-call confirm | the operator runs `HARBOR_ACCESS_BROWSER_CONFIRM=<ref> harbor chrome click <ref>`: it must name that ref, and set on any other verb it is refused as exported | suite |
 | operator-approved click (harbor#1488) | `mcp__harbor_chrome__confirm_click` is `click` past the destructive-label refusal, for a click that changes a live system (Turn on, Apply, Publish, Delete). It runs only while `~/.claude/settings.json` holds `permissions.ask` for it, which `admission-deny.sh --apply` adds, so every call is the operator's click in Claude Code's own dialog, in auto mode too; without the rule it refuses. Every other guard (snapshot ref, host, `--force` overlay) still applies; each call is logged to `.confirmed.tsv` in the session workdir | suite, incl. a mutant without the rule check |
 | forced click | `click <ref> --force` presses the mouse at the target's box centre (the pinned CLI's click has no force), behind the same guard, and refused when any top-frame element whose box holds that point carries a destructive label (the press lands on whatever is on top); refused for `dblclick`, an iframe target (its box is frame-relative), a zero-size box or one with a negative coordinate. A box below the fold is not detected and the press lands on nothing | suite; live on a local overlay page 2026-10-01 |
@@ -246,6 +253,28 @@ clicked next to one. Allowing without it leaves the CLI waiting with no error.
 
 `harbor chrome doctor` reports row 4 from the box: the profiles holding the
 extension, whether the token is set, and whether the retired MCP is still wired.
+
+### Row 4 delegate: `browser-runner` (harbor#1507 pilot, 2026-11-15)
+
+`agents/browser-runner.md` is a Claude Code subagent on Haiku (role row in `contracts/agents.tsv`, effort low: the flow is
+mechanical and the brief carries the judgment) whose only tools are the `harbor_chrome` verbs a flow needs, so its
+instructions stay a short context and the main session's is spared the snapshots and page text. It lacks `confirm_click`,
+`upload`, `dialog_accept`, `pdf`, `drag`, raw mouse input, `keydown`/`keyup` (it has `press`), `console`, `state`, Bash, Write and
+Agent, and `steps`, which would run any of those as a step (review of harbor#1536), and works in its
+own lane (`runner`), so its `detach` cannot release the main session's tab. The server's guards are its whole safety: a refusal
+comes back in its report as an answer. Installed by `harbor skills agents --all` (a dry run; `--apply --live` writes, and deploy
+runs it with the skills), removed by `harbor skills agents --uninstall <name>` (the file moves into the backup).
+
+**When a main session delegates.** The flow is known up front and mechanical (open X, click Y, fill Z, read back W), needs
+no login decision, and its reads are values rather than a judgment. It stays in the main session when the next step depends on
+reading the page with judgment, when the flow writes (name the write in the brief or do it here), or when a sign-in is pending.
+
+**How the pilot is judged.** The same mechanical flow, N times (5 or more) on the main model and N times through the
+subagent, compared on: wall time per run (the first to last timestamp of the run's session in `chrome-timings.tsv`, or
+the sum of column 4; column 2 is the session, and the subagent's lane shows as `<session>-runner`), errors (a refusal that was
+not the flow's, a failed verb, a `done: false`), wrong clicks (a click that was not the brief's), and the main session's
+context spent on the flow. It stays only if it wins on wall time and context without losing on errors or wrong clicks; otherwise
+the row and the file are removed. Subscription usage only: no API key, no per-call spend.
 
 ## Record once, replay as a script — signed out only (harbor#1445)
 
