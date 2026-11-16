@@ -30,7 +30,7 @@ fixture() { # <case> → T (case dir) with origin.git, repo (a clone on main), h
   printf 'FILES="library-log.sh deploy-install-lib.sh"\n' >> "$T/src/bin/deploy-runtime-install.sh"
   # Per variable: the other repos (harbor#736) resolve to STUB_PI / STUB_PO, unset = no repo there; yard's bootstrap
   # clone (a BOX row, under the sandboxed HOME) is the real reader's answer.
-  printf '#!/bin/sh\ncase "$1" in --private|--conf) exec sh "%s/bin/scope-roots.sh" "$@" ;; esac\n[ "$1" = --get ] || exit 0\ncase "$2" in HARBOR_PROJECT_INIT|HARBOR_SCOPE_SCAFFOLDER) printf "%%s" "${STUB_PI:-}" ;; HARBOR_ORCHESTRATOR|HARBOR_SCOPE_FLEET_CONTROLLER) printf "%%s" "${STUB_PO:-}" ;; HARBOR_SCOPE_SCAFFOLDER_CLONE) exec sh "%s/bin/scope-roots.sh" "$@" ;; *) printf "%%s" "$STUB_REPO" ;; esac\n' "$T_ROOT" "$T_ROOT" > "$T/src/bin/scope-roots.sh"
+  printf '#!/bin/sh\ncase "$1" in --private|--conf) exec sh "%s/bin/scope-roots.sh" "$@" ;; esac\n[ "$1" = --get ] || exit 0\ncase "$2" in HARBOR_SCOPE_SCAFFOLDER) printf "%%s" "${STUB_PI:-}" ;; HARBOR_SCOPE_FLEET_CONTROLLER) printf "%%s" "${STUB_PO:-}" ;; HARBOR_SCOPE_SCAFFOLDER_CLONE) exec sh "%s/bin/scope-roots.sh" "$@" ;; *) printf "%%s" "$STUB_REPO" ;; esac\n' "$T_ROOT" "$T_ROOT" > "$T/src/bin/scope-roots.sh"
   cat > "$T/src/bin/deploy-install-stamp.sh" <<'EOS'
 #!/bin/sh
 case "$1" in

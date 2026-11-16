@@ -41,6 +41,6 @@ otrunc
 printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git status ZZBYTESZZ"}}' | (cd "$T_ROOT" && CLAUDE_CONFIG_DIR="$CFG" sh "$CFG/bin/admission-bash.sh") >/dev/null 2>&1
 t_eq "O-34 a confined call carries no class" - "$(jq -r 'select(.g == "bash") | .x' "$OSINK" | tail -1)"
 t_hasnt "O-34 no command byte reaches the ledger" "$(cat "$OSINK")" 'ZZBYTESZZ'
-rm -f "$TMP/managed/harbor-confinement"; unset HARBOR_SCOPE_MANAGED_SETTINGS HARBOR_MANAGED_SETTINGS
+rm -f "$TMP/managed/harbor-confinement"; unset HARBOR_SCOPE_MANAGED_SETTINGS
 ff_sealed
 t_done

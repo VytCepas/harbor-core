@@ -23,7 +23,7 @@ PRIV="$T_TMP/nopriv"; mkdir -p "$PRIV"; seams 0; sess 1
 # the stub shell agent: what the verbs that are Chrome's own run (attach, tabs, ...), and the tab list the sign-in stop reads
 cat > "$X/bin/access-browser-agent.sh" <<'EOF'
 for a in "$@"; do printf 'arg=%s\n' "$a"; done
-printf 'session=%s lane=%s path=%s private=%s\n' "${HARBOR_ACCESS_BROWSER_SESSION:-}" "${HARBOR_ACCESS_BROWSER_LANE:-${HARBOR_BROWSER_LANE:-}}" "$PATH" "${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-${HARBOR_BROWSER_PRIVATE_HOSTS:-none}}"
+printf 'session=%s lane=%s path=%s private=%s\n' "${HARBOR_ACCESS_BROWSER_SESSION:-}" "${HARBOR_ACCESS_BROWSER_LANE:-}" "$PATH" "${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-none}"
 # front: shows the tab (the daemon stops reading hidden and failing), or refuses as for a window holding the operator's tabs
 case "$1" in front) [ ! -e "$STUB_CTL/front_refuses" ] || { echo "FAIL: front: window 9 holds 1 tab(s) that are not this session's"; exit 1; }; rm -f "$STUB_CTL/hidden" "$STUB_CTL/fail"; echo "  ok: front: window 9 tab 2 is the tab Chrome shows; focus left where it was" >&2 ;; esac
 case "$1" in tabs) cat "$STUB_TABS" 2>/dev/null || : ;; attach) [ -z "${STUB_REATTACH:-}" ] || cp "$STUB_REATTACH.keep" "$STUB_REATTACH" ;; esac

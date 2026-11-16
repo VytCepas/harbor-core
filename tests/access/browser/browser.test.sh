@@ -150,9 +150,9 @@ t_has "as this session's own name plus the lane" "$(out)" "args=-s=claude-abc123
 t_eq "a lane with other characters is refused" "exit 1" "$(HARBOR_ACCESS_BROWSER_LANE='x/../y'; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
 t_eq "a lane in capitals is refused, whatever the locale" "exit 1" "$(LANG=en_NZ.UTF-8 LC_ALL=en_NZ.UTF-8 HARBOR_ACCESS_BROWSER_LANE=ADS; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
 t_eq "a lane over 12 characters is refused" "exit 1" "$(HARBOR_ACCESS_BROWSER_LANE=abcdefghijklm; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
-t_eq "the old HARBOR_BROWSER_LANE still names a lane, until 2026-11-15 (harbor#1097)" "exit 0" "$(HARBOR_BROWSER_LANE=ads1; export HARBOR_BROWSER_LANE; ag tab-list)"
+t_eq "the old HARBOR_ACCESS_BROWSER_LANE still names a lane, until 2026-11-15 (harbor#1097)" "exit 0" "$(HARBOR_ACCESS_BROWSER_LANE=ads1; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
 t_has "...as the same session name" "$(out)" "args=-s=claude-abc123def456-ads1 tab-list"
-t_eq "...and over 12 characters it is refused" "exit 1" "$(HARBOR_BROWSER_LANE=abcdefghijklm; export HARBOR_BROWSER_LANE; ag tab-list)"
+t_eq "...and over 12 characters it is refused" "exit 1" "$(HARBOR_ACCESS_BROWSER_LANE=abcdefghijklm; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
 t_eq "no session id is refused" "exit 1" "$(rc env -u CLAUDE_CODE_SESSION_ID -u HARBOR_ACCESS_BROWSER_SESSION -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" sh "$AGENT" tab-list)"
 t_eq "a non-numeric idle timeout is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_IDLE_MS=soon HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" attach)"
 
