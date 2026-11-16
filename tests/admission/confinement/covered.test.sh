@@ -89,8 +89,8 @@ t_eq "the flag with spaces around the colon: it blocks" 2 \
 
 t_section "the environment cannot turn the skip on"
 mkdir -p "$T_TMP/envsys"; cp "$SYS/harbor-confinement" "$SYS/managed-settings.json" "$T_TMP/envsys/"
-t_eq "the installed floor, HARBOR_SCOPE_MANAGED_SETTINGS naming a fixture with the skip: it blocks" 2 \
-  "$(printf '%s' "$W" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_MANAGED_SETTINGS="$T_TMP/envsys/managed-settings.json" TMPDIR=/nonexistent-zone sh "$CFG/bin/admission-bash.sh" >/dev/null 2>&1; echo $?)"
+t_eq "the installed floor, HARBOR_SCOPE_MANAGED_SETTINGS (or the old HARBOR_MANAGED_SETTINGS) naming a fixture with the skip: it blocks" 2 \
+  "$(printf '%s' "$W" | CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_MANAGED_SETTINGS="$T_TMP/envsys/managed-settings.json" HARBOR_MANAGED_SETTINGS="$T_TMP/envsys/managed-settings.json" TMPDIR=/nonexistent-zone sh "$CFG/bin/admission-bash.sh" >/dev/null 2>&1; echo $?)"
 
 t_section "contracts/confinement-coverage.tsv: every admission rule, the guard's set, never a remote or zone rule"
 _adm="$(awk -F'\t' '!/^#/ && $3 == "admission" { print $1 }' "$T_ROOT/standards/naming/controls.tsv" | sort)"

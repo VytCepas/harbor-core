@@ -169,7 +169,7 @@ t_has "Darwin keeps Seatbelt's network key" "$(HARBOR_MEMBER_OS=Darwin compose |
 
 t_section "overrides under root"
 rr() { env "$1=x" MEMBER_MANAGED_LIB=1 sh -c '. "$0"; member_refuse_override 0' "$M" >/dev/null 2>&1; echo $?; }
-for v in HARBOR_SCOPE_MANAGED_SETTINGS HARBOR_MEMBER_OS HARBOR_MEMBER_PREFS_DIR HARBOR_MEMBER_ROOT; do t_eq "$v is refused under root" 1 "$(rr "$v")"; done
+for v in HARBOR_SCOPE_MANAGED_SETTINGS HARBOR_MANAGED_SETTINGS HARBOR_MEMBER_OS HARBOR_MEMBER_PREFS_DIR HARBOR_MEMBER_ROOT; do t_eq "$v is refused under root" 1 "$(rr "$v")"; done
 t_eq "CONTROL: none set is allowed" 0 "$(env -u HARBOR_MEMBER_OS MEMBER_MANAGED_LIB=1 sh -c '. "$0"; member_refuse_override 0' "$M" >/dev/null 2>&1; echo $?)"
 t_eq "CONTROL: a non-root run keeps its override" 0 "$(HARBOR_MEMBER_OS=WSL MEMBER_MANAGED_LIB=1 sh -c '. "$0"; member_refuse_override 501' "$M" >/dev/null 2>&1; echo $?)"
 

@@ -6,7 +6,7 @@ LIVE="${HARBOR_ACCESS_BROWSER_FLOW_LIVE:-}"   # before t_init clears HARBOR_*
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 FLOW="$T_ROOT/bin/access-browser-flow.sh"; AGENT="$T_ROOT/bin/access-browser-agent.sh"
 FIX="$T_ROOT/tests/access/browser-flow"
-unset HARBOR_ACCESS_CHROME
+unset HARBOR_ACCESS_CHROME HARBOR_CHROME
 . "$(dirname "$0")/../../cli/browser/agent-stub.sh"
 
 HAVE_SQLITE=0; ! command -v sqlite3 >/dev/null 2>&1 || HAVE_SQLITE=1
