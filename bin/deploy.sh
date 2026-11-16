@@ -123,8 +123,8 @@ fi
 if [ "$UNATTENDED" -eq 1 ]; then
   [ "$IL_APPLY" -eq 1 ] || il_usage_error '--unattended takes --apply: a dry run asks nothing'
   # the SHIP_ names are read until 2026-11-15 (harbor#1097)
-  [ "${HARBOR_DEPLOY_UNATTENDED:-${SHIP_UNATTENDED:-}}" = 1 ] || il_usage_error '--unattended is the ship runner alone, which sets HARBOR_DEPLOY_UNATTENDED=1'
-  SNAPFILE="${HARBOR_DEPLOY_SNAPSHOT:-${SHIP_SNAPSHOT:-}}"
+  [ "${HARBOR_DEPLOY_UNATTENDED:-}" = 1 ] || il_usage_error '--unattended is the ship runner alone, which sets HARBOR_DEPLOY_UNATTENDED=1'
+  SNAPFILE="${HARBOR_DEPLOY_SNAPSHOT:-}"
   [ -n "$SNAPFILE" ] && [ -f "$SNAPFILE" ] && [ ! -L "$SNAPFILE" ] && [ ! -s "$SNAPFILE" ] \
     || il_usage_error '--unattended needs HARBOR_DEPLOY_SNAPSHOT naming an empty file, where the runner reads the snapshot id'
   [ "$UNINSTALL" -eq 0 ] && [ "$PRUNE" -eq 0 ] && [ "$IL_ACCEPT_LOSS" -eq 0 ] \
