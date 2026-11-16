@@ -22,9 +22,9 @@ log_init managed-mods
 # As root the target is never caller-chosen: sudo -E or env_keep would otherwise let the variable
 # aim a root write and chown anywhere. <uid> is a parameter so the test can decide without root.
 managed_refuse_override() { # <uid> -> 1 and a FAIL when root is handed a path override
-  [ "$1" -eq 0 ] && [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ] || return 0
-  log_fail "HARBOR_SCOPE_MANAGED_SETTINGS (or HARBOR_MANAGED_SETTINGS) is set under root: refusing to write a caller-chosen path"
-  log_fix "sudo env -u HARBOR_SCOPE_MANAGED_SETTINGS -u HARBOR_MANAGED_SETTINGS sh $0"; return 1
+  [ "$1" -eq 0 ] && [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ] || return 0
+  log_fail "HARBOR_SCOPE_MANAGED_SETTINGS) is set under root: refusing to write a caller-chosen path"
+  log_fix "sudo env -u HARBOR_SCOPE_MANAGED_SETTINGS sh $0"; return 1
 }
 # The write is read back (harbor#457): what is on disk must be the JSON this run meant to write, and an install's
 # marketplace file must exist. Without it a write that landed nowhere exits 0, and a green exit with nothing installed
@@ -47,8 +47,8 @@ managed_verify() { # <mode> <file> <expected json> <marketplace dir> [<mods dir>
 MKT='harbor-mods'
 # The managed file and its marketplace directory, the sibling harbor-mods (FILE, BASE, MDIR).
 managed_target() {
-  if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then
-    FILE="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
+  if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then
+    FILE="${HARBOR_SCOPE_MANAGED_SETTINGS}"
   else
     case "$(uname -s)" in
       Darwin) FILE='/Library/Application Support/ClaudeCode/managed-settings.json' ;;
@@ -133,7 +133,7 @@ log_note "target: $FILE"
 [ "$MODE" = uninstall ] || log_note "mods: $(printf '%s ' $NAMES)(from $MODS, copied into $MDIR)"
 if [ "$MODE" = dry ]; then printf '%s\n' "$NEW"; log_note "dry run: nothing written"; exit 0; fi
 
-if [ -z "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ] && [ "$(id -u)" -ne 0 ]; then
+if [ -z "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ] && [ "$(id -u)" -ne 0 ]; then
   log_fail "not root: this file is root-owned by design"; log_fix "sudo sh $0${MODE:+ }$([ "$MODE" = uninstall ] && echo --uninstall)"; exit 1
 fi
 mkdir -p "$BASE"

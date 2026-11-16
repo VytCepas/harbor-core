@@ -34,7 +34,7 @@ MEMBER_HOOK_ENV='HOME USER LOGNAME LANG LC_ALL LC_CTYPE TMPDIR CLAUDE_PROJECT_DI
 # member_refuse_override <uid> -> 1 and a FAIL when root is handed a path or OS override: sudo -E would let it aim a root write.
 member_refuse_override() {
   [ "$1" -eq 0 ] || return 0
-  for _v in HARBOR_SCOPE_MANAGED_SETTINGS HARBOR_MANAGED_SETTINGS HARBOR_MEMBER_OS HARBOR_MEMBER_PREFS_DIR HARBOR_MEMBER_ROOT; do
+  for _v in HARBOR_SCOPE_MANAGED_SETTINGS HARBOR_MEMBER_OS HARBOR_MEMBER_PREFS_DIR HARBOR_MEMBER_ROOT; do
     eval "_s=\${$_v:-}"
     [ -z "$_s" ] && continue
     log_fail "$_v is set under root: refusing a caller-chosen target"
@@ -51,7 +51,7 @@ member_os() {
 }
 # member_settings <os> -> the managed settings file. The override moves it for tests, and the root with it.
 member_settings() {
-  if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then printf '%s' "${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"; return 0; fi
+  if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then printf '%s' "${HARBOR_SCOPE_MANAGED_SETTINGS}"; return 0; fi
   case "$1" in
     Darwin) printf '%s' '/Library/Application Support/ClaudeCode/managed-settings.json' ;;
     # W4: /mnt/c is the Windows chain, writable only by a Windows admin. If scripts can't run from it, this and member_root move.

@@ -35,7 +35,7 @@ case "${1:-}" in
   *) log_fail "unknown option $1"; log_fix "sh $0 --help"; exit 2 ;;
 esac
 
-REPO="${HARBOR_CI_PLAN_REPO:-${HARBOR_PLAN_REPO:-$(repo_slug)}}"   # harbor's own OWNER/NAME (harbor#1149); empty is an unread below
+REPO="${HARBOR_CI_PLAN_REPO:-$(repo_slug)}"   # harbor's own OWNER/NAME (harbor#1149); empty is an unread below
 BRANCH=main
 CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}"
 OUT="$CACHE_DIR/gh-plan.json"

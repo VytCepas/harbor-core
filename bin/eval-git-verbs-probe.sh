@@ -50,7 +50,7 @@ trap 'exit 130' INT TERM HUP
 mkdir -p "$W/home" "$W/cfg" "$W/cwd"
 _realhome="$HOME"
 export HOME="$W/home" CLAUDE_CONFIG_DIR="$W/cfg"
-unset HARBOR_ADMISSION_DISABLE HELM_DISABLE_FLOOR
+unset HARBOR_ADMISSION_DISABLE
 
 # --- the rules --------------------------------------------------------------------------------------------------
 # shellcheck disable=SC2034 # IL_ENV, IL_DIR and IL_DIR_SET are inputs il_target reads

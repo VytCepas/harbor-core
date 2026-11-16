@@ -141,11 +141,11 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_DEPLOY_FLEET_NOW` | test-only | `computed` | Pins the epoch-seconds clock used by deploy-fleet, default is the current time | deploy |  | tests only |
 | `HARBOR_DEPLOY_FLEET_REPORT_DIR` | path | `$HOME/Deliverables/$(lday "$NOW" %Y-%m-%d)-ship` | Directory the fleet deploy report is written under (default ~/Deliverables/<today>-ship) | deploy |  | tests only |
 | `HARBOR_DEPLOY_LIVE_DIR` | path | `${CLAUDE_CONFIG_DIR:-$HOME/.claude` | Live config directory that deploy checks and status read the installed bin from; defaults to CLAUDE_CONFIG_DIR or ~/.claude | deploy |  | tests only |
-| `HARBOR_DEPLOY_REPO` | handoff | none | OWNER/NAME of the fleet repo whose ship.config command deploy-fleet is running; set for that command only (the old SHIP_REPO is set too until 2026-11-15) | deploy |  | tests only |
+| `HARBOR_DEPLOY_REPO` | handoff | none | OWNER/NAME of the fleet repo whose ship.config command deploy-fleet is running; set for that command only | deploy |  | tests only |
 | `HARBOR_DEPLOY_SHIMS_TABLE` | path | `$ROOT/contracts/shims.tsv` | Shim table file that deploy-shim-install.sh installs from (default contracts/shims.tsv in the checkout) | deploy |  | tests only |
-| `HARBOR_DEPLOY_SNAPSHOT` | handoff | none | Path of the empty file deploy-fleet gives an apply command to write the snapshot id into; deploy.sh --unattended refuses without it (the old SHIP_SNAPSHOT is read until 2026-11-15) | deploy |  | tests only |
-| `HARBOR_DEPLOY_SNAPSHOT_ID` | handoff | none | Snapshot id deploy-fleet hands the restore command of a ship.config (the old SHIP_SNAPSHOT_ID is set too until 2026-11-15) | deploy |  | tests only |
-| `HARBOR_DEPLOY_UNATTENDED` | handoff | none | Set to 1 by deploy-fleet and the event dispatcher for unattended code: deploy.sh --unattended needs it and deploy-fleet refuses --approved under it (the old SHIP_UNATTENDED is read until 2026-11-15) | deploy |  | tests only |
+| `HARBOR_DEPLOY_SNAPSHOT` | handoff | none | Path of the empty file deploy-fleet gives an apply command to write the snapshot id into; deploy.sh --unattended refuses without it | deploy |  | tests only |
+| `HARBOR_DEPLOY_SNAPSHOT_ID` | handoff | none | Snapshot id deploy-fleet hands the restore command of a ship.config | deploy |  | tests only |
+| `HARBOR_DEPLOY_UNATTENDED` | handoff | none | Set to 1 by deploy-fleet and the event dispatcher for unattended code: deploy.sh --unattended needs it and deploy-fleet refuses --approved under it | deploy |  | tests only |
 | `HARBOR_DOC_ARCHIFY_DIR` | path | `$ROOT/vendor/archify` | Directory of the archify diagram tool used by doc-visual-check (default vendor/archify in the repo) | doc |  | tests only |
 | `HARBOR_DOC_DRIVE_MOUNT` | path | none | mount point of the Drive folder doc-drive-push writes to; unset makes the script search for the real mount | doc |  | tests only |
 | `HARBOR_DOC_DRIVE_WAIT` | tuning | `30` | Seconds doc-drive-push waits for Google Drive to assign the item id of a copied deliverable, default 30 | doc |  | tests only |
@@ -229,12 +229,9 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_MEMORY_LOG_TOKEN_FILE` | path | `$CFG/.helm-log-token` | File holding the token for the memory log push, read by the worklog hook and idea (default <config>/.helm-log-token) | memory |  | tests only |
 | `HARBOR_MEMORY_ROOT` | path | none | Memory notes store directory used by the memory tools; empty means the box's resolved per-home notes store | memory |  | tests only |
 | `HARBOR_MEMORY_TRANSCRIPT_DIR` | path | `$CFG/projects` | Directory of session transcripts that the memory-harvest hook scans (default $CFG/projects) | memory |  | tests only |
-| `HARBOR_ORCHESTRATOR` | value | none | Old name of HARBOR_SCOPE_FLEET_CONTROLLER, still read as an override until 2026-11-15; bootstrap unsets it to get the default | deploy |  | tests only |
-| `HARBOR_ORCH_BIN` | value | `computed` | old name for the fleet controller CLI path, still read as a fallback to HARBOR_SCOPE_FLEET_CONTROLLER_BIN | ci |  | tests only |
 | `HARBOR_PACK_SHIMS_DIR` | path | none | Directory holding a pack's shims.d table that deploy-shim-install.sh links alongside core's shims in a --dir run | pack |  | tests only |
 | `HARBOR_POLICY_TODAY` | test-only | `computed` | Date (YYYY-MM-DD) policy-check.sh uses instead of today when it ages an exemption, so a suite is deterministic | policy |  | tests only |
 | `HARBOR_PRIVATE_READ_TOKEN` | value | none | CI secret: fine-grained read token for the private harbor repo, used to fetch the leak gate's private terms | standard |  | tests only |
-| `HARBOR_PROJECT_INIT` | value | none | Old name of HARBOR_SCOPE_SCAFFOLDER, still read as an override until 2026-11-15; bootstrap unsets it to get the default | deploy |  | tests only |
 | `HARBOR_SCOPE_BIN` | path | none | Extra directory searched for harbor's scope scripts when the dispatcher cannot find them next to itself | scope |  | tests only |
 | `HARBOR_SCOPE_CACHE_DIR` | path | `$HOME/.claude/cache` | Directory where scope, alert, CI and status scripts keep their cache files (default $CFG/cache, i.e. ~/.claude/cache) | scope |  | tests only |
 | `HARBOR_SCOPE_GH` | path | none | gh command scope-repo.sh passes to the label sync for its --github step; a suite swaps in a stub | scope |  | tests only |
