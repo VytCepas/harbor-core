@@ -52,9 +52,7 @@ LOG_FD=2
 
 # harbor#961 W5: the roots that took registered names (standards/naming/renames.tsv), old TAB new. Until 2026-11-15 the old name
 # is still asked for and read as an override when the new one is unset (the dual-read window); past it, delete the line.
-W5_ALIASES='HARBOR_ORCHESTRATOR	HARBOR_SCOPE_FLEET_CONTROLLER
-HARBOR_PROJECT_INIT	HARBOR_SCOPE_SCAFFOLDER
-HARBOR_ORCH_BIN	HARBOR_SCOPE_FLEET_CONTROLLER_BIN'
+W5_ALIASES=''
 # harbor#967 W9: the red-team corpus root took the eval family's name; the same window, until 2026-12-01.
 W9_ALIASES=''
 ROOT_ALIASES="$W5_ALIASES

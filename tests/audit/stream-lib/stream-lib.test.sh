@@ -58,7 +58,7 @@ t_eq "the same failure on an ordinary stream returns 0" 0 $?
 chmod 0700 "$T_TMP/ro"
 
 t_section "default root"
-unset HARBOR_AUDIT_STREAM_SINK HARBOR_SINK; export CLAUDE_CONFIG_DIR="$T_TMP/cfg"; mkdir -p "$CLAUDE_CONFIG_DIR"
+unset HARBOR_AUDIT_STREAM_SINK; export CLAUDE_CONFIG_DIR="$T_TMP/cfg"; mkdir -p "$CLAUDE_CONFIG_DIR"
 printf 'Box-1\n' > "$CLAUDE_CONFIG_DIR/.helm-obs-host"
 t_eq "the root is the host's streams dir under the config dir" "$T_TMP/cfg/MEMORY/OBSERVABILITY/Box-1/streams" "$(stream_root)"
 printf '../x\n' > "$CLAUDE_CONFIG_DIR/.helm-obs-host"
