@@ -81,7 +81,6 @@
 /bin/access-github-app-install.sh @VytCepas
 /bin/access.sh @VytCepas
 /bin/admission-api-route.sh @VytCepas
-/bin/admission-ask.sh @VytCepas
 /bin/admission-bash.sh @VytCepas
 /bin/admission-cloud.sh @VytCepas
 /bin/admission-decide.sh @VytCepas

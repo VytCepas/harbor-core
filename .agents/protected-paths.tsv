@@ -101,7 +101,6 @@ bin/access-browser.sh	ship	derived: called by bin/deploy-live-verify.sh
 bin/access-github-app-install.sh	ci-gate	derived: called by bin/lint-conventions.sh
 bin/access.sh	operator-run	derived: called by bin/secret
 bin/admission-api-route.sh	installed	derived: shipped by admission-install.sh
-bin/admission-ask.sh	installed	derived: shipped by admission-install.sh
 bin/admission-bash.sh	installed	derived: shipped by admission-install.sh
 bin/admission-cloud.sh	installed	derived: shipped by admission-install.sh
 bin/admission-decide.sh	installed	derived: shipped by admission-install.sh

@@ -45,7 +45,6 @@ bin/admission-self-edit.sh
 bin/admission-cloud.sh
 bin/admission-destroy.sh
 bin/admission-deliverables.sh
-bin/admission-ask.sh
 bin/admission-api-route.sh
 bin/admission-decide.sh
 bin/admission-normalize.awk
