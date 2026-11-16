@@ -138,5 +138,5 @@ t_eq "the shipped hook reads no seam from the environment" "" \
 t_eq "CONTROL: the pattern finds a seam where one is read" 1 \
   "$(printf 'GCX="${HARBOR_ACCESS_CONFINEMENT_GCX:-gcx}"\n' | grep -cE "$SEAMS")"
 t_eq "CONTROL: ...and the old spelling of one" 1 \
-  "$(printf 'GCX="${HARBOR_ACCESS_CONFINEMENT_GCX:-gcx}"\n' | grep -cE "$SEAMS")"
+  "$(printf 'GCX="${HARBOR_GCX:-gcx}"\n' | grep -cE "$SEAMS")"
 t_done

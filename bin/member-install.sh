@@ -355,7 +355,7 @@ land_windows() {
   log_end || :; exit 3
 }
 # /etc here, or beside the moved settings under a test: root-only homes for what the distro itself must hold, on WSL too.
-member_etc() { if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then printf '%s/etc' "${MFILE%/*}"; else printf /etc; fi; }
+member_etc() { if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then printf '%s/etc' "${MFILE%/*}"; else printf /etc; fi; }
 # W5: the member's one root path, and exactly this command with exactly no argument. visudo first: a broken file here would break every sudo on the box.
 # macOS has no package manager to call, so its tools stay IT's and a missing one is said in the session.
 member_sudoers() {
@@ -544,7 +544,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 # Only root, or a test that moved the target. This is what makes leaving IT's: a member has neither (M2).
-if [ "$(id -u)" -ne 0 ] && [ -z "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then
+if [ "$(id -u)" -ne 0 ] && [ -z "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then
   die 'not root: the floor is root-owned by design, so IT runs this' "sudo sh $0" 1
 fi
 # What useradd takes, as member-windows.sh's name_ok: a leading dot lets `..` through to /home/.., and all digits reads as a uid.

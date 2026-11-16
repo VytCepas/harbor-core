@@ -16,11 +16,11 @@ CORE="$HERE/../contracts"
 LOG_FD=2; export LOG_FD   # stdout is data (--rows, --missing)
 . "$HERE/library-log.sh"
 log_init managed-folders
-if [ "$(id -u)" -eq 0 ] && [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then
-  log_fail "HARBOR_SCOPE_MANAGED_SETTINGS) is set under root: refusing to write a caller-chosen path"
-  log_fix "sudo env -u HARBOR_SCOPE_MANAGED_SETTINGS sh $0"; exit 1
+if [ "$(id -u)" -eq 0 ] && [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then
+  log_fail "HARBOR_SCOPE_MANAGED_SETTINGS (or HARBOR_MANAGED_SETTINGS) is set under root: refusing to write a caller-chosen path"
+  log_fix "sudo env -u HARBOR_SCOPE_MANAGED_SETTINGS -u HARBOR_MANAGED_SETTINGS sh $0"; exit 1
 fi
-if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then FILE="${HARBOR_SCOPE_MANAGED_SETTINGS}"
+if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then FILE="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
 elif [ "$(uname -s)" = Darwin ]; then FILE='/Library/Application Support/ClaudeCode/managed-settings.json'
 else FILE=/etc/claude-code/managed-settings.json; fi
 BASE="$(dirname -- "$FILE")"
@@ -67,7 +67,7 @@ fi
 log_note "target: $FILE"
 if [ "$MODE" = dry ]; then printf '%s\n' "$NEW"; log_note "dry run: nothing written"; exit 0; fi
 
-if [ -z "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ] && [ "$(id -u)" -ne 0 ]; then
+if [ -z "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ] && [ "$(id -u)" -ne 0 ]; then
   log_fail "not root: this file is root-owned by design"
   log_fix "sudo sh $0$([ "$MODE" = uninstall ] && echo ' --uninstall')"; exit 1
 fi

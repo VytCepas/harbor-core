@@ -57,7 +57,7 @@
 {"id":"ag1018-commit-prose","rule":"merge-raw","want":"allow","cmd":"git commit -m 'never gh pr merge from a session'"}
 {"id":"ag1018-deploy-apply","rule":"deploy-raw","want":"block","cmd":"sh bin/deploy.sh --apply --live","why":"harbor#1018: a live deploy is the runner's or the operator's"}
 {"id":"ag1018-deploy-apply-path","rule":"deploy-raw","want":"block","cmd":"sh /Users/x/port/harbor/bin/deploy.sh --live --apply"}
-{"id":"ag1018-deploy-unattended","rule":"deploy-raw","want":"block","cmd":"HARBOR_DEPLOY_UNATTENDED=1 sh bin/deploy.sh --apply --live --unattended","why":"only the runner, a child no guard sees, passes it"}
+{"id":"ag1018-deploy-unattended","rule":"deploy-raw","want":"block","cmd":"SHIP_UNATTENDED=1 sh bin/deploy.sh --apply --live --unattended","why":"only the runner, a child no guard sees, passes it"}
 {"id":"ag1018-harbor-deploy","rule":"deploy-raw","want":"block","cmd":"harbor deploy --apply --live"}
 {"id":"ag1018-harbor-install","rule":"deploy-raw","want":"block","cmd":"harbor install --apply --live"}
 {"id":"ag1018-harbor-skills","rule":"deploy-raw","want":"block","cmd":"harbor skills --apply --live"}

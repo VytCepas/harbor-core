@@ -100,7 +100,7 @@ _want() { # <name> <dir>
 _want_var() { # <roots.tsv variable>: the repo is the one the table's default names, wherever the operator points the variable
   _wd="$(sh "$ROOT/bin/scope-roots.sh" --get "$1" 2>/dev/null || true)"; _wd="${_wd%/}"
   # the default ignores the old spelling too: --get reads it as an override until 2026-11-15 (harbor#961 W5)
-  _dd="$(env -u "$1" -u HARBOR_SCOPE_FLEET_CONTROLLER -u HARBOR_SCOPE_SCAFFOLDER sh "$ROOT/bin/scope-roots.sh" --get "$1" 2>/dev/null || true)"; _dd="${_dd%/}"
+  _dd="$(env -u "$1" -u HARBOR_ORCHESTRATOR -u HARBOR_PROJECT_INIT sh "$ROOT/bin/scope-roots.sh" --get "$1" 2>/dev/null || true)"; _dd="${_dd%/}"
   if [ -n "$_wd" ] && [ -n "$_dd" ]; then _want "${_dd##*/}" "$_wd"; else _bad "$1 resolves to no directory" "none: contracts/roots.tsv — $1"; fi
 }
 [ "$YARD" -eq 0 ] || _want_var HARBOR_SCOPE_SCAFFOLDER

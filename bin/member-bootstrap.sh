@@ -15,9 +15,9 @@ PIN=''
 fail() { printf 'member-bootstrap: %s (%s)\n' "$1" "$2" >&2; exit "${3:-1}"; }
 
 # Under root the checkout's location decides what root runs next, so no variable may move it; a test moves it with --dir and runs without root.
-[ "$(id -u)" -ne 0 ] || [ -z "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ] \
+[ "$(id -u)" -ne 0 ] || [ -z "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ] \
   || fail 'HARBOR_SCOPE_MANAGED_SETTINGS is set under root: refusing a caller-chosen target' "sudo env -u HARBOR_SCOPE_MANAGED_SETTINGS sh $0"
-[ "$(id -u)" -eq 0 ] || [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ] \
+[ "$(id -u)" -eq 0 ] || [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ] \
   || fail 'not root: this installs what only root may write' "sudo sh $0"
 
 # Everything that isn't ours goes to the install, in order.
