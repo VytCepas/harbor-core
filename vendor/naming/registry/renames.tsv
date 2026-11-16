@@ -16,17 +16,13 @@
 # COLUMNS  id <TAB> old <TAB> new <TAB> surface <TAB> wave <TAB> remove_by <TAB> reason
 #   id         rename-NNNN, unique, never reused
 #   old, new   repo-relative paths of one tracked file; each appears in one row at most
-#   surface    the lint-name.sh surface the new name is judged on (bin, path, env, secret); the codemod refuses
+#   surface    the lint-name.sh surface the new name is judged on (bin, path, env); the codemod refuses
 #              a row whose new name has any finding. An env row names env:NAME twice and moves no file.
 #              Other surfaces (launchd, check-id) are rows the codemod does not apply yet: it exits 3, unchecked.
 #   wave       the harbor#961 wave label (W1 … W6b); --wave selects by it
 #   remove_by  - (a plain rename). A date asks for the old name to keep working until then: a bin or path
 #              row leaves a symlink at the old path (a bin/*.sh also gets a marked line in CONTRACTS/cli.md and CONTRACTS/idle-tools.txt),
 #              an env row reads both names (the new, then the old).
-#              A secret row (old secret:<ref>, harbor#978) is a bin/secret ref: bin/access.sh and bin/secret treat both
-#              names as one credential until remove_by, `harbor access move <old>` copies the stored value, and the
-#              codemod moves nothing. Only a ref core code reads is renamed here; a ref a workload reads, or one that names a client or a
-#              workload vendor, is renamed in the private <access>/renames.tsv (lint.domain, the leak gate).
 #              Past the date the next --apply removes the shim or collapses the dual reads.
 #   reason     why the new name, from the mapping row
 id	old	new	surface	wave	remove_by	reason
@@ -1331,6 +1327,3 @@ rename-1511	context-rules/harbor/post-merge-state.md	context-rules/platform/post
 rename-1514	skills/doc-learning-artifact/kit/wgtest.py	skills/doc-learning-artifact/kit/widgets_check.py	path	W5e	-	wgtest is in no registry; it checks the widgets, as check.py checks the page; operator 2026-11-03 (harbor#1097)
 rename-1515	skills/doc-learning-artifact/kit/widgets/zz-mount.js	skills/doc-learning-artifact/kit/widgets/mount.js	path	W5e	-	zz is in no registry; nothing orders the widgets by file name (build.py takes none), so mount; operator 2026-11-03 (harbor#1097)
 rename-1575	.agents/ship.conf	.agents/ship.config	path	W5e	-	conf is an unregistered abbreviation of config (aliases.tsv, D-81); the runner reads ship.config, then ship.conf, until remove_by; operator 2026-11-03 (harbor#1097); no shim: a shim path is itself an unregistered name, so the old path goes now (the box deploys the new tree whole; workloads' ship.conf is read as ship.config by the runner until 2026-11-15)
-rename-1576	secret:gcloud-store	harbor-gcloud-operator-store	secret	S1	2027-01-15	D-36 (harbor#978): <system>-<service>-<identity>-<purpose>; bin/secret serves both names until remove_by, and harbor access move copies the stored value; the snapshot of the operator gcloud logins
-rename-1582	secret:playwright-extension-token	harbor-playwright-operator-extension	secret	S1	2027-01-15	D-36 (harbor#978): <system>-<service>-<identity>-<purpose>; bin/secret serves both names until remove_by, and harbor access move copies the stored value; the extension token of the operator Chrome profile
-rename-1585	secret:worklog-token	harbor-github-vytcepas-worklog-push	secret	S1	2027-01-15	D-36 (harbor#978): <system>-<service>-<identity>-<purpose>; bin/secret serves both names until remove_by, and harbor access move copies the stored value; the fine-grained token that pushes the work log
