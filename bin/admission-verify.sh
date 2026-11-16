@@ -317,8 +317,8 @@ fi
 
 # the mods lockdown (harbor#1022): a root-owned managed file refusing user mods. Runs for --live, or where HARBOR_SCOPE_MANAGED_SETTINGS names a file
 # (the test path); a sandbox --dir has no managed tier and skips. HARBOR_SCOPE_MANAGED_OWNER_UID lets a fixture stand in for root; production never sets it.
-if [ "$IL_LIVE" -eq 1 ] || [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then
-  if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then _mf="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
+if [ "$IL_LIVE" -eq 1 ] || [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then
+  if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then _mf="${HARBOR_SCOPE_MANAGED_SETTINGS}"
   elif [ "$(uname -s)" = Darwin ]; then _mf='/Library/Application Support/ClaudeCode/managed-settings.json'
   else _mf='/etc/claude-code/managed-settings.json'; fi
   _mfix="sudo sh $HERE/scope-managed-mods.sh"
@@ -330,7 +330,7 @@ if [ "$IL_LIVE" -eq 1 ] || [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAG
   elif ! jq -e '.disableSideloadFlags == true
       and (.pluginConfigs["cc-plugin-sec-default@builtin"].options.allowManagedModsOnly == true)' "$_mf" >/dev/null 2>&1; then
     no "managed: $_mf lacks allowManagedModsOnly or disableSideloadFlags (unset, false or unreadable)" "$_mfix"
-  elif [ "$(ls -ldn "$_mf" 2>/dev/null | awk '{print $3}')" != "${HARBOR_SCOPE_MANAGED_OWNER_UID:-${HARBOR_MANAGED_OWNER_UID:-0}}" ]; then
+  elif [ "$(ls -ldn "$_mf" 2>/dev/null | awk '{print $3}')" != "${HARBOR_SCOPE_MANAGED_OWNER_UID:-0}" ]; then
     no "managed: $_mf is not root-owned — a file the user can write is not a managed tier" "$_mfix"
   else
     ok "managed: $_mf holds allowManagedModsOnly + disableSideloadFlags, root-owned"
@@ -339,7 +339,7 @@ fi
 
 # ── drift.confinement (harbor#1299): the installed sandbox block against a fresh compose ──
 # The installed copy skips (the compose reads contracts/ and the private layer). Born warn: drift and unchecked are advisories, never a FAIL.
-if [ "$IL_LIVE" -eq 1 ] || [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then
+if [ "$IL_LIVE" -eq 1 ] || [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then
   if [ -f "$HERE/drift-confinement.sh" ] && [ -f "$HERE/deploy-confinement.sh" ]; then
     _cst="$(sh "$HERE/drift-confinement.sh" --state 2>/dev/null)" && _crc=0 || _crc=$?
     case "$_cst" in

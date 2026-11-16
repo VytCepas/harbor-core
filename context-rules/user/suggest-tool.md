@@ -2,6 +2,7 @@
 order: 94
 description: A job Harbor has a better way for draws one plain line to the person and a matching note to the agent, at most once a session
 event: PreToolUse
+tool: Bash|Write|Edit|MultiEdit|NotebookEdit|mcp__claude_ai_.*|mcp__claude-in-chrome__.*
 when: always
 once: session
 mode: notify
@@ -27,6 +28,8 @@ Company rows are not read yet: their delivery, and the check that holds them bef
 
 Stays silent for a subagent, whose person cannot answer. The hand-rolled CI wait stays with ci-wait-on-the-bus: when a pack named in
 SUGGEST_OVERLAP speaks on a call, this one stands down. The surface check is a stub until the Desktop probe.
+tool: is the tools a row may name (Bash, the file tools, MCP connectors), harbor chrome left out so its calls do not wake the engine;
+lint.suggest-table refuses a row naming a tool outside it (harbor#1507).
 
 Falsifier: tests/context/injection-rule/suggest-tool.test.sh, tests/status/suggest/e2e.test.sh. Replay before a row ships: sh bin/eval-suggest-replay.sh --days 14.
 Go live: docs/how-to/suggest-go-live.md.

@@ -49,7 +49,7 @@ SNAP="${HARBOR_STATUS_FLEET_SNAPSHOT:-$CACHE_DIR/fleet-snapshot.json}"
 # the fleet file through the registry-aware reader beside this script (harbor#966)
 FLEET="${HARBOR_SCOPE_FLEET_FILE:-$(sh "$HERE/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}"
 # the fleet CLI, a roots.tsv row read through the same reader (harbor#966)
-ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-${HARBOR_ORCH_BIN:-$(sh "$HERE/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}}"
+ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-$(sh "$HERE/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}"
 GMS="$HERE/gate-merge-stack.sh"
 NOW="${HARBOR_DEPLOY_FLEET_NOW:-$(date +%s)}"; case "$NOW" in ''|*[!0-9]*) NOW="$(date +%s)" ;; esac
 NIGHT=57600                                           # a rollback stops every unattended run for 16 hours
@@ -72,7 +72,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 # §5a.4: --approved is the approve tool's child, never an unattended run's
-[ "$APPROVED" = 0 ] || [ "${HARBOR_DEPLOY_UNATTENDED:-${SHIP_UNATTENDED:-}}" != 1 ] || usage_err "--approved is refused when HARBOR_DEPLOY_UNATTENDED=1: only gate-approve.sh passes it"
+[ "$APPROVED" = 0 ] || [ "${HARBOR_DEPLOY_UNATTENDED:-}" != 1 ] || usage_err "--approved is refused when HARBOR_DEPLOY_UNATTENDED=1: only gate-approve.sh passes it"
 if [ "$SUB" = deploy ]; then
   set -- $SLUGS; [ $# = 1 ] || usage_err "deploy takes exactly one <owner/repo>"
   case "$SHA" in '') usage_err "deploy needs --sha <sha>" ;; *[!0-9abcdef]*) usage_err "--sha is a hex commit id: $SHA" ;; esac
@@ -298,7 +298,7 @@ tmo() { # <cmd> <default> → the manifest's timeout.<cmd> in whole seconds, els
 }
 run_cmd() { # <checkout> <log> <seconds> <command> [snapshot id] — sh -c in the main checkout, bounded, with the contract's env
   # (the SHIP_ spellings too, for a workload's ship.config that has not moved yet: until 2026-11-15, harbor#1097)
-  ( cd "$1" && exec env HARBOR_DEPLOY_UNATTENDED=1 SHIP_UNATTENDED=1 HARBOR_DEPLOY_REPO="$DS" SHIP_REPO="$DS" HARBOR_DEPLOY_SNAPSHOT="$SNAPF" SHIP_SNAPSHOT="$SNAPF" ${5:+"HARBOR_DEPLOY_SNAPSHOT_ID=$5" "SHIP_SNAPSHOT_ID=$5"} \
+  ( cd "$1" && exec env HARBOR_DEPLOY_UNATTENDED=1 HARBOR_DEPLOY_REPO="$DS" HARBOR_DEPLOY_SNAPSHOT="$SNAPF" ${5:+"HARBOR_DEPLOY_SNAPSHOT_ID=$5"} \
       perl -e "$SUPERVISE" "$3" sh -c "$4" ) </dev/null > "$2" 2>&1 &
   CHILD=$!; _xrc=0
   wait "$CHILD" || _xrc=$?

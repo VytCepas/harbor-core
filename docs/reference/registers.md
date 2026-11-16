@@ -44,6 +44,7 @@ reference to an id that is not there are each red (`standard.register-declared`,
 | `contracts/catalog-non-tools.tsv` | skill | glob | `glob why` | - | `bin/skill-catalog.sh` | a name glob that is not a tool, with the reason |
 | `contracts/confinement-coverage.tsv` | admission | id | `id coverage why` | id>standards/naming/controls.tsv:id | `bin/deploy-confinement.sh` | how each admission rule is covered by the confinement |
 | `contracts/confinement-mcp.tsv` | admission | server | `server verdict reason` | - | `bin/drift-wall.sh` | a local MCP server and whether it must start under srt or is exempt, with the reason (harbor#1442) |
+| `contracts/name-create.tsv` | context | pattern | `pattern surface note` | surface>standards/naming/surfaces.tsv:id | `context-rules/user/name-note-create.sh` | core's own create commands whose new name the name-note-create rule judges at birth, installed as name-create.d/harbor.tsv (harbor#978) |
 | `contracts/confinement-classes.tsv` | admission | class | `class kind treatment where` | - | `bin/admission-observe-report.sh` | every class of Bash call that asks to leave the sandbox, and its treatment (harbor#1441) |
 | `contracts/core-writes-allow.tsv` | lint | path+target | `path target reason` | path>path: | `bin/lint-core-writes.sh` | a core script allowed to write a path |
 | `contracts/credential-patterns.tsv` | access | id | `id ere note` | - | `bin/lint-secrets.sh` | the shapes of a credential value |

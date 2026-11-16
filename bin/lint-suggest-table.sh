@@ -112,5 +112,20 @@ FINDINGS
   done <<ERES
 $_E
 ERES
+  # A row naming a tool its pack's `tool:` leaves out is never heard: the engine is not woken for that call (harbor#1507).
+  case "$T" in */*) _P="${T%/*}/suggest-tool.md" ;; *) _P=./suggest-tool.md ;; esac
+  if [ -f "$_P" ]; then
+    _PT="$(awk 'NR==1 && !/^---/ {exit} NR>1 && /^---/ {exit} /^tool:/ {sub(/^tool:[ \t]*/, ""); print; exit}' "$_P")"
+    _RT="$(awk -F'\t' '/^#/ || NF != 12 || $1 == "id" || $3 == "-" { next } { n = split($3, a, "|"); for (i = 1; i <= n; i++) print $1 "\t" a[i] }' "$T")"
+    while IFS="$(printf '\t')" read -r _i _t; do
+      # No tool: is any tool to the engine, so every row is heard and there is nothing to refuse.
+      [ -n "$_i" ] && [ -n "$_PT" ] || continue
+      printf '%s\n' "$_t" | "$_G" -qE -- "^($_PT)$" || say "$T: $_i: the tool $_t is outside the tool: of $_P, so the row is never heard"
+    done <<TOOLS
+$_RT
+TOOLS
+  else
+    log_note "$T: no suggest-tool.md beside it, so its rows were not held to a pack's tool:"
+  fi
 done
 log_end; exit $?

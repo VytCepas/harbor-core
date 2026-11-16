@@ -123,8 +123,8 @@ fi
 if [ "$UNATTENDED" -eq 1 ]; then
   [ "$IL_APPLY" -eq 1 ] || il_usage_error '--unattended takes --apply: a dry run asks nothing'
   # the SHIP_ names are read until 2026-11-15 (harbor#1097)
-  [ "${HARBOR_DEPLOY_UNATTENDED:-${SHIP_UNATTENDED:-}}" = 1 ] || il_usage_error '--unattended is the ship runner alone, which sets HARBOR_DEPLOY_UNATTENDED=1'
-  SNAPFILE="${HARBOR_DEPLOY_SNAPSHOT:-${SHIP_SNAPSHOT:-}}"
+  [ "${HARBOR_DEPLOY_UNATTENDED:-}" = 1 ] || il_usage_error '--unattended is the ship runner alone, which sets HARBOR_DEPLOY_UNATTENDED=1'
+  SNAPFILE="${HARBOR_DEPLOY_SNAPSHOT:-}"
   [ -n "$SNAPFILE" ] && [ -f "$SNAPFILE" ] && [ ! -L "$SNAPFILE" ] && [ ! -s "$SNAPFILE" ] \
     || il_usage_error '--unattended needs HARBOR_DEPLOY_SNAPSHOT naming an empty file, where the runner reads the snapshot id'
   [ "$UNINSTALL" -eq 0 ] && [ "$PRUNE" -eq 0 ] && [ "$IL_ACCEPT_LOSS" -eq 0 ] \
@@ -169,7 +169,7 @@ SNAP=''
 # runtime-install's lib/ and prod-guard-install's settings.json.bak.* were missing. A glob is allowed.
 # The install manifest joined it with Wave C (§3): a restore that put the files back and not their rows
 # would leave install-drift and skills-collide reading a record of an install that was undone.
-SNAP_SET='settings.json CLAUDE.md bin lib hooks context-rules inject.d skills skill-packs commands checks.d shims.d conf-keys.d terms.d .harbor-packs .harbor-hooks-wired .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
+SNAP_SET='settings.json CLAUDE.md bin lib hooks context-rules inject.d skills skill-packs commands agents checks.d shims.d conf-keys.d terms.d name-create.d .harbor-packs .harbor-hooks-wired .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
 B8PIN="$CFG/.helm-instructions.sha256"
 trap 'rm -rf "$WORK"' EXIT
 # A trapped INT returns to the script, so it must exit explicitly or the install carries on.
@@ -821,6 +821,7 @@ _install() {
             'prod-guard:prod-guard-install.sh --live --apply' \
             "skills:skill-install.sh --all --apply --live$AL" \
             "skills:skill-install.sh commands --all --apply --live$AL" \
+            "skills:skill-install.sh agents --all --apply --live$AL" \
             'inject:context-injection-install.sh --live --apply' \
             'packs:PACKS' \
             'packs:deploy-shim-install.sh --live --apply' \

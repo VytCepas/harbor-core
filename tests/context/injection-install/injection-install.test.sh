@@ -122,6 +122,12 @@ uncovered() { for f in "$T_ROOT"/context-rules/*/*.md; do
     [ -n "$alt" ] && ! printf '%s\n' "$alt" | sed 's/\.\*/xyz/g' | grep -qE "^($M)$" && printf '%s(%s) ' "$alt" "${f##*/}"; done; done; }
 t_eq "pack tools outside the matcher" "" "$(uncovered)"
 t_eq "browser_batch is inside the matcher" 1 "$(printf 'mcp__claude-in-chrome__browser_batch\n' | grep -cE "^($M)$")"
+# harbor#1507: a pack with no tool: makes the matcher `.*`, and every harbor chrome call (~16k in four weeks) paid the engine for nothing.
+MP="$(jq -r '[.hooks.PreToolUse[]? | select((.hooks[]?.command // "") | contains("injection-rule.sh")) | .matcher] | first // ""' "$S")"
+t_eq "the PreToolUse matcher is not a catch-all" 0 "$(printf 'mcp__zz__anything\n' | grep -cE "^($MP)$")"
+t_eq "...so a harbor chrome click or fill wakes no injector before it runs" 0 "$(printf 'mcp__harbor_chrome__click\nmcp__harbor_chrome__fill\n' | grep -cE "^($MP)$")"
+t_eq "...while a goto, which packs name, still does" 1 "$(printf 'mcp__harbor_chrome__goto\n' | grep -cE "^($MP)$")"
+t_eq "...and Bash still does" 1 "$(printf 'Bash\n' | grep -cE "^($MP)$")"
 
 t_section "an upgrade replaces the engine's entry, and keeps foreign hooks (harbor#271)"
 U="$T/upgrade"; STALE='Read|Bash|Grep|WebFetch'

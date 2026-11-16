@@ -15,14 +15,14 @@ CASE="$T_TMP/add-case.sh"
 command -v script >/dev/null 2>&1 || { echo "add-prompts: script(1) is not on PATH" >&2; exit 2; }
 
 # ADD_PTY <answers> [value] — `access.sh add pty-token` under a pty. The field answers come first, then the value
-# after a pause, so the value is typed once secret put has turned echo off (a person types it that way too). The
+# after a pause (4 s: the two naming gates of harbor#978 run lint-name.sh before the value prompt), so the value is typed once secret put has turned echo off (a person types it that way too). The
 # input is held open a second after the last line: closing it early makes script(1) send EOF into the tty.
 printf '#!/bin/sh\nexec sh "%s" add pty-token\n' "$AX" > "$CASE"
 ADD_PTY() {
   if [ "$(uname -s)" = Darwin ]; then
-    { printf '%s' "$1"; [ -z "${2:-}" ] || { sleep 1; printf '%s\n' "$2"; }; sleep 1; } | script -q /dev/null sh "$CASE"
+    { printf '%s' "$1"; [ -z "${2:-}" ] || { sleep 4; printf '%s\n' "$2"; }; sleep 1; } | script -q /dev/null sh "$CASE"
   else
-    { printf '%s' "$1"; [ -z "${2:-}" ] || { sleep 1; printf '%s\n' "$2"; }; sleep 1; } | script -qec "sh $CASE" /dev/null
+    { printf '%s' "$1"; [ -z "${2:-}" ] || { sleep 4; printf '%s\n' "$2"; }; sleep 1; } | script -qec "sh $CASE" /dev/null
   fi
 }
 # A transcript and an exit code, captured apart: the pipeline's status is script(1)'s, which is the child's.
@@ -36,7 +36,8 @@ only in the prompt test
 nothing real
 anything
 the suite
-pty-token-ref
+harbor-github-tools-pty
+EXAMPLECO API GitHub
 '
 
 t_section "a full interactive add: every missing field is prompted, the entry is written, the value goes to the store"
@@ -49,15 +50,17 @@ t_has "prompted for what it reaches" "$OUT" "what it reaches:"
 t_has "prompted for what it cannot do" "$OUT" "what it cannot do:"
 t_has "prompted for who granted it" "$OUT" "who granted it:"
 t_has "prompted for the secret reference" "$OUT" "secret reference (empty for none):"
-t_has "then prompted for the value, not echoed" "$OUT" "value for pty-token-ref (not echoed):"
+t_has "prompted for its name on the vendor, a token being a vendor object (harbor#978)" "$OUT" "its name on the vendor (<ORG> API <Platform>[ <Client>]):"
+t_has "...and wrote it" "$(cat "$REG")" "    vendor-name: EXAMPLECO API GitHub"
+t_has "then prompted for the value, not echoed" "$OUT" "value for harbor-github-tools-pty (not echoed):"
 t_has "the entry was written with the typed kind" "$(cat "$REG")" "## pty-token"
 t_has "...with the typed fields" "$(cat "$REG")" "    what: a pty test token"
 t_has "...and the grant" "$(cat "$REG")" "    grant: the suite"
-t_has "...and the ref it names" "$(cat "$REG")" "    secret: pty-token-ref"
+t_has "...and the ref it names" "$(cat "$REG")" "    secret: harbor-github-tools-pty"
 t_hasnt "the register holds no value" "$(cat "$REG")" "$VAL"
-t_has "the store was written under the ref" "$(grep 'add-generic-password' "$KC_STUB/argv.log")" "secret.pty-token-ref|"
-t_eq "the stored value reads back through the seam" "$VAL" "$("$SC" run pty-token-ref V -- sh -c 'printf %s "$V"' 2>/dev/null)"
-t_has "the transcript says the value was stored" "$OUT" "stored secret.pty-token-ref"
+t_has "the store was written under the ref" "$(grep 'add-generic-password' "$KC_STUB/argv.log")" "secret.harbor-github-tools-pty|"
+t_eq "the stored value reads back through the seam" "$VAL" "$("$SC" run harbor-github-tools-pty V -- sh -c 'printf %s "$V"' 2>/dev/null)"
+t_has "the transcript says the value was stored" "$OUT" "stored secret.harbor-github-tools-pty"
 t_hasnt "the transcript never shows the value (no echo at the value prompt)" "$OUT" "$VAL"
 t_eq "check is green with the entry" 0 "$(sh "$AX" check >/dev/null 2>&1; echo $?)"
 
@@ -70,6 +73,7 @@ nothing real
 anything
 the suite
 cred-ref
+EXAMPLECO API GitHub
 "
 t_eq "the refusal exits 2 under a pty" 2 "$RC"
 t_has "and names the refusal" "$OUT" "a field is shaped like a credential value"
