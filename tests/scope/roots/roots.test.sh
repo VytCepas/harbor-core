@@ -82,16 +82,16 @@ rc_is "the private layer is not a spelling of the harbor repo" "$D" 0
 
 t_section "two names for one path need a stated reason (harbor#630)"
 D="$(build pair1 'PROJECT_INIT_SRC	REPOS	project-init	x
-HARBOR_SCOPE_SCAFFOLDER	REPOS	project-init	x' 'A="@V@{PROJECT_INIT_SRC:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"
-B="@V@{HARBOR_SCOPE_SCAFFOLDER:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"')"
+HARBOR_PROJECT_INIT	REPOS	project-init	x' 'A="@V@{PROJECT_INIT_SRC:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"
+B="@V@{HARBOR_PROJECT_INIT:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"')"
 rc_is "an unexplained pair" "$D" 1 'no reason on'
 D="$(build pair2 'PROJECT_INIT_SRC	REPOS	project-init	x	suites export this name
-HARBOR_SCOPE_SCAFFOLDER	REPOS	project-init	x' 'A="@V@{PROJECT_INIT_SRC:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"
-B="@V@{HARBOR_SCOPE_SCAFFOLDER:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"')"
-rc_is "a pair where only one row explains itself" "$D" 1 'no reason on: HARBOR_SCOPE_SCAFFOLDER'
+HARBOR_PROJECT_INIT	REPOS	project-init	x' 'A="@V@{PROJECT_INIT_SRC:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"
+B="@V@{HARBOR_PROJECT_INIT:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"')"
+rc_is "a pair where only one row explains itself" "$D" 1 'no reason on: HARBOR_PROJECT_INIT'
 D="$(build pair3 'PROJECT_INIT_SRC	REPOS	project-init	x	suites export this name
-HARBOR_SCOPE_SCAFFOLDER	REPOS	project-init	x	prod-guard-install reads the other' 'A="@V@{PROJECT_INIT_SRC:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"
-B="@V@{HARBOR_SCOPE_SCAFFOLDER:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"')"
+HARBOR_PROJECT_INIT	REPOS	project-init	x	prod-guard-install reads the other' 'A="@V@{PROJECT_INIT_SRC:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"
+B="@V@{HARBOR_PROJECT_INIT:-@V@{PORT_ROOT:-@V@HOME/port}/project-init}"')"
 rc_is "a pair where every row explains itself" "$D" 0
 
 t_section "a PORT_ROOT other than the default resolves every table row (harbor#630)"

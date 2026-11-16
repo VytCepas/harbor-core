@@ -20,7 +20,7 @@ react_event() {
   # shellcheck disable=SC2034 # RLINK, RSTATE: read by the session-*.sh that source this
   RKIND="" RSID="" RSTATE="" RLINK="" RDSID=""
   command -v jq >/dev/null 2>&1 || return 1
-  eval "$(printf '%s' "${HARBOR_EVENT_JSON:-}" | jq -r '@sh "RKIND=\(.kind // "") RSID=\(.subject // "") RSTATE=\(.data.title // "") RLINK=\(.data.link // "") RDSID=\(.data.session_id // "")"' 2>/dev/null)" || return 1
+  eval "$(printf '%s' "${HARBOR_EVENT_JSON:-${HARBOR_EVENT:-}}" | jq -r '@sh "RKIND=\(.kind // "") RSID=\(.subject // "") RSTATE=\(.data.title // "") RLINK=\(.data.link // "") RDSID=\(.data.session_id // "")"' 2>/dev/null)" || return 1
   # pr.opened carries the owning session in data.session_id; session.* events use the subject.
   case "$RKIND" in session.*) ;; *) RSID="$RDSID" ;; esac
   case "$RSID" in ''|*[!A-Za-z0-9_-]*) return 1 ;; esac

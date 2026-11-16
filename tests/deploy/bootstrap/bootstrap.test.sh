@@ -279,11 +279,11 @@ t_eq "a component's repo also comes from its registry row: exit" 0 "$RC"
 t_eq "...gh cloned other/yard" "acme/harbor other/yard" "$(clones | sed 's/ $//')"
 t_eq "...into the directory deploy reads" realpi "$(cat "$H/port/yard/README")"
 
-t_section "each variable names its own checkout: HARBOR_SCOPE_SCAFFOLDER is yard's, PROJECT_INIT_SRC is prod-guard's"
+t_section "each variable names its own checkout: HARBOR_PROJECT_INIT is yard's, PROJECT_INIT_SRC is prod-guard's"
 box ovr 'components = ["core", "yard", "prod-guard"]'
 run "$GIT_HARBOR && git clone -q https://github.com/acme/yard.git ~/port/yard-src && git clone -q https://github.com/acme/yard.git ~/port/guard-src && HARBOR_SCOPE_SCAFFOLDER=\$HOME/port/yard-src PROJECT_INIT_SRC=\$HOME/port/guard-src $BOOT"
 t_eq "two different checkouts exported: exit" 0 "$RC"
-t_has "yard's is the one HARBOR_SCOPE_SCAFFOLDER names" "$(out)" "yard: present at $H/port/yard-src, not touched"
+t_has "yard's is the one HARBOR_PROJECT_INIT names" "$(out)" "yard: present at $H/port/yard-src, not touched"
 t_has "prod-guard's is the one PROJECT_INIT_SRC names" "$(out)" "yard: present at $H/port/guard-src, not touched"
 t_eq "...and the default directory was not made" no "$([ -e "$H/port/yard" ] && echo yes || echo no)"
 box ovrmiss 'components = ["core", "yard"]'

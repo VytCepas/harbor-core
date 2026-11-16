@@ -36,7 +36,7 @@ RC=0; env -u SUDO_USER sh "$X/bin/deploy-confinement.sh" --marker --user alice >
 t_has "--marker --user too" "$(cat "$OUT")" 'confinement installed'
 
 t_section "the bubblewrap probe runs as the member"
-: > "$SUDO_CALLS"; RC=0; env -u SUDO_USER HARBOR_DEPLOY_CONFINEMENT_OS=Linux FAKE_UID=1001 sh "$X/bin/deploy-confinement.sh" --preflight --user alice >/dev/null 2>&1 || RC=$?
+: > "$SUDO_CALLS"; RC=0; env -u SUDO_USER HARBOR_CONFINEMENT_OS=Linux FAKE_UID=1001 sh "$X/bin/deploy-confinement.sh" --preflight --user alice >/dev/null 2>&1 || RC=$?
 t_eq "as a plain user it probes as itself" 0 "$RC"; t_eq "...with no sudo" 0 "$(wc -l < "$SUDO_CALLS" | tr -d ' ')"
 # Under fake root the override is refused, so root's branch is read through its function.
 op() { env -u SUDO_USER "$@" CONFINEMENT_LIB=1 sh -c '. "$0"; confine_operator "$1"' "$X/bin/deploy-confinement.sh" "$2" 2>/dev/null; }
@@ -44,7 +44,7 @@ t_eq "root with --user answers that user" alice "$(env -u SUDO_USER CONFINE_USER
 t_eq "root with neither answers nothing, and fails" 1 "$(env -u SUDO_USER CONFINEMENT_LIB=1 sh -c '. "$0"; confine_operator 0 || echo $?' "$X/bin/deploy-confinement.sh")"
 t_eq "SUDO_USER=root is no operator" 1 "$(SUDO_USER=root CONFINEMENT_LIB=1 sh -c '. "$0"; confine_operator 0 || echo $?' "$X/bin/deploy-confinement.sh")"
 stub "$T_BIN/bwrap" 'exit 1'
-RC=0; env -u SUDO_USER HARBOR_DEPLOY_CONFINEMENT_OS=Linux FAKE_UID=1001 sh "$X/bin/deploy-confinement.sh" --preflight >"$OUT" 2>&1 || RC=$?
+RC=0; env -u SUDO_USER HARBOR_CONFINEMENT_OS=Linux FAKE_UID=1001 sh "$X/bin/deploy-confinement.sh" --preflight >"$OUT" 2>&1 || RC=$?
 t_eq "a failing probe is a failing preflight" 1 "$RC"
 stub "$T_BIN/bwrap" 'exit 0'
 
