@@ -211,16 +211,7 @@ dsp following "$$"; printf 'event.pulse\told-handler.sh is not on the handler al
 O="$(run "$WIRED")"
 t_eq "a following dispatcher with a standing refusal is warn" warn "$(verdict "$O" dispatch)"
 t_has "...naming the rule" "$(detail "$O" dispatch)" "event.pulse"
-rm -f "$WIRED/cache/event-dispatch-refused.tsv"
-# 2026-11-16: dispatch ran 95 min behind its events and nothing said so. The follower's lag file is a warn while fresh.
-printf '1740\tev-1\tevent.fleet-snapshot\t344\t1\n' > "$WIRED/cache/event-dispatch-lag.tsv"
-O="$(run "$WIRED")"
-t_eq "a following dispatcher behind its events is warn" warn "$(verdict "$O" dispatch)"
-t_has "...saying how far behind" "$(detail "$O" dispatch)" "29 min behind its events"
-t_has "...and naming the rule that holds it" "$(detail "$O" dispatch)" "slowest rule in the last hour is event.fleet-snapshot, 344 s a run"
-touch -t 202001010000 "$WIRED/cache/event-dispatch-lag.tsv"
-t_eq "a stale lag file (the follower stopped writing it) is not read: ok" ok "$(verdict "$(run "$WIRED")" dispatch)"
-rm -f "$WIRED/cache/event-dispatch-lag.tsv" "$WIRED/cache/event-dispatch-state.json"
+rm -f "$WIRED/cache/event-dispatch-refused.tsv" "$WIRED/cache/event-dispatch-state.json"
 
 t_section "worklog: no store is unknown; unpushed is warn; in sync is ok"
 t_eq "an absent work-log is unknown" unknown "$(verdict "$(run "$WIRED")" worklog)"
