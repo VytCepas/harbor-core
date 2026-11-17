@@ -36,12 +36,12 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | fixture | fixtures/ | element | source | living | 450 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 84 |
-| test | tests/ | component | source | living | 677 |
+| test | tests/ | component | source | living | 678 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 10 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 299 |
+| script | bin/ | component | source | living | 300 |
 | agent | agents/ | component | source | living | 1 |
 | how-to | docs/how-to/ | component | source | living | 7 |
 | reference | docs/reference/ | component | generated | generated | 92 |
@@ -56,7 +56,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `agents/` | 1 | 1 | 1 |
-| `bin/` | 303 | 32 | 2 |
+| `bin/` | 304 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 70 | 6 | 1 |
 | `contracts/` | 131 | 15 | 2 |
@@ -74,7 +74,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 677 | 30 | 1 |
+| `tests/` | 678 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -99,7 +99,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | event | observability | 3 | 19 | 0 | 12 | 0 | 2 |
 | gate | control-plane | 19 | 13 | 0 | 5 | 0 | 6 |
 | housekeeping | control-plane | 1 | 1 | 0 | 3 | 0 | 0 |
-| hub |  | 13 | 39 | 1 | 7 | 0 | 5 |
+| hub |  | 14 | 40 | 1 | 7 | 0 | 5 |
 | library | policy-function | 11 | 0 | 0 | 0 | 0 | 0 |
 | lint | control-plane | 26 | 75 | 0 | 20 | 3 | 39 |
 | member | control-plane | 20 | 93 | 1 | 13 | 6 | 3 |
@@ -437,6 +437,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/hub-format.sh`
 - `bin/hub-gate.sh`
 - `bin/hub-pin-upgrade.sh`
+- `bin/hub-release.sh`
 - `bin/hub-support.sh`
 - `bin/hub-sync.sh`
 - `bin/hub-tier.sh`

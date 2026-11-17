@@ -320,3 +320,4 @@ bin/member-support-guard.sh	command	floor	the dispatcher's rule that an agent's 
 bin/hub-support.sh	command	floor	the admin side of remote support, behind harbor hub support: list, accept with the admin's gh, join with the admin's key	harbor#1278
 bin/hub-pin-upgrade.sh	command	floor	raises the hub policy pin on a branch and stops before signing; refuses a pin not on core main, a dirty hub, a contract change	harbor#1278
 bin/member-setup-generate.sh	command	floor	rebuilds every person's setup script, hash and zip at a pin from a private roster, with the pin's own member-windows.sh	harbor#1278
+bin/hub-release.sh	command	floor	one hub release as one tool: a preflight that lists every problem and changes nothing, then merge, red-team refresh, publish, hub pin, suites at the pin and zips; prints the merges in an agent session; never signs	harbor#1278
