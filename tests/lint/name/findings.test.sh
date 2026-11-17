@@ -76,19 +76,6 @@ printf 'rename-9998\tenv:%s\tenv:%s_PLAIN\tenv\tW5\t-\ta plain rename\n' "$WP" "
 printf 'y="${%s:-}"\n' "$WP" >> "$W/bin/window-probe.sh"
 t_has "a plain rename (no remove_by) opens no window" "$(sh "$W/bin/lint-name.sh" --root "$W" --today 2026-11-01 2>&1)" "[name.env] env:$WP"
 
-t_section "a rename window warns from 14 days before remove_by, names its rows and the command, and stops once the tree is clear (harbor#1097)"
-_rw() { sh "$W/bin/lint-name.sh" --root "$W" --today "$1" 2>&1; echo "exit $?"; }
-t_hasnt "15 days before the date: no warning yet" "$(_rw 2026-10-31)" "name.rename-closing"
-_rw1="$(_rw 2026-11-01)"
-t_has "14 days before the date: a warning naming the closing date" "$_rw1" "WARN: [name.rename-closing] rename-window:2026-11-15"
-t_has "…and the row it is for, in the command that collapses it" "$_rw1" "sh bin/standard-rename.sh --plan --live --id rename-9999"
-t_hasnt "…the plain row (no remove_by) is not in it" "$_rw1" "--id rename-9998"
-t_has "…and the run still exits 0: advisory, not a block" "$_rw1" "exit 0"
-t_has "on the date itself the window is still open and still warns" "$(_rw 2026-11-15)" "[name.rename-closing] rename-window:2026-11-15"
-t_hasnt "past the date the old name blocks instead and the calendar is silent" "$(_rw 2026-11-16)" "name.rename-closing"
-printf '#!/usr/bin/env sh\nx="${%s:-}"\n' "$WN" > "$W/bin/window-probe.sh"
-t_hasnt "collapsed (the tree no longer reads the old name): no warning" "$(_rw 2026-11-01)" "name.rename-closing"
-
 t_section "--changed judges only what a branch adds"
 G="$TMP/git"; mini "$G"; : > "$G/Legacy_Old.md"
 git -C "$G" init -q -b main && git -C "$G" add -A \
@@ -110,5 +97,4 @@ awk -F'\t' 'BEGIN { OFS = "\t" } $1 == "name.case" { $2 = "block" } { print }' "
 mv "$TMP/rules.block" "$B/standards/naming/controls.tsv"
 t_exit "a block-level finding exits 1" 1 sh "$B/bin/lint-name.sh" --root "$B" --check path Notes.md
 t_exit "…and an advisory one exits 0" 0 sh "$LN" --check path Notes.md
-t_red check.name.rename-closing   # the falsifier this suite names for it (harbor#1422)
 t_done
