@@ -9,6 +9,8 @@
 # command reworded past a literal prefix (env prefix, wrapper, subshell, `&`, quoting, extra spaces): harbor#1551.
 # Where no human can answer, an ask auto-approves, so it is escalated to deny (floor_no_human), as guard-destroy does. On a member box the
 # dispatcher decides (floor_member_stop).
+# AUTO MODE DENIES (harbor#1545, operator 2026-11-17): measured after deploy, a hook `ask` in auto mode goes to the classifier, not the
+# operator, so both probes ran unasked. A deny is the one verdict auto mode honours; the operator runs the call with `!`, which no hook sees.
 # STANDALONE and fail-OPEN like guard-destroy: a fault exits 0 with no output.
 set -u
 trap 'exit 0' EXIT
@@ -79,7 +81,8 @@ FLOOR_OBS_SUBJECT="${CMD:-$TOOL}"
 # harbor#1278: on a member box the dispatcher decides. The fail-open trap is lifted so floor_member_stop's own refusal (exit 2) stands.
 if floor_member_mode; then trap - EXIT; floor_member_stop ask "ask-rule.argv"; exit 0; fi
 DECISION=ask; NOTE=""
-if floor_no_human; then DECISION=deny; NOTE=" [no-human context: an ask would auto-approve here, so escalated to deny]"; fi
+if floor_no_human; then DECISION=deny; NOTE=" [no-human context: an ask would auto-approve here, so escalated to deny]"
+elif [ "$(floor_field '.permission_mode')" = auto ]; then DECISION=deny; NOTE=" [auto mode: an ask goes to the classifier, not to you, so it is denied; run it yourself as \`! <command>\`]"; fi
 "$FLOOR_JQ" -cn --arg d "$DECISION" --arg r "ask rule \`$HIT\` matched: this changes a live system, so it waits for your yes (harbor#1545).$NOTE" \
   '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$d,permissionDecisionReason:$r}}' || exit 0
 { floor_log_decision ask "$DECISION" "ask-rule.argv" 2>/dev/null || :; } 2>/dev/null || :
