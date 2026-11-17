@@ -7,7 +7,8 @@ export HARBOR_EVENT_DIR="$T_TMP/bus" GH_OUT="$T_TMP/gh.json"; mkdir -p "$HARBOR_
 cat > "$T_BIN/gh" <<'STUB'
 #!/bin/sh
 printf '%s\n' "$*" >> "$GH_OUT.calls"
-case "$1 $2" in "pr view") echo main; exit 0 ;; "api repos/acme/widgets/branches/main") cat "$GH_OUT.req" 2>/dev/null; exit 0 ;; api*) exit 0 ;; esac
+case "$1 $2" in "pr view") echo main; exit 0 ;; "api repos/acme/widgets/branches/main") cat "$GH_OUT.req" 2>/dev/null; exit 0 ;;
+  "api repos/acme/core/actions/runs/77") echo "$2" >> "$GH_OUT.runs"; cat "$GH_OUT.run" 2>/dev/null; exit 0 ;; api*) exit 0 ;; esac
 [ ! -e "$GH_OUT.nochecks" ] || { echo "no checks reported on the 'x' branch" >&2; exit 1; }
 [ -s "$GH_OUT" ] || exit 1
 cat "$GH_OUT"
@@ -23,9 +24,33 @@ checks "$GREEN"; run acme/widgets#9
 t_eq "all passing: exit 0" 0 "$RC"; t_eq "...one line naming the counts" "acme/widgets#9: green (1 pass, 1 skipping)" "$O"
 t_has "...read with the PR number and repo" "$(cat "$GH_OUT.calls")" "pr checks 9 -R acme/widgets --json name,bucket"
 checks '[{"name":"test","bucket":"pass"},{"name":"lint","bucket":"fail"}]'; run acme/widgets#9
-t_eq "a failing check: exit 1" 1 "$RC"; t_has "...and says red" "$O" ": red (1 fail, 1 pass)"
+t_eq "a failing check: exit 1" 1 "$RC"; t_has "...and says red" "$O" ": red (1 fail, 1 pass; failed: lint fail)"
 checks '[{"name":"test","bucket":"cancel"}]'; run https://github.com/acme/widgets/pull/9
 t_eq "a cancelled check is red, and a pull URL is read the same" 1 "$RC"
+t_has "...and the cancelled check is named" "$O" "failed: test cancel"
+# 2026-11-16: the relay job was cancelled while the check it relays stayed pending; the verdict named neither.
+checks '[{"name":"public mirror","bucket":"cancel"},{"name":"public-ci","bucket":"pending"}]'
+O="$(HARBOR_CI_WAIT_BACKSTOP=1 HARBOR_CI_WAIT_SETTLE=1 sh "$W" acme/widgets#9 --timeout 2 2>&1)"; RC=$?
+t_eq "a cancelled job beside a pending check: still running (exit 3)" 3 "$RC"
+t_has "...naming the cancelled job" "$O" "failed: public mirror cancel"
+t_has "...and the check still pending" "$O" "pending: public-ci"
+
+t_section "a failed check whose run is being re-run is pending, not red (2026-11-16)"
+RERUN='[{"name":"test","bucket":"pass"},{"name":"public-ci","bucket":"fail","link":"https://github.com/acme/core/actions/runs/77"}]'
+checks "$RERUN"; echo in_progress > "$GH_OUT.run"; rm -f "$GH_OUT.runs"
+O="$(HARBOR_CI_WAIT_BACKSTOP=1 HARBOR_CI_WAIT_SETTLE=1 sh "$W" acme/widgets#9 --timeout 2 2>&1)"; RC=$?
+t_eq "attempt 1 failed, attempt 2 in progress: still running (exit 3), not red" 3 "$RC"
+t_has "...naming the check as re-run and pending" "$O" "pending: public-ci (re-run)"
+t_has "...having asked the run's own status" "$(cat "$GH_OUT.runs" 2>/dev/null)" "repos/acme/core/actions/runs/77"
+printf 'public-ci\n' > "$GH_OUT.req"; O="$(HARBOR_CI_WAIT_BACKSTOP=1 HARBOR_CI_WAIT_SETTLE=1 sh "$W" acme/widgets#9 --timeout 2 2>&1)"; rm -f "$GH_OUT.req"
+t_hasnt "...and a required check being re-run is not 'not reported yet'" "$O" "not reported yet"
+t_has "...and the deadline line keeps its shape around a name with a parenthesis" "$O" "acme/widgets#9: pending: still running after 2s (1 pass, 1 pending; pending: public-ci (re-run))"
+echo completed > "$GH_OUT.run"; run acme/widgets#9
+t_eq "the re-run finished and the status is still fail: red" 1 "$RC"
+t_has "...naming the failed check" "$O" "failed: public-ci fail"
+checks '[{"name":"public-ci","bucket":"fail","link":"https://example.com/acme/core/actions/runs/77"}]'; rm -f "$GH_OUT.runs"; echo in_progress > "$GH_OUT.run"
+run acme/widgets#9
+t_eq "control: a link that is not a github.com Actions run is never asked, and the fail stands" "1:no" "$RC:$([ -e "$GH_OUT.runs" ] && echo yes || echo no)"
 
 t_section "review/decision is not CI: named, never waited on"
 checks "$REVIEW"; run acme/widgets#9 --timeout 5
