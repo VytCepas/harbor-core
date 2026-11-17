@@ -80,8 +80,8 @@ PreToolUse;Write|Edit|MultiEdit;admission-hook.sh admission-self-edit.sh
 # session; they stay write-protected by guard-selfedit either way.
 PreToolUse;Bash;admission-cloud.sh
 PreToolUse;Bash;admission-destroy.sh
-# guard-ask (harbor#1545): a permissions.ask match gets a PreToolUse ask, so the dialog holds in auto mode, which was
-# measured running ask-matched calls unprompted. Standalone and fail-OPEN, as guard-destroy: it asks, it never vetoes.
+# guard-ask (harbor#1545): a permissions.ask match gets a PreToolUse ask, and a deny in auto mode, where a hook ask reaches the classifier;
+# auto mode was measured running ask-matched calls unprompted. Standalone and fail-OPEN, as guard-destroy.
 PreToolUse;Bash;admission-ask.sh
 PreToolUse;mcp__.*;admission-ask.sh
 # guard-deliverables — the FILING gate. Same standalone, fail-OPEN wiring and
