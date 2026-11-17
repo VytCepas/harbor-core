@@ -1376,7 +1376,9 @@ rule	1366	session-review	live	standards/naming/controls.tsv, the id less its fam
 rule	1367	review-on-pr-open	live	standards/naming/controls.tsv, the id less its family
 rule	1368	context.browser-last-tier	live	standards/naming/controls.tsv
 rule	1369	browser-last-tier	live	standards/naming/controls.tsv, the id less its family
-guard	1370	ask	live	bin/library-admission.sh FLOOR_OBS_GUARDS
-rule	1371	admission.ask-rule	live	standards/naming/controls.tsv
-rule	1372	ask-rule	live	standards/naming/controls.tsv, the id less its family
-rule	1373	admission.admission-ask	live	member-dispatch.sh run_guard: admission.<guard>
+rule	1370	check.context.name-create	live	standards/naming/controls.tsv
+rule	1371	name.secret	live	standards/naming/controls.tsv
+rule	1372	name.vendor-credential	live	standards/naming/controls.tsv
+rule	1373	context.name-create	live	standards/naming/controls.tsv, the id less its family
+rule	1374	secret	live	standards/naming/controls.tsv, the id less its family
+rule	1375	vendor-credential	live	standards/naming/controls.tsv, the id less its family

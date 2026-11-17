@@ -866,7 +866,7 @@ rule "lint.help-flag every hand-invocable bin/*.sh answers --help (harbor#140)"
 _S4_HOOKS="admission-hook admission-observe context-resolve annotate-web prod-guard-ambient
 worklog-push memory-harvest injection-rule eval-replay-worker admission-bash
 admission-egress admission-self-edit admission-integrity admission-cloud admission-destroy library-admission
-admission-deliverables admission-api-route admission-ask
+admission-deliverables admission-api-route
 admission-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert library-hub library-git-safe library-board library-pack-version ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue

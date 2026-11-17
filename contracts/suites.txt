@@ -183,7 +183,6 @@ tests/eval/tally/tally.test.sh
 tests/skill/fire/fire.test.sh
 tests/deploy/doctor/doctor.test.sh
 tests/admission/deliverables/deliverables.test.sh
-tests/admission/ask/ask.test.sh
 tests/drift/install/install.test.sh
 tests/memory/route/route.test.sh
 tests/gate/pr-wait/pr-wait.test.sh
@@ -415,6 +414,7 @@ tests/ci/release-names/release-names.test.sh
 tests/access/cli/add-prompts.test.sh
 tests/access/cli/stored.test.sh
 tests/access/cli/lifecycle.test.sh
+tests/access/cli/names.test.sh
 tests/access/cli/status-json.test.sh
 tests/lint/module/rules.test.sh
 tests/lint/module/unchecked.test.sh
