@@ -1,8 +1,7 @@
 ---
 name: doc-learning-artifact
-description: "The approved house style and build kit for study pages — an exam guide, a course explainer, a revision page: one section per tab, hand-drawn SVG diagrams whose boxes open a detail card INLINE under the diagram, a saved-answer quiz, study aids, and a Playwright check that runs in real Chrome on desktop and iPhone. USE WHEN building or updating a study guide, exam guide, course notes page, revision page or learning artifact; when somebody wants to learn a course, a lecture series or a topic from one page. NOT FOR an architecture or system diagram (`doc-atlas`), a status report or findings, or anything that is not meant to be studied."
+description: "The operator's preferred page for learning anything: one section per tab, hand-drawn SVG diagrams whose boxes open a card under the diagram, a saved-answer quiz, and gates in real Chrome (desktop + iPhone) for routing, cards, text fit and answerability. USE WHEN building or updating a study or exam guide, course notes, a revision page, or teaching or onboarding material that explains a topic, process or system so a person can learn it. NOT FOR a system map to navigate (`doc-atlas`), a live workshop deck (`doc-workshop-deck`), or a status report or findings."
 argument-hint: [course or topic, and the deliverable folder]
-disable-model-invocation: true
 ---
 
 # doc-learning-artifact
@@ -29,9 +28,14 @@ fighting it:
   stressed points" filter.
 - **No horizontal page scroll, no console errors, light and dark themes.**
 
-The reference is the CCBD exam guide the operator approved on 2026-10-03, which is
-CCBD guide v8 in the `learning-artifact-style` memory. This kit is that page's engine
-with the course content removed.
+- **Every practice question is answerable from the page.** Each one carries a verbatim
+  quote from the visible text or a card, and `answers_check.py` proves the quote is there.
+- **Diagram text never spills** out of its box or its viewBox.
+
+The reference is the CCBD exam guide the operator approved on 2026-10-03 (CCBD guide v8),
+and this kit is its engine with the course removed. The UX-AI guide of 2026-11-17
+(`~/Deliverables/2026-11-17-uxai-exam-guide/`) is the same design, which the operator
+liked enough to ask that it be used more widely. It is also the worked example for editions.
 
 ## The kit
 
@@ -44,11 +48,38 @@ with the course content removed.
 | `page.html` | `<div class="shell">` with `nav.toc` (each link has two spans: number, name) and `<main>`: `header.hero#start`, then one `section.topic` per tab |
 | `cards.json` | `{ "<box label>": { t, d, x?, s?, a? } }`: title, detail, exam angle, source, section id |
 | `quiz.json` | `[{ topic, sec, type: multi\|single\|match\|number, conf: sure\|check, q, q2?, yours?, opts \| items+choices \| answer+unit+tol, why }]` |
+| `answers.json` | one `{ i, src: "page" \| "card:<key>", quote }` per question, in order: the verbatim words (≤ 160 chars) that answer it |
 
 ```sh
 python3 kit/build.py <content-dir> ~/Deliverables/<date>-<slug>/<slug>.html
+python3 kit/answers_check.py <content-dir> [--against <full-content-dir>]
 uvx --with playwright python kit/check.py <that page> <screenshot-dir>
 ```
+
+## Teaching material, not only exams
+
+A course, an onboarding explainer, a "how does X work" for colleagues all use the
+same page. Each concept gets a tab, a picture and its traps. The quiz is optional, but it
+is the learner's own self-check, never a task set for others. For a system someone
+navigates rather than learns, use `doc-atlas`. For a live session, use `doc-workshop-deck`.
+
+## Editions: a full page and a short one
+
+When the source is large, build the full page first, then condensed editions from the
+same content. Each edition is a content folder of its own. The UX-AI guide shipped three
+editions from one source: full, a 9-question-per-lecture core, and a final edition at
+59 % of the prose with every question kept.
+
+- **Every question kept must stay answerable.** Run `answers_check.py <edition>
+  --against <full>`. It also fails any diagram not copied byte-for-byte from the full
+  page, because the card keys and the fit check depend on exact labels and geometry.
+- **Saved answers are stored by question position** under `meta.key`. An edition with
+  the same questions in the same order may share the full page's key, so progress
+  carries over. One that drops or reorders questions needs its own key, or every
+  saved answer lands on the wrong question.
+- **Parallel writers get a brief** that states what done is: every concept, list,
+  number and model answer kept, prose at most 60 % of the full page, no new claims,
+  and an `answers.json` per section. `src/FINAL-BRIEF.md` in the UX-AI folder is one.
 
 Pass `--fragment` when the page goes to a host that adds its own document skeleton (the Artifact tool does).
 
@@ -72,7 +103,13 @@ Read the CSS before you invent a class.
 
 ## Done means
 
-- `check.py` exits 0 on **both** profiles against the page you built.
+- `check.py` exits 0 on **both** profiles against the page you built. That includes
+  the text-fit check, which measures every diagram on every tab.
+- `answers_check.py` exits 0 when the page has a quiz, and `build.py` prints no
+  `WARNING`.
+- **The answer key had a second reader.** A fresh agent checks each `why` against the
+  source slides, not against the page. On the UX-AI guide two fresh reviewers flagged
+  2 of 111 keys, and both were real.
 - **If the page has widgets** (`kit/widgets/`: `core.js` toolkit + `core.css`, mounted by `mount.js`, placed as
   `<div class="wg" data-wg="name">`), `widgets_check.py` exits 0 in all four modes. It clicks every button and fails one
   that changes nothing, and it fails a ▶ that does not start motion or does not restart on a second press.
@@ -82,6 +119,14 @@ Read the CSS before you invent a class.
   Publish it only when asked.
 
 ## Gotchas, each one measured
+
+- **Writers list the right option first.** It happened in 74 of 89 choice questions on the
+  UX-AI guide. `build.py` warns when more than half the
+  choice questions start with a correct option. Reorder them in `quiz.json`, and never
+  shuffle at runtime, because saved answers are stored by position.
+- **Strip inline tags without a space when matching quotes.** Turning `<b>` into a
+  space made "Item :" out of "Item:" and gave 4 false "not found" results on the
+  UX-AI guide. `answers_check.py` joins inline tags and separates block tags.
 
 - **Never keep animation state in a range input.** The input snaps to its `step`, so adding 0,03 s per frame to a
   0,1 s slider is rounded back every frame and the ▶ button looks dead (15 failing button checks per mode on the first fizmat-9 build, worse at 120 Hz).
