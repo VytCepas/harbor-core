@@ -186,6 +186,11 @@ rm -f "$HOME/x/present.md"
 t_eq "the repaired one returns the day it is gone again" yes "$(has_rule "$FT8" FC-10)"
 FT11="$(tf_fixture tf-notapath)"; tf_write "$FT11" 3 s not-found aaaabbbbccccdddd "" 'gone-command'
 t_eq "a key that is not a path cannot be probed, so it stays" yes "$(has_rule "$FT11" FC-10)"
+t_eq "a dead path in three sessions is crit" crit "$(sev_of "$FT10" FC-10)"
+# A key-less not-found (every MCP record) names no pointer to repair: it still fires, as warn.
+FT16="$(tf_fixture tf-keyless)"; tf_write "$FT16" 3 s not-found aaaabbbbccccdddd "" '-'
+t_eq "a key-less not-found in three sessions fires" yes "$(has_rule "$FT16" FC-10)"
+t_eq "as warn, not crit" warn "$(sev_of "$FT16" FC-10)"
 FT12="$(tf_fixture tf-othererr)"; : > "$HOME/x/present.md"; tf_write "$FT12" 3 s timeout aaaabbbbccccdddd "" '~/x/present.md'
 t_eq "an existing path under another error class still fires" yes "$(has_rule "$FT12" FC-10)"
 rm -f "$HOME/x/present.md"

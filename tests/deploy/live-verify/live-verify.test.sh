@@ -97,6 +97,22 @@ t_has "...fixed by a deploy" "$(out)" "fix: sh $SRC/deploy.sh --apply --live"
 cp "$T_TMP/manifest.keep" "$C/.harbor-manifest"
 t_eq "restored, green again" "exit 0" "$(rc sh "$LV" --live)"
 
+t_section "the name-create rule with no row is OFF, and the line says so (harbor#978, check context.name-create)"
+t_has "control: the rule not installed, the line is a skip" "$(rc sh "$LV" --live >/dev/null; line name-create)" "skip: [check:deploy.live-verify] name-create "
+mkdir -p "$C/context-rules/user"; cp "$T_ROOT/context-rules/user/name-note-create.md" "$C/context-rules/user/"
+t_eq "the rule installed and name-create.d missing: exit 1" "exit 1" "$(rc sh "$LV" --live)"
+t_has "the line is the FAIL, saying the rule is off" "$(line name-create)" "FAIL: [check:deploy.live-verify] name-create — OFF: "; t_has "...naming what is missing" "$(line name-create)" "/name-create.d is missing"
+t_has "...stamped with its own check id" "$(line name-create)" "[check:context.name-create]"
+t_has "...and the fix installs core's rows" "$(out)" "fix: sh $SRC/context-injection-install.sh --apply --live"
+mkdir -p "$C/name-create.d"; printf '# only a comment\n\n' > "$C/name-create.d/harbor.tsv"
+t_eq "a row file that holds no row: exit 1" "exit 1" "$(rc sh "$LV" --live)"
+t_has "...and says it holds no row" "$(line name-create)" "holds no row"
+cp "$T_ROOT/contracts/name-create.tsv" "$C/name-create.d/harbor.tsv"
+t_eq "core's rows in place: green" "exit 0" "$(rc sh "$LV" --live)"
+t_has "...counting them" "$(line name-create)" "ok: [check:deploy.live-verify] name-create — 4 command row(s) in 1 file(s)"
+t_red check.context.name-create
+rm -rf "$C/name-create.d" "$C/context-rules/user/name-note-create.md"
+
 t_section "a job running a script older than its installed copy turns launchd red (harbor#1437)"
 # launchctl is a stub reporting a real sleep as the job's pid; the job's script is then newer than that process.
 mkdir -p "$HOME/Library/LaunchAgents" "$T_TMP/jobstub"

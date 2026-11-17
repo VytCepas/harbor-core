@@ -45,7 +45,7 @@ ROUTER='contracts/browser-routing.md, row 4'
 HOSTS_FILE="$ROOT/contracts/browser-agent-hosts.txt"
 # The private layer's own hosts (internal UIs and client tools; core names none), read after the core list. The
 # env is the test seam; absent is the core list alone (contracts/private-layer.md).
-PRIV_HOSTS="${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-${HARBOR_BROWSER_PRIVATE_HOSTS:-}}"
+PRIV_HOSTS="${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-}"
 if [ -z "$PRIV_HOSTS" ]; then
   _pd="$(sh "$HERE/scope-roots.sh" --private 2>/dev/null || :)"
   [ -z "$_pd" ] || PRIV_HOSTS="$_pd/browser-hosts.txt"
@@ -66,11 +66,12 @@ esac
 CHROME_DATA="${HARBOR_ACCESS_CHROME_DATA:-$_chrome_data_default}"
 CLAUDE_JSON="${HARBOR_ACCESS_CLAUDE_JSON:-$HOME/.claude.json}"
 CONFIRM="${HARBOR_ACCESS_BROWSER_CONFIRM:-}"
-# Whole words a click/dblclick target's label may not carry without the operator's
-# per-call HARBOR_ACCESS_BROWSER_CONFIRM=<ref>. Whole words, so status text (Paused,
-# Removed, Payments) passes; the label comes from a fresh snapshot (_guard).
-DESTRUCTIVE='delete remove archive pause publish unpublish discard pay purchase buy unlink disconnect
-  ištrinti pašalinti archyvuoti sustabdyti pristabdyti publikuoti paskelbti išjungti apmokėti'
+# Whole words or phrases a click/dblclick target's label may not carry without the operator's
+# per-call HARBOR_ACCESS_BROWSER_CONFIRM=<ref>: the live-change list (harbor#1541), one per line, which
+# the MCP server reads too. Whole words, so status text (Paused, Removed, Payments) passes; the label
+# comes from a fresh snapshot (_guard). Missing or empty, every guarded verb is refused (_live_check).
+LIVE_WORDS="$ROOT/contracts/live-change-words.txt"
+DESTRUCTIVE="$(sed 's/#.*//' "$LIVE_WORDS" 2>/dev/null | tr -s ' 	' '  ' | sed 's/^ //; s/ $//' | grep -v '^$' || :)"
 
 _usage() { sed -n '/^#   harbor chrome attach/,/^#   harbor chrome <verb>/p' "$0" | sed 's/^# \{0,2\}//'; }
 
@@ -181,7 +182,7 @@ _session() {
   case "$_s" in ''|claude-|*[!A-Za-z0-9_-]*) return 1 ;; esac
   # A lane: parallel agents of ONE session each get their own browser session, as
   # <own name>-<lane>. Appended, never replacing, so a lane cannot name another session's.
-  _lane="${HARBOR_ACCESS_BROWSER_LANE:-${HARBOR_BROWSER_LANE:-}}"   # the old name is read until 2026-11-15 (harbor#1097)
+  _lane="${HARBOR_ACCESS_BROWSER_LANE:-}"   # the old name is read until 2026-11-15 (harbor#1097)
   if [ -n "$_lane" ]; then
     case "$_lane" in *[!abcdefghijklmnopqrstuvwxyz0-9]*) return 1 ;; esac
     [ "${#_lane}" -le 12 ] || return 1
@@ -280,7 +281,7 @@ _cli_run() { ( _cli "$@" ); }   # the same CLI, returning here instead of exec'i
 # A tab Chrome is not showing reports `hidden` and input verbs time out on it; a second session
 # activating its own tab in the same window did that (2026-10-14). HARBOR_ACCESS_BROWSER_OSASCRIPT is the test seam.
 _osa() { # <script on stdin> [args] — never launches Chrome
-  "${HARBOR_ACCESS_BROWSER_OSASCRIPT:-${HARBOR_OSASCRIPT:-/usr/bin/osascript}}" - "$@"
+  "${HARBOR_ACCESS_BROWSER_OSASCRIPT:-/usr/bin/osascript}" - "$@"
 }
 # Lines: <window id> TAB <tab index> TAB <true|false: active> TAB <url> TAB <tab id>.
 _chrome_tabs() {
@@ -395,7 +396,7 @@ _gone_check() {
 # Target.detachedFromTarget then Target.createTarget). The detach lands ~300 ms after
 # the input, so settle first. A failed probe gives no verdict.
 _lost_check() { # <held output>
-  sleep "${HARBOR_ACCESS_BROWSER_SETTLE:-${HARBOR_CHROME_SETTLE:-1}}"
+  sleep "${HARBOR_ACCESS_BROWSER_SETTLE:-1}"
   _p="$(_cli_run "-s=$S" --raw eval "$STATE_EXPR" 2>/dev/null)" || return 0
   case "$_p" in *'blank\":true'*|*'"blank":true'*) ;; *) return 0 ;; esac
   _e="$(_relay_err)"; _t=''
@@ -423,14 +424,47 @@ _hidden_check() { # <held output>
 
 # Lower-cased words of $1, space-padded; non-ASCII bytes stay letters (š, ė).
 _words() {
-  printf ' %s ' "$1" | LC_ALL=C tr 'A-Z' 'a-z' | LC_ALL=C sed 's/Š/š/g; s/Ė/ė/g' | LC_ALL=C tr -c 'a-z0-9\200-\377' ' '
+  printf ' %s ' "$1" | LC_ALL=C tr 'A-Z' 'a-z' | LC_ALL=C sed 's/Ą/ą/g; s/Č/č/g; s/Ę/ę/g; s/Ė/ė/g; s/Į/į/g; s/Š/š/g; s/Ų/ų/g; s/Ū/ū/g; s/Ž/ž/g' \
+    | LC_ALL=C tr -c 'a-z0-9\200-\377' ' ' | tr -s ' '
 }
-_destructive() { # <label> — prints the first word of $DESTRUCTIVE it carries
+_destructive() { # <label> — prints the first entry of $DESTRUCTIVE (a word or a phrase) it carries
   _w=" $(_words "$1") "
+  _old_ifs="$IFS"; IFS='
+'
   for _d in $DESTRUCTIVE; do
-    case "$_w" in *" $_d "*) printf '%s' "$_d"; return 0 ;; esac
+    case "$_w" in *" $_d "*) IFS="$_old_ifs"; printf '%s' "$_d"; return 0 ;; esac
   done
-  return 1
+  IFS="$_old_ifs"; return 1
+}
+_live_check() { # the list itself: without it no label can be judged, so nothing that commits runs
+  [ -n "$DESTRUCTIVE" ] || _refuse 'no live-change words: contracts/live-change-words.txt is missing or empty, so no label can be checked' 'git checkout -- contracts/live-change-words.txt'
+}
+# press/keydown Enter or Space, and fill/type --submit, commit what the focus sits on (harbor#1541): the fixed
+# submit-focus/submit-of probe of contracts/browser-script.tsv reads the label of that control and of its form's
+# submit buttons, and a live-change label is refused as a click on it is. A probe that cannot answer refuses too.
+_submit_guard() { # <arg>... of $VERB
+  _sk=''; _sr=''; _ss=''
+  for _a in "$@"; do case "$_a" in --submit) _ss=1 ;; -*) ;; *) [ -n "$_sk" ] || _sk="$_a" ;; esac; done
+  case "$VERB" in
+    press|keydown) printf '%s' "$_sk" | grep -Eq '^([A-Za-z]+\+)*(Enter|NumpadEnter|Space| )$' || return 0 ;;
+    type) [ -n "$_ss" ] || return 0; _sk='' ;;
+    fill) [ -n "$_ss" ] || return 0; _sr="$_sk"
+      case "$_sr" in e[0-9]*|f[0-9]*e[0-9]*) case "$_sr" in *[!abcdefghijklmnopqrstuvwxyz0-9]*) _sr='' ;; esac ;; *) _sr='' ;; esac
+      [ -n "$_sr" ] || _refuse "fill --submit takes a snapshot ref, not '$_sk': a selector carries no label for the live-change check" 'harbor chrome snapshot' ;;
+    *) return 0 ;;
+  esac
+  _live_check
+  _sn=submit-focus; [ -z "$_sr" ] || _sn=submit-of
+  _fn="$(awk -F '\t' -v k="$_sn" '$1 == k { print substr($0, length(k) + 2); exit }' "$ROOT/contracts/browser-script.tsv" 2>/dev/null)"
+  [ -n "$_fn" ] || _refuse "no $_sn row in contracts/browser-script.tsv, so $VERB cannot be checked" 'git checkout -- contracts/browser-script.tsv'
+  _o="$WORKDIR/.submit-probe"; mkdir -p "$WORKDIR"
+  _cli_run "-s=$S" --raw eval "$_fn" ${_sr:+"$_sr"} > "$_o" 2>/dev/null \
+    || { _gone_check "$_o"; _refuse "no answer from the submit probe, so $VERB cannot be checked for a live change" 'harbor chrome snapshot'; }
+  _sl="$({ jq -r 'if type == "string" then . else tostring end' "$_o" 2>/dev/null || cat "$_o"; } | tr -s ' \t\n' '   ' | sed 's/^ //; s/ $//' | cut -c1-200)"
+  if _hit="$(_destructive "$_sl")"; then
+    case "$VERB" in fill|type) _sw='--submit' ;; *) _sw="'$_sk'" ;; esac
+    _handoff "destructive $VERB refused: $_sw would commit '$_sl', which matches '$_hit' — the operator confirms one click" 'harbor chrome snapshot, then HARBOR_ACCESS_BROWSER_CONFIRM=<ref> harbor chrome click <ref> on that button'
+  fi
 }
 
 # click/dblclick: take a fresh full snapshot (a partial one replaces the CLI's ref
@@ -438,6 +472,7 @@ _destructive() { # <label> — prints the first word of $DESTRUCTIVE it carries
 # them), read the target's label and box, and refuse a destructive label unless
 # the operator confirmed this ref for this call. Sets G_LABEL, G_BOX.
 _guard() { # <verb> <ref>
+  _live_check
   case "$2" in
     e[0-9]*|f[0-9]*e[0-9]*) case "$2" in *[!abcdefghijklmnopqrstuvwxyz0-9]*) _refuse "target refused: '$2' — $1 takes a snapshot ref" ;; esac ;;
     *) _refuse "target refused: '$2' — $1 takes a snapshot ref (e12, f3e12); a selector carries no label for the destructive check" 'harbor chrome snapshot' ;;
@@ -811,7 +846,7 @@ OSA
 )" || _r=''
     [ -n "$_r" ] || _refuse 'AppleScript could not show the tab' 'System Settings > Privacy & Security > Automation: let the terminal control Google Chrome and System Events'
     # Checked, not assumed: front once said ok on a tab that stayed hidden (field test, 2026-10-14).
-    sleep "${HARBOR_ACCESS_BROWSER_SETTLE:-${HARBOR_CHROME_SETTLE:-1}}"
+    sleep "${HARBOR_ACCESS_BROWSER_SETTLE:-1}"
     _p="$(_cli_run "-s=$S" --raw eval "$STATE_EXPR" 2>/dev/null)" || _p=''
     case "$_p" in *'visibility\":\"hidden'*|*'"visibility":"hidden'*)
       # A window fully covered by another, same-size one reads hidden too (macOS occlusion), and
@@ -828,7 +863,7 @@ on run argv
   end tell
 end run
 OSA
-      sleep "${HARBOR_ACCESS_BROWSER_SETTLE:-${HARBOR_CHROME_SETTLE:-1}}"
+      sleep "${HARBOR_ACCESS_BROWSER_SETTLE:-1}"
       _p="$(_cli_run "-s=$S" --raw eval "$STATE_EXPR" 2>/dev/null)" || _p=''
       case "$_p" in *'visibility\":\"hidden'*|*'"visibility":"hidden'*)
         _handoff "front: $_r was moved 40 px off the window covering it, but the page is still hidden (another app's window covers it, or it is on another Space)" 'harbor chrome tabs   # then move that window where it shows' ;;
@@ -858,7 +893,7 @@ EOF
     _t=0
     while _signin_url "$_u" || [ "$_u" = about:blank ]; do
       [ "$_t" -lt "$_max" ] || _handoff "still on a sign-in page after $_max s ($(_url_host "$_u"))" 'harbor chrome wait-signin   # again, once signed in'
-      sleep "${HARBOR_ACCESS_BROWSER_POLL:-${HARBOR_CHROME_POLL:-3}}"; _t=$((_t + ${HARBOR_ACCESS_BROWSER_POLL:-${HARBOR_CHROME_POLL:-3}}))
+      sleep "${HARBOR_ACCESS_BROWSER_POLL:-3}"; _t=$((_t + ${HARBOR_ACCESS_BROWSER_POLL:-3}))
       _u="$(_pick | awk -F '\t' -v t="$_tid" '$1 == t { print $2 }')"
       [ -n "$_u" ] || _handoff 'the sign-in tab was closed' 'harbor chrome attach'
     done
@@ -910,6 +945,7 @@ EOF
         -*) _refuse "option refused: $_a — only --filename=<name>, on fill and type --submit, on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>, and --real on the scripted verbs" ;;
       esac
     done
+    case "$VERB" in press|keydown|type|fill) _submit_guard "$@" ;; esac
     # Script-first (harbor#1507, operator 2026-11-12): a fixed script from contracts/browser-script.tsv, which needs no
     # paint, so a window covered by another app still takes it. --real is the CLI's own verb, which waits for the tab to show.
     _real=''; _sfn=''; _sref=''; _sarg='null'

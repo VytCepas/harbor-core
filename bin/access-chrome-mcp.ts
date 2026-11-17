@@ -43,8 +43,10 @@ const OWNED_NAME = '.owned-tabs';
 const TEXT_PAGE = '() => document.body ? document.body.innerText : ""';
 const TEXT_EL = '(el) => el.innerText ?? el.textContent ?? ""';
 const TEXT_MAX = 40000;
-const DESTRUCTIVE = ('delete remove archive pause publish unpublish discard pay purchase buy unlink disconnect ' +
-  'ištrinti pašalinti archyvuoti sustabdyti pristabdyti publikuoti paskelbti išjungti apmokėti').split(' ');
+// The labels that commit a change to a live system (harbor#1541): one list for both routes, read once. Empty or missing,
+// every guarded verb is refused (guardLive), never waved through.
+const DESTRUCTIVE: string[] = (() => { try { return fs.readFileSync(path.join(ROOT, 'contracts', 'live-change-words.txt'), 'utf8'); } catch { return ''; } })().split('\n')
+  .map((l) => l.replace(/#.*/, '').trim().replace(/\s+/g, ' ')).filter((l) => l !== '');
 
 // Run by the shell agent: the verbs that touch Chrome's windows or wait on the operator.
 const LONG: Record<string, number> = { attach: 900, 'wait-signin': 900 };   // seconds
@@ -87,8 +89,9 @@ const VERBS: Record<string, string> = {
   pdf: 'the page as a PDF (args: [--filename=<bare name>])',
   'go-back': 'history back', 'go-forward': 'history forward', reload: 'reload the page',
   console: 'the page console', resize: 'resize the viewport (args: [width, height])',
-  click: 'click a ref by script, which works on a covered window (args: [ref]); --real for the Playwright click ([ref, button], --modifiers=<key>), --force for a press at its box',
-  dblclick: 'double-click a ref by script; --real for the Playwright one',
+  click: 'click a ref by script, which works on a covered window (args: [ref]); or by its visible name with no find first (args: ["--text=Save changes"]: ' +
+    'the one exact match is clicked, else the one partial match; several are refused listing their refs, none points at find); --real for the Playwright click ([ref, button], --modifiers=<key>), --force for a press at its box',
+  dblclick: 'double-click a ref, or --text=<name>, by script; --real for the Playwright one',
   hover: 'hover a ref by script; --real for the Playwright one', fill: 'fill a field (args: [ref, text], --submit)', type: 'type text (args: [text], --submit)',
   select: 'select options of a native <select> by script (args: [ref, value, ...]); --real for the Playwright one', check: 'check a ref by script; --real for the Playwright one', uncheck: 'uncheck a ref by script; --real for the Playwright one',
   scroll: 'scroll at once, on a covered window too (args: [pixels] the page, [pixels, ref] that element, [ref] into view)',
@@ -295,10 +298,15 @@ function relayErr(s: string): string {   // this session's daemon log (written u
 const lines = (p: string) => { const a = p ? readText(p).split('\n') : []; if (a[a.length - 1] === '') a.pop(); return a; };   // wc -l's count
 
 // ── the destructive-label check (access-browser-agent.sh _words, _destructive) ──
-function words(t: string): string {   // lower-cased, ASCII non-letters to spaces; non-ASCII stays a letter (š, ė)
-  return ' ' + asciiLower(t).replace(/Š/g, 'š').replace(/Ė/g, 'ė').replace(/[\u0000-\u007f]/g, (c) => (/[a-z0-9]/.test(c) ? c : ' ')) + ' ';
+const LT_UPPER: Record<string, string> = { Ą: 'ą', Č: 'č', Ę: 'ę', Ė: 'ė', Į: 'į', Š: 'š', Ų: 'ų', Ū: 'ū', Ž: 'ž' };
+function words(t: string): string {   // lower-cased, ASCII non-letters to one space; non-ASCII stays a letter (š, ė, Į → į)
+  return (' ' + asciiLower(t).replace(/[ĄČĘĖĮŠŲŪŽ]/g, (c) => LT_UPPER[c]).replace(/[\u0000-\u007f]/g, (c) => (/[a-z0-9]/.test(c) ? c : ' ')) + ' ')
+    .replace(/ +/g, ' ');
 }
 const destructive = (label: string): string => { const w = words(label); return DESTRUCTIVE.find((d) => w.includes(` ${d} `)) ?? ''; };
+function guardLive() {   // the list itself: without it no label can be judged, so nothing that commits runs
+  if (!DESTRUCTIVE.length) refuse('no live-change words: contracts/live-change-words.txt is missing or empty, so no label can be checked', 'git checkout -- contracts/live-change-words.txt');
+}
 const attrs = (s: string) => s.replace(/"([^"\\]|\\.)*"/g, '').replace(/:( .*)?$/, '');
 const frameOf = (s: string) => { const m = /\[ref=(f[0-9]+)e/.exec(s); return m ? m[1] : ''; };
 const indentOf = (s: string) => s.length - s.trimStart().length;
@@ -306,18 +314,22 @@ const bare = (s: string) => s.replace(/\[(ref|box|cursor|level|active|expanded|d
 
 // Take a fresh full snapshot, read the target's label and box (a partial one would replace the CLI's ref table).
 type Target = { root: string; frame: string; box: string; label: string; file: string };
-async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: string, confirmed = false): Promise<Target> {
-  if (/^(e[0-9]|f[0-9].*e[0-9])/s.test(ref)) { if (/[^a-z0-9]/.test(ref)) refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref`); }
-  else refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref (e12, f3e12); a selector carries no label for the destructive check`, 'harbor chrome snapshot');
+async function guardLines(c: Conn, S: string, wd: string, verb: string, target: string): Promise<{ file: string; body: string[] }> {
   fs.mkdirSync(wd, { recursive: true });
   const g = path.join(wd, 'harbor-guard.yml'); fs.rmSync(g, { force: true });
   let r: { isError: boolean; text: string } | undefined;
   try { r = await c.run({ _: ['snapshot'], boxes: true, filename: 'harbor-guard.yml' }, wd, false); } catch { if (!sessionFile(S)) goneRefusal(S); }
   if (!r || r.isError || !fs.existsSync(g) || fs.statSync(g).size === 0) {
     if (r) goneCheck(S, r.text);
-    refuse(`no guard snapshot, so ${verb} ${ref} cannot be checked`, 'harbor chrome status');
+    refuse(`no guard snapshot, so ${verb} ${target} cannot be checked`, 'harbor chrome status');
   }
-  const body = fs.readFileSync(g, 'utf8').split('\n');
+  return { file: g, body: fs.readFileSync(g, 'utf8').split('\n') };
+}
+async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: string, confirmed = false): Promise<Target> {
+  if (/^(e[0-9]|f[0-9].*e[0-9])/s.test(ref)) { if (/[^a-z0-9]/.test(ref)) refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref`); }
+  else refuse(`target refused: '${ref}' — ${verb} takes a snapshot ref (e12, f3e12) or --text=<name>; a selector carries no label for the destructive check`, 'harbor chrome snapshot');
+  guardLive();
+  const { file: g, body } = await guardLines(c, S, wd, verb, ref);
   let root = '', found = false, ind = 0, tf = '', box = '', label = '';
   for (const line of body) {
     const a = attrs(line);
@@ -337,6 +349,55 @@ async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: 
   if (hit && !confirmed) handoff(`destructive ${verb} refused: '${lab}' (${ref}) matches '${hit}' — the operator confirms one call`, `${verb === 'click' ? `mcp__harbor_chrome__confirm_click with args ["${ref}"] (the operator approves it in the dialog); or ` : ''}HARBOR_ACCESS_BROWSER_CONFIRM=${ref} harbor chrome ${verb} ${ref}`);
   if (confirmed) { try { fs.appendFileSync(path.join(wd, '.confirmed.tsv'), `${new Date().toISOString()}\t${ref}\t${hit || '-'}\t${lab}\n`); } catch { /* the dialog is the record */ } }
   return { root, frame: '-' + tf, box, label: lab, file: g };
+}
+
+// Enter, Space and --submit commit what the focus sits on (harbor#1541): press, keydown and type --submit ask the focused
+// element, fill --submit its ref, through the fixed submit-focus/submit-of probes, and a live-change label is refused the
+// way a click on it is. The way through is confirm_click on that button. A probe that cannot answer refuses too.
+const SUBMIT_KEY = /^(?:[A-Za-z]+\+)*(Enter|NumpadEnter|Space| )$/;
+async function submitGuard(c: Conn, S: string, wd: string, verb: string, args: string[]): Promise<void> {
+  const pos = args.filter((a) => !a.startsWith('--'));
+  let ref = '';
+  if (verb === 'press' || verb === 'keydown') { if (!SUBMIT_KEY.test(pos[0] ?? '')) return; }
+  else if (verb === 'type') { if (!args.includes('--submit')) return; }
+  else if (verb === 'fill') { if (!args.includes('--submit')) return; ref = pos[0] ?? ''; if (!/^(e[0-9]+|f[0-9]+e[0-9]+)$/.test(ref)) refuse(`fill --submit takes a snapshot ref, not '${ref}': a selector carries no label for the live-change check`, 'harbor chrome snapshot'); }
+  else return;
+  guardLive();
+  const fn = SCRIPTS[ref ? 'submit-of' : 'submit-focus'];
+  if (!fn) refuse(`no ${ref ? 'submit-of' : 'submit-focus'} row in contracts/browser-script.tsv, so ${verb} cannot be checked`, 'git checkout -- contracts/browser-script.tsv');
+  let r: { isError: boolean; text: string };
+  try { r = await c.run({ _: ['eval', fn, ...(ref ? [ref] : [])] }, wd, true); } catch (e) { if (!c.dead) throw e; return goneRefusal(S); }
+  if (r.isError) { goneCheck(S, r.text); refuse(`no answer from the submit probe, so ${verb} cannot be checked for a live change`, 'harbor chrome snapshot'); }
+  let lab = r.text ?? '';
+  try { const j = JSON.parse(lab); if (typeof j === 'string') lab = j; } catch { /* already plain */ }
+  const hit = destructive(lab);
+  if (hit) handoff(`destructive ${verb} refused: ${verb === 'fill' || verb === 'type' ? '--submit' : `'${pos[0]}'`} would commit '${lab.slice(0, 200)}', which matches '${hit}' — the operator confirms one click`,
+    'harbor chrome snapshot, then mcp__harbor_chrome__confirm_click with args ["<ref of that button>"] (the operator approves it in the dialog)');
+}
+
+// ── click by name (harbor#1507) ─────────────────────────────────────────────
+// find then click was the commonest pair of calls where the second waits on the first (1,659 of 6,251, 2026-10-18..11-14):
+// the click only carried the ref find returned. --text=<name> reads the ref from the guard snapshot; the click then takes
+// every guard a ref click does, the destructive label first. An exact name outranks partial ones; several left is a refusal listing them, none is a refusal pointing at find.
+const NAMED = /^\s*- ([a-z]+) "((?:[^"\\]|\\.)*)"/;
+const TEXT_LIST = 10;
+async function refForText(c: Conn, S: string, wd: string, verb: string, q: string): Promise<{ ref: string; what: string }> {
+  const want = q.replace(/\s+/g, ' ').trim().toLowerCase();
+  const { body } = await guardLines(c, S, wd, verb, `--text=${q}`);
+  const hits: { ref: string; what: string; exact: boolean }[] = [];
+  for (const line of body) {
+    const m = NAMED.exec(line); if (!m) continue;
+    const ref = (attrs(line).match(/\[ref=([a-z0-9]+)\]/g) ?? []).slice(-1)[0]?.slice(5, -1);
+    const box = /\[box=([-0-9.,]+)\]/.exec(attrs(line))?.[1];
+    if (!ref || (box && box.split(',').slice(2).some((n) => Number(n) <= 0))) continue;   // no ref, or zero-size: nothing to click
+    const name = m[2].replace(/\\"/g, '"').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (name.includes(want)) hits.push({ ref, what: `${m[1]} "${m[2]}"`, exact: name === want });
+  }
+  const pick = hits.some((h) => h.exact) ? hits.filter((h) => h.exact) : hits;
+  if (pick.length === 1) return pick[0];
+  if (!pick.length) refuse(`${verb} --text=${q}: no element on the page has that name`, `mcp__harbor_chrome__find with args ["${q}"]`);
+  const list = pick.slice(0, TEXT_LIST).map((h) => `${h.what} (${h.ref})`).join('; ');
+  return refuse(`${verb} --text=${q}: ${pick.length} elements match — ${list}${pick.length > TEXT_LIST ? '; …' : ''}`, `mcp__harbor_chrome__${verb} with args ["<one of those refs>"]`);
 }
 
 // --force: Playwright's force by hand, a real mouse press at the box centre, skipping the visible/stable/receives-events wait.
@@ -458,9 +519,13 @@ function optionGuards(verb: string, args: string[], wd: string) {
     else if (['--modifiers=Alt', '--modifiers=Control', '--modifiers=ControlOrMeta', '--modifiers=Meta', '--modifiers=Shift'].includes(a)) {
       if (verb !== 'click' && verb !== 'dblclick') refuse(`option refused: ${a} — --modifiers is for click and dblclick`);
     } else if (a === '--force') { if (verb !== 'click') refuse('option refused: --force is for click only; the mouse verbs it uses carry no click count'); }
+    else if (a.startsWith('--text=')) {
+      if (verb !== 'click' && verb !== 'dblclick') refuse(`option refused: ${a} — --text= is for click and dblclick`);
+      if (!/[^\s]/.test(a.slice(7)) || a.length > 207) refuse(`option refused: --text= takes the element's visible name, 1..200 characters`);
+    }
     else if (a === '--submit') { if (verb !== 'fill' && verb !== 'type') refuse('option refused: --submit is for fill and type'); }
     else if (a === '--real') { if (!SCRIPTED.has(verb) || verb === 'scroll') refuse('option refused: --real is for click, dblclick, hover, check, uncheck and select'); }
-    else if (a.startsWith('-')) refuse(`option refused: ${a} — only --filename=<name>, on fill and type --submit, on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>, and --real on the scripted verbs`);
+    else if (a.startsWith('-')) refuse(`option refused: ${a} — only --filename=<name>, on fill and type --submit, on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>, on click and dblclick --text=<name>, and --real on the scripted verbs`);
   }
 }
 const lc = (s: string) => asciiLower(s);
@@ -511,7 +576,7 @@ function cliArgs(verb: string, args: string[]): Record<string, unknown> {
   return o;
 }
 
-type Timing = { guards: number; rpc: number; settle: number };
+type Timing = { guards: number; rpc: number; settle: number; inner?: boolean };   // inner: steps logged each step itself
 // A scripted verb: the guard snapshot (destructive label, stale ref) as for click, then one fixed script on the ref.
 async function scripted(c: Conn, S: string, wd: string, verb: string, args: string[], ref: string, tm: Timing, t0: number, confirmed: boolean): Promise<Res> {
   const isRef = (a: string) => /^(e[0-9]+|f[0-9]+e[0-9]+)$/.test(a);
@@ -590,21 +655,29 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
     return { text: out, isError: !!r.isError };
   }
   optionGuards(verb, args, wd);
-  let ref = '', btn = '', force = false, mods = false;
+  let ref = '', btn = '', force = false, mods = false, byText = '';
   if (verb === 'click' || verb === 'dblclick') {
     for (const a of args) {
       if (a === '--force') force = true;
       else if (a.startsWith('--modifiers=')) mods = true;
+      else if (a.startsWith('--text=')) { if (byText) refuse(`${verb} takes one --text=`); byText = a.slice(7); }
       else if (a === '' || /^-[0-9]/.test(a)) refuse(`${verb} takes <ref> [button]; '${a}' would shift the CLI's own reading of the target`);
       else if (a.startsWith('-')) continue;
-      else if (!ref) ref = a; else if (!btn) btn = a; else refuse(`${verb} takes <ref> [button]`);
+      else if (!ref && !byText) ref = a; else if (!btn) btn = a; else refuse(`${verb} takes <ref> [button]`);
     }
-    if (!ref) refuse(`${verb} takes a snapshot ref`, 'harbor chrome snapshot');
+    if (byText && ref) refuse(`${verb} takes a ref or --text=<name>, not both`);
+    if (!ref && !byText) refuse(`${verb} takes a snapshot ref or --text=<name>`, 'harbor chrome snapshot');
     if (force && mods) refuse('--force cannot carry --modifiers; the mouse verbs it uses take none');
   }
   if (verb === 'upload') uploadGuards(args);
   hostGuard(verb, args, headlessLane(S, wd));
   const c = await connectOrGone(S);
+  await submitGuard(c, S, wd, verb, args);
+  if (byText) {   // the ref goes first in --text='s place, and the call runs again as the ref click it now is
+    const t = await refForText(c, S, wd, verb, byText);
+    const r = await hot(S, verb, [t.ref, ...args.filter((a) => !a.startsWith('--text='))], tm, confirmed, shown);
+    return { text: `[--text=${byText} is ${t.what} (${t.ref})]\n${r.text}`, isError: r.isError };
+  }
   const real = args.includes('--real');
   if (SCRIPTED.has(verb) && !real && !force && !mods && (!btn || btn === 'left')) return scripted(c, S, wd, verb, args, ref, tm, t0, confirmed);
   if (real) args = args.filter((a) => a !== '--real');
@@ -762,7 +835,7 @@ async function steps(S: string, list: { verb: string; args: string[] }[]): Promi
       const pre = e instanceof PrefixedRefusal ? e.prefix : '';
       r = { text: (pre ? pre + '\n' : '') + refusalText(e), isError: true };
     }
-    appendTiming(workdirOf(S), verb, performance.now() - t0, tm);
+    appendTiming(S, `steps/${verb}`, performance.now() - t0, tm, r.isError);
     const last = i === list.length - 1 || r.isError;
     const body = last || r.text.length <= STEP_ECHO ? r.text : r.text.slice(0, STEP_ECHO) + ` [${r.text.length - STEP_ECHO} more characters; only the last step returns in full]`;
     out.push(`${head} → ${r.isError ? 'FAILED' : 'ok'}\n${body}`);
@@ -773,12 +846,21 @@ async function steps(S: string, list: { verb: string; args: string[] }[]): Promi
 
 // ── tool calls, one at a time per browser session ───────────────────────────
 const queues = new Map<string, Promise<unknown>>();
-function appendTiming(wd: string, verb: string, total: number, tm: Timing) {
+// Per-call timings, kept across sessions (harbor#1507): a click took 8.9 s end to end and ~1.2 s in this server, and the
+// per-session file died with the session, so the rest could not be placed. One line per call, no URL, argument or page text:
+// time, session, verb (steps/<verb> for a step), total, guards, rpc, settle (ms), ok|error. Trimmed to its newest lines.
+const TIMINGS: string = SEAMS.timingsFile ?? path.join(HOME, '.local', 'state', 'harbor', 'chrome-timings.tsv');
+const TIMINGS_MAX: number = SEAMS.timingsMax ?? 4 << 20, TIMINGS_KEEP: number = SEAMS.timingsKeep ?? 20000;
+function appendTiming(S: string, verb: string, total: number, tm: Timing, isError: boolean) {
   try {
-    const f = path.join(wd, '.timings.tsv');
-    if (fs.existsSync(f) && fs.statSync(f).size > 65536) fs.writeFileSync(f, readText(f).split('\n').slice(-200).join('\n'));
-    fs.appendFileSync(f, `${new Date().toISOString()}\t${verb}\t${total.toFixed(0)}\t${tm.guards.toFixed(0)}\t${tm.rpc.toFixed(0)}\t${tm.settle.toFixed(0)}\n`);
-  } catch { /* timing is a courtesy */ }
+    fs.mkdirSync(path.dirname(TIMINGS), { recursive: true });
+    if (fs.existsSync(TIMINGS) && fs.statSync(TIMINGS).size > TIMINGS_MAX) {
+      const tmp = TIMINGS + '.tmp';   // trimmed by rename, so a reader never sees half a file
+      fs.writeFileSync(tmp, readText(TIMINGS).split('\n').filter(Boolean).slice(-TIMINGS_KEEP).join('\n') + '\n'); fs.renameSync(tmp, TIMINGS);
+    }
+    fs.appendFileSync(TIMINGS, [new Date().toISOString(), S, verb, total, tm.guards, tm.rpc, tm.settle].map((x) => (typeof x === 'number' ? x.toFixed(0) : x)).join('\t') +
+      `\t${isError ? 'error' : 'ok'}\n`);
+  } catch { /* timing is a courtesy; a call never fails for it */ }
 }
 async function call(name: string, argsIn: unknown): Promise<Res> {
   const verb = TOOLS[name];
@@ -794,6 +876,14 @@ async function call(name: string, argsIn: unknown): Promise<Res> {
   const prev = queues.get(S) ?? Promise.resolve();
   const run = prev.then(async (): Promise<Res> => {
     const t0 = performance.now(), tm: Timing = { guards: 0, rpc: 0, settle: 0 };
+    const r = await once(tm);
+    if (!tm.inner) appendTiming(S, verb, performance.now() - t0, tm, r.isError);
+    return r;
+  });
+  queues.set(S, run.catch(() => undefined));
+  return run;
+
+  async function once(tm: Timing): Promise<Res> {
     try {
       if (AGENT_VERBS.has(verb)) {
         const r = await viaAgent(S, verb, args as string[], lane);
@@ -803,6 +893,7 @@ async function call(name: string, argsIn: unknown): Promise<Res> {
       if (verb === 'steps') {
         const list = stepsOf(a);
         let r: Res;
+        tm.inner = true;   // each step has its own line; a second for the whole would count it twice
         r = await steps(S, list);   // a gone session is the hand-off, naming the goto that re-attaches
         return { text: r.text.slice(0, OUT_MAX), isError: r.isError };
       }
@@ -814,16 +905,13 @@ async function call(name: string, argsIn: unknown): Promise<Res> {
         if (!ra) throw e;
         r = ra;
       }
-      appendTiming(workdirOf(S), verb, performance.now() - t0, tm);
       return { text: r.text.slice(0, OUT_MAX), isError: r.isError };
     } catch (e) {
       if (!(e instanceof Refusal)) return { text: `harbor chrome ${verb} failed: ${(e as Error).message}`, isError: true };
       const pre = e instanceof PrefixedRefusal ? e.prefix : '';
       return { text: ((pre ? pre + '\n' : '') + refusalText(e)).slice(0, OUT_MAX), isError: true };
     }
-  });
-  queues.set(S, run.catch(() => undefined));
-  return run;
+  }
 }
 
 // ── JSON-RPC over stdio ─────────────────────────────────────────────────────
