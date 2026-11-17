@@ -36,12 +36,12 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | fixture | fixtures/ | element | source | living | 450 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 84 |
-| test | tests/ | component | source | living | 677 |
+| test | tests/ | component | source | living | 676 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 10 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 299 |
+| script | bin/ | component | source | living | 298 |
 | agent | agents/ | component | source | living | 1 |
 | how-to | docs/how-to/ | component | source | living | 7 |
 | reference | docs/reference/ | component | generated | generated | 92 |
@@ -56,7 +56,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `agents/` | 1 | 1 | 1 |
-| `bin/` | 303 | 32 | 2 |
+| `bin/` | 302 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 70 | 6 | 1 |
 | `contracts/` | 131 | 15 | 2 |
@@ -74,7 +74,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 677 | 30 | 1 |
+| `tests/` | 676 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -84,7 +84,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 12 | 36 | 2 | 6 | 0 | 0 |
-| admission | control-plane | 28 | 91 | 0 | 6 | 0 | 177 |
+| admission | control-plane | 27 | 90 | 0 | 6 | 0 | 176 |
 | agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
 | audit | control-plane | 9 | 15 | 0 | 27 | 0 | 2 |
@@ -143,7 +143,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### admission
 
 - `bin/admission-api-route.sh`
-- `bin/admission-ask.sh`
 - `bin/admission-bash.sh`
 - `bin/admission-cloud.sh`
 - `bin/admission-decide.sh`

@@ -362,7 +362,6 @@ containment proof against an attacker who already controls the session.</p>
 <h4>The guards</h4>
 <table class="grid"><thead><tr><th>Guard</th><th>Role</th></tr></thead><tbody>
 <tr><td><code>admission-api-route.sh</code></td><td>guard-apiroute (harbor#545) — PostToolUse(Bash|Write|Edit|MultiEdit) and</td></tr>
-<tr><td><code>admission-ask.sh</code></td><td>guard-ask (harbor#1545) - PreToolUse: a call matching a <code>permissions.ask</code> rule gets a PreToolUse <code>ask</code>, so the operator's dialog holds in auto mode,</td></tr>
 <tr><td><code>admission-bash.sh</code></td><td>B3 (harbor#3) - PreToolUse(Bash) shell-injection / local-exec guard: the code-execution and destruction class (ports upstream DANGEROUS_PATTERNS a4e8e74, trimmed for POSIX+WSL). Pure POSIX; FAIL-OPEN on parse error.</td></tr>
 <tr><td><code>admission-cloud.sh</code></td><td>admission-cloud.sh (harbor#194 item 3, harbor#193 warning-layer) - PreToolUse(Bash) ASK-gate for destructive cloud operations (ledger token <code>cloud</code>).</td></tr>
 <tr><td><code>admission-decide.sh</code></td><td>admission-decide.sh (harbor#1030) — the one decision function of the floor: a fired rule's mode is read from its controls.tsv row.</td></tr>
@@ -1576,7 +1575,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/skill/fire/fire.test.sh</code></td><td><code>bin/skill-fire.sh tests/skill/fire/fire.test.sh tests/lib/core.sh bin/library-log.sh</code></td></tr>
 <tr><td><code>tests/deploy/doctor/doctor.test.sh</code></td><td><code>bin/deploy-doctor.sh bin/library-log.sh tests/deploy/doctor/doctor.test.sh bin/library-admission.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/deliverables/deliverables.test.sh</code></td><td><code>bin/* tests/lib/* tests/admission/helper/lib.sh* tests/deploy/install-lib/install-lib.test.sh* tests/standard/fs-lib/fs-lib.test.sh* tests/standard/log-lib/log-lib.test.sh* tests/test/lib/* tests/guards/deliverables* tests/admission/deliverables/* tests/guards/guards.jsonl tests/guards/shapes.jsonl tests/guards/benign.jsonl tests/guards/exemptions.jsonl</code></td></tr>
-<tr><td><code>tests/admission/ask/ask.test.sh</code></td><td><code>bin/admission-ask.sh bin/library-admission.sh tests/lib/* tests/admission/ask/*</code></td></tr>
 <tr><td><code>tests/drift/install/install.test.sh</code></td><td><code>bin/drift-install.sh tests/drift/install/install.test.sh bin/admission-verify.sh tests/lib/core.sh bin/check-registry-generate.sh</code></td></tr>
 <tr><td><code>tests/memory/route/route.test.sh</code></td><td><code>bin/memory-route.sh bin/library-log.sh tests/memory/route/route.test.sh bin/scope-roots.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/gate/pr-wait/pr-wait.test.sh</code></td><td><code>bin/gate-pr-wait.sh* bin/ci-lost-job.sh bin/gate-required-generate.sh bin/library-log.sh tests/gate/pr-wait/pr-wait.test.sh tests/lib/core.sh</code></td></tr>
@@ -2276,8 +2274,6 @@ means a box left alone for a week reports nothing about the week.</li>
 <tr><td><code>PreToolUse</code></td><td><code>Write|Edit|MultiEdit</code></td><td><code>admission-hook.sh admission-self-edit.sh</code></td><td><code>floor-install</code></td></tr>
 <tr><td><code>PreToolUse</code></td><td><code>Bash</code></td><td><code>admission-cloud.sh</code></td><td><code>floor-install</code></td></tr>
 <tr><td><code>PreToolUse</code></td><td><code>Bash</code></td><td><code>admission-destroy.sh</code></td><td><code>floor-install</code></td></tr>
-<tr><td><code>PreToolUse</code></td><td><code>Bash</code></td><td><code>admission-ask.sh</code></td><td><code>floor-install</code></td></tr>
-<tr><td><code>PreToolUse</code></td><td><code>mcp__.*</code></td><td><code>admission-ask.sh</code></td><td><code>floor-install</code></td></tr>
 <tr><td><code>PreToolUse</code></td><td><code>Bash|Write|Edit|MultiEdit</code></td><td><code>admission-deliverables.sh</code></td><td><code>floor-install</code></td></tr>
 <tr><td><code>PreToolUse</code></td><td><code>Bash</code></td><td><code>govern-hook.sh --box</code></td><td><code>floor-install</code></td></tr>
 <tr><td><code>PostToolUse</code></td><td><code>Bash|Write|Edit|MultiEdit</code></td><td><code>admission-api-route.sh</code></td><td><code>floor-install</code></td></tr>
@@ -2286,7 +2282,6 @@ means a box left alone for a week reports nothing about the week.</li>
 <tr><td><code>PreToolUse</code></td><td><code>Monitor</code></td><td><code>admission-hook.sh admission-egress.sh</code></td><td><code>floor-install</code></td></tr>
 <tr><td><code>PreToolUse</code></td><td><code>Monitor</code></td><td><code>admission-cloud.sh</code></td><td><code>floor-install</code></td></tr>
 <tr><td><code>PreToolUse</code></td><td><code>Monitor</code></td><td><code>admission-destroy.sh</code></td><td><code>floor-install</code></td></tr>
-<tr><td><code>PreToolUse</code></td><td><code>Monitor</code></td><td><code>admission-ask.sh</code></td><td><code>floor-install</code></td></tr>
 <tr><td><code>PreToolUse</code></td><td><code>Monitor</code></td><td><code>admission-deliverables.sh</code></td><td><code>floor-install</code></td></tr>
 <tr><td><code>PreToolUse</code></td><td><code>Monitor</code></td><td><code>govern-hook.sh --box</code></td><td><code>floor-install</code></td></tr>
 <tr><td><code>PreToolUse</code></td><td><code>Grep</code></td><td><code>admission-hook.sh admission-egress.sh</code></td><td><code>floor-install</code></td></tr>
@@ -2641,7 +2636,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/access-github-app-install.sh</code></td><td>access-github-app-install.sh — the in-session GitHub App scripts, COPIED from bin/access-github-app/. harbor#1225.</td></tr>
 <tr><td><code>bin/access.sh</code></td><td>access.sh (harbor#1205, harbor#1149) - <code>harbor access</code>: the access register, the one list of every identity an</td></tr>
 <tr><td><code>bin/admission-api-route.sh</code></td><td>guard-apiroute (harbor#545) — PostToolUse(Bash|Write|Edit|MultiEdit) and</td></tr>
-<tr><td><code>bin/admission-ask.sh</code></td><td>guard-ask (harbor#1545) - PreToolUse: a call matching a <code>permissions.ask</code> rule gets a PreToolUse <code>ask</code>, so the operator's dialog holds in auto mode,</td></tr>
 <tr><td><code>bin/admission-bash.sh</code></td><td>B3 (harbor#3) - PreToolUse(Bash) shell-injection / local-exec guard: the code-execution and destruction class (ports upstream DANGEROUS_PATTERNS a4e8e74, trimmed for POSIX+WSL). Pure POSIX; FAIL-OPEN on parse error.</td></tr>
 <tr><td><code>bin/admission-cloud.sh</code></td><td>admission-cloud.sh (harbor#194 item 3, harbor#193 warning-layer) - PreToolUse(Bash) ASK-gate for destructive cloud operations (ledger token <code>cloud</code>).</td></tr>
 <tr><td><code>bin/admission-decide.sh</code></td><td>admission-decide.sh (harbor#1030) — the one decision function of the floor: a fired rule's mode is read from its controls.tsv row.</td></tr>

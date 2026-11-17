@@ -65,7 +65,7 @@ person. Enumerated with
 | guard-bash `killswitch-*`, `startup-file-*`, `api-route-*`, `finding-label-*` | enforces | a persisted switch, a rerouted API, a finding disposition (harbor#855) |
 | every other guard-bash and guard-egress rule | records | the measured set (`floor_shadow_enforces` in library-admission.sh) |
 | guard-deliverables | records | a filing convention |
-| guard-cloud, guard-destroy, guard-ask | enforce; they do not read shadow | irreversible deletes of shared client infrastructure and devices. library-admission.sh records their deny+ask outside test fixtures as ~21 records over the ledger's life: nothing to measure, everything to lose |
+| guard-cloud, guard-destroy | enforce; they do not read shadow | irreversible deletes of shared client infrastructure and devices. library-admission.sh records their deny+ask outside test fixtures as ~21 records over the ledger's life: nothing to measure, everything to lose |
 | admission-hook.sh fail-closed deny | enforces | a guard that could not evaluate is a fault, not a rule's verdict |
 | guard-integrity (SessionStart) | enforces | floor drift |
 | govern-hook `--box` | enforces | its verdict is the repo's own merge-check, not a floor rule |

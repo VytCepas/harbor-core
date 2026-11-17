@@ -169,18 +169,6 @@ if [ -f "$DIR/bin/admission-deliverables.sh" ]; then
   decides admission-deliverables.sh '{"tool_name":"Write","tool_input":{"file_path":"~/floor-verify-probe-report.html"}}' "loose deliverable (file tool)"
   decides admission-deliverables.sh '{"tool_name":"Bash","tool_input":{"command":"cat > ~/floor-verify-probe-report.html"}}' "loose deliverable (shell redirect)"
 fi
-# admission-ask (harbor#1545) reads the operator's ask list, so it is probed on a throwaway config dir holding one rule: an MCP call it names must ask.
-if [ -f "$DIR/bin/admission-ask.sh" ]; then
-  _ak="$(mktemp -d "${TMPDIR:-/tmp}/floor-verify-ask.XXXXXX" 2>/dev/null || true)"
-  if [ -n "$_ak" ] && [ -d "$_ak" ]; then
-    printf '{"permissions":{"ask":["mcp__floor_verify__probe"]}}\n' >"$_ak/settings.json"
-    _d="$(printf '{"tool_name":"mcp__floor_verify__probe","tool_input":{}}' | CLAUDE_CONFIG_DIR="$_ak" sh "$FIRE/bin/admission-ask.sh" 2>/dev/null | jq -r '.hookSpecificOutput.permissionDecision // ""' 2>/dev/null)"
-    [ "$_d" = ask ] && ok "decides (ask): a call an ask rule names" || no "NO DECISION: a call an ask rule names — $DIR/bin/admission-ask.sh allowed it silently" "$FLOOR_FIX"
-    rm -rf "$_ak"
-  else
-    no "admission-ask was NOT probed: mktemp gave no directory" "$FLOOR_FIX"
-  fi
-fi
 # admission-api-route REPAIRS rather than decides, so it is probed on a throwaway config dir: a settings.json routing to a dead port must come
 # back without the key and with a block reason (first sight of a routed file is a baseline, never a repair). CLAUDE_PROJECT_DIR is pinned.
 if [ -f "$DIR/bin/admission-api-route.sh" ]; then

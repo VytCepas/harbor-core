@@ -336,7 +336,7 @@ floor_expand_home() {
 # 5. ONE RECORD = ONE printf = ONE write(): guards append concurrently, and `printf >>` under /bin/sh is atomic only up to 1024 bytes including the newline (stdio's buffer, not PIPE_BUF). Records are ~110 bytes; the cap is asserted at 512.
 # NOT SETTABLE FROM THE ENVIRONMENT: an overridable sink path or an OBSERVE_DISABLE switch would be a second kill switch (the class already refused for FLOOR_GREP, FLOOR_AWK, FLOOR_INSTR_SURFACES).
 # EVERY GUARD THAT LOGS MUST BE NAMED in FLOOR_OBS_GUARDS below: an unlisted token is coerced to `other`, silently. Lint C7 (audit.decision-token-listed) reads that line against every literal floor_log_decision call site and fails in either direction.
-FLOOR_OBS_GUARDS=' bash egress selfedit integrity web wrapper session cloud destroy deliverables prod inject govern apiroute ask '
+FLOOR_OBS_GUARDS=' bash egress selfedit integrity web wrapper session cloud destroy deliverables prod inject govern apiroute '
 # `ask` is a REAL verdict (the tier that auto-approves in an unattended session); it was once missing and its records were coerced to `other`.
 FLOOR_OBS_VERDICTS=' block allow deny ask gate advise override armed shadow covered '
 FLOOR_OBS_SHAPES=' argv flat path channel content meta '

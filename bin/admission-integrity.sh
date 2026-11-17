@@ -92,7 +92,7 @@ else
   check_wired PreToolUse  Task      admission-egress.sh
   check_wired PostToolUse WebFetch  annotate-web.sh
   # Gated on the pin so a box installed before these guards existed cannot false-alarm: admission-install.sh pins and wires them in one run, so a missing hook where the pin exists is real drift. Unwiring is cheaper than editing, and nothing caught a deleted hook entry.
-  for _cg in admission-cloud.sh admission-destroy.sh admission-deliverables.sh admission-ask.sh; do
+  for _cg in admission-cloud.sh admission-destroy.sh admission-deliverables.sh; do
     [ -f "$PINDIR/$_cg.sha256" ] || continue
     check_wired PreToolUse Bash "$_cg"
   done

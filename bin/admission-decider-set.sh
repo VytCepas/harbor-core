@@ -40,7 +40,6 @@ admission-self-edit.sh|first|records|
 admission-deliverables.sh|first|records|
 annotate-web.sh|first|none|
 admission-cloud.sh|first|enforces|irreversible deletes of shared client infrastructure: nothing to measure, everything to lose
-admission-ask.sh|first|enforces|a permissions.ask match: the dialog in auto mode
 admission-destroy.sh|first|enforces|irreversible local work destruction
 govern-hook.sh|first|enforces|its verdict is the repo's own merge-check, not a floor rule
 admission-api-route.sh|first|none|a repair, not a deny

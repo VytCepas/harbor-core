@@ -165,7 +165,6 @@ admission.git-worktree-remove-force	judged	its target can sit in the write zone,
 admission.deliverable-home-loose	judged	its target can sit in the write zone, or it is not a file write
 admission.deliverable-dropzone	judged	its target can sit in the write zone, or it is not a file write
 admission.deliverable-root-bare	judged	its target can sit in the write zone, or it is not a file write
-admission.ask-rule	judged	not a write the confinement denies: a call the operator asked to approve, on any path
 admission.diskutil-wipe	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
 admission.device-node-replace	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
 admission.git-push-snapshots	judged	not a write the confinement denies: a remote action, a device, a schedule or an execution
