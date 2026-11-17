@@ -143,6 +143,7 @@ tests/context/injection-rule/decision-question.test.sh
 tests/context/injection-rule/default-way-route.test.sh
 tests/context/injection-rule/default-way-deny.test.sh
 tests/context/injection-rule/repo-not-adopted.test.sh
+tests/context/injection-rule/ci-verdict-for-session.test.sh
 tests/context/injection-rule/skill-first-use.test.sh
 tests/context/injection-rule/suggest-tool.test.sh
 tests/context/injection-rule/name-note.test.sh
@@ -267,6 +268,7 @@ tests/ci/runs-on/runs-on.test.sh
 tests/lint/platform/calls.test.sh
 tests/lint/conventions/mktemp-template.test.sh
 tests/status/fleet-snapshot/watch.test.sh
+tests/status/fleet-snapshot/detach.test.sh
 tests/access/secret/seam.test.sh
 tests/status/console/guards.test.sh
 tests/status/console/lifecycle.test.sh
@@ -282,6 +284,7 @@ tests/status/obligations/surface.test.sh
 tests/status/obligations/harden.test.sh
 tests/status/obligations/finished.test.sh
 tests/event/dispatch/resume.test.sh
+tests/event/dispatch/lag.test.sh
 tests/event/dispatch/rules.test.sh
 tests/event/dispatch/spawn.test.sh
 tests/event/dispatch/pull.test.sh

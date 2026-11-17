@@ -6,6 +6,8 @@
 #   react_rec <key>   one field of the session's state record (empty when there is none)
 #   react_notify <subtitle> <body>   a desktop banner through bin/library-alert.sh's chain; 1 when it was only logged
 #   react_log <id> <text>            one line in $RSTATE_DIR/reactions.log
+#   react_session_note <id> <text>   one line for session $RSID in $RSTATE_DIR/session-notes/, which the
+#                                    ci-verdict-for-session context rule prints on that session's next tool call, once
 #
 # The event is the dispatcher's own raw bus line, data and not an instruction: every field is checked against a short
 # charset before use, and nothing from it reaches a shell string.
@@ -34,6 +36,12 @@ react_rec() { # <key>
 react_notify() { # <subtitle> <body> -> 0 only if a desktop channel took it (bin/library-alert.sh, harbor#618)
   harbor_notify "$1" "$2"
   [ "$NOTIFY_SINK" != log ]
+}
+
+react_session_note() { # <check-id> <text>: one line for the session that owns the event (RSID, already validated)
+  case "$RSID" in ''|*[!A-Za-z0-9_-]*) return 0 ;; esac
+  { mkdir -p "$RSTATE_DIR/session-notes" && printf '%s [check:%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" \
+      >> "$RSTATE_DIR/session-notes/$RSID"; } 2>/dev/null || :
 }
 
 react_log() { # <check-id> <text>: one line in reactions.log

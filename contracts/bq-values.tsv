@@ -1382,3 +1382,5 @@ rule	1372	name.vendor-credential	live	standards/naming/controls.tsv
 rule	1373	context.name-create	live	standards/naming/controls.tsv, the id less its family
 rule	1374	secret	live	standards/naming/controls.tsv, the id less its family
 rule	1375	vendor-credential	live	standards/naming/controls.tsv, the id less its family
+rule	1376	context.ci-verdict-for-session	live	standards/naming/controls.tsv
+rule	1377	ci-verdict-for-session	live	standards/naming/controls.tsv, the id less its family
