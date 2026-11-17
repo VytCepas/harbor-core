@@ -49,7 +49,7 @@ trap 'rm -rf "$T"' EXIT INT TERM HUP
 
 # the fleet file and the controller binary, through the registry-aware reader, as status-fleet-snapshot-refresh.sh does (harbor#966)
 FLEET="${HARBOR_SCOPE_FLEET_FILE:-$(sh "$_SRC/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}"
-ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-${HARBOR_ORCH_BIN:-$(sh "$_SRC/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}}"
+ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-$(sh "$_SRC/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}"
 
 stood_down() { # <why>
   log_receipt "$(receipt_dir "$CFG")" "$ID" stood-down >/dev/null 2>&1 || :

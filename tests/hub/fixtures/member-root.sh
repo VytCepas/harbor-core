@@ -3,7 +3,7 @@
 MR="$T_TMP/managed/ClaudeCode/harbor"; MB="$MR/bin"; W="$T_TMP/work"; MIN="$T_TMP/in.json"
 mkdir -p "$MB" "$W"
 for _f in admission-hook.sh library-admission.sh admission-normalize.awk admission-self-edit.sh admission-bash.sh admission-egress.sh \
-          admission-decide.sh admission-cloud.sh admission-destroy.sh admission-deliverables.sh govern-hook.sh \
+          admission-decide.sh admission-cloud.sh admission-destroy.sh admission-deliverables.sh admission-ask.sh govern-hook.sh \
           member-dispatch.sh member-post.sh member-integrity.sh member-support-guard.sh hub-tier.sh library-hub.sh library-log.sh library-git-safe.sh; do
   cp "$T_ROOT/bin/$_f" "$MB/$_f"
 done

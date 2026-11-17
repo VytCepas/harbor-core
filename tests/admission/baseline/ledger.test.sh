@@ -97,7 +97,7 @@ t_eq "O-33 the phrase quoted in a command is not the retry" confined "$(_oc)"
 otrunc
 fire_block "O-33 a non-Bash record: blocks" admission-self-edit.sh "$(edit_j Write "$CFG/settings.json")"
 t_eq "O-33 a non-Bash tool carries no confinement state" - "$(_oc)"
-rm -f "$TMP/managed/harbor-confinement"; unset HARBOR_SCOPE_MANAGED_SETTINGS HARBOR_MANAGED_SETTINGS
+rm -f "$TMP/managed/harbor-confinement"; unset HARBOR_SCOPE_MANAGED_SETTINGS
 
 # O-10: a guard that logs the payload it blocked is an exfil channel aimed at its own disk (No.3).
 otrunc

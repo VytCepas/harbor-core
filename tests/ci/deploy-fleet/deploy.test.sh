@@ -95,7 +95,7 @@ t_section "--approved is refused when HARBOR_DEPLOY_UNATTENDED=1 (§5a.4) (red-p
 fx_world; fx_base api; fx_main api secrets/key k; S="$(fx_tip api)"
 t_eq "exit 2, nothing applied" "2 0" "$(HARBOR_DEPLOY_UNATTENDED=1 ship deploy acme/api --sha "$S" --approved) $(fx_ops apply)"
 t_has "...saying who may pass it" "$(cat "$T_TMP/out")" "only gate-approve.sh passes it"
-fx_mutant "MU --approved accepted unattended" 's/^\[ "\$APPROVED" = 0 \] || \[ "\${HARBOR_DEPLOY_UNATTENDED:-\${SHIP_UNATTENDED:-}}" != 1 \] || usage_err/: || usage_err/'
+fx_mutant "MU --approved accepted unattended" 's/^\[ "\$APPROVED" = 0 \] || \[ "\${HARBOR_DEPLOY_UNATTENDED:-}" != 1 \] || usage_err/: || usage_err/'
 fx_world; fx_base api; fx_main api secrets/key k; ( HARBOR_DEPLOY_UNATTENDED=1; export HARBOR_DEPLOY_UNATTENDED; ship deploy acme/api --sha "$(fx_tip api)" --approved >/dev/null )
 t_eq "the mutant applies a protected change in an unattended run" 1 "$(fx_ops apply)"
 SHIP=''

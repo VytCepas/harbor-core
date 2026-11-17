@@ -17,7 +17,11 @@
 # its own org and the operator's in any other: the owner is `--owner`, else the `-R`/`--repo` owner in the command.
 # gate-pr-plan.sh asks `--actor gh pr ready 5 -R <owner>/<repo>` (or `--owner <owner> gh pr ready 5`) to know whose
 # step it is.
+# A pack's registers (harbor#1541) sit at <packs>/<repo-id>/<cli>.md, put there by `harbor pack install` from the pack's
+# verbs/; they are read beside core's, and a pack row whose command is not one of that pack's own shims
+# (<packs>/../shims.d/<repo-id>.tsv) comes back BAD, so a pack can grant or gate only the commands it ships.
 # ENV  HARBOR_GATE_VERBS_DIR      the registers' directory (default: contracts/verbs beside this script's bin/)
+#      HARBOR_GATE_VERBS_PACKS    the installed packs' registers (default: none; the installer passes <config>/verbs.d)
 #      HARBOR_GATE_VERBS_OWN_ORG  the App's own org (default: the owner of this checkout's repo slug)
 set -eu
 . "$(dirname -- "$0")/library-log.sh"
@@ -38,7 +42,20 @@ _rows() { # <register.md>... -> file TAB spelling TAB class TAB perm TAB actor T
       ins = ("instead" in col) ? trim($(col["instead"])) : ""
       printf "%s\t%s\t%s\t%s\t%s\t%s\n", n, trim($(col["spelling"])), trim($(col["class"])), trim($(col["perm"])), a, ins }' "$@"
 }
-_files() { find "$D" -maxdepth 1 -name '*.md' ! -name 'README.md' 2>/dev/null | sort; }
+P="${HARBOR_GATE_VERBS_PACKS:-}"
+_files() {
+  find "$D" -maxdepth 1 -name '*.md' ! -name 'README.md' 2>/dev/null | sort
+  [ -z "$P" ] || [ ! -d "$P" ] || find "$P" -mindepth 2 -maxdepth 2 -name '*.md' ! -name 'README.md' 2>/dev/null | sort
+}
+# The commands each pack ships, as "<packs>/<id>/<TAB><name>": a pack row may name only these.
+_shims() {
+  [ -n "$P" ] && [ -d "$P" ] || return 0
+  for _pd in "$P"/*/; do
+    [ -d "$_pd" ] || continue
+    _id="${_pd%/}"; _id="${_id##*/}"
+    awk -F'\t' -v d="$_pd" '!/^#/ && NF >= 2 && $1 != "name" { print d "\t" $1 }' "${P%/}/../shims.d/$_id.tsv" 2>/dev/null || :
+  done
+}
 
 case "${1:-}" in
   rows) shift
@@ -49,13 +66,23 @@ case "${1:-}" in
     fi ;;
   rules) [ "${2:-}" = allow ] || [ "${2:-}" = ask ] || { echo "usage: gate-verbs.sh rules <allow|ask>" >&2; exit 2; }
     _f="$(_files)"; [ -n "$_f" ] || exit 0
-    # shellcheck disable=SC2086
-    _rows $_f | awk -F'\t' -v want="$2" '$4 == want {
-      s = $2
-      # A rule has to start `<cli> <subcommand>`: a leading flag or wildcard lets the `*` absorb a flag that turns a
-      # read into execution. An ask may be the catch-all `<cli> *`, since a broader ask only prompts more.
-      ok = (s ~ /^[a-z][a-z-]* [a-z][a-z-]*( |$)/) || (want == "ask" && s ~ /^[a-z][a-z-]* \*$/)
-      if (!ok || s ~ /[<>`|;&$]/) print "BAD\t" s "\t" $1; else print "OK\t" s "\t" $1 }' ;;
+    _sh="$(_shims)"
+    # One file at a time, so a pack row is judged against its own pack's shims.
+    for _x in $_f; do
+      _pk=''; case "$_x" in "${P%/}"/*/*.md) [ -n "$P" ] && _pk="${_x%/*}/" ;; esac
+      # The shims list goes through the environment: BSD awk refuses a newline in a -v value, and two shims are two lines.
+      _rows "$_x" | GV_SHIMS="$_sh" awk -F'\t' -v want="$2" -v pk="$_pk" '
+        BEGIN { n = split(ENVIRON["GV_SHIMS"], L, "\n"); for (i = 1; i <= n; i++) { split(L[i], a, "\t"); if (a[1] == pk) own[a[2]] = 1 } }
+        $4 == want {
+        s = $2
+        # A rule has to start `<cli> <subcommand>`: a leading flag or wildcard lets the `*` absorb a flag that turns a
+        # read into execution. An ask may be the catch-all `<cli> *`, or `<cli> --<flag> *`, since a broader ask only
+        # prompts more (`<cli> --write *`: the flag is what makes the call a write).
+        ok = (s ~ /^[a-z][a-z-]* [a-z][a-z-]*( |$)/) || (want == "ask" && (s ~ /^[a-z][a-z-]* \*$/ || s ~ /^[a-z][a-z-]* --[a-z][a-z-]*( |$)/))
+        c = s; sub(/ .*/, "", c)
+        if (pk != "" && !(c in own)) ok = 0
+        if (!ok || s ~ /[<>`|;&$]/) print "BAD\t" s "\t" $1; else print "OK\t" s "\t" $1 }'
+    done ;;
   --actor) shift
     _own=""; [ "${1:-}" != --owner ] || { [ "$#" -ge 2 ] || { echo "usage: gate-verbs.sh --actor [--owner <owner>] <cli> <verb> [args]" >&2; exit 2; }; _own="$2"; shift 2; }
     [ "$#" -ge 2 ] || { echo "usage: gate-verbs.sh --actor [--owner <owner>] <cli> <verb> [args]" >&2; exit 2; }

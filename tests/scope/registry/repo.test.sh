@@ -436,12 +436,12 @@ t_exit "a registry already invalid is not appended to" 1 env PORT_ROOT="$PW" HAR
 t_section "--get follows the registry for a REPOS role, and keeps the table path with none (harbor#966)"
 mkpriv g "$H"'fleet	moved/fleet	fleet-controller	-
 '
-t_eq "a role row resolves through the registry's path" "$PW/moved/fleet" "$(roots --get HARBOR_ORCHESTRATOR)"
+t_eq "a role row resolves through the registry's path" "$PW/moved/fleet" "$(roots --get HARBOR_SCOPE_FLEET_CONTROLLER)"
 t_eq "...and keeps the rest of the row's path" "$PW/moved/fleet/fleet.yaml" "$(roots --get HARBOR_SCOPE_FLEET_FILE)"
-t_eq "a repo the registry lacks keeps the table path" "$PW/yard" "$(roots --get HARBOR_PROJECT_INIT)"
-t_eq "an exported override still wins" "/elsewhere" "$(HARBOR_SCOPE_FLEET_CONTROLLER=/elsewhere roots --get HARBOR_ORCHESTRATOR)"
+t_eq "a repo the registry lacks keeps the table path" "$PW/yard" "$(roots --get HARBOR_SCOPE_SCAFFOLDER)"
+t_eq "an exported override still wins" "/elsewhere" "$(HARBOR_SCOPE_FLEET_CONTROLLER=/elsewhere roots --get HARBOR_SCOPE_FLEET_CONTROLLER)"
 PW="$T_TMP/g-none"; mkdir -p "$PW"
-t_eq "no registry is today's literal" "$PW/fleet" "$(roots --get HARBOR_ORCHESTRATOR)"
+t_eq "no registry is today's literal" "$PW/fleet" "$(roots --get HARBOR_SCOPE_FLEET_CONTROLLER)"
 
 t_section "a role row finds a renamed repo by its kind, not the table's id (harbor#966, #999)"
 mkpriv rn "$H"'yard	yard	scaffolder	-
@@ -452,7 +452,7 @@ t_eq "the scaffolder is the one scaffolder row" "$PW/yard" "$(roots --get HARBOR
 t_eq "...and so is the prod-guard source, the same repo" "$PW/yard" "$(roots --get PROJECT_INIT_SRC)"
 t_eq "the fleet controller is the one fleet-controller row" "$PW/tools/fleet" "$(roots --get HARBOR_SCOPE_FLEET_CONTROLLER)"
 t_eq "...and the rest of a row's path is kept" "$PW/tools/fleet/fleet.yaml" "$(roots --get HARBOR_SCOPE_FLEET_FILE)"
-t_eq "a W5 old name asks the same row" "$PW/yard" "$(roots --get HARBOR_PROJECT_INIT)"
+t_eq "a W5 old name asks the same row" "$PW/yard" "$(roots --get HARBOR_SCOPE_SCAFFOLDER)"
 t_eq "the W9 red-team root answers by its new name" "$PW/vendor-src" "$(roots --get HARBOR_EVAL_REDTEAM_DIR)"
 _oldrt="HARBOR_$(printf REDTEAM_DIR)"   # built from parts: the name lint reads tokens
 t_eq "...and the retired old name's override is ignored" "$PW/vendor-src" "$(export "$_oldrt=/corpora"; roots --get HARBOR_EVAL_REDTEAM_DIR)"

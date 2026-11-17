@@ -304,9 +304,9 @@ if [ "$REMOVE" -eq 1 ]; then
   NEW="$(printf '%s' "$NEW" | strip_hook /dev/stdin govern-token.sh)"
   il_write_json "$NEW" "$S" || { log_end; exit 1; }
   log_ok "unwired the engine and the provenance announce"
-  { _aside "$DIR/$BOXREL" && _aside "$DIR/inject.d" && _aside "$DIR/bin/injection-rule.sh" && _aside "$DIR/bin/$OLD_ENGINE" && _aside "$DIR/bin/govern-token.sh"; } || { log_end; exit 1; }
+  { _aside "$DIR/$BOXREL" && _aside "$DIR/inject.d" && _aside "$DIR/bin/injection-rule.sh" && _aside "$DIR/bin/$OLD_ENGINE" && _aside "$DIR/bin/govern-token.sh" && _aside "$DIR/name-create.d/harbor.tsv"; } || { log_end; exit 1; }
   log_ok "moved the packs and the engine into $IL_BK"
-  il_manifest_drop "$BOXREL" inject.d bin/injection-rule.sh "bin/$OLD_ENGINE" bin/govern-token.sh
+  il_manifest_drop "$BOXREL" inject.d bin/injection-rule.sh "bin/$OLD_ENGINE" bin/govern-token.sh name-create.d/harbor.tsv
   il_manifest_write || { log_end; exit 1; }
   log_note "backup: $IL_BK"
   log_end; exit $?
@@ -358,6 +358,17 @@ fi
 rm -f "$IL_BK/packs.diff"
 log_ok "box packs: rebuilt $DIR/$BOXREL from $BOXREL$([ -z "$PRIVFILES" ] || printf ' and %s private file(s)' "$(printf '%s\n' "$PRIVFILES" | grep -c .)") (the previous tier is in $IL_BK)"
 il_manifest_drop inject.d "$BOXREL"; il_manifest "$BOXREL"
+# harbor#978: name-note-create.sh judges the commands name-create.d rows name, and a pack's rows land there as
+# name-create.d/<repo-id>.tsv (bin/pack.sh). Core's own rows (its create commands: bin/secret, harbor access add, a gcloud
+# service account's display name) ship with the rule, as name-create.d/harbor.tsv. With no row the rule is off, which
+# `harbor check --live` reports as check context.name-create.
+NCROWS="$ROOT/contracts/name-create.tsv"
+if [ -f "$NCROWS" ]; then
+  mkdir -p "$DIR/name-create.d" && cp "$NCROWS" "$DIR/name-create.d/harbor.tsv.tmp.$$" && mv -f "$DIR/name-create.d/harbor.tsv.tmp.$$" "$DIR/name-create.d/harbor.tsv" \
+    || { log_fail "could not write $DIR/name-create.d/harbor.tsv"; log_nofix "ls -ld $DIR/name-create.d"; log_end; exit 1; }
+  il_manifest name-create.d/harbor.tsv
+  log_ok "name-create rows: $(grep -cv '^#' "$NCROWS" | tr -d ' ') core command(s) in $DIR/name-create.d/harbor.tsv"
+fi
 
 # ── wiring ──────────────────────────────────────────────────────────────────
 NEW="$(cat "$S")"

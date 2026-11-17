@@ -28,6 +28,11 @@ case " \$* " in *" eval "*)
     [ -z "\${STUB_SCRIPT_FAIL:-}" ] || { echo "Error: Execution context was destroyed"; exit 1; }
     printf '"%s\\\\n- Page URL: %s"\n' "\${STUB_SCRIPT_RESULT:-done by script}" "\${STUB_PAGE_URL:-https://business.facebook.com/}"; exit 0 ;;
   esac
+  # The submit-focus/submit-of probe (harbor#1541): STUB_SUBMIT_LABEL is what Enter would commit; STUB_SUBMIT_FAIL fails it.
+  case "\$*" in *submit-target*)
+    [ -z "\${STUB_SUBMIT_FAIL:-}" ] || { echo "Error: Execution context was destroyed"; exit 1; }
+    printf '"%s"\n' "\${STUB_SUBMIT_LABEL:-}"; exit 0 ;;
+  esac
   [ -z "\${STUB_EVAL_FAIL:-}" ] || { echo "Error: Execution context was destroyed"; exit 1; }
   if [ -n "\${STUB_HIDDEN:-}" ] || { [ -n "\${STUB_COVERED:-}" ] && [ -e "\$STUB_COVERED" ]; }; then printf '%s\n' '"{\"visibility\":\"hidden\",\"host\":\"business.facebook.com\",\"blank\":false}"'
   elif [ -n "\${STUB_BLANK:-}" ] || { [ -n "\${STUB_LATE_BLANK:-}" ] && [ -e "\$STUB_LATE_BLANK" ]; }; then printf '%s\n' '"{\"host\":\"\",\"blank\":true}"'
@@ -65,11 +70,15 @@ cat > "$SNAP" <<'EOF'
   - button "Payments" [ref=e13] [box=8,110,80,20]
   - button "APMOKĖTI" [ref=e14] [box=100,110,80,20]
   - button "Hidden" [ref=e15] [box=0,0,0,0]
-  - button "Save" [ref=e19] [box=600,600,100,30]
-  - dialog "Confirm" [ref=e20] [box=590,590,200,60]:
+  - button "Details" [ref=e19] [box=600,600,100,30]
+  - dialog "Are you sure?" [ref=e20] [box=590,590,200,60]:
     - button "Delete" [ref=e21] [box=600,600,100,30]
   - button "[delete]" [ref=e22] [box=8,140,80,20]
   - button "Unlink" [ref=e23] [box=8,170,80,20]
+  - button "Save changes" [ref=e24] [box=8,200,80,20]
+  - button "Turn on" [ref=e25] [box=100,200,80,20]
+  - button "ĮJUNGTI" [ref=e26] [box=200,200,80,20]
+  - cell "Saved Applied" [ref=e27] [box=300,200,80,20]
   - iframe [ref=e16] [box=52,8,904,304]:
     - generic [ref=f2e1] [box=8,16,884,55]:
       - button "Create" [ref=f2e3] [box=8,50,56,21]
