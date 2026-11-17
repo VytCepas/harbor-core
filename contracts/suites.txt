@@ -183,6 +183,7 @@ tests/eval/tally/tally.test.sh
 tests/skill/fire/fire.test.sh
 tests/deploy/doctor/doctor.test.sh
 tests/admission/deliverables/deliverables.test.sh
+tests/admission/ask/ask.test.sh
 tests/drift/install/install.test.sh
 tests/memory/route/route.test.sh
 tests/gate/pr-wait/pr-wait.test.sh

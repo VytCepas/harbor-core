@@ -40,12 +40,12 @@ cli:ui	cli	ui	2026-10-17	core
 cli:uninstall	cli	uninstall	2026-10-17	core
 cli:verify	cli	verify	2026-10-17	core
 env:HARBOR_EVAL_REDTEAM_DIR	env	HARBOR_EVAL_REDTEAM_DIR	2026-10-31	core
+env:HARBOR_REDTEAM_DIR	env	HARBOR_REDTEAM_DIR	2026-10-18	core
+env:HARBOR_SCOPE_FLEET_CONTROLLER	env	HARBOR_SCOPE_FLEET_CONTROLLER	2026-10-17	core
+env:HARBOR_SCOPE_FLEET_CONTROLLER_BIN	env	HARBOR_SCOPE_FLEET_CONTROLLER_BIN	2026-10-29	core
 env:HARBOR_SCOPE_FLEET_FILE	env	HARBOR_SCOPE_FLEET_FILE	2026-10-17	core
 env:HARBOR_SCOPE_LOCAL_BIN	env	HARBOR_SCOPE_LOCAL_BIN	2026-10-17	core
-env:HARBOR_SCOPE_FLEET_CONTROLLER_BIN	env	HARBOR_SCOPE_FLEET_CONTROLLER_BIN	2026-10-29	core
-env:HARBOR_REDTEAM_DIR	env	HARBOR_REDTEAM_DIR	2026-10-18	core
 env:HARBOR_SCOPE_REPO	env	HARBOR_SCOPE_REPO	2026-10-17	core
-env:HARBOR_SCOPE_FLEET_CONTROLLER	env	HARBOR_SCOPE_FLEET_CONTROLLER	2026-10-17	core
 env:HARBOR_SCOPE_SCAFFOLDER	env	HARBOR_SCOPE_SCAFFOLDER	2026-10-17	core
 env:HARBOR_SCOPE_SCAFFOLDER_BIN	env	HARBOR_SCOPE_SCAFFOLDER_BIN	2026-11-02	core
 env:HARBOR_SCOPE_SCAFFOLDER_CLONE	env	HARBOR_SCOPE_SCAFFOLDER_CLONE	2026-10-29	core
@@ -57,6 +57,7 @@ pack-toml:version	pack-toml	version	2026-10-17	core
 reserved:cli:hub	reserved	cli:hub	2026-10-17	hub
 reserved:path:hub/	reserved	path:hub/	2026-10-17	hub
 reserved:toml:[hub]	reserved	toml:[hub]	2026-10-17	hub
+rule:ask:ask-rule	rule	ask:ask-rule	2026-11-16	core
 rule:bash:api-route-ccr	rule	bash:api-route-ccr	2026-10-17	core
 rule:bash:api-route-config	rule	bash:api-route-config	2026-10-17	core
 rule:bash:api-route-router	rule	bash:api-route-router	2026-10-17	core
