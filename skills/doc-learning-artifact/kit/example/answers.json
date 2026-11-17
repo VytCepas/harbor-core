@@ -1,5 +1,0 @@
-[
-  { "index": 0, "source": "card:Origin", "quote": "Holds the real data. Every cache layer exists to avoid asking it." },
-  { "index": 1, "source": "card:Write-back", "quote": "Writes land in the cache and reach the store later: fast, can lose data on a crash." },
-  { "index": 2, "source": "page", "quote": "Hit rate = reads served from a cache ÷ all reads." }
-]

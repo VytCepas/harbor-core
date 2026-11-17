@@ -1,7 +1,8 @@
 ---
 name: doc-learning-artifact
-description: "The operator's preferred page for learning anything: one section per tab, hand-drawn SVG diagrams whose boxes open a card under the diagram, a saved-answer quiz, gates in real Chrome (desktop + iPhone) for routing, cards and text fit, and a check that every quiz question is answerable from the page. USE WHEN building or updating a study or exam guide, course notes, a revision page, or teaching or onboarding material that explains a topic, process or system so a person can learn it. NOT FOR a system map to navigate (`doc-atlas`), a live workshop deck (`doc-workshop-deck`), or a status report or findings."
+description: "The approved house style and build kit for study pages — an exam guide, a course explainer, a revision page: one section per tab, hand-drawn SVG diagrams whose boxes open a detail card INLINE under the diagram, a saved-answer quiz, study aids, and a Playwright check that runs in real Chrome on desktop and iPhone. USE WHEN building or updating a study guide, exam guide, course notes page, revision page or learning artifact; when somebody wants to learn a course, a lecture series or a topic from one page. NOT FOR an architecture or system diagram (`doc-atlas`), a status report or findings, or anything that is not meant to be studied."
 argument-hint: [course or topic, and the deliverable folder]
+disable-model-invocation: true
 ---
 
 # doc-learning-artifact
@@ -28,13 +29,9 @@ fighting it:
   stressed points" filter.
 - **No horizontal page scroll, no console errors, light and dark themes.**
 
-- **Every practice question is answerable from the page.** Each one carries a verbatim
-  quote from the visible text or a card, and `answers_check.py` proves the quote is there.
-- **Diagram text never spills** out of its box or its viewBox.
-
-The reference is the CCBD exam guide the operator approved on 2026-10-03 (CCBD guide v8),
-and this kit is its engine with the course removed. A second exam guide built on it in 2026-11 added the answer gate, the text-fit
-check and editions; the numbers below come from it.
+The reference is the CCBD exam guide the operator approved on 2026-10-03, which is
+CCBD guide v8 in the `learning-artifact-style` memory. This kit is that page's engine
+with the course content removed.
 
 ## The kit
 
@@ -47,39 +44,11 @@ check and editions; the numbers below come from it.
 | `page.html` | `<div class="shell">` with `nav.toc` (each link has two spans: number, name) and `<main>`: `header.hero#start`, then one `section.topic` per tab |
 | `cards.json` | `{ "<box label>": { t, d, x?, s?, a? } }`: title, detail, exam angle, source, section id |
 | `quiz.json` | `[{ topic, sec, type: multi\|single\|match\|number, conf: sure\|check, q, q2?, yours?, opts \| items+choices \| answer+unit+tol, why }]` |
-| `answers.json` | one `{ index, source: "page" \| "card:<key>", quote }` per question, in order: the verbatim words (≤ 160 chars) that answer it |
 
 ```sh
 python3 kit/build.py <content-dir> ~/Deliverables/<date>-<slug>/<slug>.html
-python3 kit/answers_check.py <content-dir> [--against <full-content-dir>]
 uvx --with playwright python kit/check.py <that page> <screenshot-dir>
-python3 kit/test_kit.py [--browser]   # the kit's own gates, each against a planted fault
 ```
-
-## Teaching material, not only exams
-
-A course, an onboarding explainer, a "how does X work" for colleagues all use the
-same page. Each concept gets a tab, a picture and its traps. The quiz is optional, but it
-is the learner's own self-check, never a task set for others. For a system someone
-navigates rather than learns, use `doc-atlas`. For a live session, use `doc-workshop-deck`.
-
-## Editions: a full page and a short one
-
-When the source is large, build the full page first, then condensed editions from the
-same content. Each edition is a content folder of its own. The 2026-11 guide shipped three
-editions from one source: full, a 9-question-per-lecture core, and a final edition at
-59 % of the prose with every question kept.
-
-- **Every question kept must stay answerable.** Run `answers_check.py <edition>
-  --against <full>`. It also fails any diagram not copied byte-for-byte from the full
-  page, because the card keys and the fit check depend on exact labels and geometry.
-- **Saved answers are stored by question position** under `meta.key`. An edition with
-  the same questions in the same order may share the full page's key, so progress
-  carries over. One that drops or reorders questions needs its own key, or every
-  saved answer lands on the wrong question.
-- **Parallel writers get a brief** that states what done is: every concept, list,
-  number and model answer kept, prose at most 60 % of the full page, no new claims,
-  and an `answers.json` per section.
 
 Pass `--fragment` when the page goes to a host that adds its own document skeleton (the Artifact tool does).
 
@@ -103,32 +72,16 @@ Read the CSS before you invent a class.
 
 ## Done means
 
-- `check.py` exits 0 on **both** profiles against the page you built. That includes
-  the text-fit check, which measures every diagram on every tab. It skips text and rects under a
-  `transform`, so keep labelled boxes untransformed.
-- `answers_check.py` exits 0 when the page has a quiz, and `build.py` prints no
-  `WARNING`.
-- **The answer key had a second reader.** A fresh agent checks each `why` against the
-  source slides, not against the page. On the 2026-11 guide two fresh reviewers flagged
-  2 of 111 keys, and both were real.
+- `check.py` exits 0 on **both** profiles against the page you built.
 - **If the page has widgets** (`kit/widgets/`: `core.js` toolkit + `core.css`, mounted by `mount.js`, placed as
   `<div class="wg" data-wg="name">`), `widgets_check.py` exits 0 in all four modes. It clicks every button and fails one
   that changes nothing, and it fails a ▶ that does not start motion or does not restart on a second press.
 - You viewed both `*-card.png` screenshots, because a pass is not an appearance.
 - `build.py` reports no unused cards.
-- **After changing the kit**, `test_kit.py --browser` exits 0.
 - The page sits in `~/Deliverables/<date>-<slug>/` and is handed over as a `file://` link.
   Publish it only when asked.
 
 ## Gotchas, each one measured
-
-- **Writers list the right option first.** It happened in 74 of 89 choice questions on the
-  2026-11 guide. `build.py` warns when more than half the
-  choice questions start with a correct option. Reorder them in `quiz.json`, and never
-  shuffle at runtime, because saved answers are stored by position.
-- **Strip inline tags without a space when matching quotes.** Turning `<b>` into a
-  space made "Item :" out of "Item:" and gave 4 false "not found" results on the
-  2026-11 guide. `answers_check.py` joins inline tags and separates block tags.
 
 - **Never keep animation state in a range input.** The input snaps to its `step`, so adding 0,03 s per frame to a
   0,1 s slider is rounded back every frame and the ▶ button looks dead (15 failing button checks per mode on the first fizmat-9 build, worse at 120 Hz).

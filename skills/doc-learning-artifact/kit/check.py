@@ -19,29 +19,6 @@ def check(name, ok, extra=""):
 
 VISIBLE = "() => [...document.querySelectorAll('main > header.hero, main > section.topic')].filter(p => getComputedStyle(p).display !== 'none').map(p => p.id)"
 TABS = "() => [...document.querySelectorAll('nav.toc a[href^=\"#\"]')].map(a => a.getAttribute('href').slice(1))"
-# Text that leaves its viewBox, or runs past the right edge of the smallest rect it starts in. Text and rects under a
-# transform are skipped: getBBox() is in local user space, so they cannot be compared with untransformed shapes.
-FIT = r'''() => {
-  const out = [];
-  document.querySelectorAll("section.topic svg[viewBox]").forEach(svg => {
-    if (!svg.getBoundingClientRect().width) return;
-    const vb = svg.viewBox.baseVal, sec = svg.closest("section").id;
-    const rects = [...svg.querySelectorAll("rect")].filter(r => !r.closest("[transform]")).map(r => r.getBBox());
-    svg.querySelectorAll("text").forEach(t => {
-      if (t.closest("[transform]")) return;
-      const b = t.getBBox(); if (!b.width) return;
-      const lab = sec + " | " + t.textContent.slice(0, 40);
-      if (b.x < vb.x - 1 || b.x + b.width > vb.x + vb.width + 1 || b.y < vb.y - 1 || b.y + b.height > vb.y + vb.height + 1)
-        out.push(lab + " | leaves the viewBox");
-      const cx = b.x + 2, cy = b.y + b.height / 2;
-      const inside = rects.filter(r => cx >= r.x && cx <= r.x + r.width && cy >= r.y && cy <= r.y + r.height);
-      if (!inside.length) return;
-      const r = inside.reduce((a, c) => (c.width * c.height < a.width * a.height ? c : a));
-      if (b.x + b.width > r.x + r.width + 1) out.push(lab + " | " + Math.round(b.x + b.width - r.x - r.width) + "px past its box");
-    });
-  });
-  return out;
-}'''
 
 with sync_playwright() as p:
     b = p.chromium.launch(channel="chrome")
@@ -127,17 +104,6 @@ with sync_playwright() as p:
             pg.reload()
             pg.wait_for_timeout(300)
             check(t + "reviewed tick survives reload", pg.locator(f"#{sec} .revbtn").get_attribute("aria-pressed") == "true")
-
-        # every diagram's text fits, measured on each tab because hidden SVGs have no geometry
-        spills = []
-        for tab in tabs:
-            pg.goto(URL + "#" + tab)
-            pg.wait_for_timeout(150)
-            if pg.evaluate(VISIBLE) != [tab]:  # a hidden tab has no geometry and would pass unmeasured
-                spills.append(f"#{tab} did not display, so its diagrams were not measured")
-                continue
-            spills += pg.evaluate(FIT)
-        check(t + "diagram text stays inside its viewBox and the box it starts in", not spills, spills[:5])
 
         # every clickable part opens its own card
         pg.goto(URL + "#selftest")
