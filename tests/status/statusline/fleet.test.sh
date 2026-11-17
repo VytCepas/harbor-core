@@ -194,4 +194,46 @@ t_hasnt "installing library-admission.sh clears the verdict" "$(verdict)" 'work-
 t_has "the source names additionalContext in a comment (the needle's control)" "$(cat "$T_ROOT/hooks/session-verdicts/session-verdicts.sh")" 'additionalContext'
 t_hasnt "no code line spends context tokens" "$(sed 's/#.*//' "$T_ROOT/hooks/session-verdicts/session-verdicts.sh")" 'additionalContext'
 
+t_section "statusline: a render killed mid-refresh leaves no .git/index.lock"
+# The harness cancels an in-flight statusline (header of bin/status-fleet-glyph.sh) and a plain `git status` holds .git/index.lock while it refreshes
+# the index, so a kill inside that window strands a 0-byte lock that blocks every later git write. A git shim freezes the REAL git (SIGSTOP) the moment the
+# lock exists, so the kill lands inside the window instead of by luck; the control proves the shim can catch it, or "no lock" would pass vacuously.
+LKR="$TMP/lkrepo"; LKS="$TMP/lkshim"; mkdir -p "$LKR" "$LKS"
+git init -q "$LKR"; git -C "$LKR" config user.email t@e.c; git -C "$LKR" config user.name T
+_i=0; while [ "$_i" -lt 300 ]; do echo "$_i" > "$LKR/f$_i"; _i=$((_i + 1)); done
+git -C "$LKR" add . >/dev/null; git -C "$LKR" commit -qm init
+cat > "$LKS/git" <<'SHIM'
+#!/bin/sh
+case " $* " in *" status "*) ;; *) exec "$LK_REAL_GIT" "$@" ;; esac
+"$LK_REAL_GIT" "$@" &
+_p=$!
+while kill -0 "$_p" 2>/dev/null; do
+  if [ -e "$LK_LOCK" ]; then kill -STOP "$_p"; : > "$LK_STALLED"; sleep 30; kill -CONT "$_p"; break; fi
+done
+wait "$_p"
+SHIM
+chmod +x "$LKS/git"
+printf '%s' '{"workspace":{"current_dir":"'"$LKR"'"}}' > "$TMP/lk.payload"
+LK_REAL_GIT="$(command -v git)"; LK_LOCK="$LKR/.git/index.lock"; LK_STALLED="$TMP/lk.stalled"; export LK_REAL_GIT LK_LOCK LK_STALLED
+# lk_attempt <command...>: stale every stat (the refresh then has work), run the command under the shim in its own process group,
+# SIGKILL that group once the shim froze git inside the lock window (bounded: 10s). Prints 1 when a lock was left behind, else 0.
+lk_attempt() {
+  find "$LKR" -name 'f*' -exec touch {} +
+  rm -f "$LK_LOCK" "$LK_STALLED"
+  set -m
+  env "PATH=$LKS:$PATH" "$@" < "$TMP/lk.payload" > /dev/null 2>&1 &
+  _lp=$!
+  set +m
+  _w=0; while [ "$_w" -lt 50 ] && [ ! -e "$LK_STALLED" ] && kill -0 "$_lp" 2>/dev/null; do sleep 0.2; _w=$((_w + 1)); done
+  kill -KILL -- "-$_lp" 2>/dev/null; wait "$_lp" 2>/dev/null
+  if [ -e "$LK_LOCK" ]; then echo 1; else echo 0; fi
+  rm -f "$LK_LOCK"
+}
+_ctl=0; _n=0; while [ "$_n" -lt 6 ]; do _ctl=$((_ctl + $(lk_attempt git -C "$LKR" status --porcelain))); _n=$((_n + 1)); done
+t_eq "control: a plain git status killed inside its lock window leaves the lock (at least 1 of 6 attempts)" yes "$([ "$_ctl" -ge 1 ] && echo yes || echo "no ($_ctl)")"
+_n=0; _left=0; while [ "$_n" -lt 6 ]; do
+  _left=$((_left + $(CLAUDE_CONFIG_DIR="$CFG" HARBOR_SCOPE_CACHE_DIR="$CFG/cache" lk_attempt "$SH" "$SRC/status-fleet-glyph.sh")))
+  _n=$((_n + 1)); done
+t_eq "the statusline killed mid-render leaves no index.lock (locks stranded over 6 renders)" 0 "$_left"
+
 t_done
