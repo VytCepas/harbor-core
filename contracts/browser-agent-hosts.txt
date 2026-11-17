@@ -67,3 +67,7 @@ anthropic.com
 # Anthropic Academy — exact: skilljar.com hosts every Skilljar customer
 anthropic.skilljar.com
 accounts.skilljar.com
+
+# Walter Writes — AI text rewriter for coursework (UX-in-AI HW5)
+# anonymous curl -L, 2026-11-16: app.walterwrites.ai stays on itself
+app.walterwrites.ai
