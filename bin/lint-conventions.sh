@@ -866,7 +866,7 @@ rule "lint.help-flag every hand-invocable bin/*.sh answers --help (harbor#140)"
 _S4_HOOKS="admission-hook admission-observe context-resolve annotate-web prod-guard-ambient
 worklog-push memory-harvest injection-rule eval-replay-worker admission-bash
 admission-egress admission-self-edit admission-integrity admission-cloud admission-destroy library-admission
-admission-deliverables admission-api-route
+admission-deliverables admission-api-route admission-ask
 admission-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert library-hub library-git-safe library-board library-pack-version ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
@@ -3968,9 +3968,10 @@ if [ -f "$ROOT/docs/reference/citations.md" ]; then
   # carve-out: the failure direction is stricter, never looser.
   _t7_routes=''
   if [ -f "$ROOT/skills/access-ledger/bin/check-routes.sh" ]; then
-    _t7_routes="$(awk "/^REQUIRED_FIELDS='/,/'[[:space:]]*\$/" \
+    # OPTIONAL_FIELDS too: `ui-hosts:` is a route field a card may omit, and its hosts are addresses (harbor#1507).
+    _t7_routes="$(awk "/^(REQUIRED|OPTIONAL)_FIELDS='/,/'[[:space:]]*\$/" \
         "$ROOT/skills/access-ledger/bin/check-routes.sh" 2>/dev/null \
-      | tr -d "'" | sed 's/^REQUIRED_FIELDS=//' \
+      | tr -d "'" | sed -E 's/^(REQUIRED|OPTIONAL)_FIELDS=//' \
       | awk 'NF { printf "%s%s", sep, $1; sep = "|" }')"
   fi
   while IFS= read -r _f; do

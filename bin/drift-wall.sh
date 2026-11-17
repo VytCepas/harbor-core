@@ -34,7 +34,7 @@ esac
 [ "$#" -le 1 ] || { log_fail "one argument at most"; log_fix "sh $0 --help"; exit 2; }
 ID=drift.wall; P="[check:$ID]"
 CORE="$HERE/../contracts"
-if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-${HARBOR_MANAGED_SETTINGS:-}}" ]; then MF="${HARBOR_SCOPE_MANAGED_SETTINGS:-$HARBOR_MANAGED_SETTINGS}"
+if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then MF="${HARBOR_SCOPE_MANAGED_SETTINGS}"
 elif [ "$(uname -s)" = Darwin ]; then MF='/Library/Application Support/ClaudeCode/managed-settings.json'
 else MF=/etc/claude-code/managed-settings.json; fi
 US="${HARBOR_DRIFT_WALL_USER_SETTINGS:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json}"

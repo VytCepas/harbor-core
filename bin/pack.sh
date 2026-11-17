@@ -193,7 +193,7 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
     # A managed root is flat and carries no register to compose into, so these are refused for what they are, not on a core path it lacks (harbor#1278).
     # A tree check judges as that laptop does: a hub pack lands only on a member box.
     if [ -e "$SRC/harbor-member-mode" ] || [ -n "$HUBTREE" ]; then
-      case "$_r" in checks.md|controls.tsv|terms.tsv) refuse "$_r composes into a core register, which a member laptop doesn't carry" "the admin takes $_r out of the hub pack (contracts/hub.md, extension.json)" || return 1 ;; esac
+      case "$_r" in checks.md|controls.tsv|terms.tsv|name-create.tsv|verbs/*) refuse "$_r composes into a core register, which a member laptop doesn't carry" "the admin takes $_r out of the hub pack (contracts/hub.md, extension.json)" || return 1 ;; esac
     fi
     case "$_r" in
       pack.toml|tests/*|README*) ;;
@@ -203,6 +203,12 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       shims.tsv) printf '%s\t%s\n' "$_p" "shims.d/$ID.tsv" >> "$WORK/plan" ;;
       conf-keys.txt) printf '%s\t%s\n' "$_p" "conf-keys.d/$ID.txt" >> "$WORK/plan" ;;
       terms.tsv) printf '%s\t%s\n' "$_p" "terms.d/$ID.tsv" >> "$WORK/plan" ;;
+      name-create.tsv) printf '%s\t%s\n' "$_p" "name-create.d/$ID.tsv" >> "$WORK/plan" ;;
+      # Verb registers (harbor#1541): the permission rows of the pack's own commands, read beside core's contracts/verbs/.
+      verbs/*/*) refuse "verbs/ is flat; $_r is nested" || return 1 ;;
+      verbs/README.md) ;;
+      verbs/*.md) printf '%s\t%s\n' "$_p" "verbs.d/$ID/${_r#verbs/}" >> "$WORK/plan" ;;
+      verbs/*) refuse "$_r: verbs/ holds <command>.md registers and nothing else" || return 1 ;;
       skills/*/*)
         _s="${_r#skills/}"; _s="${_s%%/*}"
         [ ! -e "$ROOT/skills/$_s" ] || refuse "skill $_s shadows a core skill" || return 1
@@ -327,6 +333,25 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
     [ -z "$_sm" ] || refuse "shims.tsv: $_sm" "the shape is contracts/pack.md: name TAB bin/<file>, with the header row" || return 1
   fi
 
+  # Verb registers (harbor#1541): every row names a command THIS pack's shims.tsv puts on PATH, so a pack can never grant
+  # or gate git, gh or another pack's command; and every row parses in the columns gate-verbs.sh reads.
+  if [ -d "$WORK/stage/verbs.d/$ID" ]; then
+    _vn="$(awk -F'\t' '!/^[ \t]*#/ && NF >= 2 && $1 != "name" { print $1 }' "$WORK/stage/shims.d/$ID.tsv" 2>/dev/null | tr -d '\r')"
+    for _vf in "$WORK/stage/verbs.d/$ID"/*.md; do
+      [ -f "$_vf" ] || continue
+      _vr="$(sh "$SRC/gate-verbs.sh" rows "$_vf" 2>/dev/null)" || _vr=''
+      [ -n "$_vr" ] || refuse "verbs/${_vf##*/}: no row parses (a | spelling | class | perm | table, gate-verbs.sh rows)" "the shape is contracts/verbs/mail.md" || return 1
+      # The names go through the environment: BSD awk refuses a newline in a -v value, and two shims are two lines.
+      _vm="$(printf '%s\n' "$_vr" | PK_SHIMS="$_vn" awk -F'\t' '
+        BEGIN { n = split(ENVIRON["PK_SHIMS"], a, "\n"); for (i = 1; i <= n; i++) own[a[i]] = 1 }
+        { c = $2; sub(/ .*/, "", c)
+          if (!(c in own)) { print "`" $2 "` names " c ", which is not a command this pack ships (shims.tsv)"; exit }
+          if ($3 !~ /^(read|write|gated)$/) { print "`" $2 "` has class " $3 " (read, write or gated)"; exit }
+          if ($4 !~ /^(builtin|allow|ask|deny|classifier)$/) { print "`" $2 "` has perm " $4; exit } }')" || _vm="the row check itself failed"
+      [ -z "$_vm" ] || refuse "verbs/${_vf##*/}: $_vm" "a pack registers only its own shims (contracts/pack.md)" || return 1
+    done
+  fi
+
   # harbor.toml keys (#949): a pack declares the keys its own tools read, so core names none of them. One key per line,
   # [a-z][a-z0-9_]*, never a core key (scope-roots.sh --conf-keys) and never one another installed pack declares.
   if [ -f "$WORK/stage/conf-keys.d/$ID.txt" ]; then
@@ -366,13 +391,36 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       !hdr { if ($0 != h) out("its header is not the core terms.tsv header"); hdr = 1; nf = NF; next }
       NF != nf { out("line " NR " has " NF " columns, the header has " nf) }
       $1 !~ /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/ { out("line " NR ": " $1 " is not a lowercase kebab term") }
-      $2 != "system" { out("line " NR ": " $1 " has class " $2 ": a pack registers system terms only") }
+      $2 != "system" && $2 != "org" && $2 != "vendor" { out("line " NR ": " $1 " has class " $2 ": a pack registers system terms, its org and its vendors only") }
       ($1 in c) { out("line " NR ": " $1 " is a core term") }
       ($1 in p) { out("line " NR ": " $1 " is declared by " p[$1]) }
       ($1 in seen) { out("line " NR ": " $1 " is listed twice") }
       { seen[$1] = 1 }
       END { if (!done && !hdr) print "it has no header row" }')"
     [ -z "$_tm" ] || refuse "terms.tsv: $_tm" "system rows in the columns of standards/naming/terms.tsv (contracts/pack.md)" || return 1
+  fi
+
+  # Name-create rows (harbor#978): the pack's own create commands, judged at birth by name-note-create.sh. Three tab
+  # columns, an ERE awk compiles, and a surface core's lint can --check: a row naming anything else would judge nothing.
+  if [ -f "$WORK/stage/name-create.d/$ID.tsv" ]; then
+    awk -F'\t' '/^#/ || NR == 1 { next } $4 == "check" || $4 == "tree" { print $1 }' "$ROOT/standards/naming/surfaces.tsv" > "$WORK/nc.surfaces"
+    _nm="$(tr -d '\r' < "$WORK/stage/name-create.d/$ID.tsv" | awk -F'\t' -v sf="$WORK/nc.surfaces" '
+      BEGIN { while ((getline l < sf) > 0) ok[l] = 1 }
+      function out(m) { print m; done = 1; exit }
+      /^[ \t]*#/ || /^[ \t]*$/ { next }
+      NF != 3 { out("line " NR " has " NF " columns: <ERE> TAB <surface> TAB <note>") }
+      $1 == "" { out("line " NR ": the ERE is empty, so it would match every command") }
+      !($2 in ok) { out("line " NR ": " $2 " is not a surface bin/lint-name.sh --check accepts (surfaces.tsv, checked)") }
+      { n++ }
+      END { if (!done && !n) print "it holds no row" }' 2>&1)"
+    # An ERE awk cannot compile kills the injector's awk on every call, so each one is compiled here, alone.
+    if [ -z "$_nm" ]; then
+      _nm="$(tr -d '\r' < "$WORK/stage/name-create.d/$ID.tsv" | awk -F'\t' '!/^[ \t]*#/ && !/^[ \t]*$/ { print NR "\t" $1 }' |
+        while IFS="$(printf '\t')" read -r _nl _nre; do
+          RE="$_nre" awk 'BEGIN { if (match("x", ENVIRON["RE"])) {} }' > /dev/null 2>&1 || { printf 'line %s: the ERE does not compile' "$_nl"; break; }
+        done)"
+    fi
+    [ -z "$_nm" ] || refuse "name-create.tsv: $_nm" "rows of <ERE> TAB <surface> TAB <note> (contracts/pack.md)" || return 1
   fi
 
   # Check rows (harbor#1149): checks.md must compose into the ONE register beside core, the private layer and every OTHER
@@ -536,7 +584,7 @@ remove_one() { # <id>
   done
   rm -f "$MFD/$ID.tsv"
   # checks.d is shared by every pack, so only the pack that created it holds its D row: the last pack out takes it if empty.
-  if rmdir "$MFD" 2>/dev/null; then rmdir "$T/checks.d" "$T/shims.d" "$T/conf-keys.d" "$T/terms.d" 2>/dev/null || :; fi
+  if rmdir "$MFD" 2>/dev/null; then rmdir "$T/checks.d" "$T/shims.d" "$T/conf-keys.d" "$T/terms.d" "$T/name-create.d" "$T/verbs.d" 2>/dev/null || :; fi
   log_ok "removed $ID"
   if [ "$_hadck" -eq 1 ]; then recompose || return 1; fi
 }

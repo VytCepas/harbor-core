@@ -18,7 +18,7 @@ log_init fleet-snapshot-refresh
 CACHE_DIR="${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}"
 CACHE="$CACHE_DIR/fleet-snapshot.json"
 FLEET="${HARBOR_SCOPE_FLEET_FILE:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_FILE 2>/dev/null || :)}"
-ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-${HARBOR_ORCH_BIN:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}}"
+ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}"
 
 mkdir -p "$CACHE_DIR"
 TMP="$CACHE.tmp.$$"

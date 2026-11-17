@@ -13,6 +13,7 @@ turns that into a plain "no access register" and never reads or passes against a
 | `skills/access-ledger/bin/check-routes.sh` (any mode without an explicit `[dir]`) | exit 2, "NOTHING was checked and this is not a pass" |
 | `skills/topology/bin/check-topology.sh` | skips resolving a map's card citations and says so on stderr |
 | `context-rules/user/access-route.sh` | silent, exit 0 (an advisory pointer; it fails open like every injected note) |
+| `context-rules/user/browser-last-tier.sh` | silent, exit 0; but a register that holds cards and not one `ui-hosts:` line says so once a session, because that is a broken mapping, not "no route" |
 | lint `doc.urls-cited` | "skipped: no private layer" |
 
 The floor (`guard-*`, `floor-*`) never reads the register.
@@ -52,6 +53,7 @@ line; prose below the block is free-form and unchecked. `check-routes.sh` reads 
 | `owner` | `us`, `client`, `vendor` or `unknown` |
 | `reaches`, `cannot` | what it reaches and what it provably cannot; a fully blocked route stays valid, because a measured negative stops the next session re-probing a closed door |
 | `verified` | one ISO date; older than `ROUTE_STALE_DAYS` (30) is red |
+| `ui-hosts` | **optional.** The hosts of the system's vendor UI, bare lowercase hostnames, comma or space separated; a listed host covers its subdomains. A host named on two cards is red. `context-rules/user/browser-last-tier.sh` reads it: a session that opens one of these hosts in harbor chrome, on a card whose leftmost `via:` tier is `cli`, `api` or `mcp`, is told that tier and the card's `use:` once per session (harbor#1507). List only hosts the card itself grounds; `sh skills/access-ledger/bin/check-routes.sh --ui-hosts` prints the derived `host<TAB>card` map |
 
 `<use>` in an `account:` line is one of `primary` (use first; a reachable system names at least one), `fallback`,
 `avoid`, `none` (measured: no access) or `never` (must not be used here, whatever it holds). Cells are capped at

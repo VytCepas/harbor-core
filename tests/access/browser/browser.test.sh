@@ -150,9 +150,9 @@ t_has "as this session's own name plus the lane" "$(out)" "args=-s=claude-abc123
 t_eq "a lane with other characters is refused" "exit 1" "$(HARBOR_ACCESS_BROWSER_LANE='x/../y'; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
 t_eq "a lane in capitals is refused, whatever the locale" "exit 1" "$(LANG=en_NZ.UTF-8 LC_ALL=en_NZ.UTF-8 HARBOR_ACCESS_BROWSER_LANE=ADS; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
 t_eq "a lane over 12 characters is refused" "exit 1" "$(HARBOR_ACCESS_BROWSER_LANE=abcdefghijklm; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
-t_eq "the old HARBOR_BROWSER_LANE still names a lane, until 2026-11-15 (harbor#1097)" "exit 0" "$(HARBOR_BROWSER_LANE=ads1; export HARBOR_BROWSER_LANE; ag tab-list)"
+t_eq "the old HARBOR_ACCESS_BROWSER_LANE still names a lane, until 2026-11-15 (harbor#1097)" "exit 0" "$(HARBOR_ACCESS_BROWSER_LANE=ads1; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
 t_has "...as the same session name" "$(out)" "args=-s=claude-abc123def456-ads1 tab-list"
-t_eq "...and over 12 characters it is refused" "exit 1" "$(HARBOR_BROWSER_LANE=abcdefghijklm; export HARBOR_BROWSER_LANE; ag tab-list)"
+t_eq "...and over 12 characters it is refused" "exit 1" "$(HARBOR_ACCESS_BROWSER_LANE=abcdefghijklm; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
 t_eq "no session id is refused" "exit 1" "$(rc env -u CLAUDE_CODE_SESSION_ID -u HARBOR_ACCESS_BROWSER_SESSION -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" sh "$AGENT" tab-list)"
 t_eq "a non-numeric idle timeout is refused" "exit 1" "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_IDLE_MS=soon HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" attach)"
 
@@ -253,7 +253,7 @@ t_has "naming it per-call" "$(out)" "never exported"
 # The guard line removed, the same Delete click must go through: the arms above can fail.
 M="$T_TMP/mutant"; mkdir -p "$M/bin" "$M/contracts"
 sed 's/^\( *\)_handoff "destructive .*/\1:/' "$AGENT" > "$M/bin/access-browser-agent.sh"
-cp "$T_ROOT/bin/library-log.sh" "$M/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$T_ROOT/contracts/browser-script.tsv" "$M/contracts/"
+cp "$T_ROOT/bin/library-log.sh" "$M/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$T_ROOT/contracts/browser-script.tsv" "$T_ROOT/contracts/live-change-words.txt" "$M/contracts/"
 t_eq "the mutant differs from the script" yes "$(cmp -s "$AGENT" "$M/bin/access-browser-agent.sh" || echo yes)"
 t_eq "and without the guard line the Delete click goes through" "exit 0" \
   "$(rc env HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$M/bin/access-browser-agent.sh" click e4)"
