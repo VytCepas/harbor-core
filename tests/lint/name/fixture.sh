@@ -29,7 +29,8 @@ mini() { # <dir>
   awk -F'\t' -v r="$1" '/^#/ || $1 == "id" || ($1 !~ /\*/ && system("test -e \"" r "/" $1 "\"") == 0) { print; next } $1 == "contracts/env.tsv" || $1 == "contracts/bin.tsv" { $1 = $1 "?"; print }' OFS='\t' "$REG/schemas.tsv" > "$1/standards/naming/schemas.tsv"
   grep -v '^legacy-' "$REG/exemptions.tsv" > "$1/standards/naming/exemptions.tsv"
   sh "$1/bin/lint-name.sh" --root "$1" --gen exemptions > /dev/null 2>&1
-  cat "$1/build/naming/exemptions.legacy.tsv" >> "$1/standards/naming/exemptions.tsv"
+  # the generator stamps the real rename-wave dates; a copy's own first scan must not expire with them (2026-11-17: 2026-11-16 passed)
+  awk -F'\t' -v OFS='\t' '$1 ~ /^legacy-/ { $5 = "2099-12-31" } { print }' "$1/build/naming/exemptions.legacy.tsv" >> "$1/standards/naming/exemptions.tsv"
 }
 # the repo-kind trees (name.test.sh, repo-verb.test.sh): RKD holds them, mkrk builds one, rk judges one
 RKD="$TMP/rkdirs"; mkdir -p "$RKD"

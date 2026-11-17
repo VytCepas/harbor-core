@@ -36,17 +36,17 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | fixture | fixtures/ | element | source | living | 450 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 84 |
-| test | tests/ | component | source | living | 679 |
+| test | tests/ | component | source | living | 677 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 10 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 298 |
+| script | bin/ | component | source | living | 299 |
 | agent | agents/ | component | source | living | 1 |
 | how-to | docs/how-to/ | component | source | living | 7 |
 | reference | docs/reference/ | component | generated | generated | 92 |
 | explanation | docs/explanation/ | component | source | living | 106 |
-| (no kind) | - | - | - | - | 292 |
+| (no kind) | - | - | - | - | 290 |
 
 ## Folders
 
@@ -56,9 +56,9 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `agents/` | 1 | 1 | 1 |
-| `bin/` | 302 | 32 | 2 |
+| `bin/` | 303 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
-| `context-rules/` | 72 | 6 | 1 |
+| `context-rules/` | 70 | 6 | 1 |
 | `contracts/` | 131 | 15 | 2 |
 | `docs/` | 328 | 26 | 9 |
 | `fixtures/` | 450 | 12 | 1 |
@@ -74,7 +74,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 679 | 30 | 1 |
+| `tests/` | 677 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -84,19 +84,19 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
 | access | control-plane | 12 | 36 | 2 | 6 | 0 | 0 |
-| admission | control-plane | 27 | 90 | 0 | 6 | 0 | 176 |
+| admission | control-plane | 28 | 91 | 0 | 6 | 0 | 177 |
 | agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
 | audit | control-plane | 9 | 15 | 0 | 27 | 0 | 2 |
 | bq | observability | 3 | 6 | 0 | 2 | 0 | 0 |
 | check | observability | 2 | 5 | 0 | 1 | 60 | 0 |
-| ci | coordination | 17 | 46 | 2 | 22 | 1 | 7 |
-| context | control-plane | 6 | 17 | 1 | 4 | 1 | 53 |
+| ci | coordination | 17 | 46 | 2 | 20 | 1 | 7 |
+| context | control-plane | 6 | 16 | 1 | 4 | 1 | 52 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
 | doc | control-plane | 16 | 13 | 0 | 44 | 0 | 22 |
 | drift | control-plane | 8 | 10 | 0 | 11 | 4 | 14 |
 | eval | control-plane | 11 | 8 | 0 | 2 | 0 | 0 |
-| event | observability | 3 | 20 | 0 | 12 | 0 | 2 |
+| event | observability | 3 | 19 | 0 | 12 | 0 | 2 |
 | gate | control-plane | 19 | 13 | 0 | 5 | 0 | 6 |
 | housekeeping | control-plane | 1 | 1 | 0 | 3 | 0 | 0 |
 | hub |  | 13 | 39 | 1 | 7 | 0 | 5 |
@@ -111,7 +111,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | session | data-plane | 14 | 5 | 0 | 8 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 16 |
 | standard | policy-function | 18 | 29 | 127 | 16 | 14 | 63 |
-| status | observability | 13 | 30 | 0 | 11 | 0 | 0 |
+| status | observability | 13 | 29 | 0 | 11 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
 
@@ -143,6 +143,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 ### admission
 
 - `bin/admission-api-route.sh`
+- `bin/admission-ask.sh`
 - `bin/admission-bash.sh`
 - `bin/admission-cloud.sh`
 - `bin/admission-decide.sh`
@@ -257,8 +258,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/ci-runs-on.sh`
 - `bin/ci-verified.sh`
 - `bin/ci-wait.sh`
-- `context-rules/user/ci-verdict-for-session.md`
-- `context-rules/user/ci-verdict-for-session.sh`
 - `context-rules/user/ci-wait-on-the-bus.md`
 - `context-rules/user/ci-wait-on-the-bus.sh`
 - `docs/design/ci-local-heal.md`

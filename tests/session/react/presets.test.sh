@@ -61,36 +61,6 @@ t_eq "a non-pr.opened event is ignored" no "$([ -e "$ST/ci-wait.args" ] && echo 
 HARBOR_SESSION_CI_WAIT="$T/missing" fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh
 t_has "no ci-wait installed: said in the log, exit 0" "$(cat "$ST/reactions.log"):$RC" "not watched"
 
-t_section "session-ci-watch: a round that ends still running re-arms, up to the ceiling, and the session is told (2026-11-16)"
-# A sequence stub: each call takes the next exit code from ci-wait.seq and counts itself; the line names the stuck job.
-cat > "$T/ci-wait-seq.sh" <<'STUB'
-n=$(( $(cat "$HARBOR_STATUS_DIR/ci-wait.n" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$HARBOR_STATUS_DIR/ci-wait.n"
-rc="$(sed -n "${n}p" "$HARBOR_STATUS_DIR/ci-wait.seq")"; [ -n "$rc" ] || rc=3
-echo "acme/widgets#9: pending: still running after 1s (1 cancel, 1 pending; failed: public mirror cancel; pending: public-ci)"; exit "$rc"
-STUB
-wait_n() { n=0; while ! grep -q "$1" "$ST/reactions.log" 2>/dev/null && [ "$n" -lt 80 ]; do sleep 0.1; n=$((n + 1)); done; }
-seqrun() { # <exit codes...>: one pr.opened with a 1 s round and a 3 s ceiling, waiting for its last line
-  reset; rm -f "$ST/ci-wait.n" "$ST/session-notes/abcdef123"; printf '%s\n' "$@" > "$ST/ci-wait.seq"
-  HARBOR_SESSION_CI_WAIT="$T/ci-wait-seq.sh" HARBOR_CI_WATCH_SECS=1 HARBOR_CI_WATCH_CEILING=3 \
-    fire "$(ev pr.opened abcdef123 '' "$LINK")" session-ci-watch.sh
-  wait_n 'checks \(green\|red\|stuck\|unreadable\)'
-}
-seqrun 3 3 0
-t_eq "still running twice, then green: ci-wait ran three rounds" 3 "$(cat "$ST/ci-wait.n" 2>/dev/null)"
-t_has "...the verdict is green" "$(banners)" "checks green|PR #9"
-t_eq "...after ONE still-running notice, not one a round" 1 "$(grep -c 'still running at' "$ST/reactions.log")"
-t_has "...which names the cancelled job and the pending check" "$(cat "$ST/reactions.log")" "still watching — failed: public mirror cancel; pending: public-ci"
-t_has "the opening session has a note with the verdict" "$(cat "$ST/session-notes/abcdef123" 2>/dev/null)" "PR acme/widgets#9: checks green"
-seqrun 3 3 3 3 3
-t_eq "never settles: it stops at the ceiling (3 rounds of 1 s)" 3 "$(cat "$ST/ci-wait.n" 2>/dev/null)"
-t_has "...and says stuck, naming the cancelled job" "$(banners)" "checks stuck: still running after 0m, watch stopped — failed: public mirror cancel"
-t_has "...and tells the session so" "$(cat "$ST/session-notes/abcdef123" 2>/dev/null)" "checks stuck"
-seqrun 1
-t_has "red names what failed" "$(banners)" "checks red — failed: public mirror cancel"
-reset; rm -f "$ST/session-notes/../x" 2>/dev/null
-fire '{"kind":"pr.opened","subject":"acme/widgets#9","data":{"session_id":"../x","link":"https://github.com/acme/widgets/pull/9"}}' session-ci-watch.sh; sleep 0.3
-t_eq "an unsafe session id: no watch, and no note written anywhere" "no:no" "$([ -e "$ST/ci-wait.args.x" ] && echo yes || echo no):$([ -e "$ST/x" ] && echo yes || echo no)"
-
 t_section "session-cleanup-report: lists, and kills and removes nothing"
 git -C "$REPO" init -q && git -C "$REPO" config user.email t@t && git -C "$REPO" config user.name t
 git -C "$REPO" checkout -q -b main && printf a > "$REPO/f" && git -C "$REPO" add f && git -C "$REPO" commit -q -m init

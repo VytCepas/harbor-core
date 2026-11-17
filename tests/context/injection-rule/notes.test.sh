@@ -12,9 +12,7 @@ PRIV="${HARBOR_CONTEXT_NOTES_PRIVATE:-}"   # a knob from the caller, read before
 ENGINE="$T_ROOT/hooks/injection-rule/injection-rule.sh"; FIX="$T_ROOT/fixtures/injection-rule/notes.tsv"; T="$T_TMP"
 # merge-governance and post-merge-state call `gh` against a live PR; their content is
 # tests/context/govern-hook/govern-hook.test.sh's, and only their wiring is asserted at the end here.
-# ci-verdict-for-session fires on a state file another process writes (event.session-ci-watch's session note), which a
-# payload row cannot carry; its fire and silent arms run through this engine in ci-verdict-for-session.test.sh.
-EXEMPT='merge-governance post-merge-state ci-verdict-for-session'
+EXEMPT='merge-governance post-merge-state'
 # The private layer: context-rules/{user,<repo>}/ (harbor#1010).
 PRR=''; PRB=''
 if [ -n "$PRIV" ]; then PRR="$PRIV/context-rules"; PRB=user; fi
