@@ -42,7 +42,7 @@ The start page for the admin of a company that wants every colleague's laptop to
 1. **Organisation and hub repo.** Create a private repo owned by the organisation and let colleagues read it. [hub-admin.md](hub-admin.md), sections 1 and 2.
 2. **The key.** Make the signing key with a passphrase and `hub-signers`. [hub-admin.md](hub-admin.md), section 3.
 3. **The policy.** Edit `policy.json` from the scaffold in `templates/hub/`, set `core.commit` to a harbor-core commit, sign it, merge it. [hub-admin.md](hub-admin.md), section 4.
-4. **One setup zip per person.** `sh bin/member-setup-generate.sh --help`. It uses the pin's own `member-windows.sh`, so the script is the code the laptop will run. Send it in one email, with the token steps: the person makes the token first and tells you, so you approve it while the setup runs. The hash travels inside the zip as `HASH.txt`; nothing reads a second copy.
+4. **One setup zip per person.** `sh bin/member-setup-generate.sh --help`. It uses the pin's own `member-windows.sh`, so the script is the code the laptop will run. Send the zip, then its hash in a second message.
 5. **The colleague opens the zip in Claude Code.** The folder holds the instructions the agent follows. The person only answers its questions.
 6. **IT finishes the token.** The member's GitHub token is made with the person present. [member-install.md](member-install.md).
 

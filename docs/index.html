@@ -826,6 +826,7 @@ already had in mind.</p>
 <tr><td>box</td><td><code>default-way-route.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>external-content-is-data.md</code></td><td><code>PostToolUse</code></td><td><code>injected-instruction</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>large-tool-result.md</code></td><td><code>PostToolUse</code></td><td><code>always</code></td><td>session</td></tr>
+<tr><td>box</td><td><code>lithuanian-prose.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>never</td></tr>
 <tr><td>box</td><td><code>long-wait-process-exists.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>session</td></tr>
 <tr><td>box</td><td><code>name-note-create.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
 <tr><td>box</td><td><code>name-note.md</code></td><td><code>PreToolUse</code></td><td><code>always</code></td><td>match</td></tr>
@@ -1505,6 +1506,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/deploy/harden/harden.test.sh</code></td><td><code>bin/deploy-harden.sh bin/deploy-install-lib.sh bin/library-log.sh tests/deploy/harden/harden.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/remove/remove.test.sh</code></td><td><code>bin/* hooks/* fixtures/* contracts/* vendor/* docs/generated/status.md tests/admission/remove/remove.test.sh tests/admission/baseline/fixture.sh tests/admission/bash/fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/doc/isa-index/isa-index.test.sh</code></td><td><code>bin/doc-isa-index.sh tests/doc/isa-index/isa-index.test.sh bin/library-log.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/doc/lithuanian-rewrite/lithuanian-rewrite.test.sh</code></td><td><code>bin/doc-lithuanian-rewrite.sh context-rules/user/lithuanian-prose.sh skills/doc-lithuanian-prose/* tests/doc/lithuanian-rewrite/lithuanian-rewrite.test.sh bin/library-log.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skill/collision-verify/collision-verify.test.sh</code></td><td><code>bin/skill-collision-verify.sh tests/skill/collision-verify/collision-verify.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/generate/generate.test.sh</code></td><td><code>bin/status-generate.sh bin/library-log.sh tests/status/generate/generate.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/skill/install/install.test.sh</code></td><td><code>bin/skill-install.sh tests/skill/install/install.test.sh bin/skill-collision-verify.sh commands/* bin/library-log.sh bin/deploy-install-lib.sh bin/library-fs.sh tests/lib/core.sh</code></td></tr>
@@ -2055,6 +2057,7 @@ session and one that costs nothing until wanted.</p>
 <tr><td><code>doc-deliverable-contract</code></td><td>ambient</td><td>"Before writing anything a person outside this session will read — a client thread reply, a ticket comment, a recommendation, a proposal — restate</td></tr>
 <tr><td><code>doc-knowledge-base</code></td><td>invoked only</td><td>"Design or restructure a knowledge base (a wiki, a document base, a shared agent memory store) so a person can browse it and an agent can find answers</td></tr>
 <tr><td><code>doc-learning-artifact</code></td><td>ambient</td><td>"The operator's preferred page for learning anything: one section per tab, hand-drawn SVG diagrams whose boxes open a card under the diagram, a saved-</td></tr>
+<tr><td><code>doc-lithuanian-prose</code></td><td>invoked only</td><td>"How a Lithuanian sentence is written for a person: verbs over noun chains, plain words for kanceliarizmai, native connectives, one-word hedges, numbe</td></tr>
 <tr><td><code>doc-workshop-deck</code></td><td>invoked only</td><td>"Prepare a live workshop or teaching session: a backward-designed plan, an assertion-evidence slide deck (.pptx) with speaker notes and timed activiti</td></tr>
 <tr><td><code>housekeeping</code></td><td>invoked only</td><td>"Reclaim a drifted box: the measured trash classes that accumulate here, the detector for each, and — the load-bearing half — the things that LOOK</td></tr>
 <tr><td><code>member-setup</code></td><td>ambient</td><td>"Adopt Harbor in an organisation: hub repo, signing key, pinned harbor-core, a setup zip per colleague, releases. USE WHEN onboarding a company or col</td></tr>
@@ -2730,6 +2733,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/doc-graph-generate.sh</code></td><td>doc-graph-generate.sh (harbor#996 A1, A2) — the reference graph: every path and id, and what points at it.</td></tr>
 <tr><td><code>bin/doc-index-generate.sh</code></td><td>DOCS — generate docs/index.html, the architecture document (harbor#173).</td></tr>
 <tr><td><code>bin/doc-isa-index.sh</code></td><td>doc-isa-index.sh (harbor#117 · F1) — the slug -&gt; repo -&gt; PR -&gt; ADR pointer table.</td></tr>
+<tr><td><code>bin/doc-lithuanian-rewrite.sh</code></td><td>doc-lithuanian-rewrite.sh (harbor#1572) - Lithuanian text rewritten in plain publicist Lithuanian by a small model, kept only when nothing a</td></tr>
 <tr><td><code>bin/doc-refs.sh</code></td><td>doc-refs.sh (harbor#996 E1, from #1015) — every path an entry doc cites resolves, and the doc is not left behind.</td></tr>
 <tr><td><code>bin/doc-register-index.sh</code></td><td>doc-register-index.sh (harbor#1424) — the two indexes over the registers and the contracts, generated and never hand-written.</td></tr>
 <tr><td><code>bin/doc-report-verify.sh</code></td><td>doc-report-verify.sh — does a generated artefact meet contracts/reports.md?</td></tr>

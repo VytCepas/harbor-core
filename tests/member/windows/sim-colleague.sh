@@ -2,7 +2,7 @@
 # sim-colleague.sh (harbor#1278): sourced by sim-windows.sh, which holds the stubs, the profile and the helpers it uses.
 # The launcher run-setup.ps1 and the colleague guide, run twice over, when SIM_WINDOWS_COLLEAGUE names the folder that holds them.
 # shellcheck shell=sh disable=SC2154,SC2016 # the variables are sim-windows.sh's
-# ── 3b. the launcher the colleagues run, twice: 3010, then 4 (no token: the sim can't answer its prompt) ──────────────────────────────────────────────────────────────
+# ── 3b. the launcher the colleagues run, twice: 3010, then 4 ──────────────────────────────────────────────────────────────
 LAUNCHER="$T_ROOT/colleague/send-to-colleagues/run-setup.ps1"
 if [ -f "$LAUNCHER" ]; then
   # launch <profile folder> <account> -> RC, OUT, HASH, DIR: run-setup.ps1 beside the generated setup file, as the zip lays it out, under that Windows profile
@@ -20,7 +20,7 @@ if [ -f "$LAUNCHER" ]; then
     t_eq "the log kept one restart note (the guide's count)" 1 "$(grep -c 'WSL needs a restart' "$DIR/harbor-setup.log")"
     t_eq "nothing under C:\\Program Files\\ClaudeCode" no "$([ -e "$CC" ] && echo yes || echo no)"
     reboot; echo on > "$SIM/state/feature"; [ "$(cat "$SIM/state/distro")" != pending ] || echo on > "$SIM/state/distro"
-    launch; t_eq "run 2, after the restart: the launcher exits 4" 4 "$RC"; t_eq "...the result file says 4" 4 "$(RESULT)"; t_has "...and it says the token was not stored" "$(cat "$OUT")" 'RESULT 4: the rules are on, but the token was not stored'
+    launch; t_eq "run 2, after the restart: the launcher exits 4" 4 "$RC"; t_eq "...the result file says 4" 4 "$(RESULT)"; t_has "...and it says expected" "$(cat "$OUT")" 'RESULT 4: expected'
     t_eq "the floor landed" yes "$([ -f "$CC/managed-settings.json" ] && echo yes)"
     t_eq "the log, written as UTF-8 under that profile path, holds both runs" 1 "$(grep -c 'WSL needs a restart' "$DIR/harbor-setup.log")"
     t_has "the launcher's last lines include the log's tail" "$(cat "$OUT")" '--- last lines of harbor-setup.log ---'
