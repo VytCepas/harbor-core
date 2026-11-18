@@ -40,9 +40,10 @@ cd "$WORKLOG_DIR" || exit 0
 # push failures were `cannot lock ref`). A skipped session loses nothing: its record is on disk and the next push
 # carries every local commit. A lock left by a killed hook is reclaimed after 10 minutes.
 _wl_lock="$WORKLOG_DIR/.git/harbor-worklog.lock"
-[ -z "$(find "$WORKLOG_DIR/.git" -maxdepth 1 -name harbor-worklog.lock -mmin +10 2>/dev/null)" ] || rmdir "$_wl_lock" 2>/dev/null
-mkdir "$_wl_lock" 2>/dev/null || exit 0
-trap 'rmdir "$_wl_lock" 2>/dev/null' EXIT
+[ -z "$(find "$WORKLOG_DIR/.git" -maxdepth 1 -name harbor-worklog.lock -mmin +10 2>/dev/null)" ] || { rm -f "$_wl_lock" || rmdir "$_wl_lock"; } 2>/dev/null
+# A file made with O_EXCL (set -C), never mkdir: uutils mkdir exits 0 on a lost race (harbor#1378).
+( set -C; : > "$_wl_lock" ) 2>/dev/null || exit 0
+trap 'rm -f "$_wl_lock" 2>/dev/null' EXIT
 
 # Tracked-glob allowlist, deny-by-default; one add per glob because git aborts a multi-pathspec add if ANY pathspec is empty.
 for g in 'WORK/sessions/*/*.md' 'KNOWLEDGE/*.md' 'LEARNING/*.md' 'CHECKPOINTS/*/*' \
