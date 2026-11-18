@@ -28,12 +28,14 @@ case "$1 $2" in
   "pr view") cat "$STUB/head_sha" ;;
   "pr list")
     [ -f "$STUB/pr_number" ] || exit 0
-    case "$*" in *headRefOid*) git -C "$BARE" rev-parse -q --verify "refs/heads/$(br "$@")" ;; *) cat "$STUB/pr_number" ;; esac ;;
-  "pr create") git -C "$BARE" rev-parse -q --verify "refs/heads/$(br "$@")" >/dev/null || exit 1; echo 1 > "$STUB/pr_number"; echo "$*" > "$STUB/pr_create" ;;
-  "pr edit") echo "$*" > "$STUB/pr_edit" ;;
+    case "$*" in *headRefOid*) git -C "$BARE" rev-parse -q --verify "refs/heads/$(br "$@")" ;;
+      *baseRefName*) printf '%s\t%s\n' "$(cat "$STUB/pr_number")" "$(cat "$STUB/pr_base" 2>/dev/null)" ;; *) cat "$STUB/pr_number" ;; esac ;;
+  "pr create") git -C "$BARE" rev-parse -q --verify "refs/heads/$(br "$@")" >/dev/null || exit 1; echo 1 > "$STUB/pr_number"; echo "$*" > "$STUB/pr_create"
+                sed -n 's/.*--base \([^ ]*\).*/\1/p' "$STUB/pr_create" > "$STUB/pr_base" ;;
+  "pr edit") echo "$*" > "$STUB/pr_edit"; case "$*" in *--base*) printf '%s' "$*" | sed -n 's/.*--base \([^ ]*\).*/\1/p' > "$STUB/pr_base" ;; esac ;;
   "pr close") [ -f "$STUB/pr_number" ] || exit 1; rm "$STUB/pr_number" ;;
   "run list") sha="$(printf '%s' "$*" | sed -n 's/.*headSha == "\([0-9a-f]*\)".*/\1/p')"
-              [ ! -f "$STUB/runs" ] || awk -F'\t' -v s="$sha" '$1 == s { print ($5 == "" ? "governance" : $5) "\t" $2 "\t" $3 "\t" $4 }' "$STUB/runs" ;;
+              [ ! -f "$STUB/runs" ] || awk -F'\t' -v s="$sha" '$1 == s { print ($5 == "" ? "governance" : $5) "\t" $2 "\t" $3 "\t" $4 "\t" $6 }' "$STUB/runs" ;;
   "api -X") case "$3" in
       POST) echo "$*" >> "$STUB/status.log"
             st=''; de=''; for a in "$@"; do case "$a" in state=*) st="${a#state=}" ;; description=*) de="${a#description=}" ;; esac; done
@@ -79,7 +81,7 @@ core() { # <name> → sets BARE and MIR: a bare harbor-core with a seeded main, 
   git clone -q "$BARE" "$MIR" >/dev/null 2>&1
   git -C "$MIR" remote set-url origin https://github.com/test/harbor-core.git
   git -C "$MIR" config "url.$BARE.insteadOf" https://github.com/test/harbor-core.git
-  rm -f "$STUB/pr_number" "$STUB/pr_create" "$STUB/pr_edit" "$STUB/gh.log" "$STUB/git.log" "$STUB/status.log" "$STUB/runs" "$STUB/cur_status"
+  rm -f "$STUB/pr_number" "$STUB/pr_create" "$STUB/pr_edit" "$STUB/pr_base" "$STUB/gh.log" "$STUB/git.log" "$STUB/status.log" "$STUB/runs" "$STUB/cur_status"
 }
 run() { # <src> args... → OUT, RC; the token is set unless NOTOKEN=1
   _s="$1"; shift
@@ -133,9 +135,13 @@ t_eq "the second mirror is green" "0" "$RC"
 t_eq "...the old tip is an ancestor of the new one" "0" "$(git -C "$BARE" merge-base --is-ancestor "$TIP1" refs/heads/ci/harbor-7; echo $?)"
 t_eq "...two commits further, the base again then the head" "$TIP1" "$(git -C "$BARE" rev-parse refs/heads/ci/harbor-7~2)"
 t_eq "...ci/base-7 moved by a fast-forward too" "$(git -C "$BARE" rev-parse refs/heads/ci/harbor-7~1)" "$(tip ci/base-7)"
-t_has "...the edit points the PR at the base branch" "$(cat "$STUB/pr_edit")" "--base ci/base-7"
+# harbor#1149: an edit that names --base fires a second pull_request run on the same head (the twin that concurrency cancels)
+t_hasnt "...the edit leaves the base alone: it is already ci/base-7" "$(cat "$STUB/pr_edit")" "--base"
+t_has "...and still updates the title and body" "$(cat "$STUB/pr_edit")" "--title harbor#7"
 t_eq "...the PR was edited" "1" "$(ghcalls 'pr edit')"
 t_eq "...and opened only once" "1" "$(ghcalls 'pr create')"
+echo ci/base-old > "$STUB/pr_base"; HEAD7C="$(pr "$S" docs/pr7.md 'from the pr, amended again')"; run "$S" 7
+t_has "...a PR whose base is another branch is pointed back at ci/base-7" "$(cat "$STUB/pr_edit")" "--base ci/base-7"
 # harbor-core's main moves (deploy-push does that); the next mirror carries it and still fast-forwards.
 TIP2="$(tip ci/harbor-7)"
 ( cd "$T_TMP/seed-green" && printf 'more\n' > MORE.md && git add -A && git commit -qm more && git push -q "$BARE" main ) >/dev/null 2>&1
@@ -230,18 +236,18 @@ t_section "--status: the run's conclusion for the mirror head becomes public-ci 
 S="$(mk status)"; core status; HS="$(pr "$S" docs/ok.md 'fine')"
 run "$S" 7; MS="$(tip ci/harbor-7)"
 setstatus() { run "$S" --status 7; }
-printf '%s\tcompleted\tsuccess\thttps://runs.test/1\n%s\tcompleted\tsuccess\thttps://runs.test/2\n' "$MS" "$MS" > "$STUB/runs"
+printf '%s\tcompleted\tsuccess\thttps://runs.test/1\tstranger-install\n%s\tcompleted\tsuccess\thttps://runs.test/2\n' "$MS" "$MS" > "$STUB/runs"
 rm -f "$STUB/status.log"; setstatus
 t_eq "all runs green: exit 0" "0" "$RC"
 t_has "...state success" "$(cat "$STUB/status.log")" "state=success"
 t_has "...context public-ci" "$(cat "$STUB/status.log")" "context=public-ci"
 t_has "...on the harbor PR head" "$(cat "$STUB/status.log")" "statuses/$HS"
 t_has "...linked to the run" "$(cat "$STUB/status.log")" "target_url=https://runs.test/2"
-printf '%s\tcompleted\tsuccess\thttps://runs.test/1\n%s\tcompleted\tfailure\thttps://runs.test/2\n' "$MS" "$MS" > "$STUB/runs"
+printf '%s\tcompleted\tsuccess\thttps://runs.test/1\tstranger-install\n%s\tcompleted\tfailure\thttps://runs.test/2\n' "$MS" "$MS" > "$STUB/runs"
 rm -f "$STUB/status.log"; setstatus
 t_has "one failed run: state failure" "$(cat "$STUB/status.log")" "state=failure"
 t_has "...linked to the failing run" "$(cat "$STUB/status.log")" "target_url=https://runs.test/2"
-printf '%s\tcompleted\tsuccess\thttps://runs.test/1\n%s\tin_progress\t\thttps://runs.test/2\n' "$MS" "$MS" > "$STUB/runs"
+printf '%s\tcompleted\tsuccess\thttps://runs.test/1\tstranger-install\n%s\tin_progress\t\thttps://runs.test/2\n' "$MS" "$MS" > "$STUB/runs"
 rm -f "$STUB/status.log"; setstatus
 t_has "one run still going: state pending" "$(cat "$STUB/status.log")" "state=pending"
 # 2026-10-22, #1344: two runs of one workflow started together, concurrency cancelled one, and public-ci read it as red.
@@ -253,7 +259,25 @@ rm -f "$STUB/status.log"; setstatus
 t_has "...and success once the replacement is green" "$(cat "$STUB/status.log")" "state=success"
 printf '%s\tcompleted\tcancelled\thttps://runs.test/c\tgovernance\n%s\tcompleted\tsuccess\thttps://runs.test/2\tstranger-install\n' "$MS" "$MS" > "$STUB/runs"
 rm -f "$STUB/status.log"; setstatus
-t_has "a cancelled run nothing replaced is still failure" "$(cat "$STUB/status.log")" "state=failure"
+t_has "a workflow with only a cancelled run has no verdict: pending, not failure" "$(cat "$STUB/status.log")" "state=pending"
+t_has "...and the status says so" "$(cat "$STUB/status.log")" "only cancelled runs of governance"
+# 2026-11-16, #1549: both twins of governance ended cancelled (one by concurrency, one from outside), and public-ci read red.
+printf '%s\tcompleted\tcancelled\thttps://runs.test/c1\tgovernance\t2026-11-16T18:58:01Z\n%s\tcompleted\tcancelled\thttps://runs.test/c2\tgovernance\t2026-11-16T18:58:01Z\n' "$MS" "$MS" > "$STUB/runs"
+rm -f "$STUB/status.log"; setstatus
+t_has "every governance run cancelled: pending, never failure" "$(cat "$STUB/status.log")" "state=pending"
+t_hasnt "...so no failure is written" "$(cat "$STUB/status.log")" "state=failure"
+# the verdict is the newest run that was not cancelled, whatever order gh lists them in
+printf '%s\tcompleted\tfailure\thttps://runs.test/old\tgovernance\t2026-11-16T18:58:01Z\n%s\tcompleted\tsuccess\thttps://runs.test/new\tgovernance\t2026-11-16T19:30:00Z\n%s\tcompleted\tcancelled\thttps://runs.test/c\tgovernance\t2026-11-16T19:40:00Z\n' "$MS" "$MS" "$MS" > "$STUB/runs"
+rm -f "$STUB/status.log"; setstatus
+t_has "an older failure under a newer success: success" "$(cat "$STUB/status.log")" "state=success"
+t_has "...linked to the run that decided it" "$(cat "$STUB/status.log")" "target_url=https://runs.test/new"
+printf '%s\tcompleted\tsuccess\thttps://runs.test/old\tgovernance\t2026-11-16T18:58:01Z\n%s\tcompleted\tfailure\thttps://runs.test/new\tgovernance\t2026-11-16T19:30:00Z\n' "$MS" "$MS" > "$STUB/runs"
+rm -f "$STUB/status.log"; setstatus
+t_has "an older success under a newer failure: failure" "$(cat "$STUB/status.log")" "state=failure"
+t_has "...linked to the newer failing run" "$(cat "$STUB/status.log")" "target_url=https://runs.test/new"
+printf '%s\tcompleted\tfailure\thttps://runs.test/f\tstranger-install\t2026-11-16T18:58:01Z\n%s\tcompleted\tcancelled\thttps://runs.test/c\tgovernance\t2026-11-16T18:58:01Z\n' "$MS" "$MS" > "$STUB/runs"
+rm -f "$STUB/status.log"; setstatus
+t_has "a real failure beside a cancelled-only workflow: still failure" "$(cat "$STUB/status.log")" "state=failure"
 printf '%s\tcompleted\tfailure\thttps://runs.test/old\n' "0000000000000000000000000000000000000000" > "$STUB/runs"
 rm -f "$STUB/status.log"; setstatus
 t_has "only an older commit's run: pending, never its failure" "$(cat "$STUB/status.log")" "state=pending"
