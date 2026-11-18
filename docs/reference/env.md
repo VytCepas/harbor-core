@@ -149,6 +149,8 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_DEPLOY_UNATTENDED` | handoff | none | Set to 1 by deploy-fleet and the event dispatcher for unattended code: deploy.sh --unattended needs it and deploy-fleet refuses --approved under it | deploy |  | tests only |
 | `HARBOR_DOC_ARCHIFY_DIR` | path | `$ROOT/vendor/archify` | Directory of the archify diagram tool used by doc-visual-check (default vendor/archify in the repo) | doc |  | tests only |
 | `HARBOR_DOC_DRIVE_MOUNT` | path | none | mount point of the Drive folder doc-drive-push writes to; unset makes the script search for the real mount | doc |  | tests only |
+| `HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND` | test-only | none | a command that stands in for the model in doc-lithuanian-rewrite: reads the text on stdin, prints the rewrite | doc |  | tests only |
+| `HARBOR_DOC_LITHUANIAN_REWRITE_TIMEOUT` | tuning | `180` | Seconds doc-lithuanian-rewrite waits for the model before it keeps the original, default 180 | doc |  | tests only |
 | `HARBOR_DOC_DRIVE_WAIT` | tuning | `30` | Seconds doc-drive-push waits for Google Drive to assign the item id of a copied deliverable, default 30 | doc |  | tests only |
 | `HARBOR_DOC_IN_FRESH_CHECK` | handoff | none | Set to 1 by doc-fresh-verify.sh for each freshness check command it runs, so the checks know they run inside it | doc |  | tests only |
 | `HARBOR_DOC_ISA_OUT` | path | `$ROOT/build/isa-index.md` | Output file the doc-isa-index generator writes; defaults to build/isa-index.md under the repo root | doc |  | tests only |

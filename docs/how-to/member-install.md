@@ -150,8 +150,6 @@ read -rs T && printf '%s' "$T" | sh /opt/harbor-core/bin/member-install.sh --use
 
 The value goes to `bin/secret` on stdin, and then the first policy fetch runs.
 
-**On Windows the setup kit can do this step.** Its launcher asks for the token in the elevated window it opens, hidden and outside Claude's chat, and pipes it to the same `--token-stdin` as root; it retries exit 5 for 30 minutes while the organisation approves the token. The step above is then the fallback, for an exit 4.
-
 **Where it lives on Linux and WSL.** `bin/secret` in the managed root keeps it as `~/.local/share/secret/hub-token.enc`, encrypted, beside `hub-token.key`, the passphrase. The folder is 0700 and both files 0600, the member's. It is not a keyring, by measurement: under WSL's `login -f` start there is no password for PAM to unlock one with, so gnome-keyring has no "login" collection and every write fails, and one unlocked by hand locks again when the distro stops after idling, which no hook can answer. A keyring a hook can read unattended holds its key the same way this file store does. So this is no stronger at rest than the laptop's disk encryption, and nothing else stops another process running as the member. What keeps the agent out is the floor: `admission.hub-token-read` in its Bash, the `Read` and `Grep` rows, and `sandbox.credentials` over the folder (`contracts/hub.md`). On macOS it stays in the login Keychain. Nothing here needs an execute bit: the floor runs `secret` with `sh`.
 
 **The install isn't finished until a first policy verifies.** A laptop joined to a hub with no verified policy refuses every Claude Code step, because a hub rule could raise any call. So:

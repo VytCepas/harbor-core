@@ -111,6 +111,7 @@ tests/deploy/runtime-install/runtime-install.test.sh
 tests/deploy/harden/harden.test.sh
 tests/admission/remove/remove.test.sh
 tests/doc/isa-index/isa-index.test.sh
+tests/doc/lithuanian-rewrite/lithuanian-rewrite.test.sh
 tests/skill/collision-verify/collision-verify.test.sh
 tests/status/generate/generate.test.sh
 tests/skill/install/install.test.sh
