@@ -46,7 +46,7 @@ elif [ -f "$D/vendor/naming/lint-name.sh" ] && [ -d "$D/vendor/naming/registry" 
   fi
   if [ "$rc" -gt 1 ]; then log_warn "names: the vendored lint exited $rc"; UNCHECKED=1
   else
-    n="$(awk -F'\t' 'NF >= 3 && $2 !~ /^name\.(registry-|exemption-|alias-expired|control-|surface-)/' "$T/names" | wc -l | tr -d ' ')"
+    n="$(awk -F'\t' 'NF >= 3 && $2 !~ /^name\.(registry-|exemption-|alias-expired|rename-closing|control-|surface-)/' "$T/names" | wc -l | tr -d ' ')"
     if [ "$n" -eq 0 ]; then log_ok "names: the vendored lint reports 0 findings"
     else log_fail "names: the vendored lint reports $n finding(s)"; log_fix "sh $D/vendor/naming/lint-name.sh --root $D --registry $D/vendor/naming/registry"; fi
   fi

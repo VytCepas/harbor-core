@@ -44,7 +44,6 @@ admission-deny-hash.sh           IDLE  M7 leak filter over the operator's own pr
 admission-equivalence.sh         IDLE  replays a payload corpus through TWO guard trees and compares them
 scope-managed-telemetry.sh   VERB  the operator runs it once under sudo, after audit-collector-install.sh
 scope-managed-retention.sh   VERB  the operator runs it once under sudo: a root-owned managed setting is never written on a schedule
-standard-rename.sh     VERB  the rename codemod (harbor#996 B2): a rename wave (harbor#961) runs it once per mapping, by hand; nothing schedules a rename
 gate-codeowners.sh VERB  a person runs --write after changing the protected-paths register (harbor#1018); classify.test.sh runs --check
 gate-register-derive.sh VERB  a person runs --write after changing an installer (harbor#1018); classify.test.sh runs --check
 gcloud      VERB  linked as ~/.local/bin/gcloud by deploy-shim-install.sh (contracts/shims.tsv, harbor#708); every `gcloud` typed on the box reaches it through PATH, which C8 does not scan
@@ -92,5 +91,4 @@ hub-digest.sh   VERB  the hub's daily digest workflow runs it (patches/hub/hub-d
 hub-fetch.sh    VERB  feeds hub-digest.sh in the same workflow; an admin can run it by hand (harbor#1278)
 bq-load.sh      VERB  the hub-bq-load workflow runs it (patches/hub/hub-bq-load.patch.md), a patch this sweep does not read; nothing runs until the operator applies it and J1 has its own yes (harbor#1278)
 member-update.sh  VERB  IT runs it as root during the pilot; its schedule needs the operator's own yes, so nothing calls it (harbor#1278)
-hub-pin-upgrade.sh  VERB  the hub admin runs it by hand to raise the policy's core pin on a branch, once per release; it stops before signing, so nothing can schedule it (harbor#1278)
-member-setup-generate.sh  VERB  the hub admin runs it by hand to rebuild every person's setup zip at a pin, once per release; the roster is private to the admin, so nothing can schedule it (harbor#1278)
+hub-release.sh  VERB  the hub admin runs it by hand once per release: it ends at the hub branch the admin signs, so nothing can schedule it (harbor#1278)
