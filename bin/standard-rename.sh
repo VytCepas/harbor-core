@@ -1763,9 +1763,8 @@ def run(a):
         vs = sorted(ctx['vendor'])
         for v in vs:
             rpt.append(('vendor', v))
-        # advice, not a call: the name is formatted in, so the register derive does not chain it on to doc-fresh-verify (harbor#1568)
         log('WARN', '%d vendored file(s) carry an old name (first %s): vendor/ is never rewritten here, so they are not residual' % (len(vs), vs[0]),
-            'after the merge: sh bin/%s . (re-vendor), then commit vendor/' % 'standard-vendor.sh')
+            'after the merge: sh bin/standard-vendor.sh . (re-vendor), then commit vendor/')
     if fxkept:
         for fp in sorted(fxkept):
             rpt.append(('fixture-kept', fp, str(len(fxkept[fp]))))

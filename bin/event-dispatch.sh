@@ -392,40 +392,6 @@ EOF
 # health_pass (harbor#1437): vet every rule file without waiting for an event to trigger it. A rule refused on this pass and
 # on the previous one (HARBOR_EVENT_HEALTH_SECS apart, default 600, so a deploy's few seconds between two installs is not
 # one) is a STANDING refusal: it is listed in the refused file, which the pulse reads. Nothing standing removes the file.
-# ── lag: an event that waited too long for its rules (2026-11-16) ─────────────────────────────────────────────────────
-# Rules run one at a time, so a slow handler holds every later event. Measured that day: dispatch ran up to 95 min behind
-# its events, and nothing said so. An event older than LAG_WARN seconds when its rules come to run writes
-# {cache}/event-dispatch-lag.tsv (lag, event id, the rule that took the most ledger time in the last hour, its average)
-# and, at most once an hour, one checks.log alarm; alert-probe.sh's dispatch row reads the file, so alert-notify.sh files
-# it as finding check/event.dispatch. An event on time again removes the file. Off: HARBOR_EVENT_DISPATCH_LAG_WARN=0.
-LAG_WARN="${HARBOR_EVENT_DISPATCH_LAG_WARN:-600}"; case "$LAG_WARN" in ''|*[!0-9]*) LAG_WARN=600 ;; esac
-LAG_FILE="${HARBOR_SCOPE_CACHE_DIR:-$CFG/cache}/event-dispatch-lag.tsv"
-LAG_SEEN=0
-lag_check() { # E_TS E_ID: the event about to be acted on
-  [ "$LAG_WARN" -gt 0 ] && [ "$E_TS" -gt 0 ] || return 0
-  now; _lag=$((NOW - E_TS))
-  if [ "$_lag" -lt "$LAG_WARN" ]; then
-    [ ! -f "$LAG_FILE" ] || rm -f "$LAG_FILE"
-    return 0
-  fi
-  [ $((NOW - LAG_SEEN)) -ge 60 ] || return 0   # one ledger read a minute at most, however long the backlog
-  LAG_SEEN="$NOW"
-  # the slowest rule: the most ledger time in the last hour. A done line's run is its time less the later of the line
-  # before it and its own event: behind a backlog that is the line before, on an idle bus the event's arrival.
-  _slow="$( [ -f "$LEDGER" ] && awk -F'\t' -v c="$((NOW - 3600))" '{ st = (p > $2 ? p : $2) } $1 >= c && $5 ~ /^done/ { s[$4] += $1 - st; n[$4]++ } { p = $1 }
-    END { for (r in s) if (s[r] > m) { m = s[r]; w = r } if (w != "") printf "%s\t%d", w, s[w] / n[w] }' "$LEDGER" 2>/dev/null)" || _slow=""
-  _sr="${_slow%%	*}"; _sa="${_slow#*	}"; [ -n "$_slow" ] || { _sr=-; _sa=0; }
-  _last=0
-  [ ! -f "$LAG_FILE" ] || _last="$(awk -F'\t' '{ print $5 + 0; exit }' "$LAG_FILE" 2>/dev/null)" || _last=0
-  case "$_last" in ''|*[!0-9]*) _last=0 ;; esac
-  _al="$_last"
-  if [ $((NOW - _last)) -ge 3600 ]; then
-    _al="$NOW"
-    alarm event.dispatch "dispatch is $((_lag / 60)) min behind its events (event $E_ID); the slowest rule in the last hour is $_sr, ${_sa} s a run — harbor event on --off $_sr lifts it while it is fixed"
-  fi
-  { mkdir -p "${LAG_FILE%/*}" && printf '%s\t%s\t%s\t%s\t%s\n' "$_lag" "$E_ID" "$_sr" "$_sa" "$_al" > "$LAG_FILE.$$" && mv -f "$LAG_FILE.$$" "$LAG_FILE"; } 2>/dev/null || :
-}
-
 HEALTH_SECS="${HARBOR_EVENT_HEALTH_SECS:-600}"
 case "$HEALTH_SECS" in ''|*[!0-9]*) HEALTH_SECS=600 ;; esac
 HEALTH_AT=0; HEALTH_NOW=""
@@ -620,7 +586,6 @@ EOF
     ledger_add skip:bad-id; log_warn "[check:event.dispatch] an event with an id that is not [A-Za-z0-9._-] was skipped: $E_ID"
     return 0 ;;
   esac
-  [ "$E_KIND" = rule.backstop ] || lag_check
   for _rf in "$RULES"/*.rule; do
     [ "$BUS_BAD" = 0 ] || break
     [ -f "$_rf" ] || continue

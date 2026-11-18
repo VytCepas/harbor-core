@@ -1386,8 +1386,3 @@ guard	1376	ask	live	bin/library-admission.sh FLOOR_OBS_GUARDS
 rule	1377	admission.ask-rule	live	standards/naming/controls.tsv
 rule	1378	ask-rule	live	standards/naming/controls.tsv, the id less its family
 rule	1379	admission.admission-ask	live	member-dispatch.sh run_guard: admission.<guard>
-rule	1380	context.ci-verdict-for-session	live	standards/naming/controls.tsv
-rule	1381	ci-verdict-for-session	live	standards/naming/controls.tsv, the id less its family
-rule	1382	name.rename-closing	live	standards/naming/controls.tsv
-rule	1383	check.name.rename-closing	live	standards/naming/controls.tsv
-rule	1384	rename-closing	live	standards/naming/controls.tsv, the id less its family

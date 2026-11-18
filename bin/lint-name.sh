@@ -240,7 +240,7 @@ function selfpath(s) {
 # An overlay finding is always block: a malformed private layer must not read as clean, even under --check (D-85).
 function emitb(rule, subject, msg) { if ((rule SUBSEP subject) in DONE) return; DONE[rule SUBSEP subject] = 1; print "F", rule, "block", subject, msg }
 function emitw(rule, subject, msg) { if ((rule SUBSEP subject) in DONE) return; DONE[rule SUBSEP subject] = 1; print "F", rule, "warn", subject, msg }
-function regrule(r) { return r ~ /^name\.(registry-|exemption-|alias-expired|rename-closing|control-|surface-)/ || r ~ /^standard\.(register-declared|reference-resolves|seam-registered|version-registered|env-registered|script-registered)$/ }
+function regrule(r) { return r ~ /^name\.(registry-|exemption-|alias-expired|control-|surface-)/ || r ~ /^standard\.(register-declared|reference-resolves|seam-registered|version-registered|env-registered|script-registered)$/ }
 function emit(rule, subject, msg,   k, e) {
   if (mode == "check" && regrule(rule) && surface != "registry") return
   if (mode == "registry" && !regrule(rule)) return
@@ -256,7 +256,7 @@ function exempt(rule, subject,   k, i, b, b2) {
   if (selfpath(subject)) return ""
   k = rule SUBSEP subject
   if (k in EXACT) return EXACT[k]
-  if (subject in RENWIN) { RENUSED[subject] = 1; return RENWIN[subject] }   # an env name in its dual-read window (renames.tsv, harbor#961 W5); RENUSED: still in the tree, so the window is open work
+  if (subject in RENWIN) return RENWIN[subject]   # an env name in its dual-read window (renames.tsv, harbor#961 W5)
   for (i = 1; i <= NPRE; i++) if ((PRER[i] == rule || PRER[i] == "*") && index(subject, PRES[i]) == 1) return PREI[i]
   b = base(subject); b2 = b; sub(/\.tmpl$/, "", b2)
   for (i = 1; i <= NGLOB; i++) if ((GLR[i] == rule || GLR[i] == "*") && (b ~ GLB[i] || b2 ~ GLB[i])) return GLI[i]
@@ -904,9 +904,6 @@ FILENAME != recfile {
     # judges a name at its birth, and a first scan (--gen exemptions) judges the tree bare, so neither applies it.
     ro = col(f, "old"); rd = col(f, "remove_by")
     if (col(f, "surface") == "env" && ro ~ /^env:/ && isdate(rd) && TODAYN <= jdn(rd) && mode != "check" && nolegacy != 1) RENWIN[ro] = id
-    # A window warns from 14 days before its remove_by date (the calendar of an alias, harbor#1097): judged at END, once the
-    # tree has said which old names it still carries.
-    if (isdate(rd) && TODAYN >= jdn(rd) - 14 && TODAYN <= jdn(rd)) { RWN++; RWID[RWN] = id; RWOLD[RWN] = ro; RWDATE[RWN] = rd }
   } else if (sh == "controls.tsv") {
     RULE[++NRULE] = id; ctype = col(f, "type"); cm = col(f, "mode"); mm = (cm in LEGMODE) ? LEGMODE[cm] : cm
     MODE[id] = mm; CTYPE[id] = ctype; CENG[id] = col(f, "engine"); CSURF[id] = col(f, "surfaces"); CRED[id] = col(f, "red_proof")
@@ -1000,21 +997,6 @@ END {
     emit("name.alias-expired", "alias:" id, q(id) " is removed by " AREM[id] (TODAYN >= jdn(AREM[id]) ? ", which has passed" : ", within 14 days") ": rename what still uses it (§10.3)")
   }
   FORCEWARN = 0
-  # A rename window is open work while the tree still reads the old name (an env name found, an old path tracked): one finding
-  # per closing date names every such row and the command that collapses them. The old name blocks from the day after (harbor#1097).
-  if (mode == "tree" || mode == "registry") {
-    for (i = 1; i <= RWN; i++) {
-      if (!((RWOLD[i] ~ /^env:/) ? (RWOLD[i] in RENUSED) : (RWOLD[i] in EXISTS))) continue
-      d = RWDATE[i]
-      if (!(d in RWCMD)) { RWD[++NRWD] = d; RWCMD[d] = "" }
-      RWCMD[d] = RWCMD[d] " --id " RWID[i]; RWCNT[d]++
-    }
-    for (i = 1; i <= NRWD; i++) for (j = i + 1; j <= NRWD; j++) if (RWD[j] < RWD[i]) { d = RWD[i]; RWD[i] = RWD[j]; RWD[j] = d }
-    for (i = 1; i <= NRWD; i++) {
-      d = RWD[i]
-      emit("name.rename-closing", "rename-window:" d, RWCNT[d] " rename window(s) close on " d " (" (jdn(d) - TODAYN) " days): the old name stops working then and its readers fail the lint; collapse them now: sh bin/standard-rename.sh --plan --live" RWCMD[d] ", then the same with --apply (§10.3)")
-    }
-  }
   for (i = 1; i <= NREG; i++) {
     f = REGF[i]
     if (!(f in WHY)) shape(f, "no `# WHY` line in the header (§4)")
@@ -1535,7 +1517,7 @@ gen() { # <view> -> writes under build/, prints the path
       list_tree > "$T/files"
       awk -F'\t' '{ print "F\t" $2 "\t" $1 }' "$T/files" > "$T/rec"
       env_tokens "$T/files" | awk '{ print "E\t" $0 }' >> "$T/rec"
-      judge tree "$T/rec" 1 | awk -F'\t' '$1 == "F" && $2 !~ /^name\.(registry-|exemption-|alias-expired|rename-closing)/ { print $2 "\t" $4 }' | sort -u \
+      judge tree "$T/rec" 1 | awk -F'\t' '$1 == "F" && $2 !~ /^name\.(registry-|exemption-|alias-expired)/ { print $2 "\t" $4 }' | sort -u \
         | awk -F'\t' '
           function batch(s,   a, n) {
             if (s ~ /^env:/) return "5 W5 state, env and launchd"
