@@ -19,7 +19,7 @@ HS="$(hub_state_dir)"
 MEMBER="${HARBOR_MEMBER_LOGIN:-}"; HUB="${HARBOR_HUB_REPO:-}"
 REQ="$HS/requests"; USED="$HS/used"
 W=''; LOCK=''
-cleanup() { [ -z "$W" ] || rm -rf "$W"; [ -z "$LOCK" ] || rmdir "$LOCK" 2>/dev/null; :; }
+cleanup() { [ -z "$W" ] || rm -rf "$W"; [ -z "$LOCK" ] || rm -f "$LOCK" 2>/dev/null; :; }
 trap cleanup EXIT
 trap 'exit 130' INT HUP TERM
 
@@ -131,8 +131,9 @@ request_body() { # <id> <rule> <tier> <target> <label>: the closed lines of cont
 }
 
 take_lock() { # <id>: two hooks filing one call race to a single issue. A lock older than a minute is a crash's
-  find "$REQ/$1.lock" -maxdepth 0 -mmin +1 -exec rmdir {} + 2>/dev/null || :
-  mkdir "$REQ/$1.lock" 2>/dev/null || return 1
+  # A file made with O_EXCL (set -C), never mkdir: uutils mkdir exits 0 on a lost race (harbor#1378).
+  [ -z "$(find "$REQ/$1.lock" -maxdepth 0 -mmin +1 2>/dev/null)" ] || { rm -f "$REQ/$1.lock" || rmdir "$REQ/$1.lock"; } 2>/dev/null || :
+  ( set -C; : > "$REQ/$1.lock" ) 2>/dev/null || return 1
   LOCK="$REQ/$1.lock"
 }
 
