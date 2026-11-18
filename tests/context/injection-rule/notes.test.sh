@@ -10,9 +10,9 @@
 PRIV="${HARBOR_CONTEXT_NOTES_PRIVATE:-}"   # a knob from the caller, read before t_init clears it (harbor#773)
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 ENGINE="$T_ROOT/hooks/injection-rule/injection-rule.sh"; FIX="$T_ROOT/fixtures/injection-rule/notes.tsv"; T="$T_TMP"
-# merge-governance and post-merge-state call `gh` on a live PR (govern-hook.test.sh holds them; wiring is asserted below).
-# ci-verdict-for-session fires on a session-note file no payload row can carry; ci-verdict-for-session.test.sh runs both arms.
-EXEMPT='merge-governance post-merge-state ci-verdict-for-session'
+# merge-governance and post-merge-state call `gh` against a live PR; their content is
+# tests/context/govern-hook/govern-hook.test.sh's, and only their wiring is asserted at the end here.
+EXEMPT='merge-governance post-merge-state'
 # The private layer: context-rules/{user,<repo>}/ (harbor#1010).
 PRR=''; PRB=''
 if [ -n "$PRIV" ]; then PRR="$PRIV/context-rules"; PRB=user; fi

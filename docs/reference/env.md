@@ -119,8 +119,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_CI_UNWEDGE_GRACE` | tuning | none | Seconds between TERM and KILL when the runner watch ends the children of a wedged Runner.Worker (default 10) | ci |  | tests only |
 | `HARBOR_CI_WAIT_BACKSTOP` | tuning | `300` | Maximum seconds ci-wait.sh sleeps between checks when no event arrives; default 300, non-numeric or 0 falls back to 300 | ci |  | tests only |
 | `HARBOR_CI_WAIT_SETTLE` | tuning | `2 5 10 15` | Space-separated list of seconds ci-wait sleeps between settle re-checks before trusting a result (default 2 5 10 15) | ci |  | tests only |
-| `HARBOR_CI_WATCH_CEILING` | tuning | `7200` | Seconds session-ci-watch keeps re-arming a still-running PR watch before it says stuck (default 7200; raised to the round when lower) | ci |  | tests only |
-| `HARBOR_CI_WATCH_SECS` | tuning | `1800` | Seconds of one session-ci-watch round; a round that ends still running re-arms up to HARBOR_CI_WATCH_CEILING (default 1800) | ci |  | tests only |
+| `HARBOR_CI_WATCH_SECS` | tuning | `1800` | Seconds session-ci-watch waits for CI to finish before giving up (default 1800; non-numeric falls back to 1800) | ci |  | tests only |
 | `HARBOR_CI_WEDGE_BUSY_SEC` | tuning | none | seconds a runner job may stay busy without an OOM kill before it is judged wedged (default 7200) | ci |  | tests only |
 | `HARBOR_CI_WEDGE_CPU_PCT` | tuning | none | CPU percent of one core under which a CI job counts as near zero for wedge detection, default 2 | ci |  | tests only |
 | `HARBOR_CI_WEDGE_IDLE_SEC` | tuning | none | Seconds of near-zero activity before the runner watch judges a Runner.Worker wedged (default 3600) | ci |  | tests only |
@@ -169,7 +168,6 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_EVENT_BUS_SKEW` | test-only | `0` | Seconds added to the event bus clock so tests can cross a UTC midnight; kept through the dispatcher's env filter | event |  | tests only |
 | `HARBOR_EVENT_BUS_TIMEOUT` | tuning | `2` | seconds before a hanging event bus emit or payload read is killed, 1 to 60 (default 2) | event |  | tests only |
 | `HARBOR_EVENT_CAUSE` | handoff | none | Id of the event that triggered a rule handler; the dispatcher sets it so emitted events carry a cause for the loop guard | event |  | tests only |
-| `HARBOR_EVENT_DISPATCH_LAG_WARN` | tuning | `600` | Seconds an event may wait for its rules before the dispatcher writes its lag file and alarms (default 600; 0 turns the lag alarm off) | event |  | tests only |
 | `HARBOR_EVENT_DIR` | path | `$HOME/.local/state/harbor/events` | Directory the event bus day files (YYYY-MM-DD.jsonl) are written to and read from (default ~/.local/state/harbor/events) | event |  | tests only |
 | `HARBOR_EVENT_HANDLER_TIMEOUT` | tuning | `600` | Seconds an event handler may run before the dispatcher kills it; default 600 | event |  | tests only |
 | `HARBOR_EVENT_HEALTH_SECS` | tuning | `600` | Seconds the event dispatcher may go without a heartbeat before alert-probe calls it down (default 600) | event |  | tests only |

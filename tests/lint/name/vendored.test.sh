@@ -5,7 +5,7 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 HARBOR_SCOPE_PRIVATE="$T_TMP/no-private"; CLAUDE_CONFIG_DIR="$T_TMP/no-config"; export HARBOR_SCOPE_PRIVATE CLAUDE_CONFIG_DIR; unset PORT_ROOT
 TAB="$(printf '\t')"
-OWNER='name\.(registry-|exemption-|alias-expired|rename-closing|control-|surface-)'
+OWNER='name\.(registry-|exemption-|alias-expired|control-|surface-)'
 
 W="$T_TMP/workload"; mkdir -p "$W/bin" "$W/docs" "$W/other"
 : > "$W/docs/qzxv-notes.md"; : > "$W/bin/corpus-build.sh"

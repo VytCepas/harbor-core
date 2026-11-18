@@ -18,7 +18,6 @@ description: "Adopt Harbor in an organisation: hub repo, signing key, pinned har
 - [./docs/how-to/adopt.md](../../docs/how-to/adopt.md) — the three repos, the setup order and the release flow. Read it first.
 - `sh ./bin/hub-pin-upgrade.sh --help` — raises the hub pin on a branch. It refuses a pin not on harbor-core main, a dirty hub, a contract change. It stops before signing.
 - `sh ./bin/member-setup-generate.sh --help` — rebuilds every person's setup script, hash and zip at a pin, from the admin's private roster.
-- `sh ./bin/hub-release.sh --help` — the whole release as one tool: `--preflight` lists every problem and changes nothing, `--run` merges, refreshes the red-team record, publishes, raises the hub pin, tests at the pin and builds the zips. Merges are printed, not run, in an agent session. It never signs.
 - Deeper: `./docs/how-to/hub-admin.md`, `./docs/how-to/member-install.md`, `./docs/how-to/member-support.md`.
 
 ## Limits that hold
