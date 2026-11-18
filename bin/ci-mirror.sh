@@ -87,26 +87,20 @@ status)
   MIR="$(core_gh pr list --repo "$CORE" --head "$BRANCH" --state open --json headRefOid --jq '.[0].headRefOid // empty')" || refuse "cannot read $CORE" "gh auth status"
   STATE=pending; DESC="no mirror PR yet"; URL="https://github.com/$CORE/tree/$BRANCH"
   if [ -n "$MIR" ]; then
-    # One line per run of the mirror head: workflow, status, conclusion, url, createdAt. A run of an older commit says nothing about this one.
-    RUNS="$(core_gh run list --repo "$CORE" --branch "$BRANCH" --limit 30 --json headSha,workflowName,status,conclusion,url,createdAt \
-      --jq ".[] | select(.headSha == \"$MIR\") | [.workflowName, .status, .conclusion, .url, .createdAt] | @tsv")" || refuse "cannot list runs on $CORE" "gh run list --repo $CORE --branch $BRANCH"
-    # One verdict per workflow: its newest run that was not cancelled. Two pull_request runs start per push and concurrency
-    # cancels one; a run cancelled from outside is no verdict either (harbor#1149). A workflow with only cancelled runs
-    # keeps its newest as a line, which reads as pending below, never as a failure.
-    RUNS="$(printf '%s\n' "$RUNS" | sort -s -r -t "$(printf '\t')" -k5,5 | awk -F'\t' '
-      $3 != "cancelled" { if (!($1 in v)) { v[$1] = 1; keep[++n] = $0 } next }
-      !($1 in c) { c[$1] = $0 }
-      END { for (i = 1; i <= n; i++) print keep[i]; for (w in c) if (!(w in v)) print c[w] }')"
+    # One line per run of the mirror head: workflow, status, conclusion, url. A run of an older commit says nothing about this one.
+    RUNS="$(core_gh run list --repo "$CORE" --branch "$BRANCH" --limit 30 --json headSha,workflowName,status,conclusion,url \
+      --jq ".[] | select(.headSha == \"$MIR\") | [.workflowName, .status, .conclusion, .url] | @tsv")" || refuse "cannot list runs on $CORE" "gh run list --repo $CORE --branch $BRANCH"
+    # A cancelled run that another run of the same workflow replaced is no verdict; a cancelled run alone still is red.
+    RUNS="$(printf '%s\n' "$RUNS" | awk -F'\t' '{ l[NR] = $0; w[NR] = $1; c[NR] = $3; if ($3 != "cancelled") live[$1] = 1 }
+      END { for (i = 1; i <= NR; i++) if (!(c[i] == "cancelled" && live[w[i]])) print l[i] }')"
     if [ -z "$RUNS" ]; then DESC="hosted CI has not started on this mirror"
     else
-      URL="$(printf '%s\n' "$RUNS" | awk -F'\t' '{ u = $4 } $2 == "completed" && $3 != "success" && $3 != "skipped" && $3 != "neutral" && $3 != "cancelled" && !f { f = 1; fu = $4 } END { print (fu != "" ? fu : u) }')"
+      URL="$(printf '%s\n' "$RUNS" | awk -F'\t' '{ u = $4 } $2 == "completed" && $3 != "success" && $3 != "skipped" && $3 != "neutral" && !f { f = 1; fu = $4 } END { print (fu != "" ? fu : u) }')"
       STATE="$(printf '%s\n' "$RUNS" | awk -F'\t' '
-        $2 != "completed" || $3 == "cancelled" { pend = 1; next }
+        $2 != "completed" { pend = 1; next }
         $3 != "success" && $3 != "skipped" && $3 != "neutral" { bad = 1 }
         END { print (bad ? "failure" : (pend ? "pending" : "success")) }')"
       DESC="hosted CI on the public mirror: $STATE"
-      CANC="$(printf '%s\n' "$RUNS" | awk -F'\t' '$2 == "completed" && $3 == "cancelled" { printf "%s%s", (k++ ? ", " : ""), $1 }')"
-      [ "$STATE" != pending ] || [ -z "$CANC" ] || DESC="$DESC (only cancelled runs of $CANC; re-run them)"
     fi
   else
     # No mirror because no core file differs: the mirror run set success itself, and pending here would undo it.
@@ -228,13 +222,9 @@ log_ok "pushed $BRANCH ($(git -C "$TDIR" rev-parse --short HEAD)) and $BASEBR ($
 
 TITLE="harbor#$PR"
 BODY="Core-layer mirror of harbor PR $PR at $(printf '%s' "$HEAD_SHA" | cut -c1-12), staged by bin/ci-mirror.sh after the export gates. For hosted CI only; never merged."
-EXROW="$(core_gh pr list --repo "$CORE" --head "$BRANCH" --state open --json number,baseRefName --jq '.[0] | select(. != null) | [.number, .baseRefName] | @tsv')" || refuse "cannot list PRs on $CORE" "the token needs Pull requests: write"
-EXIST="$(printf '%s' "$EXROW" | cut -f1)"; EXBASE="$(printf '%s' "$EXROW" | cut -f2 -s)"
+EXIST="$(core_gh pr list --repo "$CORE" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')" || refuse "cannot list PRs on $CORE" "the token needs Pull requests: write"
 if [ -n "$EXIST" ]; then
-  # An edit that names --base starts a second pull_request run on the same head (harbor#1149): name it only when it changes.
-  set -- --repo "$CORE" --title "$TITLE" --body "$BODY"
-  [ "$EXBASE" = "$BASEBR" ] || set -- "$@" --base "$BASEBR"
-  core_gh pr edit "$EXIST" "$@" >/dev/null || refuse "could not update $CORE#$EXIST" ""
+  core_gh pr edit "$EXIST" --repo "$CORE" --base "$BASEBR" --title "$TITLE" --body "$BODY" >/dev/null || refuse "could not update $CORE#$EXIST" ""
   log_ok "updated $CORE#$EXIST (harbor#$PR)"
 else
   core_gh pr create --repo "$CORE" --base "$BASEBR" --head "$BRANCH" --title "$TITLE" --body "$BODY" >/dev/null || refuse "could not open the PR on $CORE" "the token needs Pull requests: write"

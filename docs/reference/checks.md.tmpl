@@ -284,7 +284,6 @@ A user timer stops at logout unless the user lingers (`loginctl enable-linger "$
 | event.session-check | inherits: `event.dispatch` | no schedule of its own on this box: it runs where its host runs | the register row's own |
 | lint.leaks | inherits: a terminal in the harbor checkout | no schedule of its own: it runs inside the lint-conventions run, and by hand | the register row's own |
 | lint.name-ratchet | inherits: a terminal in the harbor checkout | no schedule of its own: it runs inside the lint-conventions run, and by hand | the register row's own |
-| name.rename-closing | inherits: a terminal in the harbor checkout | no schedule of its own: it runs in every `lint-name` run (the lint-conventions run, PR CI), and by hand | the register row's own |
 | lint.credential-reads | inherits: a terminal in the harbor checkout | no schedule of its own: it runs inside the lint-conventions run, and by hand | the register row's own |
 | lint.pr-body-shape | inherits: a terminal in the harbor checkout | no schedule of its own: `bin/lint-pr.sh` runs by hand, or in a PR workflow once one calls it | the register row's own |
 | lint.pr-issue-link | inherits: a terminal in the harbor checkout | no schedule of its own: `bin/lint-pr.sh` runs by hand, or in a PR workflow once one calls it | the register row's own |

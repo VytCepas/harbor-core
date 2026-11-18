@@ -18,7 +18,7 @@ judge() { sh "$LN" --root "$1" --registry "${2:-$REG}" --format findings 2>/dev/
 jrc() { sh "$LN" --root "$1" --registry "${2:-$REG}" > /dev/null 2>&1; echo $?; }
 plain() { printf '%s\n' "$1" | cut -f2- | LC_ALL=C sort; }   # findings without the A/V column
 # the findings about the repo's names, as gates/naming-check.sh keeps them: registry rules judge harbor's tree, not this one
-names() { printf '%s\n' "$1" | awk -F'\t' 'NF >= 3 && $2 !~ /^name\.(registry-|exemption-|alias-expired|rename-closing|control-|surface-)/'; }
+names() { printf '%s\n' "$1" | awk -F'\t' 'NF >= 3 && $2 !~ /^name\.(registry-|exemption-|alias-expired|control-|surface-)/'; }
 
 # A repo outside harbor: no standards/naming/ of its own, judged with harbor's registry, as gates/naming-check.sh does.
 R="$TMP/repo"; mkdir -p "$R/bin" "$R/tests/corpus/build" "$R/docs"

@@ -188,7 +188,6 @@ the tool that forces it.**
      then 4 weeks with no finding accepted as false.
    - There are no inline ignores.
    - An expiring alias warns from 14 days before its date and blocks from it (`name.alias-expired`).
-   - A rename window (a `renames.tsv` row with a `remove_by` date) warns from 14 days before that date while the tree still carries the old name, naming the rows and the command that collapses them (`name.rename-closing`); the old name blocks from the day after.
 4. **Self-reference:**
    - The registry and the lint are lint subjects like any other file.
    - `exemptions.tsv` refuses any row about the registry, the lint or its fixtures, and the lint never applies one.
