@@ -7,7 +7,7 @@
 # --kit is a folder holding the files every person gets unchanged: run-setup.ps1, INSTALL-FOR-CLAUDE.md and CLAUDE.md.
 # For each person it runs the PIN's own bin/member-windows.sh --setup, so the script is the code the laptop will install, never today's. It writes
 #   <out>/bundles/<user>/setup-<user>.ps1 (+ the kit's files), <out>/bundles/<user>-HASH.txt, <out>/zips/setup-<user>.zip
-# The zip holds the kit's files, HASH.txt and the setup script at its root. Send the zip, then the hash in a second message (docs/how-to/adopt.md).
+# The zip holds the kit's files, HASH.txt and the setup script at its root. Send the zip in one email; HASH.txt inside it is the hash (docs/how-to/adopt.md).
 # Exit 0 all built, 1 a person failed or the pin is not in the checkout, 2 usage error or an unreadable input. Nothing is sent anywhere.
 set -eu
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
