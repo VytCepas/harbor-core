@@ -13,7 +13,8 @@
 # wait for "nothing pending" took it for CI and sat out its 40-minute deadline on 2026-10-25 with 18 checks green.
 # The contexts in NOT_CI are named in the verdict and never waited on; HARBOR_CI_NOT_CHECKS replaces the list.
 #
-# Prints one line: `<owner/repo>#<n>: green|red|pending (<count> <bucket>, …; not CI: <name> <bucket>)`.
+# Prints one line: `<owner/repo>#<n>: green|red|pending (<count> <bucket>, …; not CI: <name> <bucket>; failed: <name> <bucket>;
+# pending: <name>, …)`: a failed, cancelled or pending check is named, not only counted.
 # Exit 0 green · 1 red · 3 deadline, still running (as `harbor event wait`) · 2 usage · 4 GitHub unreadable.
 set -u
 case "$0" in */*) HERE="${0%/*}" ;; *) HERE=. ;; esac
@@ -61,11 +62,27 @@ REQ="$(required)"
 # One read: sets V (green, red, pending, none or error) and LINE. `gh pr checks` exits 8 while anything is pending,
 # so its output decides, not its exit code. A PR with no checks gets no JSON, only "no checks reported" on stderr:
 # that is none, not an unreadable GitHub.
+# A failed or cancelled check whose link is an Actions run being re-run is pending, not red (2026-11-16: harbor#1549's
+# public-ci commit status still carried attempt 1's fail while attempt 2 ran, and the wait said red at once). One read
+# per such run, only on a read that has one; the owner, repo and run id are matched to a charset before they reach gh.
+reruns() { # <checks json> → the run URLs, one a line, whose status is not completed
+  printf '%s' "$1" | jq -r '.[]? | select(.bucket == "fail" or .bucket == "cancel") | .link // empty' 2>/dev/null \
+    | grep -oE '^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/actions/runs/[0-9]+' | sort -u \
+    | while IFS= read -r _u; do
+        _q="${_u#https://github.com/}"; _o="${_q%%/*}"; _q="${_q#*/}"; _rp="${_q%%/*}"; _id="${_q##*/}"
+        _st="$(gh api "repos/$_o/$_rp/actions/runs/$_id" --jq .status 2>/dev/null)" || _st=""
+        case "$_st" in queued|in_progress|waiting|requested|pending) printf '%s\n' "$_u" ;; esac
+      done
+}
 read_checks() {
-  _j="$(gh pr checks "$N" -R "$REPO" --json name,bucket 2>&1)" || :
+  _j="$(gh pr checks "$N" -R "$REPO" --json name,bucket,link 2>&1)" || :
   case "$_j" in "no checks reported"*) _j='[]' ;; esac
-  _r="$(printf '%s' "$_j" | jq -r --arg not "$NOT_CI" --arg req "$REQ" '
-    ($not | split(" ")) as $n
+  _rr="$(reruns "$_j" | tr '\n' ' ')"
+  _r="$(printf '%s' "$_j" | jq -r --arg not "$NOT_CI" --arg req "$REQ" --arg rr "$_rr" '
+    ($rr | split(" ") | map(select(length > 0))) as $rerun
+    | map(if (.bucket == "fail" or .bucket == "cancel") and ((.link // "") as $l | $rerun | any(. as $u | $l | startswith($u) and (ltrimstr($u) | test("^([^0-9]|$)"))))
+          then .bucket = "pending" | .rerun = true else . end)
+    | ($not | split(" ")) as $n
     | ($req | split("\t") | map(select(length > 0))) as $rq
     | ([.[].name]) as $have | ($rq | map(select(. as $x | $have | index($x) | not))) as $miss
     | [.[] | select(.name as $x | $n | index($x) | not)] as $ci
@@ -74,11 +91,13 @@ read_checks() {
     | (if ($ci | length) == 0 then "none" elif ($b | index("pending")) then "pending"
        elif ($b | any(. == "fail" or . == "cancel")) then "red" else "green" end)
     | (if (. == "green" or . == "none") and ($miss | length) > 0 then "pending" else . end) as $v
-    | "\($v)\t\($ci | group_by(.bucket) | map("\(length) \(.[0].bucket)") | join(", "))\t\($nc | map("\(.name) \(.bucket)") | join(", "))\t\($miss | join(", "))"
+    | "\($v)\t\($ci | group_by(.bucket) | map("\(length) \(.[0].bucket)") | join(", "))\t\($nc | map("\(.name) \(.bucket)") | join(", "))\t\($miss | join(", "))\t\($ci | map(select(.bucket == "fail" or .bucket == "cancel")) | map("\(.name) \(.bucket)") | join(", "))\t\($ci | map(select(.bucket == "pending")) | map(.name + (if .rerun then " (re-run)" else "" end)) | join(", "))"
   ' 2>/dev/null)" || _r=""
   if [ -z "$_r" ]; then V=error; LINE="$REPO#$N: GitHub did not answer"; return; fi
-  V="${_r%%	*}"; _r="${_r#*	}"; _counts="${_r%%	*}"; _r="${_r#*	}"; _nc="${_r%%	*}"; _miss="${_r#*	}"
-  LINE="$REPO#$N: $V (${_counts:-no checks yet}${_nc:+; not CI: $_nc}${_miss:+; required, not reported yet: $_miss})"
+  V="${_r%%	*}"; _r="${_r#*	}"; _counts="${_r%%	*}"; _r="${_r#*	}"; _nc="${_r%%	*}"; _r="${_r#*	}"
+  _miss="${_r%%	*}"; _r="${_r#*	}"; _bad="${_r%%	*}"; _pend="${_r#*	}"
+  # The names, not only the counts (2026-11-16: "1 cancel, 1 pending" hid that the relay job was the one cancelled).
+  LINE="$REPO#$N: $V (${_counts:-no checks yet}${_nc:+; not CI: $_nc}${_miss:+; required, not reported yet: $_miss}${_bad:+; failed: $_bad}${_pend:+; pending: $_pend})"
 }
 verdict() { # exits on a settled read
   case "$V" in
@@ -93,7 +112,7 @@ DL=$(( $(now) + TIMEOUT )); ERRORS=0
 read_checks; verdict
 while :; do
   _left=$(( DL - $(now) ))
-  [ "$_left" -gt 0 ] || { printf '%s\n' "${LINE% (*}: still running after ${TIMEOUT}s (${LINE#* (}"; exit 3; }
+  [ "$_left" -gt 0 ] || { printf '%s\n' "${LINE%% (*}: still running after ${TIMEOUT}s (${LINE#* (}"; exit 3; }
   _s="$BACKSTOP"; [ "$_left" -ge "$_s" ] || _s="$_left"
   # 0: a job finished somewhere on this box; 3: the backstop ran out. Either way the next step is a read.
   sh "$HERE/event-bus.sh" wait '"kind":"ci\.job\.done"' --timeout "$_s" >/dev/null 2>&1 || :
