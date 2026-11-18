@@ -44,6 +44,7 @@ tool	gate-push.sh	you push a branch: verify first, then push in seconds (a plain
 tool	test-suite-run.sh	you run suites: this carries the idle and hard timeouts and the CPU governor, a suite run by hand has neither	sh ~/port/harbor/bin/test-suite-run.sh --select [<suite-or-path>...]
 tool	test-suite-select.sh	you want to know which suites your changeset must run, and why	sh ~/port/harbor/bin/test-suite-select.sh --list
 tool	doc-fresh-verify.sh	you want to know in seconds whether every generated file is current, and the fix for a stale one	sh ~/port/harbor/bin/doc-fresh-verify.sh
+tool	doc-lithuanian-rewrite.sh	Lithuanian text is about to go to a person and must read as a colleague wrote it, with every identifier, number and apostrophe term kept	sh ~/port/harbor/bin/doc-lithuanian-rewrite.sh [--model sonnet] FILE (prints the text to use; exit 0 rewritten, 3 original kept)
 tool	gate-register-derive.sh	pre-push says the protected-paths register is stale	sh ~/port/harbor/bin/gate-register-derive.sh --write
 tool	gate-codeowners.sh	pre-push says .github/CODEOWNERS is stale	sh ~/port/harbor/bin/gate-codeowners.sh --write
 tool	standard-vendor.sh	pre-push says the vendored naming package differs from the registers	sh ~/port/harbor/bin/standard-vendor.sh .

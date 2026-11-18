@@ -85,6 +85,7 @@ tests/admission/baseline/worklog.test.sh bin/* hooks/* fixtures/* contracts/* ve
 tests/admission/baseline/paths.test.sh bin/* hooks/* fixtures/* contracts/* vendor/* docs/generated/status.md tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/admission/bash/fixture.sh tests/lib/core.sh
 tests/admission/baseline/annotate.test.sh bin/* hooks/* fixtures/* contracts/* vendor/* docs/generated/status.md tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/admission/bash/fixture.sh tests/lib/core.sh
 tests/doc/isa-index/isa-index.test.sh bin/doc-isa-index.sh tests/doc/isa-index/isa-index.test.sh bin/library-log.sh tests/lib/core.sh
+tests/doc/lithuanian-rewrite/lithuanian-rewrite.test.sh bin/doc-lithuanian-rewrite.sh context-rules/user/lithuanian-prose.sh skills/doc-lithuanian-prose/* tests/doc/lithuanian-rewrite/lithuanian-rewrite.test.sh bin/library-log.sh tests/lib/core.sh
 tests/skill/collision-verify/collision-verify.test.sh bin/skill-collision-verify.sh tests/skill/collision-verify/collision-verify.test.sh tests/lib/core.sh
 tests/status/generate/generate.test.sh bin/status-generate.sh bin/library-log.sh tests/status/generate/generate.test.sh tests/lib/core.sh
 tests/deploy/doctor/doctor.test.sh bin/deploy-doctor.sh bin/library-log.sh tests/deploy/doctor/doctor.test.sh bin/library-admission.sh tests/lib/core.sh
