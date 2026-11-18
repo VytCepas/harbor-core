@@ -21,10 +21,29 @@ FLEET="${HARBOR_SCOPE_FLEET_FILE:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get
 ORCH="${HARBOR_SCOPE_FLEET_CONTROLLER_BIN:-$(sh "$(dirname -- "$0")/scope-roots.sh" --get HARBOR_SCOPE_FLEET_CONTROLLER_BIN 2>/dev/null || :)}"
 
 mkdir -p "$CACHE_DIR"
+
+# Under the event dispatcher (HARBOR_EVENT_JSON is the event it hands every handler) this returns at once and refreshes
+# DETACHED: the dispatcher runs rules one at a time, and this tick takes minutes. Measured 2026-11-16 on the ledger: 76
+# inline runs averaging 344 s, 7.3 h of dispatcher time, which held every other rule up to 95 min behind its events (a
+# PR's CI watch started 90 min late). The child gets its own process group from the dispatcher's bounded(), so it outlives
+# the handler. launchd keeps the inline run: it kills the job's group on exit, and its tick is the schedule this serves.
+if [ -n "${HARBOR_EVENT_JSON:-}" ]; then
+  ( env -u HARBOR_EVENT_JSON sh "$0" ) </dev/null >/dev/null 2>&1 &
+  exit 0
+fi
+# Single flight: a refresh already running answers this trigger too. A lock whose holder is gone is taken over.
+LOCK="$CACHE_DIR/fleet-snapshot-refresh.lock"
+if ! mkdir "$LOCK" 2>/dev/null; then
+  _hp="$(cat "$LOCK/pid" 2>/dev/null || :)"
+  case "$_hp" in ''|*[!0-9]*) _hp="" ;; esac
+  if [ -n "$_hp" ] && kill -0 "$_hp" 2>/dev/null; then exit 0; fi
+  rm -rf "$LOCK"; mkdir "$LOCK" 2>/dev/null || exit 0
+fi
+echo "$$" > "$LOCK/pid"
 TMP="$CACHE.tmp.$$"
 OBS="$CACHE_DIR/guard-decisions.json"
 OTMP="$OBS.tmp.$$"
-trap 'rm -f "$TMP" "$OTMP"' EXIT
+trap 'rm -f "$TMP" "$OTMP"; rm -rf "$LOCK"' EXIT
 
 # Guard-decision counts (L1/OBSERVE-1, harbor#41, harbor#59), reduced here because reading the ledger scales with its size. Remove the cache on failure, never keep the last good value: an absent ledger must stay absent.
 SRC_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
