@@ -257,6 +257,7 @@
 /bin/standard-kit.sh @VytCepas
 /bin/standard-label-sync.sh @VytCepas
 /bin/standard-register.sh @VytCepas
+/bin/standard-rename.sh @VytCepas
 /bin/standard-shape.sh @VytCepas
 /bin/standard-vendor.sh @VytCepas
 /bin/status-fleet-snapshot-refresh.sh @VytCepas

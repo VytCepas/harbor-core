@@ -42,7 +42,7 @@ The start page for the admin of a company that wants every colleague's laptop to
 1. **Organisation and hub repo.** Create a private repo owned by the organisation and let colleagues read it. [hub-admin.md](hub-admin.md), sections 1 and 2.
 2. **The key.** Make the signing key with a passphrase and `hub-signers`. [hub-admin.md](hub-admin.md), section 3.
 3. **The policy.** Edit `policy.json` from the scaffold in `templates/hub/`, set `core.commit` to a harbor-core commit, sign it, merge it. [hub-admin.md](hub-admin.md), section 4.
-4. **One setup zip per person.** `sh bin/member-setup-generate.sh --help`. It uses the pin's own `member-windows.sh`, so the script is the code the laptop will run. Send the zip, then its hash in a second message.
+4. **One setup zip per person.** `sh bin/member-setup-generate.sh --help`. It uses the pin's own `member-windows.sh`, so the script is the code the laptop will run. Send it in one email, with the token steps: the person makes the token first and tells you, so you approve it while the setup runs. The hash travels inside the zip as `HASH.txt`; nothing reads a second copy.
 5. **The colleague opens the zip in Claude Code.** The folder holds the instructions the agent follows. The person only answers its questions.
 6. **IT finishes the token.** The member's GitHub token is made with the person present. [member-install.md](member-install.md).
 
@@ -56,6 +56,8 @@ Support afterwards: [member-support.md](member-support.md). Law of the member la
 4. `sh bin/hub-pin-upgrade.sh --pin <sha> --hub <hub checkout> --core <core checkout>` raises the pin on a branch and stops.
 5. **The admin signs**, verifies, pushes and merges the hub PR, and raises the hub's `HARBOR_HUB_CORE_SHA` variable. Nobody else signs. The script prints the lines.
 6. `sh bin/member-setup-generate.sh --pin <sha> ... --roster <private roster>` rebuilds every zip. Send the zips that changed.
+
+**Steps 1 to 4 and 6 are one tool.** `sh bin/hub-release.sh --preflight --pr <owner/repo>#<n> ... --core <core> --hub <hub> --hub-repo <org>/<hub repo> --roster <roster> --kit <kit> --out <dir>` lists every problem at once (a PR conflicting, BEHIND, closed or red; a checkout off main, dirty or holding a stale `index.lock`; a stale red-team record) and changes nothing. `--run` with the same inputs does the preflight, the merges, the red-team refresh right before the publish, the publish, the hub pin, the member and hub suites in a clean clone at the pin, and the zips. In an agent session it prints the merge commands and stops (exit 3); run them, then run it again. It never signs: step 5 stays with the admin. The log path is its last line.
 
 Laptops pick up the new policy at their next session. The floor code changes only when the updater runs or IT reinstalls ([hub-admin.md](hub-admin.md), section 4).
 
