@@ -85,26 +85,8 @@ _mode_mismatches() { # <src-dir> <dest-dir> -> prints one line per differing fil
   done
 }
 
-# Generated caches are not payload: a box-only __pycache__ failed every re-install's byte check (#702). Nor is the
-# .claude/.cc-writes Claude Code makes in a folder a session works in: an installed one rolled a deploy back (#1571).
-_diff_r() { # <src> <dest>: as diff -r, except a .claude in dest holding nothing but .cc-writes is the harness's
-  _dr="$(diff -r -x __pycache__ -x '*.pyc' -x .DS_Store -x .cc-writes "$@" 2>&1)" && return 0
-  _left="$(printf '%s\n' "$_dr" | while IFS= read -r _l; do
-    case "$_l" in ("Only in $2"*': .claude')
-      _p="${_l#Only in }"; _p="${_p%: .claude}/.claude"
-      [ -n "$(ls -A "$_p" 2>/dev/null | grep -vx '.cc-writes')" ] || continue ;;
-    esac
-    printf '%s\n' "$_l"
-  done)"
-  [ -n "$_left" ] || return 0
-  printf '%s\n' "$_left"; return 1
-}
-# Removes the harness's .claude/.cc-writes (#1571) from an installed copy before a copy lands over it, then any .claude left empty.
-_harness_prune() { # <dest>
-  find "$1" -type d -path '*/.claude/.cc-writes' -prune -exec rm -rf {} + 2>/dev/null
-  find "$1" -depth -type d -name .claude -empty -exec rmdir {} \; 2>/dev/null
-  return 0
-}
+# Generated caches are not payload: a box-only __pycache__ failed every re-install's byte check (#702).
+_diff_r() { diff -r -x __pycache__ -x '*.pyc' -x .DS_Store "$@"; }
 
 state_of() {
   _s="$1"; _d="$DEST_ROOT/$2"
@@ -139,7 +121,7 @@ list_all() {
 # Files the INSTALLED copy has and the source does not: cp cannot remove them, so the byte check
 # after writing would fail. Caches are excluded exactly as _diff_r excludes them.
 _box_only() { # <src> <dest> → one path per file, relative to dest
-  ( cd "$2" && find . \( -name __pycache__ -o -path '*/.claude/.cc-writes' \) -prune -o -type f ! -name '*.pyc' ! -name .DS_Store -print ) 2>/dev/null \
+  ( cd "$2" && find . -name __pycache__ -prune -o -type f ! -name '*.pyc' ! -name .DS_Store -print ) 2>/dev/null \
     | sed 's|^\./||' | while IFS= read -r _bo; do [ -e "$1/$_bo" ] || printf '%s\n' "$_bo"; done | LC_ALL=C sort
 }
 # The same content question skills-collide asks (harbor#641): a box-only file whose bytes are an older
@@ -295,7 +277,7 @@ install_one() {
   # The pre-run copy goes into the backup. With box-only files accepted as lost, the installed dir
   # itself is moved there, so the new copy lands in an empty dir and the byte check can pass.
   if [ "$_replace" -eq 1 ]; then _aside "$dest" || return 1; else il_backup "$dest" || return 1; fi
-  mkdir -p "$dest"; _harness_prune "$dest"
+  mkdir -p "$dest"
   # The trailing /. is the whole point of this script. Do not "simplify" it.
   if ! cp -R "$src/." "$dest/"; then
     log_fail "$n: could not copy $src into $dest"
