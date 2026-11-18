@@ -31,15 +31,15 @@ if [ -n "${HARBOR_EVENT_JSON:-}" ]; then
   ( env -u HARBOR_EVENT_JSON sh "$0" ) </dev/null >/dev/null 2>&1 &
   exit 0
 fi
-# Single flight: a refresh already running answers this trigger too. A lock whose holder is gone is taken over. The lock
-# is a file holding the pid, made with O_EXCL (set -C), never mkdir: uutils mkdir exits 0 on a lost race (harbor#1378).
+# Single flight: a refresh already running answers this trigger too. A lock whose holder is gone is taken over.
 LOCK="$CACHE_DIR/fleet-snapshot-refresh.lock"
-if ! ( set -C; echo $$ > "$LOCK" ) 2>/dev/null; then
-  _hp="$(cat "$LOCK" 2>/dev/null || cat "$LOCK/pid" 2>/dev/null || :)"
+if ! mkdir "$LOCK" 2>/dev/null; then
+  _hp="$(cat "$LOCK/pid" 2>/dev/null || :)"
   case "$_hp" in ''|*[!0-9]*) _hp="" ;; esac
   if [ -n "$_hp" ] && kill -0 "$_hp" 2>/dev/null; then exit 0; fi
-  rm -rf "$LOCK"; ( set -C; echo $$ > "$LOCK" ) 2>/dev/null || exit 0
+  rm -rf "$LOCK"; mkdir "$LOCK" 2>/dev/null || exit 0
 fi
+echo "$$" > "$LOCK/pid"
 TMP="$CACHE.tmp.$$"
 OBS="$CACHE_DIR/guard-decisions.json"
 OTMP="$OBS.tmp.$$"

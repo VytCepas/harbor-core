@@ -78,14 +78,12 @@ cleanup() { rm -rf "$W"; [ "${HAVE_LOCK:-0}" = 1 ] && rm -rf "$LOCK" || :; }
 trap cleanup EXIT
 trap 'exit 130' INT HUP TERM
 HAVE_LOCK=0
-# The lock is a file holding the pid, made with O_EXCL (set -C), never mkdir: uutils mkdir exits 0 on a lost race
-# (harbor#1378). An older version's lock directory is still read and taken over.
-if ! ( set -C; echo $$ > "$LOCK" ) 2>/dev/null; then
-  _p="$(cat "$LOCK" 2>/dev/null || cat "$LOCK/pid" 2>/dev/null || :)"
+if ! mkdir "$LOCK" 2>/dev/null; then
+  _p="$(cat "$LOCK/pid" 2>/dev/null || :)"
   if [ -n "$_p" ] && kill -0 "$_p" 2>/dev/null; then log_fail "another update is running (pid $_p)"; log_nofix "wait for it; one run at a time"; exit 3; fi
-  rm -rf "$LOCK"; ( set -C; echo $$ > "$LOCK" ) 2>/dev/null || refuse "cannot take the update lock $LOCK"
+  rm -rf "$LOCK"; mkdir "$LOCK" 2>/dev/null || refuse "cannot take the update lock $LOCK"
 fi
-HAVE_LOCK=1
+HAVE_LOCK=1; printf '%s\n' "$$" > "$LOCK/pid"
 
 # 1 · the policy: root must not trust a file the agent could have swapped after hub-sync checked it, so it
 # verifies a private copy against the root-owned hub-signers itself and reads only the copy.

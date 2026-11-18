@@ -217,14 +217,14 @@ t_hasnt "...and the probe command is never echoed" "$(AX add x5 --kind token --v
 cp "$REG" "$T_TMP/after-x5"; BEFORE="$(cksum < "$REG")"
 
 t_section "one writer at a time: a held lock refuses, and leaves the register as it was"
-: > "$REG.lock"
+mkdir "$REG.lock"
 t_eq "add while locked: exit 1" 1 "$(ACCESS_LOCK_WAIT=1 rc AX add x6 --kind token --vendor-name "EXAMPLECO API GitHub" --what w --use-when u --reaches r --cannot c --grant g --no-secret)"
-t_has "...naming the lock" "$(ACCESS_LOCK_WAIT=1 AX add x6 --kind token --vendor-name "EXAMPLECO API GitHub" --what w --use-when u --reaches r --cannot c --grant g --no-secret 2>&1)" "rm -f $REG.lock"
+t_has "...naming the lock" "$(ACCESS_LOCK_WAIT=1 AX add x6 --kind token --vendor-name "EXAMPLECO API GitHub" --what w --use-when u --reaches r --cannot c --grant g --no-secret 2>&1)" "rmdir $REG.lock"
 t_eq "revoke while locked: exit 1" 1 "$(ACCESS_LOCK_WAIT=1 rc AX revoke add-one)"
 t_eq "the register is untouched" "$BEFORE" "$(cksum < "$REG")"
-rm -f "$REG.lock"
+rmdir "$REG.lock"
 t_eq "a finished write leaves no lock behind" 0 "$(rc AX add x7 --kind token --vendor-name "EXAMPLECO API GitHub" --what w --use-when u --reaches r --cannot c --grant g --no-secret)"
-t_eq "...the lock file is gone" gone "$([ -e "$REG.lock" ] && echo present || echo gone)"
+t_eq "...the lock directory is gone" gone "$([ -d "$REG.lock" ] && echo present || echo gone)"
 
 t_section "held: a credential outside the seam by design is told apart from a migration debt"
 cp "$REG" "$T_TMP/before-held"

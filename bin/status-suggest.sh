@@ -103,7 +103,7 @@ lock_stale() {
 # lock_break <now> — clear a stale .lock. One breaker at a time, and it rereads against a fresh clock, so a second waiter cannot take the first one's new lock.
 lock_break() {
   lock_stale "$1" || return 0
-  if ! ( set -C; : > .lock.break ) 2>/dev/null; then  # O_EXCL, never mkdir (harbor#1378)
+  if ! mkdir .lock.break 2>/dev/null; then
     if gone .lock.break; then die "cannot write $STATE" 1 "$WRITABLE"; fi
     if lock_bad .lock.break; then refuse .lock.break; fi
     if lock_age .lock.break "$1" && [ "$LOCK_AGE" -ge "$LOCK_STALE" ]; then rm -rf .lock.break 2>/dev/null; fi
@@ -115,12 +115,12 @@ lock_break() {
     [ -z "$LOCK_PID" ] || rm -f ".own.$LOCK_PID".* 2>/dev/null
     rm -rf .lock 2>/dev/null
   fi
-  rm -f .lock.break 2>/dev/null; BREAKING=0
+  rmdir .lock.break 2>/dev/null; BREAKING=0
 }
 # lock_held — .lock is still this writer's: its private file has the second link only while it does.
 lock_held() { [ -n "$OWN" ] && [ -n "$(find "./$OWN" -prune -links 2 2>/dev/null)" ]; }
 lock_drop() {
-  [ "$BREAKING" = 0 ] || rm -f .lock.break 2>/dev/null
+  [ "$BREAKING" = 0 ] || rmdir .lock.break 2>/dev/null
   [ -n "$OWN" ] || return 0
   if lock_held; then rm -f .lock 2>/dev/null; fi
   rm -f "$OWN" 2>/dev/null

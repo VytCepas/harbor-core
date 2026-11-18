@@ -641,11 +641,11 @@ case "$VERB" in
     # (2026-10-14). Attaches take turns, or two lanes race for the focused window. The
     # operator's app gets focus straight back.
     mkdir -p "$WORKDIR"; _lk="${WORKDIR%/*}/.attach-lock"; _i=0
-    until ( set -C; : > "$_lk" ) 2>/dev/null; do  # a file with O_EXCL, never mkdir (harbor#1378)
+    until mkdir "$_lk" 2>/dev/null; do
       _i=$((_i + 1)); [ "$_i" -le 60 ] || { log_warn "attach: $_lk held for 60 s; taking it"; break; }
       sleep 1
     done
-    trap '{ rm -f "$_lk" || rmdir "$_lk"; } 2>/dev/null' EXIT INT TERM HUP
+    trap 'rmdir "$_lk" 2>/dev/null' EXIT INT TERM HUP
     _before=" $(_tab_ids 2>/dev/null | tr '\n' ' ') "
     _nw="$(_osa <<'OSA' 2>/dev/null
 on run argv
@@ -669,7 +669,7 @@ OSA
       ''|*[!0-9]*) _tid=''; log_warn 'attach: no window of its own (AppleScript refused); the extension opens its tab in the focused window, and another session there can hide it' ;;
     esac
     _ao="$(mktemp "$WORKDIR/.out.XXXXXX")"; _watch_pid=''
-    trap '{ rm -f "$_lk" || rmdir "$_lk"; } 2>/dev/null; rm -f "$_ao"; [ -z "$_watch_pid" ] || kill "$_watch_pid" 2>/dev/null || :' EXIT INT TERM HUP
+    trap 'rmdir "$_lk" 2>/dev/null; rm -f "$_ao"; [ -z "$_watch_pid" ] || kill "$_watch_pid" 2>/dev/null || :' EXIT INT TERM HUP
     [ -z "$_tid" ] || printf '%s\n' "$_wid" > "$WORKDIR/.window"
     # harbor#1569: while the extension connects, whenever Chrome comes to the front, focus goes straight back (measured
     # 1.3-1.8 s in front otherwise). One AppleScript polls until the connect returns (at most ~15 s); the check after stays.
