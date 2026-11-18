@@ -112,7 +112,6 @@ bin/doc-cite-verify.sh	command	floor	fetch every external URL Harbor's docs cite
 bin/doc-cited-paths.awk	helper	floor	THE ONE EXTRACTOR for paths cited in prose. awk -f doc-cited-paths.awk <file> one cited path per line, in file order	harbor#462
 bin/doc-drive-push.sh	command	floor	copy a filed deliverable into Google Drive and print the link a person can actually open.	harbor#422
 bin/doc-fresh-verify.sh	command	floor	is every generated file current? One verdict line per file, and the exact fix for a stale one.	harbor#1287
-bin/doc-lithuanian-rewrite.sh	command	floor	rewrites Lithuanian text in plain publicist Lithuanian with Haiku or Sonnet, kept only when every protected token survives	harbor#1572
 bin/doc-freshness.sh	command	floor	per-document staleness over Harbor's governing files. harbor#5 (workstream C1a), method taken from upstream `Interview` @ a4e8e74.	harbor#5
 bin/doc-graph-generate.sh	command	floor	the reference graph: every path and id, and what points at it.	harbor#996
 bin/doc-index-generate.sh	command	floor	generate docs/index.html, the architecture document (harbor#173). G1: deliberately one file. A generator split across modules is	harbor#173

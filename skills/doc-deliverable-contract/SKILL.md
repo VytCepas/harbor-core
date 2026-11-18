@@ -171,7 +171,7 @@ falls out. Surplus evidence goes in the map, where nobody is forced to read it.
 | the durable map where the surplus evidence goes | `topology` |
 | the ticket's own title, body and tag standard | the tracker skill |
 | sending the thing once it is written | `mail-cal` |
-| a **multi-finding status message** (mail, DM, comment) a colleague forwards onward — section set, `P:`/`S:` items, ~500 prose words, Lithuanian register | `mail-cal` → Message shape (Draft shape on an older install) **wins over the tiers above** |
+| a **multi-finding status mail** a colleague forwards onward — section set, `P:`/`S:` items, ~500 prose words, Lithuanian register | `mail-cal` → Draft shape **wins over the tiers above** |
 
 ## Output
 
