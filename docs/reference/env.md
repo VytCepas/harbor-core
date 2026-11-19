@@ -297,6 +297,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_STATUS_SUITE_COUNTS` | value | none | Suite counts a real run already printed, such as floor-test=1095, so status-generate --check does not re-run the suites | status |  | tests only |
 | `HARBOR_STATUS_WINDOW` | tuning | `3000000` | number of trailing bytes of the transcript the session-state hook scans for recent events (default 3000000) | status |  | tests only |
 | `HARBOR_STATUS_WORKFLOW` | path | `$ROOT/.github/workflows/governance.yml` | Workflow file status-generate reads for shard information, default .github/workflows/governance.yml | status |  | tests only |
+| `HARBOR_STATUS_NETWORK_LIMIT` | tuning | `200` | KB/s a process may pull on a metered network before status-network.sh reports it (default 200) | status |  | tests only |
 | `HARBOR_TEST_CHANGED` | value | none | Newline-separated list of changed file paths that test-suite-select uses instead of the git diff; pre-push sets it | test |  | tests only |
 | `HARBOR_TEST_CPU_MAX` | path | `/sys/fs/cgroup/cpu.max` | Path of the cgroup cpu.max file test-suite-run reads to size its job pool (default /sys/fs/cgroup/cpu.max) | test |  | tests only |
 | `HARBOR_TEST_CURL` | test-only | `curl` | curl command used in place of curl by ci-verified and access-browser-hosts-add; tests swap in a fake (default curl) | test |  | tests only |
