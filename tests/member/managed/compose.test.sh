@@ -84,7 +84,7 @@ t_eq "only the tools sync at Stop takes one besides it (20 seconds); every other
 t_eq "the Stop hook for member.tools-sync runs member-tools.sh push, bounded" 1 "$(jq '[.hooks.Stop[0].hooks[] | select((.command | test("member-tools.sh\u0027 push$")) and .timeout == 20)] | length' "$J")"
 
 t_section "the network: one setting, both ways (W6)"
-net() { env HARBOR_DEPLOY_CONFINEMENT_OS=Linux MEMBER_MANAGED_LIB=1 sh -c '. "$0"; [ "$1" = default ] || MEMBER_NETWORK="$1"; member_compose WSL /r fixture-org/fixture-hub alice "" "[]"' "$M" "$1" 2>/dev/null; }
+net() { env HARBOR_DEPLOY_CONFINEMENT_OS=Linux MEMBER_MANAGED_LIB=1 sh -c '. "$0"; [ "$1" = default ] || MEMBER_NETWORK="$1"; member_compose Linux /r fixture-org/fixture-hub alice "" "[]"' "$M" "$1" 2>/dev/null; }   # WSL is open by #1581, its own section
 net default > "$T_TMP/net.default"; net open > "$T_TMP/net.open"; net allowlist > "$T_TMP/net.allowlist"
 t_eq "allowlist is the default (2026-11-07, reversing open)" "$(jq -S . "$T_TMP/net.allowlist")" "$(jq -S . "$T_TMP/net.default")"
 t_eq "allowlist: no WebFetch allow rule" null "$(jq -c .permissions.allow "$T_TMP/net.allowlist")"
@@ -108,7 +108,7 @@ t_section "Edit rows, never Write rows, and no very-high row (M10, F8)"
 t_eq "no Write row" 0 "$(jq '[.permissions.deny[] | select(startswith("Write"))] | length' "$J")"
 t_eq "every deny row is an Edit row but the one Read row for /proc, so nothing an admin approves sits here" "Read(//proc/**)" "$(jq -r '[.permissions.deny[] | select(startswith("Edit(") | not)] | join(",")' "$J")"
 t_eq "no ask row is composed" 0 "$(jq '[.permissions.ask[]?] | length' "$J")"
-t_eq "and no allow row: the network is an allowlist" null "$(jq -c .permissions.allow "$J")"
+t_eq "and no allow row off WSL: the network is an allowlist there" null "$(HARBOR_MEMBER_OS=Linux compose | jq -c .permissions.allow)"
 protected='~/.claude/settings.json ~/.claude/settings.local.json ~/.claude.json ~/.bashrc ~/.zshenv ~/.profile ~/.gitconfig'
 for p in $protected; do
   t_has "Edit denies $p" "$(q '.permissions.deny[]')" "Edit($p)"
@@ -144,8 +144,22 @@ miss="$(MEMBER_MANAGED_LIB=1 sh -c '. "$0"; member_protected "$1" "$2" | member_
   | while IFS= read -r p; do jq -e --arg p "$p" '.sandbox.filesystem.denyWrite | index($p)' "$J" >/dev/null || printf '%s\n' "$p"; done)"
 t_eq "every protected row is in denyWrite" '' "$miss"
 
+t_section "WSL is the sandbox (harbor#1581)"
+W1581="$(HARBOR_MEMBER_OS=WSL compose)"; L1581="$(HARBOR_MEMBER_OS=Linux compose)"
+t_eq "WSL: the network is open, through the one rule" '["WebFetch(domain:*)"]' "$(printf '%s' "$W1581" | jq -c .permissions.allow)"
+t_eq "WSL: a command may leave the sandbox, on the person's Yes" true "$(printf '%s' "$W1581" | jq .sandbox.allowUnsandboxedCommands)"
+t_eq "WSL: the whole home is writable" 1 "$(printf '%s' "$W1581" | jq '[.sandbox.filesystem.allowWrite[] | select(. == "~")] | length')"
+t_eq "Linux: the home is not" 0 "$(printf '%s' "$L1581" | jq '[.sandbox.filesystem.allowWrite[] | select(. == "~")] | length')"
+_hd="$(sed -n "s/^MEMBER_WSL_HOME_DENY='\(.*\)'$/\1/p" "$M")"
+t_has "the deny list is read from the script" "$_hd" '~/.local/bin'
+set -f; _miss=''
+for _r in $_hd; do printf '%s' "$W1581" | jq -e --arg r "$_r" '.sandbox.filesystem.denyWrite | index($r)' >/dev/null || _miss="$_miss $_r"; done; set +f
+t_eq "WSL: what runs outside the sandbox unasked stays unwritable (PATH, rc files, git config and hooks, Claude's install)" '' "$_miss"
+t_eq "WSL: the sandbox itself stays on" true "$(printf '%s' "$W1581" | jq .sandbox.enabled)"
+t_eq "WSL: hooks still run from the floor" true "$(printf '%s' "$W1581" | jq .allowManagedHooksOnly)"
+
 t_section "the strict sandbox, composed by deploy-confinement.sh"
-t_eq "the retry is closed" false "$(q .sandbox.allowUnsandboxedCommands)"
+t_eq "the retry is closed off WSL" false "$(HARBOR_MEMBER_OS=Linux compose | jq .sandbox.allowUnsandboxedCommands)"
 t_eq "it can't start unconfined" true "$(q .sandbox.failIfUnavailable)"
 t_has "credential rows are on" "$(q '.sandbox.credentials.files[].path')" '~/.ssh'
 t_has "the secret store's blobs are hidden too" "$(q '.sandbox.credentials.files[].path')" '~/.local/share/secret'
@@ -156,7 +170,7 @@ mkdir -p "$HOME/port/harbor-private"
 printf 'confinement_strict = "false"\nconfinement_credentials = "false"\n' > "$HOME/port/harbor-private/harbor.toml"
 printf 'write /evil\n' > "$HOME/port/harbor-private/confinement-paths.txt"
 got="$(compose)"
-t_eq "harbor.toml can't reopen the retry (R11)" false "$(printf '%s' "$got" | jq .sandbox.allowUnsandboxedCommands)"
+t_eq "harbor.toml can't reopen the retry (R11)" false "$(HARBOR_MEMBER_OS=Linux compose | jq .sandbox.allowUnsandboxedCommands)"
 t_hasnt "the private layer adds no row on a member (R11)" "$(printf '%s' "$got" | jq -r '.sandbox.filesystem.allowWrite[]')" /evil
 rm -rf "$HOME/port/harbor-private"
 
