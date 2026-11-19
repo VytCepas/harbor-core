@@ -148,7 +148,7 @@ t_eq "559 …but the session record is still written" 1 "$(find "$WL/plog/WORK" 
 t_eq "559 …and the holder's lock is left alone" yes "$([ -d "$_lk" ] && echo yes || echo no)"
 rmdir "$_lk"; _wps WL-lock-b >/dev/null
 t_eq "559 lock free: the waiting record and its own are committed" "$((_c0 + 1))" "$(_nc)"
-t_eq "559 …and the lock is released" no "$([ -d "$_lk" ] && echo yes || echo no)"
+t_eq "559 …and the lock is released" no "$([ -e "$_lk" ] && echo yes || echo no)"
 mkdir "$_lk"; touch -t 202001010000 "$_lk"; _wps WL-lock-c >/dev/null
 t_eq "559 a lock older than 10 minutes is reclaimed" "$((_c0 + 2))" "$(_nc)"
 

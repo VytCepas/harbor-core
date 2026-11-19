@@ -108,7 +108,10 @@ t_eq "and its window" 9 "$(cat "${OWN%/*}/.window")"
 t_eq "with the operator in another app, no Chrome window is raised after" 0 "$(osa raise)"
 _r0="$(osa 'raise 7')"; STUB_PREV_APP=com.google.Chrome; export STUB_PREV_APP; ag attach >/dev/null; unset STUB_PREV_APP
 t_eq "with the operator in Chrome, the window they were in goes back on top" "$((_r0 + 1))" "$(osa 'raise 7')"
-t_eq "attaches take turns: the lock is released" no "$([ -d "$T_TMP/harbor-browser/.attach-lock" ] && echo yes || echo no)"
+# harbor#1569: attended (no token), the operator goes to Chrome to click Connect, so no focus is handed anywhere
+_f0="$(osa focus)"; ag attach >/dev/null
+t_eq "an attended attach activates no app: the operator is in Chrome to click" "$_f0" "$(osa focus)"
+t_eq "attaches take turns: the lock is released" no "$([ -e "$T_TMP/harbor-browser/.attach-lock" ] && echo yes || echo no)"
 t_eq "detach passes" "exit 0" "$(ag detach)"
 t_eq "and closes exactly the tabs this session opened" 1 "$(osa 'close 501')"
 t_has "saying no other tab was touched" "$(out)" "no other tab touched"

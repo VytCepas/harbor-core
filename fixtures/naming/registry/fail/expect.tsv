@@ -39,3 +39,4 @@ fixtures/naming/registry/fail/control-unregistered-hook	name.control-unregistere
 fixtures/naming/registry/fail/control-stable-unproven	name.control-shape
 fixtures/naming/registry/fail/env-unregistered	standard.env-registered
 fixtures/naming/registry/fail/bin-unregistered	standard.script-registered
+fixtures/naming/registry/fail/rename-window-closing	name.rename-closing

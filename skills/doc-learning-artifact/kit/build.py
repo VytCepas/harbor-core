@@ -72,3 +72,8 @@ page = (f'{shell}{head}\n{body}\n{drawer}\n'
 out.write_text(page)
 print(f"clickable parts: {len(used)} | cards never used: {sorted(set(cards) - used)} | "
       f"clickable figures: {body.count('fig clickable')} of {body.count('<figure')} | quiz: {len(quiz)}")
+# writers list the right option first (measured: 74 of 89); a learner who notices scores without reading
+picks = [q for q in quiz if q["type"] in ("single", "multi")]
+first = sum(1 for q in picks if q["opts"] and q["opts"][0][1])
+if len(picks) >= 4 and first * 2 > len(picks):
+    print(f"WARNING: the first option is correct in {first} of {len(picks)} choice questions; reorder opts before shipping")

@@ -56,7 +56,7 @@ Paths are relative to the config dir (`<cfg>`) unless they say otherwise.
 | `.helm-sweep` | `<cfg>/.helm-sweep` | cache | status-fleet-glyph.sh (statusline) and housekeeping-clean.sh `--if-due` | housekeeping-clean.sh `--record` | A count on the statusline, rewritten at each record. |
 | `.helm-sweep-keep` | `<cfg>/.helm-sweep-keep` | cache | housekeeping-clean.sh | the housekeeping skill, from a session, on the operator's "keep" (skills/housekeeping/SKILL.md:38) | A session writes it by design. |
 | `.helm-sweep.jsonl` | `<cfg>/.helm-sweep.jsonl` | cache | the housekeeping skill | housekeeping-clean.sh `--record` | Rows for a person, rebuilt at each record. |
-| `.helm-sweep.lock` | `<cfg>/.helm-sweep.lock/` | cache | housekeeping-clean.sh `--record` | housekeeping-clean.sh `--record` | A lock. One older than 30 minutes is broken. |
+| `.helm-sweep.lock` | `<cfg>/.helm-sweep.lock` | cache | housekeeping-clean.sh `--record` | housekeeping-clean.sh `--record` | A lock. One older than 30 minutes is broken. |
 | `.helm-watch` | `<cfg>/.helm-watch` | cache | status-fleet-glyph.sh and status-dashboard-generate.sh (statusline) | status-fleet-snapshot-refresh.sh | A count on the statusline, rewritten at every refresh. |
 | `.helm-backfill` | `<repo>/.agents/config.yaml.helm-backfill.<pid>` | scratch | scope-marker-backfill.sh | scope-marker-backfill.sh | A temp sibling, renamed over a repo's config. |
 | `.helm-cm1` | `$TMPDIR/.helm-cm1.<pid>` | scratch | lint-conventions.sh CM1 | lint-conventions.sh | A lint temp file. |
