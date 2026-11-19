@@ -291,9 +291,11 @@ GROUND="$GROUND${GROUND:+ }${REPO:-${DIR##*/}}"
 [ -n "$WTMARK" ] && GROUND="$GROUND ${DIM}${WTMARK}${RST}"
 
 # -uall, not -uno: untracked files are how a stray scratch file reaches a commit.
+# --no-optional-locks: a plain status holds .git/index.lock while it refreshes the index, and the harness cancels a render mid-flight (above), which
+# strands a 0-byte lock that blocks every git write in that repo (tests/status/statusline/fleet.test.sh).
 if [ -n "$br" ]; then
   GROUND="$GROUND $br"
-  n="$(git -C "$DIR" status --porcelain -uall 2>/dev/null | wc -l | tr -d ' ')"
+  n="$(git --no-optional-locks -C "$DIR" status --porcelain -uall 2>/dev/null | wc -l | tr -d ' ')"
   # 0 renders nothing: absence is the clean signal.
   [ "${n:-0}" -gt 0 ] && GROUND="$GROUND ${DIM}~$n${RST}"
 fi

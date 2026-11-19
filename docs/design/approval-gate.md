@@ -37,6 +37,10 @@ The classifier ignores case, so `Bin/admission-bash.sh` is protected. On a case-
 
 ## What actually holds, and what does not
 
+- **The click is human only outside auto mode** (harbor#1545, operator 2026-11-17). In auto mode an ask goes to the
+  classifier, not the operator, so `admission-ask.sh` denies the `gate-approve.sh` ask rule there. For a protected merge
+  or deploy, switch to default mode for that one call; `!` cannot stand in, since the tool requires the Bash tool's launch.
+
 These are text rules and guards, and they stop mistakes and casual paths. They cannot stop a session that is
 *trying* to get around them: it runs as the operator, with the operator's GitHub token, and a script it writes and
 runs is invisible to every guard. The adversarial review of 7c23e59 (DO NOT MERGE) showed both.

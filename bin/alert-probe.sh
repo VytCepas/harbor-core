@@ -250,6 +250,10 @@ check_worklog() {
 # dispatch row as finding check/event.dispatch.
 DISPATCH_STATE="$CACHE_DIR/event-dispatch-state.json"
 DISPATCH_REFUSED="$CACHE_DIR/event-dispatch-refused.tsv"
+# Written by the follower when an event waited over HARBOR_EVENT_DISPATCH_LAG_WARN for its rules, removed when one is on
+# time again (2026-11-16: 95 min behind and silent). Read only while fresh: a follower that stopped writing it is the
+# receipt check's business, not this one's.
+DISPATCH_LAG="$CACHE_DIR/event-dispatch-lag.tsv"
 DISPATCH_PLIST="${HOME:-/nonexistent}/Library/LaunchAgents/com.harbor.event.dispatch.plist"
 check_dispatch() {
   if [ ! -f "$DISPATCH_STATE" ]; then
@@ -263,6 +267,14 @@ check_dispatch() {
     return 0
   fi
   _st="$(jq -r '.status // empty' "$DISPATCH_STATE" 2>/dev/null || true)"
+  # A down receipt outranks the lag file: a dispatcher that is down left its last lag file behind, and its crit must not read as a warn.
+  if [ "$_st" != down ] && [ -s "$DISPATCH_LAG" ] && [ -n "$(find "$DISPATCH_LAG" -mmin -15 2>/dev/null)" ]; then
+    _lg="$(awk -F'\t' 'NR == 1 { printf "%d min behind its events (event %s); the slowest rule in the last hour is %s, %s s a run", $1 / 60, $2, $3, $4; exit }' "$DISPATCH_LAG" 2>/dev/null || true)"
+    if [ -n "$_lg" ]; then
+      emit dispatch warn "dispatch is $_lg — every rule waits behind it; harbor event on --off <that rule> lifts it while it is fixed"
+      return 0
+    fi
+  fi
   _pid="$(jq -r '.pid // empty' "$DISPATCH_STATE" 2>/dev/null || true)"
   _why="$(jq -r '.reason // empty' "$DISPATCH_STATE" 2>/dev/null || true)"
   case "$_pid" in ''|*[!0-9]*) _pid="" ;; esac

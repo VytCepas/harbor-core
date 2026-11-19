@@ -621,18 +621,21 @@ write_out() {
 
 # One tick at a time: an event, the sampler and `run` may all ask at once. A tick that cannot get the lock
 # in 5s is skipped; the one holding it sees the same state.
+# A lock is a file holding its pid, made with O_EXCL (set -C), never mkdir: uutils mkdir exits 0 on a lost race
+# (harbor#1378). lock_holder reads only a regular file, capped, and an older version's lock directory, so an upgrade
+# never strands one.
+lock_holder() { { [ -f "$1" ] && [ ! -L "$1" ] && head -c 32 "$1"; } 2>/dev/null || cat "$1/pid" 2>/dev/null || true; }
 tick_lock() {
   _tw=0
-  while ! mkdir "$STATE_DIR/tick.lock" 2>/dev/null; do
-    _tl="$(cat "$STATE_DIR/tick.lock/pid" 2>/dev/null || true)"
+  while ! ( set -C; echo $$ > "$STATE_DIR/tick.lock" ) 2>/dev/null; do
+    _tl="$(lock_holder "$STATE_DIR/tick.lock")"
     # Re-read before taking over: a lock released and re-taken since the first read is a live one (as event-bus.sh).
-    if [ -n "$_tl" ] && ! kill -0 "$_tl" 2>/dev/null && [ "$(cat "$STATE_DIR/tick.lock/pid" 2>/dev/null || true)" = "$_tl" ]; then
+    if [ -n "$_tl" ] && ! kill -0 "$_tl" 2>/dev/null && [ "$(lock_holder "$STATE_DIR/tick.lock")" = "$_tl" ]; then
       rm -rf "$STATE_DIR/tick.lock"; continue
     fi
     _tw=$(( _tw + 1 )); [ "$_tw" -lt 25 ] || return 1
     sleep 0.2
   done
-  echo $$ > "$STATE_DIR/tick.lock/pid"
 }
 tick_unlock() { rm -rf "$STATE_DIR/tick.lock"; }
 
@@ -715,9 +718,9 @@ reclaim() {
   done
 }
 lock() {
-  if mkdir "$STATE_DIR/slots.lock" 2>/dev/null; then echo $$ > "$STATE_DIR/slots.lock/pid"; return 0; fi
-  _lp="$(cat "$STATE_DIR/slots.lock/pid" 2>/dev/null || true)"
-  if [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null && [ "$(cat "$STATE_DIR/slots.lock/pid" 2>/dev/null || true)" = "$_lp" ]; then
+  if ( set -C; echo $$ > "$STATE_DIR/slots.lock" ) 2>/dev/null; then return 0; fi
+  _lp="$(lock_holder "$STATE_DIR/slots.lock")"
+  if [ -n "$_lp" ] && ! kill -0 "$_lp" 2>/dev/null && [ "$(lock_holder "$STATE_DIR/slots.lock")" = "$_lp" ]; then
     rm -rf "$STATE_DIR/slots.lock"
   fi
   return 1

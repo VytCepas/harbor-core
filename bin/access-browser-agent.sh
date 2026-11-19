@@ -641,11 +641,11 @@ case "$VERB" in
     # (2026-10-14). Attaches take turns, or two lanes race for the focused window. The
     # operator's app gets focus straight back.
     mkdir -p "$WORKDIR"; _lk="${WORKDIR%/*}/.attach-lock"; _i=0
-    until mkdir "$_lk" 2>/dev/null; do
+    until ( set -C; : > "$_lk" ) 2>/dev/null; do  # a file with O_EXCL, never mkdir (harbor#1378)
       _i=$((_i + 1)); [ "$_i" -le 60 ] || { log_warn "attach: $_lk held for 60 s; taking it"; break; }
       sleep 1
     done
-    trap 'rmdir "$_lk" 2>/dev/null' EXIT INT TERM HUP
+    trap '{ rm -f "$_lk" || rmdir "$_lk"; } 2>/dev/null' EXIT INT TERM HUP
     _before=" $(_tab_ids 2>/dev/null | tr '\n' ' ') "
     _nw="$(_osa <<'OSA' 2>/dev/null
 on run argv
@@ -668,10 +668,30 @@ OSA
     case "$_tid" in
       ''|*[!0-9]*) _tid=''; log_warn 'attach: no window of its own (AppleScript refused); the extension opens its tab in the focused window, and another session there can hide it' ;;
     esac
-    _ao="$(mktemp "$WORKDIR/.out.XXXXXX")"
-    trap 'rmdir "$_lk" 2>/dev/null; rm -f "$_ao"' EXIT INT TERM HUP
+    _ao="$(mktemp "$WORKDIR/.out.XXXXXX")"; _watch_pid=''
+    trap '{ rm -f "$_lk" || rmdir "$_lk"; } 2>/dev/null; rm -f "$_ao"; [ -z "$_watch_pid" ] || kill "$_watch_pid" 2>/dev/null || :' EXIT INT TERM HUP
     [ -z "$_tid" ] || printf '%s\n' "$_wid" > "$WORKDIR/.window"
+    # harbor#1569: while the extension connects, whenever Chrome comes to the front, focus goes straight back (measured
+    # 1.3-1.8 s in front otherwise). One AppleScript polls until the connect returns (at most ~15 s); the check after stays.
+    # Only on the token path: attended, the operator is in Chrome on purpose, to click Allow and Connect.
+    _prev_app="$(printf '%s' "$_nw" | cut -f3)"
+    [ "${_CLI_TOKEN:-}" = 1 ] || _prev_app=''
+    case "$_prev_app" in ''|com.google.Chrome|*[!A-Za-z0-9.-]*) _prev_app='' ;; *)
+      # exec, so $! is osascript itself: a killed _osa subshell left its osascript polling (review of harbor#1569)
+      ( exec "${HARBOR_ACCESS_BROWSER_OSASCRIPT:-/usr/bin/osascript}" - "$_prev_app" ) >/dev/null 2>&1 <<'OSA' &
+-- harbor-focus-watch
+on run argv
+  repeat 150 times
+    tell application "System Events" to set fb to bundle identifier of first process whose frontmost is true
+    if fb is "com.google.Chrome" then tell application id (item 1 of argv) to activate
+    delay 0.05
+  end repeat
+end run
+OSA
+      _watch_pid=$! ;;
+    esac
     _rc=0; _cli_run "-s=$S" attach --extension=chrome "--idle-timeout=$IDLE_MS" > "$_ao" 2>&1 || _rc=$?
+    [ -z "$_watch_pid" ] || { kill "$_watch_pid" 2>/dev/null; wait "$_watch_pid" 2>/dev/null; _watch_pid=''; } || :
     _scrub < "$_ao"
     if [ -n "$_tid" ]; then
       # Ours: the tabs that appeared in our window, or the extension's connect page wherever it
@@ -691,6 +711,17 @@ OSA
       _osa "$_pw" >/dev/null 2>&1 <<'OSA' || :
 on run argv
   tell application "Google Chrome" to set index of (window id ((item 1 of argv) as integer)) to 1
+end run
+OSA
+    fi
+    # The operator was in another app: the extension's connect step brings Chrome to the front and leaves it there
+    # (harbor#1569, measured: 27 s until restored by hand), so focus goes back. Only if Chrome is still in front.
+    if [ -n "$_prev_app" ]; then
+      _osa "$_prev_app" >/dev/null 2>&1 <<'OSA' || log_warn "attach: could not hand focus back to $_prev_app (AppleScript refused); Chrome may still be in front"
+-- harbor-focus-back
+on run argv
+  tell application "System Events" to set fb to bundle identifier of first process whose frontmost is true
+  if fb is "com.google.Chrome" then tell application id (item 1 of argv) to activate
 end run
 OSA
     fi
