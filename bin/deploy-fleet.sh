@@ -97,14 +97,16 @@ REPORT="$REPORT_DIR/REPORT.md"
 # ── the run: one lock, one log dir (every command's output lands beside the log), one list per report section ──
 mkdir -p "$STATE" "$WORK"
 LOCK="$WORK/lock.d"
-if ! mkdir "$LOCK" 2>/dev/null; then
-  _op="$(cat "$LOCK/pid" 2>/dev/null || :)"
+# The lock is a file holding the pid, made with O_EXCL (set -C), never mkdir: uutils mkdir exits 0 on a lost race
+# (harbor#1378). An older version's lock directory is still read and taken over.
+if ! ( set -C; echo $$ > "$LOCK" ) 2>/dev/null; then
+  _op="$({ [ -f "$LOCK" ] && [ ! -L "$LOCK" ] && head -c 32 "$LOCK"; } 2>/dev/null || cat "$LOCK/pid" 2>/dev/null || :)"
   if [ -n "$_op" ] && kill -0 "$_op" 2>/dev/null; then
     log_fail "another ship run holds $LOCK (pid $_op)"; log_fix "wait for it, or check: ps -p $_op"; log_end || :; exit 1
   fi
-  rm -rf "$LOCK"; mkdir "$LOCK"
+  rm -rf "$LOCK" 2>/dev/null || :   # set -e: a failed clear reaches the refusal below
+  ( set -C; echo $$ > "$LOCK" ) 2>/dev/null || { log_fail "another ship run took $LOCK first"; log_fix "wait for it"; log_end || :; exit 1; }
 fi
-echo $$ > "$LOCK/pid"
 trap 'rm -rf "$LOCK"' EXIT
 log_file "$WORK"; RUN="${LOG_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/ship.XXXXXX")}"
 for _s in merged deployed rolledback red deferred queued problems notes; do : > "$RUN/$_s.md"; done

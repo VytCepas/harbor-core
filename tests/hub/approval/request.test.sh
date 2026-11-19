@@ -62,6 +62,14 @@ sh "$A" file "$ID" prod-bucket very-high cloud "$LABEL" & p2=$!
 wait "$p1"; wait "$p2"
 t_eq "two hooks racing still open one" 1 "$(posts)"
 t_eq "and no lock is left" 0 "$(find "$BE_HS/requests" -name '*.lock' | wc -l | tr -d ' ')"
+# uutils mkdir 0.10 (Ubuntu 26.04) exits 0 when it loses a creation race; this one always loses (harbor#1378).
+UU="$T_TMP/uu"; mkdir -p "$UU"; MKD="$(command -v mkdir)"
+printf '#!/bin/sh\ncase "$1" in -*) exec %s "$@" ;; esac\n%s -p -- "$@" && sleep 1\n' "$MKD" "$MKD" > "$UU/mkdir"; chmod +x "$UU/mkdir"
+be_reset
+( PATH="$UU:$PATH"; sh "$A" file "$ID" prod-bucket very-high cloud "$LABEL" ) & p1=$!
+( PATH="$UU:$PATH"; sh "$A" file "$ID" prod-bucket very-high cloud "$LABEL" ) & p2=$!
+wait "$p1"; wait "$p2"
+t_eq "where mkdir cannot lock, two racing hooks still open one (harbor#1378)" 1 "$(posts)"
 mkdir -p "$BE_HS/requests/r-1111111111111111.lock"
 touch -t 202001010000 "$BE_HS/requests/r-1111111111111111.lock"
 t_eq "a crashed filer's old lock doesn't block" 0 "$(be_rc sh "$A" file r-1111111111111111 prod-bucket very-high cloud "$LABEL")"
