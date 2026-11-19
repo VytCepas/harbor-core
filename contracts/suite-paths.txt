@@ -117,7 +117,6 @@ tests/context/peers/peers.test.sh bin/admission-decide.sh bin/admission-normaliz
 tests/status/statusline/statusline.test.sh bin/status-fleet-glyph.sh tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh
 tests/status/statusline/fleet.test.sh bin/* tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh
 tests/status/statusline/machine.test.sh bin/status-fleet-glyph.sh tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh
-tests/status/network/network.test.sh bin/status-network.sh bin/event-bus.sh bin/library-log.sh tests/status/network/* tests/lib/core.sh
 tests/status/statusline/row2.test.sh bin/access.sh bin/ci-github-plan.sh bin/ci-governor-hook.sh bin/ci-governor.sh bin/ci-runner-switch.sh bin/ci-runners-fleet-lib.sh bin/ci-runners-github-lib.sh bin/ci-runners-provision-lib.sh bin/ci-runners-watch-lib.sh bin/ci-runners.sh bin/event-bus.sh bin/library-hub.sh bin/library-log.sh bin/scope-roots.sh bin/secret bin/status-fleet-glyph.sh tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh
 tests/status/statusline/subagent.test.sh bin/status-fleet-glyph.sh bin/status-subagent-glyph.sh tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh
 tests/worktree/worktree/worktree.test.sh bin/* tests/worktree/worktree/worktree.test.sh tests/lib/core.sh

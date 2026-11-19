@@ -36,17 +36,17 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | fixture | fixtures/ | element | source | living | 451 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 84 |
-| test | tests/ | component | source | living | 683 |
+| test | tests/ | component | source | living | 682 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 10 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 302 |
+| script | bin/ | component | source | living | 301 |
 | agent | agents/ | component | source | living | 1 |
 | how-to | docs/how-to/ | component | source | living | 7 |
-| reference | docs/reference/ | component | generated | generated | 94 |
+| reference | docs/reference/ | component | generated | generated | 93 |
 | explanation | docs/explanation/ | component | source | living | 106 |
-| (no kind) | - | - | - | - | 295 |
+| (no kind) | - | - | - | - | 294 |
 
 ## Folders
 
@@ -56,14 +56,14 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `agents/` | 1 | 1 | 1 |
-| `bin/` | 306 | 32 | 2 |
+| `bin/` | 305 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 74 | 6 | 1 |
 | `contracts/` | 131 | 15 | 2 |
-| `docs/` | 330 | 26 | 9 |
+| `docs/` | 329 | 26 | 9 |
 | `fixtures/` | 451 | 12 | 1 |
 | `hooks/` | 46 | 7 | 1 |
-| `launchd/` | 23 | 10 | 1 |
+| `launchd/` | 22 | 10 | 1 |
 | `mods/` | 7 | 1 | 2 |
 | `patches/` | 17 | 4 | 1 |
 | `policy/` | 3 | 1 | 1 |
@@ -74,7 +74,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 683 | 30 | 1 |
+| `tests/` | 682 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -89,7 +89,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
 | audit | control-plane | 9 | 15 | 0 | 27 | 0 | 2 |
 | bq | observability | 3 | 6 | 0 | 2 | 0 | 0 |
-| check | observability | 2 | 5 | 0 | 1 | 62 | 0 |
+| check | observability | 2 | 5 | 0 | 1 | 61 | 0 |
 | ci | coordination | 17 | 46 | 2 | 22 | 1 | 7 |
 | context | control-plane | 6 | 17 | 1 | 4 | 1 | 54 |
 | deploy | control-plane | 16 | 31 | 1 | 4 | 0 | 7 |
@@ -111,7 +111,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | session | data-plane | 14 | 5 | 0 | 8 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 16 |
 | standard | policy-function | 18 | 29 | 127 | 16 | 14 | 64 |
-| status | observability | 14 | 31 | 0 | 13 | 0 | 0 |
+| status | observability | 13 | 30 | 0 | 11 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
 
@@ -819,7 +819,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/status-fleet-snapshot-refresh.sh`
 - `bin/status-fleet-watch.sh`
 - `bin/status-generate.sh`
-- `bin/status-network.sh`
 - `bin/status-obligations.sh`
 - `bin/status-plan-generate.sh`
 - `bin/status-subagent-glyph.sh`
@@ -829,12 +828,10 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/status-usage-aggregate.sh`
 - `docs/reference/check-rows/status-fleet-snapshot.txt`
 - `docs/reference/check-rows/status-fleet-watch.txt`
-- `docs/reference/check-rows/status-network.txt`
 - `docs/reference/check-rows/status-obligations.txt`
 - `docs/reference/check-rows/status-usage-sessions.txt`
 - `docs/reference/check-rows/status-usage.txt`
 - `launchd/com.harbor.status.fleet-snapshot.plist`
-- `launchd/com.harbor.status.network.plist`
 - `launchd/com.harbor.status.usage-sessions.plist`
 - `launchd/com.harbor.status.usage.plist`
 - `skills/status-suggest-scan/SKILL.md`

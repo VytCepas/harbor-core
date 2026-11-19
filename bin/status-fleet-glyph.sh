@@ -5,7 +5,7 @@
 #
 # Four rows, one question each: SESSION (stdin JSON only), PLACE (session, repo, branch, PR, live sessions),
 # YOU (what waits on the operator; absent when empty, so colour there means act), BOX (network, RC, CPU, GPU, RAM, disk, CI, fleet).
-# Emoji only for two-state facts and the nautical nouns (🏠🔒🔓 📱📵 📶 ⛵ ⚓); each is East-Asian-width W, so tiers count it as 2 columns.
+# Emoji only for two-state facts and the nautical nouns (🏠🔒🔓 📱📵 ⛵ ⚓); each is East-Asian-width W, so tiers count it as 2 columns.
 # Alarms are WORDS, never icons. Only yellow and red carry colour.
 # Deliberately absent, do not fix: a stored countdown (the harness cancels in-flight scripts, so store WHEN and compute time-left at print time),
 # burn rate, an absolute token count beside ctx, a `>200k` token (the suite asserts its absence), `blocks N`, a cached floor verdict (the hash runs live).
@@ -807,18 +807,6 @@ if [ "${HARBOR_STATUS_GLYPH_MACHINE:-1}" != 0 ]; then
       index($0, "\"sessionId\":\"" s "\"") { print ($0 ~ /"bridgeSessionId":"[^"]+"/) ? "on" : "off"; exit }' \
       - "$CFG"/sessions/*.json 2>/dev/null)" || true
     case "$_rc" in on) NET3="$NET3${NET3:+ }📱" ;; off) NET3="$NET3${NET3:+ }📵" ;; esac
-  fi
-  # 📶 metered network (operator request 2026-11-19): read from status-network.sh's mode file, never probed here; older
-  # than 300 s (its tick is 60 s) renders nothing. A process it reports pulling data on mobile is a YOU-row word.
-  _nd="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}/net"; _nm=""
-  [ ! -r "$_nd/mode" ] || read -r _ne _nm _nw < "$_nd/mode" 2>/dev/null || :
-  case "${_ne:-}" in ''|*[!0-9]*) _nm="" ;; *) [ $(( NOW_EPOCH - _ne )) -le 300 ] || _nm="" ;; esac
-  if [ "$_nm" = metered ]; then
-    NET3="$NET3${NET3:+ }📶"
-    if [ -s "$_nd/hogs" ]; then
-      _hg="$(awk -F'\t' 'NR == 1 { n = $1; k = $2 } END { if (n != "") printf "DATA %s %sKB/s%s", substr(n, 1, 15), k, (NR > 1 ? " +" (NR - 1) : "") }' "$_nd/hogs" 2>/dev/null)" || _hg=""
-      [ -z "$_hg" ] || alarm "$_hg"
-    fi
   fi
 fi
 
