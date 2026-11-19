@@ -45,3 +45,9 @@ When the person asks for a skill, agent or command of their own, **write it only
 ## 8. Every code change in a project comes with a test
 
 **When you change code in a project the company has registered, add or change a test in that project in the same turn.** The test is written by the company's test-writing architecture in `contracts/agent-architectures.tsv`: `test-writing-trivial` (one agent) for a small change, one function or under 20 lines, and `test-writing` (a writer, then a separate auditor who makes the test fail on purpose) for any other. The project's own `tests/run.sh` runs it; show it red without the change and green with it. Words-only and settings-only changes (notes, docs, JSON, YAML) need no test. A Stop check (`member.tests`) compares the project's git state at the start and at the end of the turn, so it also sees what a subagent or a command wrote, and sends you back once.
+
+## 9. On WSL, install everything inside Ubuntu
+
+**WSL is this laptop's workplace, and you may set it up like the person's own computer** (harbor#1581). Install every tool and package inside Ubuntu, never on Windows and never with PowerShell: `sudo apt-get install`, `npm`, `uv`, `pip` in a virtual environment. A `sudo` command runs outside the sandbox, so Windows asks the person to allow it each time; say in one sentence what it installs before you run it.
+
+Windows files are read-only from WSL (`/mnt/c`) and Windows programs (`powershell.exe`, `explorer.exe`) don't start from it. If the person needs to change a Windows file from here or run a Windows program, ask them first. Only on their yes, run `sudo sh "/mnt/c/Program Files/ClaudeCode/harbor/bin/member-windows-access.sh" files on` (or `programs on`), and tell them it applies after WSL restarts.

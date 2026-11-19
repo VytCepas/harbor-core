@@ -293,6 +293,14 @@ t_has "...reading it back byte for byte" "$(cat "$OUT")" 'byte for byte'
 t_has "...and deploys" "$(cat "$CALLS")" 'deploy --apply'
 t_exit "...the company law beside the Windows settings" 0 cmp -s "$T_ROOT/contracts/member-law.md" "${MFILE%/*}/CLAUDE.md"
 t_exit "...and inside the distro, where the docs say WSL reads it" 0 cmp -s "$T_ROOT/contracts/member-law.md" "${MFILE%/*}/etc/claude-code/CLAUDE.md"
+# harbor#1581: on WSL the member administers the distro, and the distro reaches Windows read-only with no Windows programs.
+t_has "...WSL: passwordless sudo for the member (harbor#1581)" "$(cat "${MFILE%/*}/etc/sudoers.d/harbor-member-admin" 2>/dev/null)" 'alice ALL=(ALL:ALL) NOPASSWD: ALL'
+t_has "...checked by visudo before it lands" "$(cat "$CALLS")" 'sudoers.admin'
+t_has "...WSL: C: read-only by a remount, so it stays mounted" "$(cat "${MFILE%/*}/etc/wsl.conf" 2>/dev/null)" 'command=mount -o remount,ro /mnt/c'
+t_has "...WSL: Windows programs off" "$(tr '\n' ' ' < "${MFILE%/*}/etc/wsl.conf" 2>/dev/null)" '[interop] enabled=false appendWindowsPath=false'
+ID_GROUPS='alice sudo'; export ID_GROUPS; go --windows-out "$PS"
+t_eq "...WSL: a member in sudo is not refused, and the run reaches the token" 4 "$RC"; unset ID_GROUPS
+t_hasnt "...nor named an admin to remove" "$(cat "$OUT")" 'is in the group sudo'
 printf x >> "$MROOT/bin/library-admission.sh"; go --windows-out "$PS"
 t_eq "a changed byte under the Windows folder is not landed" 3 "$RC"
 HARBOR_MEMBER_OS=Linux
