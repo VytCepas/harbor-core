@@ -26,13 +26,6 @@ MEMBER_DISABLE_LOCAL=false
 # W6: allowlist by decision on #1278 (2026-11-07, reversing open): the core and member host lists plus signed policy `hosts`, fixed at install.
 # open adds a managed WebFetch(domain:*), which lets sandboxed commands reach any host: reversed because deniedDomains matches names only (member-install.md).
 MEMBER_NETWORK=allowlist
-# harbor#1581 (operator, 2026-11-19): on WSL the distro is the sandbox. The network is open, the whole home is writable, and a command
-# outside the sandbox (sudo, a system write) runs after the person's Yes. Windows stays out of reach: C: read-only and no interop
-# (member-install.sh, /etc/wsl.conf), and the floor sits in C:\Program Files, which root in the distro can't write.
-MEMBER_WSL_OPEN=true
-# What stays unwritable in a WSL home: anything Claude Code or a login shell runs outside the sandbox with no prompt (PATH, rc files,
-# git config and hooks, which Claude Code's own git reads, and its install), so a sandboxed command can't plant its way out and on to sudo.
-MEMBER_WSL_HOME_DENY='~/.local/bin ~/bin ~/.local/share/claude ~/.claude.json ~/.profile ~/.bashrc ~/.bash_profile ~/.bash_login ~/.bash_logout ~/.zshrc ~/.zprofile ~/.zshenv ~/.gitconfig ~/.config/git ~/.config/systemd ~/.ssh ~/**/.git/hooks ~/**/.git/config'
 # N2 (harbor#1278): every hook starts from `env -i` and these names alone, each passed only when set. macOS /bin/sh is bash 3.2, which defines an exported
 # function from the environment before any line of ours runs. Data only: the floor reads the role from member.conf and the proxy and CA from the managed file.
 # No bus names: the hub token on Linux and WSL is bin/secret's file store under HOME, which needs no Secret Service (W7).
@@ -144,11 +137,6 @@ member_compose() {
   if [ -n "$5" ]; then _mc_block="$(sh "$HERE/deploy-confinement.sh" $_mc_args --user "$5")" || return 1
   else _mc_block="$(sh "$HERE/deploy-confinement.sh" $_mc_args)" || return 1; fi
   case "$MEMBER_NETWORK" in open) _mc_open=true ;; allowlist) _mc_open=false ;; *) log_fail "MEMBER_NETWORK is $MEMBER_NETWORK, not open or allowlist"; log_nofix "bin/member-managed.sh"; return 1 ;; esac
-  _mc_wsl=false; [ "$1" != WSL ] || [ "$MEMBER_WSL_OPEN" != true ] || { _mc_wsl=true; _mc_open=true; }
-  set -f   # the rows are patterns, never globbed here
-  # shellcheck disable=SC2086 # a space-separated word list by design
-  _mc_hdeny="$(printf '%s\n' $MEMBER_WSL_HOME_DENY | jq -R . | jq -s -c .)"
-  set +f
   _mc_port="$(printf '%s' "$_mc_block" | jq -r '.filesystem.allowWrite[0]')"   # the first write row is @PORT_ROOT@ (contracts/confinement-paths.txt)
   case "$_mc_port" in /*) ;; *) log_fail "the composed sandbox names no workspace: $_mc_port"; log_nofix "contracts/confinement-paths.txt"; return 1 ;; esac
   _mc_rows="$(member_protected "$2" "$_mc_port")"
@@ -166,7 +154,7 @@ member_compose() {
   jq -n --argjson block "$_mc_block" --argjson edit "$_mc_edit" --argjson deny "$_mc_deny" --argjson kill "$_mc_kill" --argjson mcp "$6" --argjson relays "$_mc_relays" \
      --argjson hosts "$_mc_hosts" --argjson rules "$_mc_rules" \
      --arg q "'" --arg root "$2" --arg hub "$3" --arg login "$4" --arg min "$MEMBER_MIN_VERSION" --argjson local "$MEMBER_DISABLE_LOCAL" --argjson claudeai "${CLAUDEAI_MCPS:-false}" \
-     --argjson open "$_mc_open" --arg port "$_mc_port" --arg keep "$MEMBER_HOOK_ENV" --argjson wsl "$_mc_wsl" --argjson hdeny "$_mc_hdeny" '
+     --argjson open "$_mc_open" --arg port "$_mc_port" --arg keep "$MEMBER_HOOK_ENV" '
     # Absolute: a settings env reaches every hook, and a bare `sh` resolved from its PATH could exit 0 for a hook that never ran (#1278).
     # From an empty environment: an inherited exported function would run before the floor does (N2).
     ("/usr/bin/env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin "
@@ -217,12 +205,7 @@ member_compose() {
        | .network.deniedDomains = (((.network.deniedDomains // []) + $relays) | unique)
        | .credentials.files = (.credentials.files + [{path: "~/.local/share/secret", mode: "deny"}])
        # The weaker nested sandbox swaps --unshare-pid and a fresh --proc for --bind /proc, which would show the environment of a connector server to a command.
-       | .enableWeakerNestedSandbox = false
-       # harbor#1581: on WSL the home is the work area, minus what would run outside the sandbox unasked, and a command may leave the sandbox on a Yes.
-       | if $wsl then .filesystem.allowWrite = ((.filesystem.allowWrite + ["~"]) | unique)
-                      | .filesystem.denyWrite = ((.filesystem.denyWrite + $hdeny) | unique)
-                      | .allowUnsandboxedCommands = true
-         else . end)}
+       | .enableWeakerNestedSandbox = false)}
     + (if $local then {disableDesktopLocalSessions: true} else {} end)
     # Beside managed-mcp.json (exclusive MCP control) the claude.ai connectors would stop loading, so a laptop with connectors keeps them (operator, 2026-11-12).
     + (if $claudeai then {allowAllClaudeAiMcps: true} else {} end)'
