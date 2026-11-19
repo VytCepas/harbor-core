@@ -8,8 +8,8 @@ compose() { HARBOR_MEMBER_OS="${OSX:-WSL}" sh "$M" --hub fixture-org/fixture-hub
 open_rows() { jq -r '[(.permissions.allow // [])[] | select(test("^WebFetch\\(domain:\\*\\)$"))] + [.sandbox.network.allowedDomains[] | select(. == "*" or test("^\\*\\.?[^.]*$"))] | .[]'; }
 PUB="$(awk -F'\t' '$1 == "public-relay" { print $2 }' "$T_ROOT/contracts/support-upterm.tsv")"
 
-t_section "1 - nothing composed in the default mode opens the network, off WSL (WSL is open by harbor#1581)"
-for OSX in Linux Darwin; do
+t_section "1 - nothing composed in the default mode opens the network"
+for OSX in WSL Linux Darwin; do
   for _args in '' '--deny-host relay.example.com' '--allow-host pkg.example.com --allow-host *.corp.example --deny-host relay.example.com'; do
     # shellcheck disable=SC2086 # the arguments are a word list by design; the *. row is quoted by set -f
     set -f; compose $_args > "$T_TMP/m.json"; _rc=$?; set +f
@@ -20,8 +20,6 @@ for OSX in Linux Darwin; do
   done
 done
 OSX=WSL
-t_eq "WSL: the default mode opens the network (harbor#1581)" 'WebFetch(domain:*)' "$(compose | open_rows)"
-OSX=Linux
 compose > "$T_TMP/m.json"
 t_eq "CONTROL: the open mode is caught by the same check" 'WebFetch(domain:*)' \
   "$(env HARBOR_DEPLOY_CONFINEMENT_OS=Linux MEMBER_MANAGED_LIB=1 sh -c '. "$0"; MEMBER_NETWORK=open; member_compose WSL /r o/n alice "" "[]"' "$M" 2>/dev/null | open_rows)"

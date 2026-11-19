@@ -41,8 +41,6 @@ root_group() { if [ "$OS" = Darwin ]; then printf wheel; else printf root; fi; }
 # managed root, and disk writes the raw block device it sits on.
 MEMBER_ROOT_GROUPS='sudo admin wheel root docker lxd incus incus-admin libvirt libvirtd microk8s disk'
 member_refuse_admin() {
-  # harbor#1581: on WSL the member is the distro's admin by decision. The floor sits in C:\Program Files, which root here can't write.
-  [ "$OS" != WSL ] || { log_note "WSL: $MEMBER may be an admin here (harbor#1581); the floor is on the Windows side"; return 0; }
   for _g in $(id -Gn "$MEMBER"); do
     case " $MEMBER_ROOT_GROUPS " in *" $_g "*) die "$MEMBER is in the group $_g: an admin can remove all of this, so this laptop can't be a member box" "remove $MEMBER from $_g, then run this again" ;; esac
   done
@@ -369,25 +367,6 @@ member_sudoers() {
   chown "root:$(root_group)" "$_f"
   log_ok "$MEMBER may run the prerequisites helper as root, and nothing else: $_f"
 }
-# harbor#1581: on WSL the member gets passwordless sudo, as admin of their own distro; a sudo command runs outside the sandbox on their Yes.
-member_wsl_admin() {
-  [ "$OS" = WSL ] || return 0
-  _f="$(member_etc)/sudoers.d/harbor-member-admin"
-  printf '# Written by member-install.sh (harbor#1581): the member administers their own WSL distro.\n%s ALL=(ALL:ALL) NOPASSWD: ALL\n' "$MEMBER" > "$WORK/sudoers.admin"
-  visudo -c -q -f "$WORK/sudoers.admin" >/dev/null 2>&1 || die 'visudo refused the admin rule, so it was not written' "visudo -c -f '$WORK/sudoers.admin'"
-  put_file "$WORK/sudoers.admin" "$_f" 0440
-  chown "root:$(root_group)" "$_f"
-  log_ok "$MEMBER administers this distro with sudo, no password: $_f"
-}
-# harbor#1581: what WSL reaches on Windows. Fills only what the person never chose: C: read-only, Windows programs off.
-windows_access() {
-  if [ -n "${HARBOR_SCOPE_MANAGED_SETTINGS:-}" ]; then HARBOR_MEMBER_WINDOWS_ACCESS_FILE="$(member_etc)/wsl.conf" sh "$HERE/member-windows-access.sh" "$@"
-  else sh "$HERE/member-windows-access.sh" "$@"; fi
-}
-member_wsl_windows() {
-  [ "$OS" = WSL ] || return 0
-  windows_access default || die 'the Windows access defaults were not written (above)' "sudo sh '$HERE/member-windows-access.sh' status"
-}
 # WSL: the docs place the managed CLAUDE.md at /etc/claude-code inside the distro and name no Windows inheritance for it, so the law
 # lands there as well as beside the Windows settings (land_windows stages it). land_unix never runs on WSL, so this is its own step.
 member_law_distro() {
@@ -530,10 +509,6 @@ member_uninstall() {
   _as_member rm -rf "$_state"
   rm -f "$(member_etc)/sudoers.d/harbor-member-prereqs" "$(member_etc)/profile.d/harbor-member.sh"
   if [ "$OS" = WSL ]; then
-    # harbor#1581: what this install granted and locked goes with it, and the person's recorded choices too, so a later install starts from the defaults.
-    rm -f "$(member_etc)/sudoers.d/harbor-member-admin"
-    { windows_access files on && windows_access programs on && rm -f "$(member_etc)/wsl.conf.harbor-choice"; } \
-      || log_warn "C: or Windows programs may still be locked: sudo sh '$HERE/member-windows-access.sh' status"
     _ps="${WINDOWS_OUT:-$PS1_DEFAULT}"
     sh "$HERE/member-windows.sh" --uninstall > "$_ps" || die 'member-windows.sh --uninstall failed (above)'
     log_note "root in this distro can't write C:\\Program Files. In PowerShell as administrator, run the script at $_ps"
@@ -617,8 +592,6 @@ STAGE="$WORK/stage"; mkdir -p "$STAGE"
 stage_tree
 if [ "$OS" = WSL ]; then land_windows; else land_unix; fi
 member_sudoers
-member_wsl_admin
-member_wsl_windows
 member_law_distro
 member_connectors_distro
 member_profile
