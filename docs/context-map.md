@@ -36,12 +36,12 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | fixture | fixtures/ | element | source | living | 451 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 84 |
-| test | tests/ | component | source | living | 682 |
+| test | tests/ | component | source | living | 683 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 10 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 301 |
+| script | bin/ | component | source | living | 302 |
 | agent | agents/ | component | source | living | 1 |
 | how-to | docs/how-to/ | component | source | living | 7 |
 | reference | docs/reference/ | component | generated | generated | 93 |
@@ -56,7 +56,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `agents/` | 1 | 1 | 1 |
-| `bin/` | 305 | 32 | 2 |
+| `bin/` | 306 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 74 | 6 | 1 |
 | `contracts/` | 131 | 15 | 2 |
@@ -74,7 +74,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 682 | 30 | 1 |
+| `tests/` | 683 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -102,7 +102,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | hub |  | 14 | 40 | 1 | 7 | 0 | 5 |
 | library | policy-function | 11 | 0 | 0 | 0 | 0 | 0 |
 | lint | control-plane | 26 | 75 | 0 | 20 | 3 | 39 |
-| member | control-plane | 20 | 93 | 1 | 13 | 6 | 3 |
+| member | control-plane | 21 | 94 | 1 | 13 | 6 | 3 |
 | memory | memory-store | 6 | 10 | 1 | 24 | 0 | 1 |
 | pack | catalog | 1 | 0 | 1 | 1 | 0 | 0 |
 | policy | policy-function | 3 | 4 | 3 | 137 | 0 | 7 |
@@ -539,6 +539,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/member-tools.sh`
 - `bin/member-update.sh`
 - `bin/member-upgrade.sh`
+- `bin/member-windows-access.sh`
 - `bin/member-windows.sh`
 - `contracts/member-context-rules.tsv`
 - `contracts/member-files.txt`

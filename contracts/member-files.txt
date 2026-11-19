@@ -98,6 +98,7 @@ contracts/skill-pack-frontmatter-keys.txt skill-pack-frontmatter-keys.txt
 
 # The one thing a member may run as root, and the list it installs: member-session.sh calls it when a probe finds nothing
 bin/member-prereqs.sh
+bin/member-windows-access.sh
 contracts/member-prereqs.txt member-prereqs.txt
 
 # Context rules on a member: the engine in member mode reads only these, and only the ids member-context-rules.tsv lists
