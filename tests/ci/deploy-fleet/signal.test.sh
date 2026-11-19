@@ -8,6 +8,21 @@ gone() { [ -s "$SF/verify.pid" ] && ! kill -0 "$(cat "$SF/verify.pid")" 2>/dev/n
 reap() { [ ! -s "$SF/verify.pid" ] || kill -9 "$(cat "$SF/verify.pid")" 2>/dev/null || :; }
 started() { _i=0; until [ -s "$SF/verify.pid" ] || [ "$_i" -ge 150 ]; do /bin/sleep 0.1; _i=$((_i + 1)); done; }
 
+t_section "one run at a time (harbor#1378): a live holder refuses; a dead one's older lock directory is taken over"
+LK="$HOME/.local/state/harbor/ship/lock.d"
+lock_world() { fx_world; fx_base api; fx_main api src/l.txt l; mkdir -p "${LK%/*}"; }
+lock_world; /bin/sleep 30 > /dev/null & LIVE=$!; printf '%s\n' "$LIVE" > "$LK"   # /bin/sleep: the fixture stubs sleep
+t_eq "a live lock file: exit 1" 1 "$(ship night)"
+t_has "...naming the holder" "$(cat "$T_TMP/out")" "another ship run holds $LK (pid $LIVE)"
+kill "$LIVE" 2>/dev/null; wait "$LIVE" 2>/dev/null
+lock_world; mkdir "$LK"; printf '999999\n' > "$LK/pid"; ship night > /dev/null
+t_hasnt "an older version's dead lock directory does not refuse" "$(cat "$T_TMP/out")" "another ship run"
+t_eq "...and is gone after the run" no "$([ -e "$LK" ] && echo yes || echo no)"
+lock_world; mkdir -p "$LK/x"; : > "$LK/x/f"; printf '999999\n' > "$LK/pid"; chmod 000 "$LK/x"
+t_eq "a dead lock that cannot be cleared: exit 1" 1 "$(ship night)"
+t_has "...saying another run took it" "$(cat "$T_TMP/out")" "another ship run took $LK first"
+chmod 755 "$LK/x"; rm -rf "$LK"
+
 t_section "a hung verify times out (timeout.verify 3), counts as red, and is restored"
 hang_world; T0="$(date +%s)"
 t_eq "exit 1" 1 "$(ship night)"
@@ -38,7 +53,7 @@ t_has "the report names the signal" "$(fx_report)" "failing: the run was interru
 t_has "...and the restore" "$(fx_report)" "snapshot: snap-1 — restore: ok"
 t_eq "the baseline did not move" "$(git --git-dir="$T_TMP/remotes/api.git" rev-parse trunk~1)" "$(fx_state api .sha)"
 t_eq "the receipt is red" red "$(jq -r .status "$CLAUDE_CONFIG_DIR/cache/checks/deploy.fleet.json")"
-t_eq "the lock is released" no "$([ -d "$HOME/.local/state/harbor/ship/lock.d" ] && echo yes || echo no)"
+t_eq "the lock is released" no "$([ -e "$HOME/.local/state/harbor/ship/lock.d" ] && echo yes || echo no)"
 reap
 fx_mutant "MS no signal trap" 's/^trap on_signal INT TERM HUP$/:/'
 term_world; sh "$SHIP" night > "$T_TMP/out" 2>&1 & RP=$!

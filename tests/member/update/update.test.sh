@@ -215,6 +215,15 @@ mkroot; mkpol 2 "$B"; mkdir "$R.update.lock"; printf '%s\n' "$$" > "$R.update.lo
 upd --policy "$POL/policy.json"; t_eq "a live lock: exit 3" 3 "$RC"; t_has "named" "$OUT" "another update is running"
 printf '999999\n' > "$R.update.lock/pid"; upd --policy "$POL/policy.json"
 t_eq "a stale lock is cleared and the run goes on" 0 "$RC"
+# uutils mkdir 0.10 (Ubuntu 26.04) exits 0 when it loses a creation race; this one always loses (harbor#1378).
+UU="$T_TMP/uu"; mkdir -p "$UU"; MKD="$(command -v mkdir)"
+printf '#!/bin/sh\ncase "$1" in -*) exec %s "$@" ;; esac\n%s -p -- "$@" && sleep 1\n' "$MKD" "$MKD" > "$UU/mkdir"; chmod +x "$UU/mkdir"
+mkroot; mkpol 2 "$B"; printf '%s\n' "$$" > "$R.update.lock"
+_op="$PATH"; PATH="$UU:$PATH"; upd --policy "$POL/policy.json"; PATH="$_op"; t_eq "where mkdir cannot lock, a live lock is still exit 3 (harbor#1378)" 3 "$RC"
+rm -f "$R.update.lock"
+mkroot; mkpol 2 "$B"; mkdir -p "$R.update.lock/x"; : > "$R.update.lock/x/f"; printf '999999\n' > "$R.update.lock/pid"; chmod 000 "$R.update.lock/x"
+upd --policy "$POL/policy.json"; t_has "a dead lock that cannot be cleared is refused, by name (harbor#1378)" "$OUT" "cannot take the update lock"
+chmod 755 "$R.update.lock/x"; rm -rf "$R.update.lock"
 t_exit "an argument it does not know" 2 sh "$U" --nonsense
 t_exit "--help" 0 sh "$U" --help
 

@@ -30,7 +30,7 @@ bin/access-github-app/gh	command	floor	gh shim (harbor#1018): inside a Claude Co
 bin/access-github-app/git-credential.sh	command	floor	git credential helper (harbor#1018): inside a Claude Code session (CLAUDECODE=1) github.com pushes and fetches authenticate as	harbor#1018
 bin/access-github-app/mint-token.sh	command	floor	a 1-hour installation token for the harbor-claude GitHub App, on stdout. Reuses the cached token while it has 10+ minutes left.	harbor#1018
 bin/access.sh	command	floor	`harbor access`: the access register, the one list of every identity an agent may use, and the only door to a secret's name.	harbor#1205
-bin/admission-ask.sh	command	floor	PreToolUse(Bash|Monitor|mcp__*) ASK gate: a permissions.ask match gets the dialog, auto mode included.	harbor#1545
+bin/admission-ask.sh	command	floor	PreToolUse(Bash|Monitor|mcp__*) ASK gate: a permissions.ask match gets the dialog; in auto mode, a deny.	harbor#1545
 bin/admission-api-route.sh	command	floor	PostToolUse(Bash|Write|Edit|MultiEdit) and SessionStart. Claude Code's own API route is not a setting anything a session runs may	harbor#545
 bin/admission-bash.sh	command	floor	PreToolUse(Bash) shell-injection / local-exec guard. Ports upstream DANGEROUS_PATTERNS @ a4e8e74 (safety-classifier.ts:44-76)	harbor#3
 bin/admission-cloud.sh	command	floor	PreToolUse(Bash) ASK-gate for destructive cloud operations.	harbor#194
@@ -112,6 +112,7 @@ bin/doc-cite-verify.sh	command	floor	fetch every external URL Harbor's docs cite
 bin/doc-cited-paths.awk	helper	floor	THE ONE EXTRACTOR for paths cited in prose. awk -f doc-cited-paths.awk <file> one cited path per line, in file order	harbor#462
 bin/doc-drive-push.sh	command	floor	copy a filed deliverable into Google Drive and print the link a person can actually open.	harbor#422
 bin/doc-fresh-verify.sh	command	floor	is every generated file current? One verdict line per file, and the exact fix for a stale one.	harbor#1287
+bin/doc-lithuanian-rewrite.sh	command	floor	rewrites Lithuanian text in plain publicist Lithuanian with Haiku or Sonnet, kept only when every protected token survives	harbor#1572
 bin/doc-freshness.sh	command	floor	per-document staleness over Harbor's governing files. harbor#5 (workstream C1a), method taken from upstream `Interview` @ a4e8e74.	harbor#5
 bin/doc-graph-generate.sh	command	floor	the reference graph: every path and id, and what points at it.	harbor#996
 bin/doc-index-generate.sh	command	floor	generate docs/index.html, the architecture document (harbor#173). G1: deliberately one file. A generator split across modules is	harbor#173
@@ -320,3 +321,4 @@ bin/member-support-guard.sh	command	floor	the dispatcher's rule that an agent's 
 bin/hub-support.sh	command	floor	the admin side of remote support, behind harbor hub support: list, accept with the admin's gh, join with the admin's key	harbor#1278
 bin/hub-pin-upgrade.sh	command	floor	raises the hub policy pin on a branch and stops before signing; refuses a pin not on core main, a dirty hub, a contract change	harbor#1278
 bin/member-setup-generate.sh	command	floor	rebuilds every person's setup script, hash and zip at a pin from a private roster, with the pin's own member-windows.sh	harbor#1278
+bin/hub-release.sh	command	floor	one hub release as one tool: a preflight that lists every problem and changes nothing, then merge, red-team refresh, publish, hub pin, suites at the pin and zips; prints the merges in an agent session; never signs	harbor#1278
