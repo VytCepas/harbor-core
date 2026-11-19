@@ -8,9 +8,9 @@ status: unreviewed
 
 For IT. One setup per laptop, for one named person who is **not** an administrator. Afterwards the agent on that laptop works inside limits it can't change. Format: `contracts/hub.md`.
 
-**This holds only if the member is not an administrator.** An administrator can edit the managed source itself, so the install refuses a member in `sudo`, `admin`, `wheel` or `root`, in a group that is root by another name (`docker`, `lxd`, `incus`, `incus-admin`, `libvirt`, `libvirtd`, `microk8s`, `disk`: `MEMBER_ROOT_GROUPS` in `bin/member-install.sh`), and a member with any sudoers grant of their own. The one line it allows is its own prerequisites rule, from an earlier run. On WSL the first user is in `sudo` by default: `deluser <member> sudo` first.
+**This holds only if the member is not an administrator.** An administrator can edit the managed source itself, so the install refuses a member in `sudo`, `admin`, `wheel` or `root`, in a group that is root by another name (`docker`, `lxd`, `incus`, `incus-admin`, `libvirt`, `libvirtd`, `microk8s`, `disk`: `MEMBER_ROOT_GROUPS` in `bin/member-install.sh`), and a member with any sudoers grant of their own. The one line it allows is its own prerequisites rule, from an earlier run. **WSL is the exception** (harbor#1581, [WSL is the sandbox](#wsl-is-the-sandbox)): there the member administers the distro.
 
-**Sandboxed commands reach a list of hosts and nothing else.** Data can still leave to a listed host, and there the text guards are all that's left. See [The network](#the-network) before a laptop holds anything that matters.
+**On macOS and Linux, sandboxed commands reach a list of hosts and nothing else; on WSL the network is open (harbor#1581).** Data can still leave to a listed host, and there the text guards are all that's left. See [The network](#the-network) before a laptop holds anything that matters.
 
 ## What you need before you start
 
@@ -70,6 +70,18 @@ It asks nothing. It installs WSL and Ubuntu when they are absent, creates the me
 The member's default user matters: a distro with none runs sessions as root, where none of this holds. If `/etc/wsl.conf` already names another default user, the script stops.
 
 If a device refuses WSL sessions: Help > Troubleshooting > Show Logs in File Explorer, then search `main.log` for `[wslPolicyGate] denying WSL session`.
+
+## WSL is the sandbox
+
+Decided 2026-11-19 (harbor#1581): on WSL the distro is the boundary, not a sandbox inside it, so a colleague can install and run what they need.
+
+- **Inside WSL:** the whole home is writable and the network is open. A command outside Claude's sandbox (`sudo`, a system write) runs after the person's Yes. The member has passwordless sudo (`/etc/sudoers.d/harbor-member-admin`).
+- **Still unwritable from a sandboxed command:** what Claude Code or a login shell runs outside the sandbox with no prompt: `~/.local/bin`, `~/bin`, shell rc files, git config and hooks, and Claude's own install (`MEMBER_WSL_HOME_DENY` in `bin/member-managed.sh`). Otherwise a planted file would get out, and on to sudo, unasked.
+- **The floor still holds:** its settings and hooks sit in `C:\Program Files\ClaudeCode`, which root in the distro can't write, and with `wslInheritsWindowsSettings` Claude Code reads `/etc/claude-code` only when no Windows document is present. Root can change only the in-distro copies there (`CLAUDE.md`, `managed-mcp.json`).
+
+### Windows from WSL
+
+`bin/member-windows-access.sh` sets this in `/etc/wsl.conf`. By default C: is read-only and Windows programs are off. Read-only is a remount at boot, so C: stays mounted: without `/mnt/c` the floor's settings would not be read. The person overrides on request: the agent asks, then runs `sudo sh ".../member-windows-access.sh" files on` or `programs on`. A choice is kept, so a re-install doesn't undo it. A change applies after WSL restarts. If `[boot] command` is already set, C: stays writable and the tool says so. Not yet run on a real laptop: the first install is the pilot, and `/status` after the restart must still say `Enterprise managed settings`.
 
 ## The network
 
