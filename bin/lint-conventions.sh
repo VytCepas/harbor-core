@@ -8079,7 +8079,7 @@ rm -f "$_cr_o"
 # lists every `harbor` verb and every script contracts/cli.md marks Agent-facing, from contracts/agent-tools.tsv; `--coverage`
 # is red for a verb or mark with no row, and for a row with no verb or script behind it. Silent where it cannot judge (exit 3).
 rule_skill_catalog_covers_tools() {
-rule "skill.catalog-covers-tools every harbor verb and every bin tool contracts/cli.md marks Agent-facing has a row in contracts/agent-tools.tsv, and every row a verb or script (advisory, harbor#1010)"
+rule "skill.catalog-covers-tools every harbor verb and every bin tool contracts/cli.md marks Agent-facing has a row in contracts/agent-tools.tsv, and every row a verb or script (harbor#1010)"
 if [ -f "$ROOT/bin/skill-catalog.sh" ] && [ -f "$ROOT/contracts/agent-tools.tsv" ]; then
   _ct_out="$(sh "$ROOT/bin/skill-catalog.sh" --coverage 2>&1)"; _ct_rc=$?
   if [ "$_ct_rc" -eq 1 ]; then
@@ -8095,7 +8095,7 @@ fi
 # marker and no row). scope-repo-sources.sh holds them against each other; with no registry or no governed row it stands down (exit 3)
 # and this rule says nothing, which is never a pass for the repo it did not read. Warn: a person promotes it.
 rule_context_repo_sources_agree() {
-rule "context.repo-sources-agree repos.tsv, projects.tsv, yard markers and fleet discovery name the same repos (advisory, harbor#1430)"
+rule "context.repo-sources-agree repos.tsv, projects.tsv, yard markers and fleet discovery name the same repos (harbor#1430)"
 _rs_tool="$ROOT/bin/scope-repo-sources.sh"
 if [ -f "$_rs_tool" ] && [ -f "$ROOT/bin/scope-roots.sh" ]; then
   _rs_out="$(env -u HARBOR_SCOPE_ROOT sh "$_rs_tool" 2>/dev/null)"; _rs_rc=$?

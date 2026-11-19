@@ -230,22 +230,33 @@ t_eq "run posts the governor's event on acquire and on release" 2 "$(grep -c 'co
 t_section "a tick lock re-taken after its dead holder's pid was read is not taken over"
 # Forced: as the waiter learns the old holder is dead, a live process takes the lock (the race event-bus.sh hit on CI).
 verdict="$( STATE_DIR="$T_TMP/lockrace"; mkdir -p "$STATE_DIR"; L="$STATE_DIR/tick.lock"
-  eval "$(sed -n '/^tick_lock() {/,/^}/p' "$GOV")"
+  eval "$(sed -n '/^lock_holder() /p; /^tick_lock() {/,/^}/p' "$GOV")"
   sleep 30 > /dev/null & LIVE=$!
   ( exit 0 ) & DEAD=$!; wait "$DEAD"
-  mkdir "$L"; echo "$DEAD" > "$L/pid"
+  echo "$DEAD" > "$L"
   kill() {
     if [ "$1" = -0 ] && [ "$2" = "$DEAD" ] && [ ! -e "$L.swapped" ]; then
-      : > "$L.swapped"; rm -rf "$L"; mkdir "$L"; echo "$LIVE" > "$L/pid"; return 1
+      : > "$L.swapped"; rm -f "$L"; echo "$LIVE" > "$L"; return 1
     fi
     command kill "$@"
   }
-  ( sleep 1; [ "$(cat "$L/pid" 2>/dev/null)" = "$LIVE" ] && echo intact > "$L.verdict"; rm -rf "$L" ) &
+  ( sleep 1; [ "$(cat "$L" 2>/dev/null)" = "$LIVE" ] && echo intact > "$L.verdict"; rm -f "$L" ) &
   REL=$!
   tick_lock || echo timeout > "$L.verdict"
   wait "$REL"; command kill "$LIVE" 2>/dev/null
   cat "$L.verdict" 2>/dev/null || echo stolen )"
 t_eq "the live holder keeps its lock; the waiter takes it once released" intact "$verdict"
+
+t_section "the slots lock: a live holder keeps it; a dead one's file, or an older version's directory, is taken over (harbor#1378)"
+verdict="$( STATE_DIR="$T_TMP/slotlock"; mkdir -p "$STATE_DIR"; L="$STATE_DIR/slots.lock"
+  eval "$(sed -n '/^lock_holder() /p; /^lock() {/,/^}/p' "$GOV")"
+  sleep 30 > /dev/null & LIVE=$!
+  ( exit 0 ) & DEAD=$!; wait "$DEAD"
+  echo "$LIVE" > "$L"; if lock; then a=taken; else a=kept; fi; [ "$(cat "$L")" = "$LIVE" ] || a="$a-overwritten"
+  echo "$DEAD" > "$L"; lock || :; if lock; then b=taken; else b=kept; fi; [ "$(cat "$L")" = "$$" ] || b="$b-notmine"
+  rm -f "$L"; mkdir "$L"; echo "$DEAD" > "$L/pid"; lock || :; if lock; then c=taken; else c=kept; fi
+  command kill "$LIVE" 2>/dev/null; echo "$a $b $c" )"
+t_eq "live kept; dead file and dead directory taken" "kept taken taken" "$verdict"
 
 t_red check.ci-governor   # the falsifier this suite names for them (harbor#1422)
 t_done

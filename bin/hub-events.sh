@@ -26,7 +26,7 @@ PENDING_MAX=2000      # folded events kept through a long outage
 TOKEN_WARN_DAYS=14
 
 W=''; LOCK=''
-cleanup() { [ -z "$W" ] || rm -rf "$W"; [ -z "$LOCK" ] || rmdir "$LOCK" 2>/dev/null; :; }
+cleanup() { [ -z "$W" ] || rm -rf "$W"; [ -z "$LOCK" ] || rm -f "$LOCK" 2>/dev/null; :; }
 trap cleanup EXIT
 trap 'exit 130' INT HUP TERM
 
@@ -72,13 +72,14 @@ cmd_record() {
 
 # fold_tally: a full tally folded in place to one line per distinct count, so a day of calls costs what its kinds of call cost.
 # The rename gives concurrent records a fresh file; a fold that died is picked up by the next one after two minutes.
+# Locks here are files made with O_EXCL (set -C), never mkdir: uutils mkdir exits 0 on a lost race (harbor#1378).
 fold_tally() {
-  mkdir "$HS/tally.lock" 2>/dev/null || return 1
-  if ! mv "$TALLY" "$HS/tally.folding.$$" 2>/dev/null; then rmdir "$HS/tally.lock" 2>/dev/null; return 1; fi
+  ( set -C; : > "$HS/tally.lock" ) 2>/dev/null || return 1
+  if ! mv "$TALLY" "$HS/tally.folding.$$" 2>/dev/null; then rm -f "$HS/tally.lock" 2>/dev/null; return 1; fi
   find "$HS" -maxdepth 1 -name 'tally.folding.*' ! -name "tally.folding.$$" -mmin +2 -exec cat {} + >> "$HS/tally.folding.$$" 2>/dev/null || :
   find "$HS" -maxdepth 1 -name 'tally.folding.*' ! -name "tally.folding.$$" -mmin +2 -exec rm -f {} + 2>/dev/null || :
   jq -R -c 'fromjson? // empty' "$HS/tally.folding.$$" 2>/dev/null | jq -s -c --arg m "$MEMBER" "$FOLD | .[]" >> "$TALLY" 2>/dev/null || drop
-  rm -f "$HS/tally.folding.$$"; rmdir "$HS/tally.lock" 2>/dev/null || :
+  rm -f "$HS/tally.folding.$$" "$HS/tally.lock" 2>/dev/null || :
 }
 
 board() { sh "$HERE/hub-board.sh" call "$W" "$@" </dev/null 2>/dev/null; }
@@ -186,8 +187,8 @@ cmd_send() {
   _last="$(cat "$HS/last-send" 2>/dev/null)" || _last=''
   case "$_last" in ''|*[!0-9]*) _last=0 ;; esac
   if [ "$_last" -le "$_now" ] && [ $((_now - _last)) -lt "$SEND_EVERY" ]; then exit 0; fi
-  find "$HS/send.lock" -maxdepth 0 -mmin +2 -exec rmdir {} + 2>/dev/null || :
-  mkdir "$HS/send.lock" 2>/dev/null || exit 0
+  [ -z "$(find "$HS/send.lock" -maxdepth 0 -mmin +2 2>/dev/null)" ] || { rm -f "$HS/send.lock" || rmdir "$HS/send.lock"; } 2>/dev/null || :
+  ( set -C; : > "$HS/send.lock" ) 2>/dev/null || exit 0
   LOCK="$HS/send.lock"
   work || exit 3
 

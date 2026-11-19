@@ -498,22 +498,23 @@ cmd_add() {
 }
 
 # ── LIFECYCLE: status, rotate, revoke ────────────────────────────────────────────────────────────────────
-# One writer at a time. mkdir is atomic on every filesystem this runs on; a lock left by a killed writer is
-# named in the failure, never broken silently.
+# One writer at a time. The lock is a file made with O_EXCL (set -C), never mkdir: uutils mkdir exits 0 on a lost
+# race (harbor#1378). A lock left by a killed writer is named in the failure, never broken silently.
 REG_LOCK=''
 lock_register() { # <register file> [soft] - soft returns 1 on a timeout instead of exiting
   __lk="$1.lock"; __n=0
-  until mkdir "$__lk" 2>/dev/null; do
+  until ( set -C; : > "$__lk" ) 2>/dev/null; do
     __n=$((__n + 1))
     [ "$__n" -lt "${ACCESS_LOCK_WAIT:-30}" ] || { [ "${2:-}" != soft ] || return 1
-      fail "$1 is locked by another harbor access write" "wait for it; if no harbor access is running, rmdir $__lk" 1; }
+      __rm="rm -f"; [ ! -d "$__lk" ] || __rm=rmdir   # an older version's lock is a directory
+      fail "$1 is locked by another harbor access write" "wait for it; if no harbor access is running, $__rm $__lk" 1; }
     sleep 1
   done
   REG_LOCK="$__lk"
   trap 'unlock_register' EXIT
   trap 'unlock_register; exit 130' INT TERM HUP
 }
-unlock_register() { [ -z "$REG_LOCK" ] || rmdir "$REG_LOCK" 2>/dev/null || :; REG_LOCK=''; }
+unlock_register() { [ -z "$REG_LOCK" ] || rm -f "$REG_LOCK" 2>/dev/null || :; REG_LOCK=''; }
 
 # Set one DATE field of one entry, in place: replaced where it is, else added after the entry's last field.
 # Dates only, so no value can carry what awk -v would unescape. The caller holds the lock.

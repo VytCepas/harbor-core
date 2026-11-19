@@ -398,6 +398,10 @@ rm -f "$CFG/.helm-sweep"; mkdir "$CFG/.helm-sweep.lock"; run --record loose-deli
 t_eq "--record stands down on a held lock" gone "$(there "$CFG/.helm-sweep")"
 touch -t 202601010000 "$CFG/.helm-sweep.lock"; run --record loose-deliverables >/dev/null
 t_eq "a 31-minute-old lock is dead and does not block" present "$(there "$CFG/.helm-sweep")"
+rm -rf "$CFG/.helm-sweep" "$CFG/.helm-sweep.lock"; : > "$CFG/.helm-sweep.lock"; run --record loose-deliverables >/dev/null
+t_eq "--record stands down on a held lock file (harbor#1378)" gone "$(there "$CFG/.helm-sweep")"
+touch -t 202601010000 "$CFG/.helm-sweep.lock"; run --record loose-deliverables >/dev/null
+t_eq "...and a 31-minute-old lock file is dead and does not block" present "$(there "$CFG/.helm-sweep")"
 
 t_section "30 --record refuses --apply, and the live dir without --live"
 t_exit "--record --apply exits 2" 2 env HARBOR_HOUSEKEEPING_CLEAN_HOME="$H" CLAUDE_CONFIG_DIR="$CFG" sh "$TOOL" --record --apply

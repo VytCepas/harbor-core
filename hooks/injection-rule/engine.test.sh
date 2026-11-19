@@ -490,7 +490,7 @@ uout() { printf '%s\n' "$@" > "$UL/out"; }            # what run: prints, one li
 umsg() { printf '%s' "$1" | jq -r '.systemMessage // empty'; }
 unote() { printf '%s' "$1" | jq -r '.hookSpecificOutput.additionalContext // empty'; }
 urec() { jq -c --arg r "$1" 'select(.r == $r)' "$US" | wc -l | tr -d ' '; }  # <ledger rule> -> how many records
-uclaim() { [ -d "$UI/$1.seen.line" ] && echo claimed || echo free; }
+uclaim() { [ -e "$UI/$1.seen.line" ] && echo claimed || echo free; }
 uspoken() { cat "$UL/spoken" 2>/dev/null || true; }
 ukey() { grep -qs suggest-tool "$UI/$1.seen" && echo spent || echo kept; }
 ureset() { : > "$US"; rm -f "$UL/spoken" "$UL/ran"; }
@@ -512,11 +512,16 @@ t_eq "and the rule did not run again" x "$(cat "$UL/ran")"
 t_eq "and spoke: did not run again" '1|row-a' "$(uspoken)"
 
 # A session with the claim already gone: the state a parallel call leaves.
-ureset; mkdir -p "$UI/l2.seen.line"
+ureset; : > "$UI/l2.seen.line"
 t_eq "a loser says nothing at all: the line is dropped and the note with it" "" "$(ufire l2)"
 t_eq "a loser leaves no record" 0 "$(urec suggest-tool-row-a)"
 t_eq "a loser does not run spoke:" "" "$(uspoken)"
 t_eq "a loser spends its key, since no line can follow" spent "$(ukey l2)"
+# uutils mkdir 0.10 (Ubuntu 26.04) exits 0 when it loses a creation race; this one always loses (harbor#1378).
+UU="$T_TMP/uu"; mkdir -p "$UU"; MKD="$(command -v mkdir)"
+printf '#!/bin/sh\ncase "$1" in -*) exec %s "$@" ;; esac\n%s -p -- "$@" && sleep 1\n' "$MKD" "$MKD" > "$UU/mkdir"; chmod +x "$UU/mkdir"
+ureset; mkdir -p "$UI/l3.seen.line"
+t_eq "where mkdir cannot lock, a taken claim still silences the loser (harbor#1378)" "" "$( PATH="$UU:$PATH"; ufire l3 )"
 
 # Two calls past the once-ledger at the same moment, held there by the barrier in line.sh.
 ureset; mkdir "$UL/bar"
@@ -754,11 +759,11 @@ uout 'HARBOR-USER-LINE Bad: text' 'note'
 printf '%s' "$(bash_ev PreToolUse 'lineprobe now' lexp2)" | CLAUDE_CONFIG_DIR="$UL" CLAUDE_PROJECT_DIR="$REPO" sh "$UL/bin/injection-rule.sh" --explain >/dev/null 2>&1
 t_eq "--explain writes no defect record either" 0 "$(urec suggest-tool--bad-row)"
 uout 'HARBOR-USER-LINE row-a: The plain line.' 'The agent note.'
-mkdir -p "$UI/old.seen.line"; : > "$UI/old.seen"; mkdir -p "$UI/fresh.seen.line"
+mkdir -p "$UI/old.seen.line"; : > "$UI/old.seen"; : > "$UI/fresh.seen.line"
 touch -t 202001010000 "$UI/old.seen.line" "$UI/old.seen"
 ufire lprune >/dev/null
 t_eq "a week-old claim is pruned with its ledger" "no no" "$([ -e "$UI/old.seen.line" ] && echo yes || echo no) $([ -e "$UI/old.seen" ] && echo yes || echo no)"
-t_eq "a recent claim stays" yes "$([ -d "$UI/fresh.seen.line" ] && echo yes || echo no)"
+t_eq "a recent claim stays" yes "$([ -e "$UI/fresh.seen.line" ] && echo yes || echo no)"
 
 t_section "every inject record carries the session key, and only that (harbor#1485)"
 pack "$UB" 25-plain.md <<'PACK'

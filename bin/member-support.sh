@@ -73,9 +73,10 @@ host_gone() {
   case "$_hp" in ''|*[!0-9]*) ;; *) kill "$_hp" 2>/dev/null || : ;; esac
 }
 
-# The one way out, reached by the main run or by the lookout if the main run was killed. The mark makes it run once.
+# The one way out, reached by the main run or by the lookout if the main run was killed. The mark makes it run once: a file
+# made with O_EXCL (set -C), never mkdir, which exits 0 on a lost race under uutils (harbor#1378).
 finish() {
-  mkdir "$S/finished" 2>/dev/null || return 0
+  ( set -C; : > "$S/finished" ) 2>/dev/null || return 0
   [ -z "$LOOKOUT" ] || kill "$LOOKOUT" 2>/dev/null || :
   host_gone
   if [ -n "$ISSUE" ]; then

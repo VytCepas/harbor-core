@@ -576,10 +576,11 @@ already() { # <key> -> 0 when this session has already been told
 remember() {
   if [ -n "$SEEN" ]; then printf '%s\n' "$1" >> "$SEEN" 2>/dev/null || true; fi
 }
-# ONE LINE A SESSION (harbor#1485): mkdir is atomic, so two parallel calls cannot both speak. No ledger means no line. --explain spends nothing.
+# ONE LINE A SESSION (harbor#1485): the claim is a file made with O_EXCL (set -C), so two parallel calls cannot both speak;
+# never mkdir, which exits 0 on a lost race under uutils (harbor#1378). No ledger means no line. --explain spends nothing.
 claim_line() {
   [ "$MODE" = hook ] || return 0
-  [ -n "$SEEN" ] && mkdir "$SEEN.line" 2>/dev/null
+  [ -n "$SEEN" ] && ( set -C; : > "$SEEN.line" ) 2>/dev/null
 }
 
 NOTES=''

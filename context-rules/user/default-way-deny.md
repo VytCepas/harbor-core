@@ -18,8 +18,9 @@ THE ROWS ARE DATA. default-way-route.tsv beside this file: a row's `deny` cell n
 default-way-route.sh --deny answers for them. A kind that becomes a deny is a cell, not a code change. The message
 names the source path to edit and the install command.
 
-BORN WARN (harbor/D-64). The controls.tsv row context.default-way-deny says warn, so the engine delivers the same text as a
-note and denies nothing; promoting it to block is a person's one-cell edit after the replay has run clean.
+BLOCK SINCE harbor#1458. Born warn (harbor/D-64); a person promoted the controls.tsv row to block after the replay ran clean
+(21 days of sessions: the only calls it would refuse were hand edits of an installed skill). Back to a note: the row's
+mode cell to warn.
 once: never, because a deny that is said only the first time lets the retry through.
 
 Falsifier: tests/context/injection-rule/default-way-deny.test.sh (every deny row refused when the row is block, the
