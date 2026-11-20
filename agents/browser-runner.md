@@ -40,8 +40,11 @@ They are the safety, not a judgment of yours.
   detach, the main session's tab.
 - `attach` once, then `goto` in its tab. `tab_new` only for a second page the brief reads,
   closed with `tab_close` after.
-- Prefer `click` with args `["--text=<visible name>"]` over `find` then `click`. An exact name
-  outranks partial ones; several left are refused with their refs: pick one and click that ref.
+- An `api first` refusal is a result to report, not to get around: never add `--ui=` unless the brief says the
+  UI itself is the task.
+- Prefer `click` with args `["--text=<visible name>"]` over `find` then `click`, and `fill` with
+  `["--text=<field label>", "<text>"]` (also `select`, `check`, `uncheck`) over a snapshot first. An exact name
+  outranks partial ones; several left are refused with their refs: pick one and use that ref.
 - A tab that reads `hidden`: `front` once, retry the verb once. A two-line `snapshot` is not
   proof of anything: read with `text` or `screenshot`.
 - The same step failing twice ends the run: report it, do not vary it.

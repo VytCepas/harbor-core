@@ -28,7 +28,9 @@ PROTOCOLS = ('2025-06-18', '2025-03-26', '2024-11-05')
 OUT_MAX = 100000
 LONG = {'attach': 900, 'wait-signin': 900}   # both wait on the operator: a click in Chrome, a sign-in
 VERBS = {
-    'attach': 'connect to the operator\'s Chrome; the operator clicks Connect unless the extension token is registered',
+    'attach': 'start the AGENT Chrome: a separate headless Chrome on a copy of the agent profile, never the operator\'s own Chrome '
+              '(args ["--show"] in a window, ["--headless"] no profile, ["--operator"] their own Chrome, only when they ask)',
+    'signin': 'open one window of the agent Chrome for the operator to sign in once (args: [url] or ["--done"])',
     'status': 'this session\'s browser name, pin, profile and workdir',
     'state': 'the page\'s own visibility, focus and load state',
     'timing': 'the page\'s own clock as JSON (no args): navigation timing, the latest LCP, now, and every own-origin resource '
@@ -84,6 +86,7 @@ PATH = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
 def session_env():
     env = {k: os.environ[k] for k in KEEP if os.environ.get(k)}
     env['PATH'] = PATH
+    env['HARBOR_ACCESS_ENFORCE'] = '1'   # an agent's call: the shell agent refuses --operator, enforces api first and headless
     if not env.get('CLAUDE_CODE_SESSION_ID'):
         env['HARBOR_ACCESS_BROWSER_SESSION'] = 'mcp-%d' % os.getppid()
     return env

@@ -92,7 +92,7 @@ cat > "$OSA" <<EOF
 #!/bin/sh
 sc="\$(cat)"
 case "\$sc" in
-  *'make new window'*) echo window >> "$OSACALLS"; printf '9\t%s\t%s\t7' "\${STUB_NEW_TAB:-501}" "\${STUB_PREV_APP:-com.apple.Terminal}" ;;
+  *'make new window'*) echo window >> "$OSACALLS"; [ -z "\${STUB_CHROME_DOWN:-}" ] || { printf notrunning; exit 0; }; printf '9\t%s\t%s\t7' "\${STUB_NEW_TAB:-501}" "\${STUB_PREV_APP:-com.apple.Terminal}" ;;
   *'set bounds of'*) echo "shift \$2" >> "$OSACALLS"; [ -z "\${STUB_COVERED:-}" ] || rm -f "\$STUB_COVERED" ;;
   *'set index of'*) echo "raise \$2" >> "$OSACALLS"; [ -z "\${STUB_COVERED:-}" ] || rm -f "\$STUB_COVERED" ;;
   *'harbor-focus-back'*) echo "focusback \$2" >> "$OSACALLS" ;;

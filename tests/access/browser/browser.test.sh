@@ -92,24 +92,24 @@ for v in run-code eval cookie-list cookie-get state-save state-load localstorage
   t_eq "verb $v is refused" "exit 1" "$(ag "$v" x)"
 done
 t_eq "an allowed interaction verb passes" "exit 0" "$(ag click e12)"
-t_eq "attach passes" "exit 0" "$(ag attach)"
+t_eq "attach passes" "exit 0" "$(ag attach --operator)"
 t_has "attach uses the extension and an idle timeout" "$(out)" "args=-s=claude-abc123def456 attach --extension=chrome --idle-timeout=14400000"
 t_has "attach names the Chrome profile" "$(out)" "STUB profile=Default"
 t_eq "attach pins the daemon's DEBUG to relay close reasons" yes \
-  "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN DEBUG=pw:protocol HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" attach >/dev/null; grep -q 'debug=pw:mcp:relay,pw:mcp:error$' "$T_TMP/out" && echo yes)"
+  "$(rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN DEBUG=pw:protocol HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" attach --operator >/dev/null; grep -q 'debug=pw:mcp:relay,pw:mcp:error$' "$T_TMP/out" && echo yes)"
 t_has "attach tells the operator what to click" "$(out)" "click Connect"
-_w0="$(osa window)"; ag attach >/dev/null
+_w0="$(osa window)"; ag attach --operator >/dev/null
 t_eq "attach first opens a Chrome window of its own" "$((_w0 + 1))" "$(osa window)"
 OWN="$T_TMP/harbor-browser/claude-abc123def456/.owned-tabs"; rm -f "$OWN"
-_w0="$(osa window)"; ag attach >/dev/null
+_w0="$(osa window)"; ag attach --operator >/dev/null
 t_eq "the window opens on about:blank, which another extension's New Tab page is not" yes "$(grep -q 'about:blank#harbor' "$AGENT" && echo yes)"
 t_eq "attach records the one tab it opened" 501 "$(cat "$OWN")"
 t_eq "and its window" 9 "$(cat "${OWN%/*}/.window")"
 t_eq "with the operator in another app, no Chrome window is raised after" 0 "$(osa raise)"
-_r0="$(osa 'raise 7')"; STUB_PREV_APP=com.google.Chrome; export STUB_PREV_APP; ag attach >/dev/null; unset STUB_PREV_APP
+_r0="$(osa 'raise 7')"; STUB_PREV_APP=com.google.Chrome; export STUB_PREV_APP; ag attach --operator >/dev/null; unset STUB_PREV_APP
 t_eq "with the operator in Chrome, the window they were in goes back on top" "$((_r0 + 1))" "$(osa 'raise 7')"
 # harbor#1569: attended (no token), the operator goes to Chrome to click Connect, so no focus is handed anywhere
-_f0="$(osa focus)"; ag attach >/dev/null
+_f0="$(osa focus)"; ag attach --operator >/dev/null
 t_eq "an attended attach activates no app: the operator is in Chrome to click" "$_f0" "$(osa focus)"
 t_eq "attaches take turns: the lock is released" no "$([ -e "$T_TMP/harbor-browser/.attach-lock" ] && echo yes || echo no)"
 t_eq "detach passes" "exit 0" "$(ag detach)"
@@ -134,19 +134,25 @@ rm -f "$OWN"
 printf '%s\n' "7${TAB}1${TAB}true${TAB}https://mail.google.com/x${TAB}11" > "$OSA_TABS"
 printf '%s\n' "7${TAB}1${TAB}false${TAB}https://mail.google.com/x${TAB}11" "7${TAB}2${TAB}true${TAB}https://www.youtube.com/${TAB}12" \
   "9${TAB}1${TAB}false${TAB}about:blank#harbor${TAB}501" "9${TAB}2${TAB}true${TAB}chrome-extension://mmlmfjhmonkocbjadbfplnigmagldckm/connect.html?token=x${TAB}502" > "$OSA_TABS.next"
-_c0="$(osa 'close 501')"; ag attach >/dev/null
+_c0="$(osa 'close 501')"; ag attach --operator >/dev/null
 t_eq "attach takes the connect tab the extension opened as the session's" 502 "$(cat "$OWN")"
 t_eq "and closes the empty window tab it started on" "$((_c0 + 1))" "$(osa 'close 501')"
 t_hasnt "never the operator's tab opened meanwhile" "$(cat "$OWN")" "12"
 rm -f "$OWN"; : > "$OSA_TABS"
-t_eq "attach output with the connect page passes" "exit 0" "$(STUB_TOKEN_URL=1; export STUB_TOKEN_URL; ag attach)"
+t_eq "attach output with the connect page passes" "exit 0" "$(STUB_TOKEN_URL=1; export STUB_TOKEN_URL; ag attach --operator)"
 t_hasnt "never shows the extension's token" "$(out)" "SEKRET99"
 t_has "only that the query was cut" "$(out)" "connect.html?<cut>"
 t_eq "tab-list with the connect page passes" "exit 0" "$(STUB_TOKEN_URL=1; export STUB_TOKEN_URL; ag tab-list)"
 t_hasnt "and hides the token too" "$(out)" "SEKRET99"
 rm -f "$OWN"
-t_eq "attach still connects when AppleScript fails" "exit 0" "$(STUB_OSA_FAIL=1; export STUB_OSA_FAIL; HARBOR_ACCESS_BROWSER_OSASCRIPT=/no/such/osascript; export HARBOR_ACCESS_BROWSER_OSASCRIPT; ag attach)"
-t_has "and warns that the tab shares a window" "$(out)" "no window of its own"
+: > "$CALLS"
+t_eq "attach refuses when AppleScript cannot open its window (the tab would land in the operator's)" "exit 1" "$(STUB_OSA_FAIL=1; export STUB_OSA_FAIL; HARBOR_ACCESS_BROWSER_OSASCRIPT=/no/such/osascript; export HARBOR_ACCESS_BROWSER_OSASCRIPT; ag attach --operator)"
+t_has "...saying where the tab would have gone" "$(out)" "would open its tab in the window you are working in"
+t_has "...and naming the Automation setting" "$(out)" "Privacy & Security > Automation"
+t_eq "...and never reaches the CLI's attach" 0 "$(grep -c 'attach' "$CALLS" || :)"
+t_eq "...and releases the attach lock" no "$([ -e "$T_TMP/harbor-browser/.attach-lock" ] && echo yes || echo no)"
+t_eq "with Chrome not running, attach connects: no window of the operator's to land in" "exit 0" "$(STUB_CHROME_DOWN=1; export STUB_CHROME_DOWN; ag attach --operator)"
+rm -f "$OWN"
 t_eq "the approval token is refused" "exit 1" "$(rc env PLAYWRIGHT_MCP_EXTENSION_TOKEN=x HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc sh "$AGENT" tab-list)"
 t_eq "a lane passes" "exit 0" "$(HARBOR_ACCESS_BROWSER_LANE=ads1; export HARBOR_ACCESS_BROWSER_LANE; ag tab-list)"
 t_has "as this session's own name plus the lane" "$(out)" "args=-s=claude-abc123def456-ads1 tab-list"
@@ -377,10 +383,10 @@ else
   else t_eq "--self-test-live passes" "exit 0" "$R"; fi
 fi
 t_section "background, headless and text (harbor#1507)"
-t_has "attach does not run the daemon in the background by default" "$(ag attach >/dev/null; out)" "bg= debug"
+t_has "attach does not run the daemon in the background by default" "$(ag attach --operator >/dev/null; out)" "bg= debug"
 t_hasnt "...and status says no background" "$(ag status >/dev/null; out)" "background"
 ag detach >/dev/null
-t_has "HARBOR_ACCESS_BROWSER_BACKGROUND=1 turns it on for one attach" "$(HARBOR_ACCESS_BROWSER_BACKGROUND=1; export HARBOR_ACCESS_BROWSER_BACKGROUND; ag attach >/dev/null; unset HARBOR_ACCESS_BROWSER_BACKGROUND; out)" "bg=1"
+t_has "HARBOR_ACCESS_BROWSER_BACKGROUND=1 turns it on for one attach" "$(HARBOR_ACCESS_BROWSER_BACKGROUND=1; export HARBOR_ACCESS_BROWSER_BACKGROUND; ag attach --operator >/dev/null; unset HARBOR_ACCESS_BROWSER_BACKGROUND; out)" "bg=1"
 t_has "...and status says background after it" "$(ag status >/dev/null; out)" "background"
 ag detach >/dev/null
 t_hasnt "...until detach" "$(ag status >/dev/null; out)" "background"

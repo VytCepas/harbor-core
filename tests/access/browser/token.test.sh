@@ -13,19 +13,22 @@ VAL="fake-extension-token-0123456789"
 STUB="$T_TMP/pw-stub"
 printf '#!/bin/sh\nprintf "STUB args=%%s token=%%s\\n" "$*" "${PLAYWRIGHT_MCP_EXTENSION_TOKEN:-none}"\n' > "$STUB"; chmod +x "$STUB"
 PH="$T_TMP/private-hosts.txt"; printf '# a private vendor\nintranet.example.net\n' > "$PH"
-ag() { env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" \
+# An AppleScript stub answering "Chrome is not running": the real osascript would open a window in the operator's Chrome, and
+# where it was refused attach used to go on anyway, which these cases relied on until attach refused that (2026-11-20).
+NOOSA="$T_TMP/osa-notrunning"; printf '#!/bin/sh\ncase "$(cat)" in *"make new window"*) printf notrunning ;; esac\n' > "$NOOSA"; chmod +x "$NOOSA"
+ag() { env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_OSASCRIPT="$NOOSA" HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" \
   CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@" > "$T_TMP/out" 2>&1; echo "exit $?"; }
 out() { cat "$T_TMP/out"; }
 
 t_section "no token registered: attach stays attended"
-t_eq "attach exits 0" "exit 0" "$(ag attach)"
+t_eq "attach exits 0" "exit 0" "$(ag attach --operator)"
 t_has "the daemon got no token" "$(out)" "token=none"
 t_has "and the operator is told to click Allow" "$(out)" "approve in Chrome"
 
 t_section "the token registered and stored: attach connects with it, no click"
 printf '\n## playwright-extension\n\n    kind: token\n    what: w\n    use-when: u\n    reaches: r\n    cannot: c\n    grant: g\n    secret: playwright-extension-token\n' >> "$REG"
 printf '%s' "$VAL" | sh "$T_ROOT/bin/secret" put playwright-extension-token >/dev/null 2>&1
-t_eq "attach exits 0" "exit 0" "$(ag attach)"
+t_eq "attach exits 0" "exit 0" "$(ag attach --operator)"
 t_has "the daemon got the stored token" "$(out)" "token=$VAL"
 t_has "the log says no Allow click" "$(out)" "no Allow click"
 t_hasnt "and never prints the value outside the daemon's own line" "$(out | grep -v '^STUB ')" "$VAL"
@@ -52,18 +55,18 @@ printf '#!/bin/sh\nsleep 1\necho connected >> "%s"\nprintf "STUB args=%%s\\n" "$
 focus_attach() { env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_OSASCRIPT="$FOCUS_OSASCRIPT" HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" \
   HARBOR_ACCESS_PLAYWRIGHT_CLI="$FOCUS_CLI" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$AGENT" "$@" > "$T_TMP/out" 2>&1; echo "exit $?"; }
 focus_count() { grep -c -- "$1" "$FOCUS_CALLS" 2>/dev/null || :; }
-t_eq "attach exits 0" "exit 0" "$(focus_attach attach)"
+t_eq "attach exits 0" "exit 0" "$(focus_attach attach --operator)"
 t_eq "a watcher hands focus back while the extension connects" 1 "$(focus_count 'focuswatch com.apple.Terminal')"
 t_eq "and focus goes back once more after the connect" 1 "$(focus_count 'focusback com.apple.Terminal')"
 t_eq "that hand-back comes after the connect, never before it" "connected focusback" \
   "$(grep -E '^(connected|focusback)' "$FOCUS_CALLS" | cut -d' ' -f1 | tr '\n' ' ' | sed 's/ $//')"
-STUB_FOCUS_FAIL=1; export STUB_FOCUS_FAIL; focus_attach attach >/dev/null; unset STUB_FOCUS_FAIL
+STUB_FOCUS_FAIL=1; export STUB_FOCUS_FAIL; focus_attach attach --operator >/dev/null; unset STUB_FOCUS_FAIL
 t_has "a refused hand-back is reported, not silent" "$(out)" "could not hand focus back to com.apple.Terminal"
-_f0="$(focus_count focus)"; STUB_PREV_APP=com.google.Chrome; export STUB_PREV_APP; focus_attach attach >/dev/null; unset STUB_PREV_APP
+_f0="$(focus_count focus)"; STUB_PREV_APP=com.google.Chrome; export STUB_PREV_APP; focus_attach attach --operator >/dev/null; unset STUB_PREV_APP
 t_eq "with the operator in Chrome, no app is activated" "$_f0" "$(focus_count focus)"
-_f0="$(focus_count focus)"; STUB_PREV_APP='com.x"; do shell script "id'; export STUB_PREV_APP; focus_attach attach >/dev/null; unset STUB_PREV_APP
+_f0="$(focus_count focus)"; STUB_PREV_APP='com.x"; do shell script "id'; export STUB_PREV_APP; focus_attach attach --operator >/dev/null; unset STUB_PREV_APP
 t_eq "an app id that is not a plain bundle id is never passed on" "$_f0" "$(focus_count focus)"
-STUB_WATCH_SLEEP=2; export STUB_WATCH_SLEEP; focus_attach attach >/dev/null; unset STUB_WATCH_SLEEP; sleep 3
+STUB_WATCH_SLEEP=2; export STUB_WATCH_SLEEP; focus_attach attach --operator >/dev/null; unset STUB_WATCH_SLEEP; sleep 3
 t_eq "the watcher never outlives attach" 0 "$(focus_count watchsurvived)"
 
 t_section "a token in the caller's env is still refused"
