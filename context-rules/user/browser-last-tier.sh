@@ -4,8 +4,8 @@
 # WHY. access/ROUTING.md ranks the tiers cli > api > mcp > browser, and nothing applied that at the moment a session opens a
 # vendor UI: measured 2026-10-18..11-14, the most-opened hosts were vendor UIs whose card has a cli or api route. A policy in a
 # document does not bind (docs/reports/evals.md E6: 0/4 as prose, 4/4 injected at the call), so the note rides the call that
-# opens the page. INFORM, NEVER DENY: a refusal needs the operator's approval (constitution, "Encoding a fix is a human-gated
-# act"), and the UI is sometimes the task (Preview, an invite, a screen with no API).
+# opens the page. As a note it informs; the refusal is the chrome servers', which call --check below (operator-approved
+# 2026-11-20), and a call whose task is the UI (Preview, an invite, a screen with no API) carries --ui=<why> past it.
 #
 # ONE SOURCE. Which host belongs to which system is the card's own `ui-hosts:` field (contracts/access-card.md), read from the
 # register (bin/scope-roots.sh --access), so core names no vendor and no client host and a card edit moves the mapping.
@@ -21,7 +21,10 @@
 # holds cards but not one `ui-hosts:` line is a mapping that broke, not "no route", and the note says so once a session.
 set -eu
 command -v jq >/dev/null 2>&1 || exit 0
-P="$(cat)"
+# --check <url>... is the chrome servers' api-first guard (operator 2026-11-20: "api access as priority", enforced): one line per
+# match, card<TAB>tier<TAB>first move, with no ledger and no note, so the guard refuses every time where the note speaks once.
+CHECK=0
+if [ "${1:-}" = --check ]; then shift; CHECK=1; P="$(jq -cn '{tool_input:{args:$ARGS.positional}}' --args "$@")"; else P="$(cat)"; fi
 [ -n "$P" ] || exit 0
 
 # goto and tab_new carry the url in .args; steps carries {verb, args} items, and only a goto step opens a page.
@@ -70,6 +73,7 @@ told() { [ -n "$SEEN" ] && [ -f "$SEEN" ] && "$_G" -qxF -- "$1" "$SEEN"; }
 tell() { [ -z "$SEEN" ] || printf '%s\n' "$1" >> "$SEEN" 2>/dev/null || true; }
 
 if [ -z "$MAP" ]; then
+  [ "$CHECK" = 0 ] || exit 0   # the guard: no mapping is no match; the note below is the alarm
   told '#empty-map' && exit 0
   tell '#empty-map'
   printf 'The access register at %s holds %s route card(s) and not one `ui-hosts:` line, so no vendor UI host maps to a route and the cli-over-browser note is silent for every host. That is a broken mapping, not "no route": check the system'"'"'s card `via:` yourself before opening its UI in the browser, and have the `ui-hosts:` fields restored (contracts/access-card.md).\n' "$SHOWN" "$CARDS"
@@ -95,6 +99,7 @@ printf '%s\n' "$URLS" | while IFS= read -r U; do
   use="$("$_G" -m1 -iE '^[[:blank:]]*use:' "$CARD" 2>/dev/null | sed 's/^[^:]*:[[:blank:]]*//' \
          | awk '{ i = index($0, ". "); if (i > 0) $0 = substr($0, 1, i); if (length($0) > 240) $0 = substr($0, 1, 237) "..."; if ($0 !~ /[.]$/) $0 = $0 "."; print }' || true)"
   [ -n "$use" ] || use="see the card"
+  if [ "$CHECK" = 1 ]; then printf '%s\t%s\t%s\n' "$card" "$tier" "$use"; continue; fi
   tell "$card"
   printf '%s is reached at tier `%s`, ahead of the browser (the ladder is cli > api > mcp > browser, and the browser is the LAST tier). The card'"'"'s first move: %s Take that first; open %s here only when the task needs the UI (or that tier has failed, and say so), and then go ahead. Card: %s/%s.md.\n' \
     "$card" "$tier" "$use" "$h" "$SHOWN" "$card"

@@ -4,8 +4,12 @@
 # platform: macOS-only — Chrome's windows and tabs are read and closed through AppleScript (`osascript`);
 # without it those steps fail soft, and the CLI still drives the session's tab.
 #
-#   harbor chrome attach           connect; the operator clicks Connect in Chrome, or no click when
-#                                  the extension token is registered (ref playwright-extension-token)
+#   harbor chrome attach           the AGENT Chrome: a separate, headless Chrome on a copy of the agent profile; the
+#                                  operator's own Chrome is never touched (--show: the same in a window of its own)
+#   harbor chrome signin [url] | --done   one window of the agent Chrome, for the operator to sign in once; --done closes it
+#   harbor chrome attach --operator   the operator's own Chrome, through the Playwright Extension: only when a call says so;
+#                                  the operator clicks Connect, or no click when the token is registered (playwright-extension-token)
+#   harbor chrome attach --headless   a throwaway Chrome with no profile at all: signed out, loopback dev servers allowed
 #   harbor chrome status           this session's name, pin, profile, workdir
 #   harbor chrome state            the page's own visibility, focus and load state (fixed probe)
 #   harbor chrome timing           the page's own clock as JSON: navigation, LCP, now, own-origin resources (fixed probe,
@@ -64,6 +68,17 @@ case "$(uname -s 2>/dev/null)" in
   *)      _chrome_data_default="${XDG_CONFIG_HOME:-$HOME/.config}/google-chrome" ;;
 esac
 CHROME_DATA="${HARBOR_ACCESS_CHROME_DATA:-$_chrome_data_default}"
+# THE AGENT CHROME (operator 2026-11-20): agents never drive the operator's own Chrome unless a call says --operator. A separate
+# Chrome that Playwright launches on a profile of its own, headless: no window, no focus taken, nothing in the operator's Chrome.
+# The operator signs in once, inside that profile (`signin`): Playwright starts every Chrome with --use-mock-keychain
+# (playwright-core chromiumSwitches), so cookies a normal Chrome saved there would not decrypt. One Chrome holds one profile and a
+# second open of it fails, so each session or lane runs its own APFS clone of it, side by side.
+case "$(uname -s 2>/dev/null)" in
+  Darwin) _agent_default="$HOME/Library/Application Support/harbor/agent-chrome" ;;
+  *)      _agent_default="${XDG_DATA_HOME:-$HOME/.local/share}/harbor/agent-chrome" ;;
+esac
+AGENT_PROFILE="${HARBOR_ACCESS_AGENT_PROFILE:-$_agent_default}"
+SIGNIN_SESSION='harbor-agent-signin'
 CLAUDE_JSON="${HARBOR_ACCESS_CLAUDE_JSON:-$HOME/.claude.json}"
 CONFIRM="${HARBOR_ACCESS_BROWSER_CONFIRM:-}"
 # Whole words or phrases a click/dblclick target's label may not carry without the operator's
@@ -252,6 +267,20 @@ _host_ok() {
   return 1
 }
 
+# bunx reuses its cache directory as it finds it: with a file gone, 8 attaches in 4 sessions failed on `Cannot find module
+# .../cli-client/program.js` (2026-11-19..20) until the directory was replaced. The files the CLI loads first are checked; a
+# directory missing one is moved aside (never deleted; mkdir is the lock, so two sessions never move it twice) and bunx fetches it whole.
+_pw_cache_repair() {
+  _bc="${BUN_TMPDIR:-${TMPDIR:-/tmp}}"; _bc="${_bc%/}/bunx-$(id -u)-@playwright/cli@$PW_CLI_PIN"
+  [ -d "$_bc" ] || return 0
+  _nm="$_bc/node_modules"
+  [ -f "$_nm/@playwright/cli/playwright-cli.js" ] && [ -f "$_nm/playwright-core/package.json" ] \
+    && [ -f "$_nm/playwright-core/lib/tools/cli-client/program.js" ] && return 0
+  mkdir "$_bc.repair" 2>/dev/null || return 0
+  if mv "$_bc" "$_bc.broken.$(date +%s).$$" 2>/dev/null; then log_warn "the cached @playwright/cli@$PW_CLI_PIN was missing files; moved it aside so bunx fetches it whole"; fi
+  rmdir "$_bc.repair" 2>/dev/null || :
+}
+
 # Pinned CLI, from a per-session workdir so files never land in a repo. The CLI
 # also takes config from any .playwright dir up that tree. HARBOR_ACCESS_PLAYWRIGHT_CLI is the
 # test seam (a stub), as HARBOR_ACCESS_PROBE_DIR is for access-browser.sh.
@@ -259,6 +288,7 @@ _cli() {
   if [ -n "${HARBOR_ACCESS_PLAYWRIGHT_CLI:-}" ]; then
     set -- "${HARBOR_ACCESS_PLAYWRIGHT_CLI:-}" "$@"
   elif command -v bunx >/dev/null 2>&1; then
+    _pw_cache_repair
     set -- bunx "@playwright/cli@$PW_CLI_PIN" "$@"
   else
     _refuse 'no bunx on PATH to run the pinned @playwright/cli' "$(pkg_hint bun)"
@@ -584,6 +614,33 @@ case "$VERB" in
   *) [ -z "$CONFIRM" ] || _refuse "HARBOR_ACCESS_BROWSER_CONFIRM is set for '$VERB'; it confirms one click and is set on that call only, never exported" 'unset HARBOR_ACCESS_BROWSER_CONFIRM' ;;
 esac
 
+# ENFORCED FOR AGENTS (operator 2026-11-20): an agent never takes the operator's own Chrome, takes a route card's cli/api/mcp
+# before its UI, and runs the agent Chrome headless. An agent's call is either MCP server's (they set HARBOR_ACCESS_ENFORCE);
+# `harbor chrome` typed in a terminal is the operator's. --ui=<why> on goto, tab-new and attach --show states why the UI.
+_enforced() { [ "${HARBOR_ACCESS_ENFORCE:-}" = 1 ]; }
+UI_WHY=''
+case "$VERB" in
+  goto|tab-new|attach)
+    _n=0
+    for _a in "$@"; do case "$_a" in --ui=*) _n=$((_n + 1)); UI_WHY="${_a#--ui=}" ;; esac; done
+    [ "$_n" -le 1 ] || _refuse "$VERB takes one --ui=" "harbor chrome $VERB --ui='<why>'"
+    if [ "$_n" = 1 ]; then
+      case "$UI_WHY" in *[[:cntrl:]]*) _refuse '--ui= takes why the task needs the UI, on one line' "harbor chrome $VERB --ui='<why>'" ;; esac
+      [ "${#UI_WHY}" -ge 3 ] && [ "${#UI_WHY}" -le 200 ] || _refuse '--ui= takes why the task needs the UI, 3..200 characters' "harbor chrome $VERB --ui='<why>'"
+      for _a in "$@"; do shift; case "$_a" in --ui=*) ;; *) set -- "$@" "$_a" ;; esac; done
+    fi ;;
+esac
+# A url whose route card ranks cli, api or mcp above the browser: the card's first move, unless --ui= says why the UI.
+_api_first() { # <url>
+  _enforced && [ -z "$UI_WHY" ] || return 0
+  [ -f "$ROOT/context-rules/user/browser-last-tier.sh" ] || return 0
+  _m="$(sh "$ROOT/context-rules/user/browser-last-tier.sh" --check "$1" 2>/dev/null | head -1)" || _m=''
+  [ -n "$_m" ] || return 0
+  _card="$(printf '%s' "$_m" | cut -f1)"; _tier="$(printf '%s' "$_m" | cut -f2)"; _use="$(printf '%s' "$_m" | cut -f3)"
+  _refuse "api first: $_card is reached at tier $_tier, ahead of the browser (cli > api > mcp > browser). Its first move: ${_use:-see the card}" \
+    "take that route; only when the task needs this UI: harbor chrome $VERB '$1' --ui='<why the UI and not the $_tier>'"
+}
+
 # 0 disables the CLI's idle timer (armed only when truthy), so it is bounded.
 case "$IDLE_MS" in
   ''|*[!0-9]*) _refuse "HARBOR_ACCESS_BROWSER_IDLE_MS is not milliseconds: $IDLE_MS" 'unset HARBOR_ACCESS_BROWSER_IDLE_MS' ;;
@@ -600,12 +657,36 @@ WORKDIR="${TMPDIR:-/tmp}"; WORKDIR="${WORKDIR%/}/harbor-browser/$S"
 
 case "$VERB" in
   attach)
-    case "${1:-}" in
+    _mode=agent; _show=''
+    case "$*" in
       '') ;;
-      --headless) [ $# -eq 1 ] || _refuse 'attach takes [--headless] only' 'harbor chrome attach --headless' ;;
-      *) _refuse "attach takes [--headless] only: '$1'" 'harbor chrome attach' ;;
+      --headless) _mode=headless ;;
+      --operator) _mode=operator
+        ! _enforced || _refuse "attach --operator refused: agents never drive the operator's own Chrome (operator 2026-11-20)" \
+          'harbor chrome attach   # the agent Chrome; the operator opens their own from their own terminal' ;;
+      --show) _show=--headed
+        ! _enforced || [ -n "$UI_WHY" ] || _refuse 'attach --show refused: the agent Chrome runs headless unless the call says why it needs a window' \
+          "harbor chrome attach --show --ui='<why a window>'" ;;
+      *) _refuse "attach takes [] (the agent Chrome), [--show] (the agent Chrome in a window), [--headless] (no profile) or [--operator] (the operator's own Chrome): '$*'" 'harbor chrome attach' ;;
     esac
-    if [ "${1:-}" = --headless ]; then
+    if [ "$_mode" = agent ]; then
+      [ ! -s "$WORKDIR/$OWNED_NAME" ] || _refuse "session $S holds tabs in the operator's Chrome; detach it first, or take a lane" 'harbor chrome detach'
+      [ -d "$AGENT_PROFILE/Default" ] || _refuse "hand-off: there is no agent Chrome profile yet: the operator signs in to it once, in a window of its own (their own Chrome is never used)" \
+        'mcp__harbor_chrome__signin with args ["https://<vendor host>/"]; the operator signs in there, then mcp__harbor_chrome__signin with args ["--done"]'
+      [ ! -L "$AGENT_PROFILE/SingletonLock" ] || _refuse "the agent Chrome's sign-in window is still open, so its profile cannot be copied" 'mcp__harbor_chrome__signin with args ["--done"]   # once the operator has signed in'
+      _pd="$WORKDIR/profile"; mkdir -p "$WORKDIR"
+      [ ! -e "$WORKDIR/.agent" ] || _cli_run "-s=$S" close >/dev/null 2>&1 || :   # a re-attach: its old Chrome lets go of the copy first
+      rm -rf "$_pd"
+      cp -cR "$AGENT_PROFILE" "$_pd" 2>/dev/null || { rm -rf "$_pd"; cp -R "$AGENT_PROFILE" "$_pd"; } || _refuse "could not copy the agent profile into $_pd" 'df -h "$TMPDIR"'
+      rm -f "$_pd"/Singleton*
+      rm -f "$WORKDIR/.headless"; : > "$WORKDIR/.agent"
+      DEBUG='pw:mcp:relay,pw:mcp:error'; export DEBUG   # never the caller's: pw:protocol logs every request's headers
+      _rc=0; _cli_run "-s=$S" open --browser=chrome "--profile=$_pd" "--idle-timeout=$IDLE_MS" ${_show:+"$_show"} || { _rc=$?; rm -f "$WORKDIR/.agent"; rm -rf "$_pd"; }
+      [ "$_rc" -ne 0 ] || log_ok "attach: session $S runs the agent Chrome (its own profile copy${_show:+, in a window}); the operator's Chrome is untouched"
+      exit "$_rc"
+    fi
+    rm -f "$WORKDIR/.agent"
+    if [ "$_mode" = headless ]; then
       # The headless lane (harbor#1507): a throwaway, in-memory system Chrome with no profile, so no login and no
       # window; the same verbs and the same host allow-list (the operator's decision, 2026-11-11). `open` stays refused
       # as a verb: this fixed call is its only use. A lane already attached to the operator's Chrome is refused.
@@ -647,9 +728,10 @@ case "$VERB" in
     done
     trap '{ rm -f "$_lk" || rmdir "$_lk"; } 2>/dev/null' EXIT INT TERM HUP
     _before=" $(_tab_ids 2>/dev/null | tr '\n' ' ') "
-    _nw="$(_osa <<'OSA' 2>/dev/null
+    _oef="$WORKDIR/.osa-err"
+    _nw="$(_osa <<'OSA' 2>"$_oef"
 on run argv
-  if application "Google Chrome" is not running then return ""
+  if application "Google Chrome" is not running then return "notrunning"
   set sep to character id 9
   tell application "System Events" to set prev to bundle identifier of first process whose frontmost is true
   tell application "Google Chrome"
@@ -665,9 +747,15 @@ end run
 OSA
 )" || _nw=''
     _wid="$(printf '%s' "$_nw" | cut -f1)"; _tid="$(printf '%s' "$_nw" | cut -f2)"
-    case "$_tid" in
-      ''|*[!0-9]*) _tid=''; log_warn 'attach: no window of its own (AppleScript refused); the extension opens its tab in the focused window, and another session there can hide it' ;;
+    # No window of its own means the extension opens its tab in the window the operator is working in (2 attaches, 2026-11-19..20),
+    # so attach refuses. Chrome not running is the one exception: no window of theirs to land in.
+    case "$_nw:$_tid" in
+      notrunning:*) _tid='' ;;
+      *:|*:*[!0-9]*) _tid=''; _oe="$(head -c 200 "$_oef" 2>/dev/null | tr '\n' ' ')"; rm -f "$_oef"
+        _refuse "attach refused: AppleScript could not open a window of its own${_oe:+ ($_oe)}, so the extension would open its tab in the window you are working in" \
+          "operator: System Settings > Privacy & Security > Automation: allow the app that runs Claude Code to control Google Chrome and System Events; or, for a page with no login, attach a lane with --headless" ;;
     esac
+    rm -f "$_oef"
     _ao="$(mktemp "$WORKDIR/.out.XXXXXX")"; _watch_pid=''
     trap '{ rm -f "$_lk" || rmdir "$_lk"; } 2>/dev/null; rm -f "$_ao"; [ -z "$_watch_pid" ] || kill "$_watch_pid" 2>/dev/null || :' EXIT INT TERM HUP
     [ -z "$_tid" ] || printf '%s\n' "$_wid" > "$WORKDIR/.window"
@@ -727,7 +815,31 @@ OSA
     fi
     exit "$_rc"
     ;;
+  signin)
+    # The one window the agent Chrome ever shows unasked: the operator signs in to the vendors the agents use, inside the agent
+    # profile, never their own Chrome. Every later attach copies that profile, so one sign-in covers every session and lane.
+    case "${1:-}" in
+      --done)
+        [ $# -eq 1 ] || _refuse 'signin takes [url] or [--done]' 'harbor chrome signin --done'
+        _rc=0; _cli_run "-s=$SIGNIN_SESSION" close || _rc=$?
+        [ ! -L "$AGENT_PROFILE/SingletonLock" ] || log_warn "signin: the agent profile is still held; close the sign-in window by hand (Cmd-W)"
+        exit "$_rc" ;;
+      '') ;;
+      *) [ $# -eq 1 ] || _refuse 'signin takes [url] or [--done]' 'harbor chrome signin https://ads.google.com/'
+         _host_ok "$1" || _refuse "signin refused: '$1' is not https on an allowed host" 'harbor chrome hosts' ;;
+    esac
+    [ ! -L "$AGENT_PROFILE/SingletonLock" ] || _refuse 'the agent Chrome sign-in window is already open' 'mcp__harbor_chrome__signin with args ["--done"]   # once the operator has signed in'
+    mkdir -p "$AGENT_PROFILE" && chmod 700 "$AGENT_PROFILE" || _refuse "could not create the agent profile at $AGENT_PROFILE" "ls -ld '${AGENT_PROFILE%/*}'"
+    DEBUG='pw:mcp:relay,pw:mcp:error'; export DEBUG
+    _rc=0; _cli_run "-s=$SIGNIN_SESSION" open --browser=chrome "--profile=$AGENT_PROFILE" --headed ${1:+"$1"} || _rc=$?
+    [ "$_rc" -ne 0 ] || log_note "signin: a window of the AGENT Chrome is open (not your own Chrome): sign in to every vendor the agents use, then tell the agent; it runs mcp__harbor_chrome__signin with args [\"--done\"]"
+    exit "$_rc"
+    ;;
   detach)
+    if [ -e "$WORKDIR/.agent" ]; then   # the agent Chrome: the daemon's own browser on this session's profile copy, closed whole
+      _rc=0; _cli_run "-s=$S" close || _rc=$?
+      rm -rf "$WORKDIR/profile"; rm -f "$WORKDIR/.agent" "$WORKDIR/.last-url"; exit "$_rc"
+    fi
     if [ -e "$WORKDIR/.headless" ]; then   # the headless lane: its browser is the daemon's own, so close it whole
       _rc=0; _cli_run "-s=$S" close || _rc=$?
       rm -f "$WORKDIR/.headless" "$WORKDIR/.last-url"; exit "$_rc"
@@ -791,6 +903,7 @@ OSA
   tabs)
     [ $# -eq 0 ] || _refuse 'tabs takes no arguments' 'harbor chrome tabs'
     [ ! -e "$WORKDIR/.headless" ] || _refuse "session $S is headless: it has no Chrome window; its tabs are tab-list" 'harbor chrome tab-list'
+    [ ! -e "$WORKDIR/.agent" ] || _refuse "session $S runs the agent Chrome, not a window of the operator's; its tabs are tab-list" 'harbor chrome tab-list'
     _me="$(_session_url)"; _me="$(_bare_url "$_me")"
     _own=" $(cat "$WORKDIR/$OWNED_NAME" 2>/dev/null | tr '\n' ' ') "   # a pipe: under set -e a failed < aborts
     _chrome_tabs | while IFS="$(printf '\t')" read -r _w _t _a _u _id; do
@@ -808,6 +921,7 @@ OSA
   front)
     [ $# -eq 0 ] || _refuse 'front takes no arguments' 'harbor chrome front'
     [ ! -e "$WORKDIR/.headless" ] || { log_ok "front: session $S is headless; its page is always rendered"; exit 0; }
+    [ ! -e "$WORKDIR/.agent" ] || { log_ok "front: session $S runs the agent Chrome; nothing of the operator's to raise"; exit 0; }
     _me="$(_session_url)"
     [ -n "$_me" ] || _refuse "no page in session $S to bring to the front" 'harbor chrome attach'
     # Matched by suffix: the whole URL, or after marking, the mark alone.
@@ -904,6 +1018,7 @@ OSA
     log_ok "front: $_r is the tab Chrome shows; focus left where it was"
     ;;
   wait-signin)
+    [ ! -e "$WORKDIR/.agent" ] || _refuse "session $S runs the agent Chrome: the operator signs in to it in its own window, not this session's" 'mcp__harbor_chrome__signin with args ["https://<vendor host>/"], then attach again'
     [ ! -e "$WORKDIR/.headless" ] || _refuse "session $S is headless and signed out by design: sign-in happens in the operator's Chrome" 'harbor chrome attach   # in a lane without --headless'
     _max="${1:-300}"
     case "$_max" in ''|*[!0-9]*) _refuse "wait-signin takes seconds: $_max" 'harbor chrome wait-signin 300' ;; esac
@@ -936,13 +1051,14 @@ EOF
     # the page it reached. The profile is signed in now, so the new tab is too.
     log_note "wait-signin: signed in on $(_url_host "$_u"); the connection dropped during sign-in, reconnecting"
     sh "$HERE/access-browser-agent.sh" detach >&2 || :
-    sh "$HERE/access-browser-agent.sh" attach >&2 || _refuse 'signed in, but the re-attach failed' 'harbor chrome attach'
+    sh "$HERE/access-browser-agent.sh" attach --operator >&2 || _refuse 'signed in, but the re-attach failed' 'harbor chrome attach --operator'
     exec sh "$HERE/access-browser-agent.sh" goto "$_u"
     ;;
   status)
     _e="$(_relay_err)"
     _r=''; [ -z "$_e" ] || _r="$(/usr/bin/grep 'WebSocket closed' "$_e" | tail -1 | cut -c1-200 || :)"
     _mode='operator Chrome'; [ ! -e "$WORKDIR/.headless" ] || _mode='headless, in-memory, no profile'
+    [ ! -e "$WORKDIR/.agent" ] || _mode="agent Chrome (a copy of $AGENT_PROFILE)"
     [ ! -e "$WORKDIR/.background" ] || _mode="$_mode, background"
     printf 'session  %s\npin      @playwright/cli@%s\nmode     %s\nprofile  %s\nworkdir  %s\nidle     %s ms\nrelay    %s\n' \
       "$S" "$PW_CLI_PIN" "$_mode" "$PROFILE" "$WORKDIR" "$IDLE_MS" "${_r:-no close recorded${_e:+ in $_e}}"
@@ -1088,6 +1204,7 @@ EOF
         else _handoff "${_m%the live-walk repo}$_lw" "$_lw is not registered on this box (sh bin/scope-roots.sh --repos); register it in harbor-private/repos.tsv"; fi
       fi
     fi
+    { [ "$VERB" = goto ] || [ "$VERB" = tab-new ]; } && [ $# -eq 1 ] && _api_first "$1"
     # Held, not exec'd, so a gone session can be told apart (_gone_check, harbor#920).
     mkdir -p "$WORKDIR"; _o="$(mktemp "$WORKDIR/.out.XXXXXX")"
     [ "$VERB" != tab-new ] || _before=" $(_tab_ids 2>/dev/null | tr '\n' ' ') "

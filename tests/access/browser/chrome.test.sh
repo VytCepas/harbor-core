@@ -313,4 +313,111 @@ t_eq "the lane mutant differs from the script" yes "$(cmp -s "$AGENT" "$LM/bin/a
 t_eq "and with the lane check always true the profile opens a dev server" "exit 0" \
   "$(rc env HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$LM/bin/access-browser-agent.sh" goto http://localhost:3000/)"
 rm -f "$DL/.headless" "$DSF"
+
+t_section "a bunx cache missing a file is moved aside, so bunx fetches it whole (2026-11-20)"
+PIN="$(sed -n "s/^PW_CLI_PIN='\([^']*\)'.*/\1/p" "$AGENT")"
+BB="$T_TMP/bunxbin"; mkdir -p "$BB"; printf '#!/bin/sh\nshift\nexec "%s" "$@"\n' "$STUB" > "$BB/bunx"; chmod +x "$BB/bunx"
+BC="$T_TMP/bunx-$(id -u)-@playwright/cli@$PIN"
+bx() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN -u HARBOR_ACCESS_PLAYWRIGHT_CLI PATH="$BB:$PATH" HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "${BX_AGENT:-$AGENT}" "$@"; }
+whole() { mkdir -p "$BC/node_modules/@playwright/cli" "$BC/node_modules/playwright-core/lib/tools/cli-client"
+  : > "$BC/node_modules/@playwright/cli/playwright-cli.js"; : > "$BC/node_modules/playwright-core/package.json"; : > "$BC/node_modules/playwright-core/lib/tools/cli-client/program.js"; }
+t_eq "CONTROL: the pin was read" yes "$([ -n "$PIN" ] && echo yes)"
+whole
+t_eq "a whole cache: the verb runs through bunx" "exit 0" "$(bx state)"
+t_eq "...and the cache stays where it is" yes "$([ -d "$BC" ] && echo yes)"
+rm "$BC/node_modules/playwright-core/lib/tools/cli-client/program.js"
+bx state >/dev/null
+t_eq "a cache missing program.js is moved away" no "$([ -d "$BC" ] && echo yes || echo no)"
+t_eq "...kept beside it, not deleted" 1 "$(find "${BC%/*}" -maxdepth 1 -name "cli@$PIN.broken.*" | wc -l | tr -d ' ')"
+t_has "...and the run says so" "$(out)" "moved it aside so bunx fetches it whole"
+t_eq "...and the lock is released" no "$([ -d "$BC.repair" ] && echo yes || echo no)"
+t_eq "no cache at all: nothing is moved" "exit 0" "$(bx state)"
+t_eq "...and nothing new is set aside" 1 "$(find "${BC%/*}" -maxdepth 1 -name "cli@$PIN.broken.*" | wc -l | tr -d ' ')"
+# The repair call removed, the broken cache stays and bunx would reuse it: the arm above can fail.
+sed 's/^    _pw_cache_repair$/    :/' "$AGENT" > "$LM/bin/access-browser-agent.sh"
+t_eq "the repair mutant differs from the script" yes "$(cmp -s "$AGENT" "$LM/bin/access-browser-agent.sh" || echo yes)"
+whole; rm "$BC/node_modules/playwright-core/lib/tools/cli-client/program.js"
+BX_AGENT="$LM/bin/access-browser-agent.sh" bx state >/dev/null
+t_eq "and without the repair the broken cache stays" yes "$([ -d "$BC" ] && echo yes)"
+
+t_section "the agent Chrome is the default: a separate headless Chrome on a copy of the agent profile (2026-11-20)"
+AP="$T_TMP/agentprof"; W="$T_TMP/harbor-browser/claude-abc123def456"
+aag() { HARBOR_ACCESS_AGENT_PROFILE="$AP"; export HARBOR_ACCESS_AGENT_PROFILE; ag "$@"; }
+: > "$CALLS"
+t_eq "with no agent profile yet, attach refuses" "exit 1" "$(aag attach)"
+t_has "...handing the operator the one-time sign-in" "$(out)" 'mcp__harbor_chrome__signin'
+t_eq "...and starts no browser" 0 "$(called ' open ')"
+mkdir -p "$AP/Default"; : > "$AP/Default/Cookies"; : > "$AP/SingletonSocket"
+_ow0="$(osa window)"; : > "$CALLS"
+t_eq "attach passes" "exit 0" "$(aag attach)"
+t_eq "...opening its own Chrome on this session's copy of the profile" 1 "$(called "open --browser=chrome --profile=$W/profile --idle-timeout=")"
+t_eq "...headless: no --headed" 0 "$(called '--headed')"
+t_eq "...never through the operator's Chrome (no extension attach)" 0 "$(called 'attach --extension')"
+t_eq "...and no AppleScript window in it" "$_ow0" "$(osa window)"
+t_eq "the copy carries the profile's cookies" yes "$([ -f "$W/profile/Default/Cookies" ] && echo yes)"
+t_eq "...but not the profile's lock files" no "$([ -e "$W/profile/SingletonSocket" ] && echo yes || echo no)"
+t_has "the run says the operator's Chrome is untouched" "$(out)" "the operator's Chrome is untouched"
+t_eq "tabs refuses: no window of the operator's" "exit 1" "$(aag tabs)"
+t_eq "wait-signin refuses, pointing at signin" "exit 1" "$(aag wait-signin 60)"
+t_has "...by name" "$(out)" 'mcp__harbor_chrome__signin'
+t_eq "front is a no-op" "exit 0" "$(aag front)"
+t_eq "a loopback dev server stays refused: the profile is signed in" "exit 1" "$(aag goto http://localhost:3000/)"
+t_has "status names the mode" "$(aag status; out)" 'agent Chrome (a copy of'
+: > "$CALLS"
+t_eq "detach passes" "exit 0" "$(aag detach)"
+t_eq "...closing that Chrome whole" 1 "$(called 'close')"
+t_eq "...and removing the copy" no "$([ -e "$W/profile" ] && echo yes || echo no)"
+: > "$CALLS"; aag attach --show >/dev/null
+t_eq "attach --show opens the same agent Chrome in a window" 1 "$(called "open --browser=chrome --profile=$W/profile --idle-timeout=.* --headed")"
+aag detach >/dev/null
+ln -s nowhere "$AP/SingletonLock"
+t_eq "an open sign-in window holds the profile: attach refuses" "exit 1" "$(aag attach)"
+t_has "...naming signin --done" "$(out)" '--done'
+rm -f "$AP/SingletonLock"
+t_eq "attach with two flags is refused" "exit 1" "$(aag attach --show --headless)"
+: > "$CALLS"
+t_eq "signin opens the agent profile in a window" "exit 0" "$(aag signin https://ads.reddit.com/)"
+t_eq "...as its own session, headed, on the profile itself" 1 "$(called "-s=harbor-agent-signin open --browser=chrome --profile=$AP --headed https://ads.reddit.com/")"
+t_eq "signin to a host off the allow-list is refused" "exit 1" "$(aag signin https://evil.example/)"
+t_eq "signin --done closes it" "exit 0" "$(aag signin --done)"
+t_eq "...that session only" 1 "$(called '-s=harbor-agent-signin close')"
+t_eq "attach --operator still takes the operator's Chrome when a call says so" "exit 0" "$(aag attach --operator)"
+t_eq "...through the extension" 1 "$(called 'attach --extension')"
+aag detach >/dev/null; rm -f "$OWN"
+# The default flipped back to the operator's Chrome, a bare attach opens an AppleScript window in it: the arms above can fail.
+sed "s/^    _mode=agent; _show=''\$/    _mode=operator; _show=''/" "$AGENT" > "$LM/bin/access-browser-agent.sh"
+t_eq "the default mutant differs from the script" yes "$(cmp -s "$AGENT" "$LM/bin/access-browser-agent.sh" || echo yes)"
+_ow1="$(osa window)"
+rc env HARBOR_ACCESS_AGENT_PROFILE="$AP" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$LM/bin/access-browser-agent.sh" attach >/dev/null
+t_eq "and with the operator's Chrome as the default, a bare attach opens a window in it" "$((_ow1 + 1))" "$(osa window)"
+
+t_section "an agent's call (HARBOR_ACCESS_ENFORCE, set by both MCP servers): api first, headless, never the operator's Chrome"
+rm -f "$OWN"   # the default mutant above attached the operator's Chrome in this session
+AD="$T_TMP/access"; mkdir -p "$AD"
+printf 'identity: a fixture card\nui-hosts: ads.reddit.com\nvia: api > browser\nuse: reddit-api campaigns list. Then the rest.\n' > "$AD/reddit.md"
+eg() { ACCESS_DIR="$AD"; HARBOR_ACCESS_ENFORCE=1; export ACCESS_DIR HARBOR_ACCESS_ENFORCE; aag "$@"; }
+: > "$CALLS"
+t_eq "goto a vendor UI whose card ranks an api first is refused" "exit 1" "$(eg goto https://ads.reddit.com/x)"
+t_has "...naming the tier and the card's first move" "$(out)" "api first: reddit is reached at tier api"
+t_has "...and the --ui= way when the UI is the task" "$(out)" "--ui='<why the UI and not the api>'"
+t_eq "...and never reaches the CLI" 0 "$(called 'goto')"
+t_eq "tab-new to it is refused the same way" "exit 1" "$(eg tab-new https://ads.reddit.com/x)"
+t_eq "with --ui=<why> the UI opens" "exit 0" "$(eg goto https://ads.reddit.com/x '--ui=the pixel screen has no api')"
+t_eq "...and the CLI gets the url alone" 1 "$(called 'goto https://ads.reddit.com/x$')"
+t_eq "a --ui= under 3 characters is refused" "exit 1" "$(eg goto https://ads.reddit.com/x --ui=no)"
+t_eq "a host no card maps is not held" "exit 0" "$(eg goto https://business.facebook.com/x)"
+t_eq "the operator's own terminal is not held" "exit 0" "$(ACCESS_DIR="$AD"; export ACCESS_DIR; aag goto https://ads.reddit.com/x)"
+t_eq "attach --operator is refused for an agent" "exit 1" "$(eg attach --operator)"
+t_has "...naming the agent Chrome instead" "$(out)" "agents never drive the operator's own Chrome"
+t_eq "attach --show with no reason is refused for an agent" "exit 1" "$(eg attach --show)"
+: > "$CALLS"
+t_eq "attach --show --ui=<why> opens the agent Chrome in a window" "exit 0" "$(eg attach --show '--ui=the vendor refuses headless')"
+t_eq "...headed" 1 "$(called '--headed')"
+eg detach >/dev/null
+# The api-first check made a no-op, the vendor UI opens unasked: the first arm above can fail.
+sed 's/^  _enforced && \[ -z "\$UI_WHY" \] || return 0$/  return 0/' "$AGENT" > "$LM/bin/access-browser-agent.sh"
+mkdir -p "$LM/context-rules/user"; cp "$T_ROOT/context-rules/user/browser-last-tier.sh" "$LM/context-rules/user/"
+t_eq "the api-first mutant differs from the script" yes "$(cmp -s "$AGENT" "$LM/bin/access-browser-agent.sh" || echo yes)"
+t_eq "and without the check an agent opens that vendor UI" "exit 0" \
+  "$(rc env ACCESS_DIR="$AD" HARBOR_ACCESS_ENFORCE=1 HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$LM/bin/access-browser-agent.sh" goto https://ads.reddit.com/x)"
 t_done
