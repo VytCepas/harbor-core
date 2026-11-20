@@ -123,19 +123,6 @@ memory_note() {
 }
 
 # A member's own tools (bin/member-tools.sh, control member.tools-sync): pulled from their private repo at every start. Bounded twice, fail-open, never a session problem.
-# harbor#1589: the hub signed a newer version than this laptop runs. The policy path is verified on every call, and core.commit is the root's own record of the floor.
-update_note() {
-  _up="$(sh "$HERE/hub-sync.sh" path 2>/dev/null)" || _up=''
-  [ -n "$_up" ] || return 0
-  _want="$(jq -r '.core.commit // empty' "$_up" 2>/dev/null)" || _want=''
-  _have="$(cat "$HERE/../core.commit" 2>/dev/null)" || _have=''
-  [ -n "$_want" ] && [ -n "$_have" ] && [ "$_want" != "$_have" ] || return 0
-  if [ -f "$HERE/../../update/harbor-update.ps1" ]; then
-    note "Harbor: a company update is ready. When you have a few minutes, double-click Harbor update on your desktop and click Yes."
-  else
-    note "Harbor: a company update is ready. Ask your admin to install it."
-  fi
-}
 tools_pull() {
   [ -f "$HERE/member-tools.sh" ] || return 0
   _tn="$(bounded "$((TIMEOUT * 2))" sh "$HERE/member-tools.sh" pull 2>/dev/null)" || _tn=''
@@ -174,7 +161,6 @@ start() {
     _an="$(sh "$HERE/hub-approval.sh" note SessionStart 2>/dev/null | jq -r '.systemMessage // empty' 2>/dev/null)" || _an=''
     [ -z "$_an" ] || note "$_an"
   fi
-  update_note
   repos_note
   memory_note
   tools_pull

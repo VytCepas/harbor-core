@@ -359,6 +359,8 @@ t_eq "every source bound into the view is the root's: /usr, /etc, the /bin /sbin
 t_eq "...and no member-writable place is named at all" 0 "$(printf '%s' "$_ja" | sed -e "s#$FRP##g" -e "s#$SRVP##g" | grep -c -e '/home' -e '/root' -e '/mnt' -e '/Users' -e '/var' -e '/run/user' -e '/dev/shm' || :)"
 BWRAP_T="$T_TMP/no-such-bwrap"; launch acme-crm -- "$SRVP/server.sh" --stdio; unset BWRAP_T
 t_eq "no bwrap: the server does not start (fail closed)" "1 not-started" "$LRC $(got)"; t_has "...saying a jail is needed" "$LERR" "bwrap"
+LOG_FD=1; export LOG_FD; BWRAP_T="$T_TMP/no-such-bwrap"; launch acme-crm -- "$SRVP/server.sh" --stdio; unset BWRAP_T LOG_FD
+t_has "...on stderr even when the caller exported LOG_FD=1: the env scrub unsets it, and stdout is the MCP channel" "$LERR" "bwrap"
 BWRAP_T="$T_TMP/bwrap.fail"; launch acme-crm -- "$SRVP/server.sh" --stdio; unset BWRAP_T
 t_eq "a bwrap that fails to start the view: the server does not start (never run bare)" "1 not-started" "$LRC $(got)"
 BWRAP_T="$T_TMP/bwrap.rw"; launch acme-crm -- "$SRVP/server.sh" --stdio; unset BWRAP_T

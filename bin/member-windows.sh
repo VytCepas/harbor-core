@@ -101,8 +101,7 @@ win_shortcuts() {
   printf '%s\n' \
     "function Shortcut(\$name, \$arguments) { \$l = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path \$desktop \"\$name.lnk\")); \$l.TargetPath = (Join-Path \$env:SystemRoot 'System32\\wsl.exe'); \$l.Arguments = \$arguments; \$l.Save() }" \
     "Shortcut 'Harbor setup' '$_cd'" \
-    "Shortcut 'Harbor support' '$_cd --exec /bin/sh \"$WSL_BASE/harbor/bin/member-support.sh\"'" \
-    "\$u = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path \$desktop 'Harbor update.lnk')); \$u.TargetPath = (Join-Path \$env:SystemRoot 'System32\\WindowsPowerShell\\v1.0\\powershell.exe'); \$u.Arguments = '-NoProfile -ExecutionPolicy Bypass -File \"' + (Join-Path \$base 'update\\harbor-update.ps1') + '\"'; \$u.Save()"
+    "Shortcut 'Harbor support' '$_cd --exec /bin/sh \"$WSL_BASE/harbor/bin/member-support.sh\"'"
 }
 # win_inner <pin> <member> <hub> <login>: root's script inside the distro, so what can be sh stays sh. Every value here passed the parser's checks.
 win_inner() {
@@ -117,47 +116,6 @@ win_inner() {
     "if [ -z \"\$_d\" ]; then printf '\\n[user]\\ndefault=%s\\n' '$2' >> /etc/wsl.conf" \
     "elif [ \"\$_d\" != '$2' ]; then echo 'harbor: /etc/wsl.conf names another default user, and a session there sits outside this floor' >&2; exit 1; fi" \
     "exec /bin/sh '$WSL_BASE/setup/member-bootstrap.sh' --pin '$1' --user '$2' --hub '$3' --login '$4' --signers '$WSL_BASE/setup/hub-signers'"
-}
-# win_update_inner <member> <hub> <login> (harbor#1589): root's update inside the distro, the setup's own bootstrap at the pin the hub signed.
-# The pin comes from hub-sync.sh path, which verifies the policy against the root's hub-signers on every call, so the member's copy of it is safe to read.
-win_update_inner() {
-  printf '%s\n' \
-    '#!/bin/sh' \
-    '# Written by bin/member-windows.sh --setup (harbor#1589). Root, inside the distro: the setup again, at the pin the hub signed.' \
-    'set -eu' \
-    "_p=\"\$(sh '$WSL_BASE/harbor/bin/hub-sync.sh' path 2>/dev/null)\" || _p=''" \
-    "[ -n \"\$_p\" ] || { echo 'harbor: this laptop holds no verified company policy yet. Start one Claude session, then try again.' >&2; exit 1; }" \
-    "PIN=\"\$(jq -r '.core.commit // empty' \"\$_p\")\"" \
-    "case \"\$PIN\" in *[!0123456789abcdef]*|'') echo 'harbor: the company policy names no version' >&2; exit 1 ;; esac" \
-    "[ \"\${#PIN}\" -eq 40 ] || { echo 'harbor: the company policy names no version' >&2; exit 1; }" \
-    "[ \"\$PIN\" != \"\$(cat '$WSL_BASE/harbor/core.commit' 2>/dev/null)\" ] || { echo 'harbor: already up to date'; exit 0; }" \
-    "exec /bin/sh '$WSL_BASE/update/member-bootstrap.sh' --pin \"\$PIN\" --user '$1' --hub '$2' --login '$3' --signers '$WSL_BASE/harbor/hub-signers'"
-}
-# win_update <member> (harbor#1589): what the Harbor update shortcut runs. It asks Windows for an administrator once, then does what the setup does
-# after WSL is there: the install inside, its Windows half, inside again. The window waits at the end so the person reads the result.
-win_update() {
-  win_head
-  printf '%s\n' \
-    "if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {" \
-    "  try { Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', \"\`\"\$PSCommandPath\`\"\") } catch { Write-Output 'harbor: the update needs your Yes in the Windows prompt. Double-click Harbor update again.'; Read-Host 'Press Enter to close' }" \
-    "  exit 0" \
-    "}" \
-    "\$distro = '$WSL_DISTRO'" \
-    "\$inner = '$WSL_BASE/update/member-wsl-update.sh'" \
-    "Write-Output 'Harbor update: this takes a few minutes. Keep this window open.'" \
-    "& wsl.exe -d \$distro -u root --exec /bin/sh \$inner" \
-    "\$rc = \$LASTEXITCODE" \
-    "if (\$rc -eq 3) {" \
-    "  \$half = Join-Path \$base 'update\\harbor-member.ps1'" \
-    "  & wsl.exe -d \$distro -u root --exec cat /opt/harbor-member.ps1 | Set-Content -Encoding ASCII \$half" \
-    "  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File \$half" \
-    "  if (\$LASTEXITCODE -ne 0) { \$rc = 1 } else { & wsl.exe -d \$distro -u root --exec /bin/sh \$inner; \$rc = \$LASTEXITCODE }" \
-    "  Remove-Item -Force \$half -ErrorAction SilentlyContinue" \
-    "}" \
-    "if (\$rc -eq 0) { & wsl.exe --terminate \$distro; Write-Output 'Harbor update: done. Close Claude completely (Task Manager, End task) and open it again.' }" \
-    "else { Write-Output \"Harbor update: it stopped (code \$rc). Tell your admin this code.\" }" \
-    "Read-Host 'Press Enter to close'" \
-    "exit \$rc"
 }
 win_setup() { # <pin> <member> <hub> <login> <signers> <bootstrap>
   win_head
@@ -184,10 +142,6 @@ win_setup() { # <pin> <member> <hub> <login> <signers> <bootstrap>
   printf "Put 'setup\\member-bootstrap.sh' '%s'\n" "$(base64 < "$6" | tr -d '\n')"
   printf "Put 'setup\\hub-signers' '%s'\n" "$(base64 < "$5" | tr -d '\n')"
   printf "Put 'setup\\member-wsl-setup.sh' '%s'\n" "$(win_inner "$1" "$2" "$3" "$4" | base64 | tr -d '\n')"
-  # harbor#1589: what the Harbor update shortcut runs, kept beside the floor in the folder only an administrator writes.
-  printf "Put 'update\\member-bootstrap.sh' '%s'\n" "$(base64 < "$6" | tr -d '\n')"
-  printf "Put 'update\\member-wsl-update.sh' '%s'\n" "$(win_update_inner "$2" "$3" "$4" | base64 | tr -d '\n')"
-  printf "Put 'update\\harbor-update.ps1' '%s'\n" "$(win_update | base64 | tr -d '\n')"
   # Exit 3 is the install asking for its Windows half. cat, not \\wsl.localhost: whether an elevated shell reads that path is unproved.
   printf '%s\n' \
     "& wsl.exe -d \$distro -u root --exec /bin/sh \$inner" \
@@ -215,8 +169,6 @@ win_uninstall() {
   printf '%s\n' \
     "Remove-Item -Force (Join-Path \$desktop 'Harbor setup.lnk') -ErrorAction SilentlyContinue" \
     "Remove-Item -Force (Join-Path \$desktop 'Harbor support.lnk') -ErrorAction SilentlyContinue" \
-    "Remove-Item -Force (Join-Path \$desktop 'Harbor update.lnk') -ErrorAction SilentlyContinue" \
-    "Remove-Item -Recurse -Force (Join-Path \$base 'update') -ErrorAction SilentlyContinue" \
     "Remove-Item -Force (Join-Path \$env:ProgramData '$SHORTCUT') -ErrorAction SilentlyContinue" \
     "Remove-Item -Force (Join-Path \$env:ProgramData '$RESTART_FLAG') -ErrorAction SilentlyContinue" \
     "Remove-Item -Force (Join-Path \$base 'managed-settings.json') -ErrorAction SilentlyContinue" \
