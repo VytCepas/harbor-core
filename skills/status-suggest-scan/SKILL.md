@@ -1,6 +1,7 @@
 ---
 name: status-suggest-scan
 description: "Runs the repeated-work scan and says in plain words what a person keeps doing by hand. USE WHEN a person asks what they repeat or what Harbor could take over. NOT FOR building what it finds."
+owns-content: "status-suggest-scan\.sh"
 ---
 
 # status-suggest-scan — what do I keep doing by hand
