@@ -17,10 +17,11 @@ _run() {
   HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND="cat '$T_TMP/canned'" sh "$TOOL" "$IN" > "$T_TMP/out" 2> "$T_TMP/err"; _rc=$?
   OUT="$(cat "$T_TMP/out")"; ERR="$(cat "$T_TMP/err")"
   t_eq "$1: exit" "$2" "$_rc"
+  # harbor#1591: a kept original is never printed, so `> OUT` cannot carry unreviewed text into a send.
+  if [ "$2" = 3 ]; then t_eq "$1: prints nothing" "" "$OUT"; fi
 }
 GOOD_L1="Purchase event'us perkeliu į naują tag'ą, nes „event_id“ nebuvo perduodamas."
 L2="Jei reikės, atsiųsiu 1 200 pirkimų sąrašą, žr. https://example.com/a_b?x=1 ir \`purchase_v2\`."
-ORIG="$(cat "$IN")"
 
 t_section "a rewrite that keeps every protected token is used"
 _run "good rewrite" 0 "$GOOD_L1
@@ -37,7 +38,7 @@ $L2
 _run "translated term" 3 "Purchase įvykius perkeliu į naują žymę, nes „event_id“ nebuvo perduodamas.
 $L2
 "
-t_eq "translated term: prints the original" "$ORIG" "$OUT"
+t_has "translated term: the fix line names the skill" "$ERR" "rewrite it by hand from skills/doc-lithuanian-prose/SKILL.md"
 t_has "translated term: names what was lost" "$ERR" "lost"
 
 t_section "a changed number, URL, code span, quoted identifier or line count keeps the original"
@@ -66,7 +67,7 @@ t_section "a model that fails or says nothing keeps the original"
 printf 'exit 1\n' > "$T_TMP/fail.sh"
 HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND="sh '$T_TMP/fail.sh'" sh "$TOOL" "$IN" > "$T_TMP/out" 2> "$T_TMP/err"; _rc=$?
 t_eq "model failed: exit" 3 "$_rc"
-t_eq "model failed: prints the original" "$ORIG" "$(cat "$T_TMP/out")"
+t_eq "model failed: prints nothing" "" "$(cat "$T_TMP/out")"
 _run "empty answer" 3 ""
 t_exit "unknown model" 2 sh "$TOOL" --model opus "$IN"
 
@@ -76,6 +77,8 @@ _one() {
   HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND="cat '$T_TMP/canned1'" sh "$TOOL" "$T_TMP/one" > "$T_TMP/out" 2> "$T_TMP/err"; _rc=$?
   OUT="$(cat "$T_TMP/out")"; ERR="$(cat "$T_TMP/err")"
   t_eq "$1: exit" "$2" "$_rc"
+  # harbor#1591: a kept original is never printed, so `> OUT` cannot carry unreviewed text into a send.
+  if [ "$2" = 3 ]; then t_eq "$1: prints nothing" "" "$OUT"; fi
 }
 
 t_section "each protected class holds on its own"
@@ -99,7 +102,7 @@ HARBOR_DOC_LITHUANIAN_REWRITE_TIMEOUT=1 HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND="s
 _t1="$(date +%s)"
 t_eq "hung model: exit" 3 "$_rc"
 t_has "hung model: says why" "$(cat "$T_TMP/err")" "did not answer within 1s"
-t_eq "hung model: prints the original" "$(cat "$T_TMP/one")" "$(cat "$T_TMP/out")"
+t_eq "hung model: prints nothing" "" "$(cat "$T_TMP/out")"
 [ $((_t1 - _t0)) -lt 5 ] && t_pass || t_fail "hung model: took $((_t1 - _t0))s, the watchdog did not cut it"
 t_exit "a bad timeout" 2 env HARBOR_DOC_LITHUANIAN_REWRITE_TIMEOUT=soon sh "$TOOL" "$T_TMP/one"
 

@@ -22,11 +22,16 @@ citation that misdescribes reality is worse than an absent one.
    `user-invocable`, `argument-hint`, `allowed-tools`, `disable-model-invocation`.
    No bespoke keys: the upstream `version`/`effort` pair folds into `description`,
    which is what the model actually matches on (standards/naming.md §6.4).
-   **Three optional ownership keys are allowed** (read by `context-rules/user/skill-on-first-use`, which
-   names the skill the first time a session uses what it owns): `owns-commands` (space-separated CLI
-   names), `owns-tools` (harness tool names such as `Agent`), and `inline-section` (the `## ` heading
-   whose body the note carries, read live from this file). A skill that names a client system in them
-   belongs in the private layer, never in core.
+   **The moment keys are allowed** (read by `context-rules/user/skill-on-first-use`, which names the
+   skill on every call it owns while the session has not read it, harbor#1591): `owns-commands`
+   (space-separated CLI names), `owns-tools` (harness tool names such as `Agent`), `owns-content` (a
+   regex in jq's flavour, matched against the call's input, Bash's description excluded),
+   `gate-commands` (CLIs that wait until the skill is read, once the skill owns the call or was named
+   this session), `inline-section` (the `## ` heading whose body the first note carries, read live from
+   this file), and `reach: reasoning` for a skill no tool call marks, reached by name or through
+   `skill-catalog`. **Every skill carries one `owns-` key or `reach: reasoning`**
+   (`skill.moment-declared`): a skill with neither has no moment anything can point to. A skill that
+   names a client system in them belongs in the private layer, never in core.
 3. **A skill states *how*, never *which*.** Per-project facts (IDs, current
    state, findings) belong in that project's own `.agents/memory/` — the L3 scope
    in [`contracts/memory-format.md`](../contracts/memory-format.md). A skill that
