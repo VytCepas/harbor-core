@@ -297,7 +297,6 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_STATUS_SUITE_COUNTS` | value | none | Suite counts a real run already printed, such as floor-test=1095, so status-generate --check does not re-run the suites | status |  | tests only |
 | `HARBOR_STATUS_WINDOW` | tuning | `3000000` | number of trailing bytes of the transcript the session-state hook scans for recent events (default 3000000) | status |  | tests only |
 | `HARBOR_STATUS_WORKFLOW` | path | `$ROOT/.github/workflows/governance.yml` | Workflow file status-generate reads for shard information, default .github/workflows/governance.yml | status |  | tests only |
-| `HARBOR_STATUS_NETWORK_LIMIT` | tuning | `200` | KB/s a process may pull on a metered network before status-network.sh reports it (default 200) | status |  | tests only |
 | `HARBOR_TEST_CHANGED` | value | none | Newline-separated list of changed file paths that test-suite-select uses instead of the git diff; pre-push sets it | test |  | tests only |
 | `HARBOR_TEST_CPU_MAX` | path | `/sys/fs/cgroup/cpu.max` | Path of the cgroup cpu.max file test-suite-run reads to size its job pool (default /sys/fs/cgroup/cpu.max) | test |  | tests only |
 | `HARBOR_TEST_CURL` | test-only | `curl` | curl command used in place of curl by ci-verified and access-browser-hosts-add; tests swap in a fake (default curl) | test |  | tests only |
@@ -334,6 +333,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_MEMBER_CORE_SOURCE` | value | `the harbor-core repository` | The core repository member-update.sh fetches the pinned commit from; a test knob, refused under root, where <managed root>/core-source names it (harbor#1278) | member |  | tests only |
 | `HARBOR_MEMBER_OS` | test-only | none | Darwin, Linux or WSL: the member install's OS answer in a test; refused under root | member |  | tests only |
 | `HARBOR_MEMBER_PREFS_DIR` | test-only | `/Library/Managed Preferences` | Folder the member install searches for an MDM profile; a test seam, refused under root | member |  | tests only |
+| `HARBOR_MEMBER_WINDOWS_ACCESS_FILE` | test-only | `/etc/wsl.conf` | The wsl.conf that bin/member-windows-access.sh reads and writes, default /etc/wsl.conf; a test seam, refused under root (harbor#1581) | member |  | tests only |
 | `HARBOR_MEMBER_CONNECTOR_VALUE_FILE` | test-only | none | A file whose first line the key prompt would have returned; honoured by bin/member-connectors.sh only with no member marker beside it (harbor#1278) | member |  | tests only |
 | `HARBOR_MEMBER_LAUNCH_TRUST_UNDER` | test-only | none | A folder at and above which bin/member-mcp-launch.sh skips its writable-server check; honoured only with no member marker beside it (harbor#1278) | member |  | tests only |
 | `HARBOR_MEMBER_LAUNCH_ROOT` | test-only | none | The folder that stands for /opt/company-mcp in bin/member-mcp-launch.sh (a connector server lives in <root>/<name>); honoured only with no member marker beside it (harbor#1278) | member |  | tests only |

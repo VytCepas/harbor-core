@@ -32,15 +32,6 @@ fi
 RULES="$(floor_switch_settings_files "$(floor_field '.cwd')" | while IFS= read -r _f; do
   if [ -f "$_f" ]; then "$FLOOR_JQ" -r '.permissions.ask[]? | strings' "$_f" 2>/dev/null || :; fi
 done)" || exit 0
-# Metered network (status.network, operator request 2026-11-19): bin/status-network.sh writes these rules while on mobile data and
-# removes them off it. Older than 5 min means its tick stopped, and a stale switch is not trusted, so they are ignored (fail-open).
-METERED=""
-_mr="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}/net/ask-rules"
-if [ -f "$_mr" ] && [ -n "$(find "$_mr" -mmin -5 2>/dev/null)" ]; then
-  METERED="$("$FLOOR_GREP" '^Bash(' "$_mr" 2>/dev/null)" || METERED=""
-  [ -z "$METERED" ] || RULES="$RULES${RULES:+
-}$METERED"
-fi
 [ -n "$RULES" ] || exit 0
 
 HIT="$(printf '%s\n' "$RULES" | ASK_TOOL="$TOOL" ASK_CMD="$CMD" awk '
@@ -94,11 +85,7 @@ if floor_no_human; then DECISION=deny; WHY="and no human can answer an ask here,
 elif [ "$(floor_field '.permission_mode')" = auto ]; then
   DECISION=deny; WHY="and in auto mode an ask reaches the classifier, not the operator, so it is denied; ask the operator to run this command as \`! <command>\` at their prompt"
 fi
-WHAT="this changes a live system"; REF="harbor#1545"
-if [ -n "$METERED" ] && printf '%s\n' "$METERED" | "$FLOOR_GREP" -qxF "$HIT"; then
-  WHAT="the network is metered (mobile data) and this downloads in bulk"; REF="status.network"
-fi
-"$FLOOR_JQ" -cn --arg d "$DECISION" --arg r "ask rule \`$HIT\` matched: $WHAT, $WHY ($REF)." \
+"$FLOOR_JQ" -cn --arg d "$DECISION" --arg r "ask rule \`$HIT\` matched: this changes a live system, $WHY (harbor#1545)." \
   '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$d,permissionDecisionReason:$r}}' || exit 0
 { floor_log_decision ask "$DECISION" "ask-rule.argv" 2>/dev/null || :; } 2>/dev/null || :
 exit 0

@@ -373,13 +373,14 @@ sandbox_floor() {
   # the token store round-trips with no keyring and no session bus
   eq floor.no-keyring 'no keyring daemon or secret-tool is installed' '' "$(command -v gnome-keyring-daemon secret-tool 2> /dev/null | tr '\n' ' ' | sed 's/ $//')"
   as_member - 0 "$MH" sh -c "kill -0 1 2> /dev/null; [ ! -S /run/user/$MUID/bus ]"; eq floor.no-bus 'and no session bus is running for the member' 0 "$?"
+  # the name must pass `lint-name.sh --check secret`: access.sh refuses a non-conforming one at birth (#1519)
   _sv="sim-roundtrip-$$"
-  printf '%s' "$_sv" | as_member - 1 "$WD" sh "$MROOT/bin/access.sh" add sim-probe --kind token --what 'a sim probe' --use-when 'the sim' --reaches 'nothing' --cannot 'anything' --grant 'sim' --revoke 'sim' --secret sim-probe --value-stdin > "$OUT/store-probe.log" 2>&1
-  eq floor.store-roundtrip 'bin/secret stores a value and a hook-environment read returns it' "$_sv" "$(as_member - 1 "$WD" sh "$MROOT/bin/secret" run sim-probe SIMV -- printenv SIMV 2> /dev/null)"
+  printf '%s' "$_sv" | as_member - 1 "$WD" sh "$MROOT/bin/access.sh" add harbor-github-sim-probe --kind token --what 'a sim probe' --use-when 'the sim' --reaches 'nothing' --cannot 'anything' --grant 'sim' --revoke 'sim' --secret harbor-github-sim-probe --value-stdin > "$OUT/store-probe.log" 2>&1
+  eq floor.store-roundtrip 'bin/secret stores a value and a hook-environment read returns it' "$_sv" "$(as_member - 1 "$WD" sh "$MROOT/bin/secret" run harbor-github-sim-probe SIMV -- printenv SIMV 2> /dev/null)"
   eq floor.store-blob 'the stored blob does not hold the value' 0 "$(grep -r -l -F "$_sv" "$MH/.local/share/secret" 2> /dev/null | wc -l | tr -d ' ')"
   # the agent cannot read the store: the hook layer, for the read tools and for the shell
-  eq floor.store-read 'the Read tool on the store is refused' deny-approval "$(pre Read "$(jq -cn --arg f "$MH/.local/share/secret/sim-probe.enc" '{file_path:$f}')")"
-  eq floor.store-shell 'a shell command that names the store is refused' deny-approval "$(bash_call "python3 -c \"print(open('$MH/.local/share/secret/sim-probe.key').read())\"")"
+  eq floor.store-read 'the Read tool on the store is refused' deny-approval "$(pre Read "$(jq -cn --arg f "$MH/.local/share/secret/harbor-github-sim-probe.enc" '{file_path:$f}')")"
+  eq floor.store-shell 'a shell command that names the store is refused' deny-approval "$(bash_call "python3 -c \"print(open('$MH/.local/share/secret/harbor-github-sim-probe.key').read())\"")"
   # the real Claude Code, as the member: with no sandbox that can start, it does not start
   _cr=0; as_member - 1 "$WD" env ANTHROPIC_API_KEY=sk-ant-sim-0000 "ANTHROPIC_BASE_URL=http://127.0.0.1:$STUB_PORT" claude -p hello --output-format json > "$OUT/claude-failclosed.json" 2> "$OUT/claude-failclosed.err" || _cr=$?
   case "$(cat "$OUT/claude-failclosed.json" "$OUT/claude-failclosed.err" 2> /dev/null)" in
