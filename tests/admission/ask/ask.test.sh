@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# admission-ask.sh (harbor#1545): a call matching a permissions.ask rule gets a PreToolUse ask; anything else gets no output.
+# admission-ask.sh (harbor#1545): a call matching a permissions.ask rule gets a PreToolUse ask (a deny in auto mode or with no human); anything else gets no output.
 set -u
 . "$(dirname "$0")/../../lib/core.sh"
 t_init
@@ -47,7 +47,10 @@ t_eq "glob tool near miss"   none "$(verdict mcp__glo__y)"
 t_section "where no human can answer, the ask becomes a deny"
 t_eq "bypass mode"           deny "$(verdict Bash 'acme --write x' '{"permission_mode":"bypassPermissions"}')"
 t_eq "subagent transcript"   deny "$(verdict mcp__harbor_chrome__confirm_click '' '{"transcript_path":"/x/subagents/a.jsonl"}')"
-t_eq "auto mode still asks"  ask  "$(verdict Bash 'acme --write x' '{"permission_mode":"auto"}')"
+t_eq "auto mode denies (its asks reach the classifier, harbor#1545)" deny "$(verdict Bash 'acme --write x' '{"permission_mode":"auto"}')"
+t_eq "auto mode denies an MCP click too" deny "$(verdict mcp__harbor_chrome__confirm_click '' '{"permission_mode":"auto"}')"
+t_eq "default mode still asks" ask  "$(verdict Bash 'acme --write x' '{"permission_mode":"default"}')"
+t_eq "acceptEdits still asks"  ask  "$(verdict Bash 'acme --write x' '{"permission_mode":"acceptEdits"}')"
 
 t_section "a bare entry matches every call of that tool"
 _cfg="$(cat "$CLAUDE_CONFIG_DIR/settings.json")"
@@ -56,6 +59,27 @@ t_eq "bare Bash, any command" ask  "$(verdict Bash 'ls -la')"
 t_eq "bare Bash, an MCP call" none "$(verdict mcp__harbor_chrome__click)"
 printf '%s' "$_cfg" > "$CLAUDE_CONFIG_DIR/settings.json"
 t_eq "bare Monitor"          ask  "$(verdict Monitor 'tail -f x')"
+
+t_section "metered network (status.network, 2026-11-19): bulk downloads ask while status-network.sh says so"
+NR="$HOME/.local/state/harbor/net"; mkdir -p "$NR"
+printf '%s\n' 'Bash(docker pull *)' 'Bash(npm install*)' > "$NR/ask-rules"
+t_eq "docker pull asks on mobile data"      ask  "$(verdict Bash 'docker pull ubuntu')"
+t_eq "after cd && too"                       ask  "$(verdict Bash 'cd /x && npm install')"
+t_eq "auto mode denies it"                   deny "$(verdict Bash 'docker pull ubuntu' '{"permission_mode":"auto"}')"
+_rm="$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"docker pull ubuntu"},"permission_mode":"auto"}' | sh "$G")"
+t_has "the reason says metered, not a live system" "$_rm" 'the network is metered'
+t_has "and names the operator's way through" "$_rm" '! <command>'
+t_eq "a small command is not held"           none "$(verdict Bash 'git status')"
+t_eq "a settings rule still says live system" ask "$(verdict Bash 'acme --write x')"
+_rs="$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"acme --write x"}}' | sh "$G")"
+t_hasnt "and its reason is not the metered one" "$_rs" 'metered'
+_cfg2="$(cat "$CLAUDE_CONFIG_DIR/settings.json")"; printf '{}' > "$CLAUDE_CONFIG_DIR/settings.json"
+t_eq "no ask rules in settings at all: metered rules still hold" ask "$(verdict Bash 'docker pull ubuntu')"
+printf '%s' "$_cfg2" > "$CLAUDE_CONFIG_DIR/settings.json"
+touch -t "$(date -r $(( $(date +%s) - 600 )) +%Y%m%d%H%M.%S 2>/dev/null || date -d "@$(( $(date +%s) - 600 ))" +%Y%m%d%H%M.%S)" "$NR/ask-rules"
+t_eq "rules older than 5 min (the tick stopped) are not trusted" none "$(verdict Bash 'docker pull ubuntu')"
+rm -rf "$NR"
+t_eq "no rules file: unmetered, nothing held" none "$(verdict Bash 'docker pull ubuntu')"
 
 t_section "on a member box the dispatcher decides, so no verdict is printed"
 M="$T_TMP/member-bin"; mkdir -p "$M"
@@ -66,6 +90,10 @@ t_hasnt "member mode prints no ask" "x$_mo" 'permissionDecision'
 t_section "the reason names the rule; faults stay silent"
 _r="$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"acme --write x"}}' | sh "$G")"
 t_has "reason names the rule" "$_r" 'Bash(acme --write *)'
+t_has "an ask's reason waits for a yes" "$_r" 'waits for your yes'
+_ra="$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"acme --write x"},"permission_mode":"auto"}' | sh "$G")"
+t_has "an auto-mode deny tells the model the operator runs it" "$_ra" 'ask the operator to run this command as `! <command>`'
+t_hasnt "an auto-mode deny never says it waits for a yes" "$_ra" 'waits for your yes'
 t_eq "malformed stdin"       ""   "$(printf 'not json' | sh "$G")"
 printf 'broken' > "$CLAUDE_CONFIG_DIR/settings.json"
 t_eq "broken settings"       none "$(verdict Bash 'acme --write x')"

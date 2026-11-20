@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 [ "${HARBOR_ADMISSION_DISABLE:-0}" = "1" ] && exit 0
-# guard-ask (harbor#1545) - PreToolUse: a call matching a `permissions.ask` rule gets a PreToolUse `ask`, so the operator's dialog holds in auto mode,
-# where Claude Code was measured running ask-matched calls with no prompt, a Bash apply flag and an MCP click alike (2026-11-16).
+# guard-ask (harbor#1545) - PreToolUse: a call matching a `permissions.ask` rule gets a PreToolUse `ask` (the operator's dialog), and in auto
+# mode a `deny` (below). Claude Code was measured running ask-matched calls with no prompt in auto mode, a Bash apply flag and an MCP click alike (2026-11-16).
 # settings.json stays the one list: this guard keeps no copy and reads the same files Claude Code does (config dir, plus the session cwd's .claude).
 # Matching: a bare `Bash` entry matches every shell call; `Bash(<glob>)` is matched against each command segment split on ; && || | and
 # newlines (`*` is any run; a trailing ` *` or legacy `:*` also matches the bare prefix); a bare entry against the tool name, `mcp__<server>`
@@ -9,6 +9,8 @@
 # command reworded past a literal prefix (env prefix, wrapper, subshell, `&`, quoting, extra spaces): harbor#1551.
 # Where no human can answer, an ask auto-approves, so it is escalated to deny (floor_no_human), as guard-destroy does. On a member box the
 # dispatcher decides (floor_member_stop).
+# AUTO MODE DENIES (harbor#1545, operator 2026-11-17): measured after deploy, a hook `ask` in auto mode goes to the classifier, not the
+# operator, so both probes ran unasked. A deny is the one verdict auto mode honours; the operator runs the call with `!`, which no hook sees.
 # STANDALONE and fail-OPEN like guard-destroy: a fault exits 0 with no output.
 set -u
 trap 'exit 0' EXIT
@@ -30,6 +32,15 @@ fi
 RULES="$(floor_switch_settings_files "$(floor_field '.cwd')" | while IFS= read -r _f; do
   if [ -f "$_f" ]; then "$FLOOR_JQ" -r '.permissions.ask[]? | strings' "$_f" 2>/dev/null || :; fi
 done)" || exit 0
+# Metered network (status.network, operator request 2026-11-19): bin/status-network.sh writes these rules while on mobile data and
+# removes them off it. Older than 5 min means its tick stopped, and a stale switch is not trusted, so they are ignored (fail-open).
+METERED=""
+_mr="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}/net/ask-rules"
+if [ -f "$_mr" ] && [ -n "$(find "$_mr" -mmin -5 2>/dev/null)" ]; then
+  METERED="$("$FLOOR_GREP" '^Bash(' "$_mr" 2>/dev/null)" || METERED=""
+  [ -z "$METERED" ] || RULES="$RULES${RULES:+
+}$METERED"
+fi
 [ -n "$RULES" ] || exit 0
 
 HIT="$(printf '%s\n' "$RULES" | ASK_TOOL="$TOOL" ASK_CMD="$CMD" awk '
@@ -78,9 +89,16 @@ BEGIN {
 FLOOR_OBS_SUBJECT="${CMD:-$TOOL}"
 # harbor#1278: on a member box the dispatcher decides. The fail-open trap is lifted so floor_member_stop's own refusal (exit 2) stands.
 if floor_member_mode; then trap - EXIT; floor_member_stop ask "ask-rule.argv"; exit 0; fi
-DECISION=ask; NOTE=""
-if floor_no_human; then DECISION=deny; NOTE=" [no-human context: an ask would auto-approve here, so escalated to deny]"; fi
-"$FLOOR_JQ" -cn --arg d "$DECISION" --arg r "ask rule \`$HIT\` matched: this changes a live system, so it waits for your yes (harbor#1545).$NOTE" \
+DECISION=ask; WHY="so it waits for your yes"
+if floor_no_human; then DECISION=deny; WHY="and no human can answer an ask here, so it is denied"
+elif [ "$(floor_field '.permission_mode')" = auto ]; then
+  DECISION=deny; WHY="and in auto mode an ask reaches the classifier, not the operator, so it is denied; ask the operator to run this command as \`! <command>\` at their prompt"
+fi
+WHAT="this changes a live system"; REF="harbor#1545"
+if [ -n "$METERED" ] && printf '%s\n' "$METERED" | "$FLOOR_GREP" -qxF "$HIT"; then
+  WHAT="the network is metered (mobile data) and this downloads in bulk"; REF="status.network"
+fi
+"$FLOOR_JQ" -cn --arg d "$DECISION" --arg r "ask rule \`$HIT\` matched: $WHAT, $WHY ($REF)." \
   '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$d,permissionDecisionReason:$r}}' || exit 0
 { floor_log_decision ask "$DECISION" "ask-rule.argv" 2>/dev/null || :; } 2>/dev/null || :
 exit 0

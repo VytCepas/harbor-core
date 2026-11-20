@@ -22,7 +22,7 @@ renderer, the skill installer, deploy-hooks.sh).
 
 ADVISORY, NEVER A DENY: the sentinel is not in the script, so this pack cannot block a call, and the floor's
 verdict on the same call is unchanged. The one deny on these rows is default-way-deny.md, a second pack (a row's
-`deny` cell names the Write and Edit of an installed copy), born warn; this pack stays silent on those calls so
+`deny` cell names the Write and Edit of an installed copy), block since harbor#1458; this pack stays silent on those calls so
 nothing is said twice. A write into a checkout, a repo's own .claude/, or a test fixture under $TMPDIR is never
 under the config dir and never matches. `once: match` keys on the path or the command, so one file draws one
 note per session.

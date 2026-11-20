@@ -119,7 +119,8 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_CI_UNWEDGE_GRACE` | tuning | none | Seconds between TERM and KILL when the runner watch ends the children of a wedged Runner.Worker (default 10) | ci |  | tests only |
 | `HARBOR_CI_WAIT_BACKSTOP` | tuning | `300` | Maximum seconds ci-wait.sh sleeps between checks when no event arrives; default 300, non-numeric or 0 falls back to 300 | ci |  | tests only |
 | `HARBOR_CI_WAIT_SETTLE` | tuning | `2 5 10 15` | Space-separated list of seconds ci-wait sleeps between settle re-checks before trusting a result (default 2 5 10 15) | ci |  | tests only |
-| `HARBOR_CI_WATCH_SECS` | tuning | `1800` | Seconds session-ci-watch waits for CI to finish before giving up (default 1800; non-numeric falls back to 1800) | ci |  | tests only |
+| `HARBOR_CI_WATCH_CEILING` | tuning | `7200` | Seconds session-ci-watch keeps re-arming a still-running PR watch before it says stuck (default 7200; raised to the round when lower) | ci |  | tests only |
+| `HARBOR_CI_WATCH_SECS` | tuning | `1800` | Seconds of one session-ci-watch round; a round that ends still running re-arms up to HARBOR_CI_WATCH_CEILING (default 1800) | ci |  | tests only |
 | `HARBOR_CI_WEDGE_BUSY_SEC` | tuning | none | seconds a runner job may stay busy without an OOM kill before it is judged wedged (default 7200) | ci |  | tests only |
 | `HARBOR_CI_WEDGE_CPU_PCT` | tuning | none | CPU percent of one core under which a CI job counts as near zero for wedge detection, default 2 | ci |  | tests only |
 | `HARBOR_CI_WEDGE_IDLE_SEC` | tuning | none | Seconds of near-zero activity before the runner watch judges a Runner.Worker wedged (default 3600) | ci |  | tests only |
@@ -148,6 +149,8 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_DEPLOY_UNATTENDED` | handoff | none | Set to 1 by deploy-fleet and the event dispatcher for unattended code: deploy.sh --unattended needs it and deploy-fleet refuses --approved under it | deploy |  | tests only |
 | `HARBOR_DOC_ARCHIFY_DIR` | path | `$ROOT/vendor/archify` | Directory of the archify diagram tool used by doc-visual-check (default vendor/archify in the repo) | doc |  | tests only |
 | `HARBOR_DOC_DRIVE_MOUNT` | path | none | mount point of the Drive folder doc-drive-push writes to; unset makes the script search for the real mount | doc |  | tests only |
+| `HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND` | test-only | none | a command that stands in for the model in doc-lithuanian-rewrite: reads the text on stdin, prints the rewrite | doc |  | tests only |
+| `HARBOR_DOC_LITHUANIAN_REWRITE_TIMEOUT` | tuning | `180` | Seconds doc-lithuanian-rewrite waits for the model before it keeps the original, default 180 | doc |  | tests only |
 | `HARBOR_DOC_DRIVE_WAIT` | tuning | `30` | Seconds doc-drive-push waits for Google Drive to assign the item id of a copied deliverable, default 30 | doc |  | tests only |
 | `HARBOR_DOC_IN_FRESH_CHECK` | handoff | none | Set to 1 by doc-fresh-verify.sh for each freshness check command it runs, so the checks know they run inside it | doc |  | tests only |
 | `HARBOR_DOC_ISA_OUT` | path | `$ROOT/build/isa-index.md` | Output file the doc-isa-index generator writes; defaults to build/isa-index.md under the repo root | doc |  | tests only |
@@ -168,6 +171,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_EVENT_BUS_SKEW` | test-only | `0` | Seconds added to the event bus clock so tests can cross a UTC midnight; kept through the dispatcher's env filter | event |  | tests only |
 | `HARBOR_EVENT_BUS_TIMEOUT` | tuning | `2` | seconds before a hanging event bus emit or payload read is killed, 1 to 60 (default 2) | event |  | tests only |
 | `HARBOR_EVENT_CAUSE` | handoff | none | Id of the event that triggered a rule handler; the dispatcher sets it so emitted events carry a cause for the loop guard | event |  | tests only |
+| `HARBOR_EVENT_DISPATCH_LAG_WARN` | tuning | `600` | Seconds an event may wait for its rules before the dispatcher writes its lag file and alarms (default 600; 0 turns the lag alarm off) | event |  | tests only |
 | `HARBOR_EVENT_DIR` | path | `$HOME/.local/state/harbor/events` | Directory the event bus day files (YYYY-MM-DD.jsonl) are written to and read from (default ~/.local/state/harbor/events) | event |  | tests only |
 | `HARBOR_EVENT_HANDLER_TIMEOUT` | tuning | `600` | Seconds an event handler may run before the dispatcher kills it; default 600 | event |  | tests only |
 | `HARBOR_EVENT_HEALTH_SECS` | tuning | `600` | Seconds the event dispatcher may go without a heartbeat before alert-probe calls it down (default 600) | event |  | tests only |
@@ -293,6 +297,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_STATUS_SUITE_COUNTS` | value | none | Suite counts a real run already printed, such as floor-test=1095, so status-generate --check does not re-run the suites | status |  | tests only |
 | `HARBOR_STATUS_WINDOW` | tuning | `3000000` | number of trailing bytes of the transcript the session-state hook scans for recent events (default 3000000) | status |  | tests only |
 | `HARBOR_STATUS_WORKFLOW` | path | `$ROOT/.github/workflows/governance.yml` | Workflow file status-generate reads for shard information, default .github/workflows/governance.yml | status |  | tests only |
+| `HARBOR_STATUS_NETWORK_LIMIT` | tuning | `200` | KB/s a process may pull on a metered network before status-network.sh reports it (default 200) | status |  | tests only |
 | `HARBOR_TEST_CHANGED` | value | none | Newline-separated list of changed file paths that test-suite-select uses instead of the git diff; pre-push sets it | test |  | tests only |
 | `HARBOR_TEST_CPU_MAX` | path | `/sys/fs/cgroup/cpu.max` | Path of the cgroup cpu.max file test-suite-run reads to size its job pool (default /sys/fs/cgroup/cpu.max) | test |  | tests only |
 | `HARBOR_TEST_CURL` | test-only | `curl` | curl command used in place of curl by ci-verified and access-browser-hosts-add; tests swap in a fake (default curl) | test |  | tests only |
@@ -329,6 +334,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_MEMBER_CORE_SOURCE` | value | `the harbor-core repository` | The core repository member-update.sh fetches the pinned commit from; a test knob, refused under root, where <managed root>/core-source names it (harbor#1278) | member |  | tests only |
 | `HARBOR_MEMBER_OS` | test-only | none | Darwin, Linux or WSL: the member install's OS answer in a test; refused under root | member |  | tests only |
 | `HARBOR_MEMBER_PREFS_DIR` | test-only | `/Library/Managed Preferences` | Folder the member install searches for an MDM profile; a test seam, refused under root | member |  | tests only |
+| `HARBOR_MEMBER_WINDOWS_ACCESS_FILE` | test-only | `/etc/wsl.conf` | The wsl.conf that bin/member-windows-access.sh reads and writes, default /etc/wsl.conf; a test seam, refused under root (harbor#1581) | member |  | tests only |
 | `HARBOR_MEMBER_CONNECTOR_VALUE_FILE` | test-only | none | A file whose first line the key prompt would have returned; honoured by bin/member-connectors.sh only with no member marker beside it (harbor#1278) | member |  | tests only |
 | `HARBOR_MEMBER_LAUNCH_TRUST_UNDER` | test-only | none | A folder at and above which bin/member-mcp-launch.sh skips its writable-server check; honoured only with no member marker beside it (harbor#1278) | member |  | tests only |
 | `HARBOR_MEMBER_LAUNCH_ROOT` | test-only | none | The folder that stands for /opt/company-mcp in bin/member-mcp-launch.sh (a connector server lives in <root>/<name>); honoured only with no member marker beside it (harbor#1278) | member |  | tests only |

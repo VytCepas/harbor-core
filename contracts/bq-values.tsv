@@ -1386,3 +1386,18 @@ guard	1376	ask	live	bin/library-admission.sh FLOOR_OBS_GUARDS
 rule	1377	admission.ask-rule	live	standards/naming/controls.tsv
 rule	1378	ask-rule	live	standards/naming/controls.tsv, the id less its family
 rule	1379	admission.admission-ask	live	member-dispatch.sh run_guard: admission.<guard>
+rule	1380	context.ci-verdict-for-session	live	standards/naming/controls.tsv
+rule	1381	ci-verdict-for-session	live	standards/naming/controls.tsv, the id less its family
+rule	1382	name.rename-closing	live	standards/naming/controls.tsv
+rule	1383	check.name.rename-closing	live	standards/naming/controls.tsv
+rule	1384	rename-closing	live	standards/naming/controls.tsv, the id less its family
+rule	1385	context.lithuanian-prose	live	standards/naming/controls.tsv
+rule	1386	lithuanian-prose	live	standards/naming/controls.tsv, the id less its family
+bus_kind	1387	network.metered	live	contracts/event-kinds.tsv
+bus_kind	1388	network.unmetered	live	contracts/event-kinds.tsv
+bus_kind	1389	network.paused	live	contracts/event-kinds.tsv
+bus_kind	1390	network.resumed	live	contracts/event-kinds.tsv
+bus_kind	1391	network.allowed	live	contracts/event-kinds.tsv
+bus_kind	1392	network.hog	live	contracts/event-kinds.tsv
+rule	1393	check.status.network	live	standards/naming/controls.tsv
+rule	1394	status.network	live	standards/naming/controls.tsv, the id less its family

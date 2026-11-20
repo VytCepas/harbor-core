@@ -57,6 +57,8 @@ Support afterwards: [member-support.md](member-support.md). Law of the member la
 5. **The admin signs**, verifies, pushes and merges the hub PR, and raises the hub's `HARBOR_HUB_CORE_SHA` variable. Nobody else signs. The script prints the lines.
 6. `sh bin/member-setup-generate.sh --pin <sha> ... --roster <private roster>` rebuilds every zip. Send the zips that changed.
 
+**Steps 1 to 4 and 6 are one tool.** `sh bin/hub-release.sh --preflight --pr <owner/repo>#<n> ... --core <core> --hub <hub> --hub-repo <org>/<hub repo> --roster <roster> --kit <kit> --out <dir>` lists every problem at once (a PR conflicting, BEHIND, closed or red; a checkout off main, dirty or holding a stale `index.lock`; a stale red-team record) and changes nothing. `--run` with the same inputs does the preflight, the merges, the red-team refresh right before the publish, the publish, the hub pin, the member and hub suites in a clean clone at the pin, and the zips. In an agent session it prints the merge commands and stops (exit 3); run them, then run it again. It never signs: step 5 stays with the admin. The log path is its last line.
+
 Laptops pick up the new policy at their next session. The floor code changes only when the updater runs or IT reinstalls ([hub-admin.md](hub-admin.md), section 4).
 
 ## What colleagues never run

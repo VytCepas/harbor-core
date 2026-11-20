@@ -30,7 +30,7 @@ bin/access-github-app/gh	command	floor	gh shim (harbor#1018): inside a Claude Co
 bin/access-github-app/git-credential.sh	command	floor	git credential helper (harbor#1018): inside a Claude Code session (CLAUDECODE=1) github.com pushes and fetches authenticate as	harbor#1018
 bin/access-github-app/mint-token.sh	command	floor	a 1-hour installation token for the harbor-claude GitHub App, on stdout. Reuses the cached token while it has 10+ minutes left.	harbor#1018
 bin/access.sh	command	floor	`harbor access`: the access register, the one list of every identity an agent may use, and the only door to a secret's name.	harbor#1205
-bin/admission-ask.sh	command	floor	PreToolUse(Bash|Monitor|mcp__*) ASK gate: a permissions.ask match gets the dialog, auto mode included.	harbor#1545
+bin/admission-ask.sh	command	floor	PreToolUse(Bash|Monitor|mcp__*) ASK gate: a permissions.ask match gets the dialog; in auto mode, a deny.	harbor#1545
 bin/admission-api-route.sh	command	floor	PostToolUse(Bash|Write|Edit|MultiEdit) and SessionStart. Claude Code's own API route is not a setting anything a session runs may	harbor#545
 bin/admission-bash.sh	command	floor	PreToolUse(Bash) shell-injection / local-exec guard. Ports upstream DANGEROUS_PATTERNS @ a4e8e74 (safety-classifier.ts:44-76)	harbor#3
 bin/admission-cloud.sh	command	floor	PreToolUse(Bash) ASK-gate for destructive cloud operations.	harbor#194
@@ -112,6 +112,7 @@ bin/doc-cite-verify.sh	command	floor	fetch every external URL Harbor's docs cite
 bin/doc-cited-paths.awk	helper	floor	THE ONE EXTRACTOR for paths cited in prose. awk -f doc-cited-paths.awk <file> one cited path per line, in file order	harbor#462
 bin/doc-drive-push.sh	command	floor	copy a filed deliverable into Google Drive and print the link a person can actually open.	harbor#422
 bin/doc-fresh-verify.sh	command	floor	is every generated file current? One verdict line per file, and the exact fix for a stale one.	harbor#1287
+bin/doc-lithuanian-rewrite.sh	command	floor	rewrites Lithuanian text in plain publicist Lithuanian with Haiku or Sonnet, kept only when every protected token survives	harbor#1572
 bin/doc-freshness.sh	command	floor	per-document staleness over Harbor's governing files. harbor#5 (workstream C1a), method taken from upstream `Interview` @ a4e8e74.	harbor#5
 bin/doc-graph-generate.sh	command	floor	the reference graph: every path and id, and what points at it.	harbor#996
 bin/doc-index-generate.sh	command	floor	generate docs/index.html, the architecture document (harbor#173). G1: deliberately one file. A generator split across modules is	harbor#173
@@ -275,6 +276,7 @@ bin/status-subagent-glyph.sh	command	floor	Claude Code SUBAGENT statusline: one 
 bin/status-suggest-scan.sh	command	floor	repeated work in recent sessions, reduced to closed-vocabulary shapes: at most 3 candidates a skill, hook or job could take over. Read-only.	harbor#1485
 bin/status-telemetry-report.sh	command	floor	the signals Harbor captures, turned into answers. TSV on stdout. status-telemetry-report.sh approvals [--bus DIR] each approval	harbor#1181
 bin/status-usage-aggregate.sh	command	floor	durable per-day token usage, attributed.	harbor#44
+bin/status-network.sh	command	floor	the check status.network: on a metered network pause the jobs that pull megabytes, report other heavy processes, resume them off it.	harbor#1582
 bin/test-sandbox-make.sh	command	floor	build a disposable copy of ~/.claude's CONFIG surfaces for floor development. Everything in workstream B and K1/K2 runs against	harbor#33
 bin/test-suite-cache.sh	command	floor	a suite whose inputs already passed is reported cached, not re-run (harbor#1288)	harbor#1288
 bin/test-suite-run.sh	command	floor	run many suites at once, longest first, and say which failed (harbor#679)	harbor#679
@@ -312,6 +314,7 @@ bin/hub-tools.sh	command	floor	the admin side of members' personal tools, behind
 bin/member-tests.sh	command	floor	the Stop check member.tests and its UserPromptSubmit snapshot: a registered project's code changed in a turn with no test goes back once	harbor#1278
 bin/member-integrity.sh	command	floor	hashes the managed root and managed settings against the pin IT wrote	harbor#1278
 bin/member-prereqs.sh	command	floor	the one root helper a member may run: installs the fixed list in contracts/member-prereqs.txt and refuses everything else	harbor#1278
+bin/member-windows-access.sh	command	floor	what a WSL member's distro reaches on Windows (C: writable, Windows programs) in /etc/wsl.conf; read-only and off unless the person chose otherwise	harbor#1581
 bin/member-mcp-launch.sh	command	floor	starts one MCP server with a colleague key in its environment only, from the managed MCP file: refuses unless the policy connectors.json lists this ref with exactly this server, which no user can write; the agent calls the server tools and never holds the key	harbor#1278
 bin/member-connectors.sh	command	floor	the person side of a connector: enters its key in a terminal of their own (hidden, never argv, refused inside a Claude Code session and for any ref the policy does not list) and lists which keys are stored	harbor#1278
 bin/library-board.sh	library	floor	the board's reading code: what makes a comment count, the policy read, the relay and agent checks; shared by approval and support	harbor#1278
@@ -320,3 +323,4 @@ bin/member-support-guard.sh	command	floor	the dispatcher's rule that an agent's 
 bin/hub-support.sh	command	floor	the admin side of remote support, behind harbor hub support: list, accept with the admin's gh, join with the admin's key	harbor#1278
 bin/hub-pin-upgrade.sh	command	floor	raises the hub policy pin on a branch and stops before signing; refuses a pin not on core main, a dirty hub, a contract change	harbor#1278
 bin/member-setup-generate.sh	command	floor	rebuilds every person's setup script, hash and zip at a pin from a private roster, with the pin's own member-windows.sh	harbor#1278
+bin/hub-release.sh	command	floor	one hub release as one tool: a preflight that lists every problem and changes nothing, then merge, red-team refresh, publish, hub pin, suites at the pin and zips; prints the merges in an agent session; never signs	harbor#1278

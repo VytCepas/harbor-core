@@ -28,6 +28,27 @@ t_has "a changed source reports DRIFTED" "$(run)" "note: alpha: DRIFTED"
 run alpha --apply >/dev/null
 t_eq "update re-syncs to byte-identical" same "$(same alpha)"
 
+t_section "a harness .claude/.cc-writes inside an installed skill is not payload (harbor#1571)"
+# Claude Code makes <dir>/.claude/.cc-writes when a session works in <dir>; one under lenses/ rolled a deploy back.
+mkdir -p "$ROOT/skills/alpha/lenses"; printf 'a lens\n' > "$ROOT/skills/alpha/lenses/brief.md"; run alpha --apply >/dev/null
+mkdir -p "$CFG/skills/alpha/lenses/.claude/.cc-writes"
+t_has "...an empty one leaves the skill current" "$(run)" "ok: alpha: current"
+t_eq "...and a re-install over it is a no-op that exits 0" 0 "$(rc alpha --apply)"
+printf 'w\n' > "$CFG/skills/alpha/lenses/.claude/.cc-writes/record"
+printf 'body v3\n' >> "$ROOT/skills/alpha/SKILL.md"
+t_eq "a held one, with the source changed: the update passes" 0 "$(rc alpha --apply)"
+t_eq "...the skill is byte-identical to its source" same "$(same alpha)"
+t_eq "...and the harness folder is gone from the skill" gone "$(gone "$CFG/skills/alpha/lenses/.claude")"
+mkdir -p "$CFG/skills/alpha/lenses/.claude/.cc-writes"; printf '{}\n' > "$CFG/skills/alpha/lenses/.claude/keep.json"
+t_has "anything else in an installed .claude is still drift" "$(run)" "note: alpha: DRIFTED"
+chmod 000 "$CFG/skills/alpha/lenses/.claude"
+t_has "...and so is one the installer cannot read" "$(run)" "note: alpha: DRIFTED"
+chmod 755 "$CFG/skills/alpha/lenses/.claude"; rm -rf "$CFG/skills/alpha/lenses/.claude"
+mkdir -p "$ROOT/skills/alpha/data/.cc-writes"; printf 'v1\n' > "$ROOT/skills/alpha/data/.cc-writes/x"; run alpha --apply >/dev/null
+printf 'v2\n' > "$ROOT/skills/alpha/data/.cc-writes/x"
+t_has "a payload .cc-writes outside .claude is compared" "$(run)" "note: alpha: DRIFTED"
+run alpha --apply >/dev/null
+
 t_section "a hand-typed nested copy is seen, and the verb never nests"
 cp -R "$ROOT/skills/alpha" "$CFG/skills/alpha/"  # no trailing /. — the trap
 t_eq "the nested copy was staged" present "$(gone "$CFG/skills/alpha/alpha")"

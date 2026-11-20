@@ -220,10 +220,11 @@ if [ "$RECORD" -eq 1 ]; then
   # A lock older than 30 minutes is a sweep that died, not one that is running:
   # the slowest measured run is minutes, and a dead lock must not stop every
   # later slot in silence.
-  if ! mkdir "$LOCK" 2>/dev/null; then
+  # A file made with O_EXCL (set -C), never mkdir: uutils mkdir exits 0 on a lost race (harbor#1378).
+  if ! ( set -C; : > "$LOCK" ) 2>/dev/null; then
     if [ -n "$(find "$LOCK" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then
-      rmdir "$LOCK" 2>/dev/null || true
-      mkdir "$LOCK" 2>/dev/null || exit 0
+      { rm -f "$LOCK" || rmdir "$LOCK"; } 2>/dev/null || true
+      ( set -C; : > "$LOCK" ) 2>/dev/null || exit 0
     else
       exit 0
     fi
@@ -231,7 +232,7 @@ if [ "$RECORD" -eq 1 ]; then
 fi
 
 TMPD="$(mktemp -d "${TMPDIR:-/tmp}/harbor-clean.XXXXXX")"
-trap 'rm -rf "$TMPD"; [ "$RECORD" -eq 1 ] && rmdir "$LOCK" 2>/dev/null; true' EXIT
+trap 'rm -rf "$TMPD"; [ "$RECORD" -eq 1 ] && rm -f "$LOCK" 2>/dev/null; true' EXIT
 trap '[ -z "${_bp:-}" ] || { kill "$_bw" 2>/dev/null; _kill_tree "$_bp"; }; exit 1' INT TERM HUP
 if [ "$RECORD" -eq 1 ]; then JSON=1; exec 3>&1 >"$TMPD/rows.jsonl"; fi
 

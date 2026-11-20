@@ -99,6 +99,7 @@ tests/status/statusline/machine.test.sh
 tests/status/statusline/row2.test.sh
 tests/status/statusline/subagent.test.sh
 tests/status/usage-aggregate/usage-aggregate.test.sh
+tests/status/network/network.test.sh
 tests/test/suite-select/suite-select.test.sh
 tests/ci/verified/verified.test.sh
 tests/ci/runner/image.test.sh
@@ -111,6 +112,7 @@ tests/deploy/runtime-install/runtime-install.test.sh
 tests/deploy/harden/harden.test.sh
 tests/admission/remove/remove.test.sh
 tests/doc/isa-index/isa-index.test.sh
+tests/doc/lithuanian-rewrite/lithuanian-rewrite.test.sh
 tests/skill/collision-verify/collision-verify.test.sh
 tests/status/generate/generate.test.sh
 tests/skill/install/install.test.sh
@@ -143,6 +145,7 @@ tests/context/injection-rule/decision-question.test.sh
 tests/context/injection-rule/default-way-route.test.sh
 tests/context/injection-rule/default-way-deny.test.sh
 tests/context/injection-rule/repo-not-adopted.test.sh
+tests/context/injection-rule/ci-verdict-for-session.test.sh
 tests/context/injection-rule/skill-first-use.test.sh
 tests/context/injection-rule/suggest-tool.test.sh
 tests/context/injection-rule/name-note.test.sh
@@ -268,6 +271,7 @@ tests/ci/runs-on/runs-on.test.sh
 tests/lint/platform/calls.test.sh
 tests/lint/conventions/mktemp-template.test.sh
 tests/status/fleet-snapshot/watch.test.sh
+tests/status/fleet-snapshot/detach.test.sh
 tests/access/secret/seam.test.sh
 tests/status/console/guards.test.sh
 tests/status/console/lifecycle.test.sh
@@ -283,6 +287,7 @@ tests/status/obligations/surface.test.sh
 tests/status/obligations/harden.test.sh
 tests/status/obligations/finished.test.sh
 tests/event/dispatch/resume.test.sh
+tests/event/dispatch/lag.test.sh
 tests/event/dispatch/rules.test.sh
 tests/event/dispatch/spawn.test.sh
 tests/event/dispatch/pull.test.sh
@@ -550,6 +555,7 @@ tests/member/e2e/harness.test.sh
 tests/member/e2e/harness-floor.test.sh
 tests/member/e2e/skill-landing.test.sh
 tests/member/prereqs/helper.test.sh
+tests/member/windows/access.test.sh
 tests/member/support/guard.test.sh
 tests/member/support/person.test.sh
 tests/member/support/board.test.sh
@@ -571,5 +577,6 @@ tests/member/pack/robust-refusals.test.sh
 tests/member/pack/robust-time.test.sh
 tests/member/pack/robust-floor.test.sh
 tests/hub/pin/upgrade.test.sh
+tests/hub/release/release.test.sh
 tests/member/setup/generate.test.sh
 tests/member/connectors/connectors.test.sh

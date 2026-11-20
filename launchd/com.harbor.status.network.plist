@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- harbor:template-only
+     THIS FILE IS A TEMPLATE (harbor#630). Do not cp it: render it.
+
+       sh ~/port/harbor/bin/deploy-launchd-render.sh ~/port/harbor/launchd/com.harbor.status.network.plist > ~/Library/LaunchAgents/com.harbor.status.network.plist
+
+     This block is not installed; bin/deploy-launchd-render.sh drops it. -->
+<!-- docs/reference/checks.md `status.network` (operator request 2026-11-19): on a metered network (a phone hotspot), pause the jobs
+     that pull megabytes and report any other process that does; resume them when the network is unmetered again. Every 60 s and on
+     every network change (WatchPaths on SystemConfiguration). INSTALLED BY DEPLOY (harbor:deploy-installs is the marker
+     bin/deploy-launchd-sync.sh reads; `sh bin/deploy.sh --apply --live` renders this file into ~/Library/LaunchAgents and loads it).
+     A Claude session cannot install this, by design (#555 decision 3).
+
+     It runs the INSTALLED status-network.sh, which reads the route, the DHCP lease and one nettop sample, all local; no network.
+
+     See it work: `launchctl kickstart -k gui/$(id -u)/com.harbor.status.network`, then `cat /tmp/com.harbor.status.network.out`
+     and `sh ~/.claude/bin/status-network.sh status`.
+
+     Disable (docs/reference/checks.md's two-lookup rule):
+       launchctl bootout gui/$(id -u)/com.harbor.status.network
+       rm ~/Library/LaunchAgents/com.harbor.status.network.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.harbor.status.network</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>@HOME@/.claude/bin/status-network.sh</string>
+    <string>guard</string>
+  </array>
+  <key>StartInterval</key><integer>60</integer>
+  <key>WatchPaths</key>
+  <array>
+    <string>/Library/Preferences/SystemConfiguration</string>
+  </array>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>RunAtLoad</key><true/>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>ProcessType</key><string>Background</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin</string>
+    <key>HOME</key><string>@HOME@</string>
+  </dict>
+  <key>StandardOutPath</key><string>/tmp/com.harbor.status.network.out</string>
+  <key>StandardErrorPath</key><string>/tmp/com.harbor.status.network.err</string>
+</dict>
+</plist>

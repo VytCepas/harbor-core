@@ -167,8 +167,8 @@ hand-edited:
   refused ref, never a live one. `has` returns 4 for a ref any revoked entry names, before the legacy list is read,
   so a grandfathered ref cannot come back through it. `rotate` refuses a revoked entry. A ref is re-issued by deleting
   its `revoked:` line, which is a deliberate edit, or by a new entry.
-- **One writer at a time.** `add` and `revoke` take `<register>.lock` (an atomic `mkdir`) and fail after 30s with the
-  `rmdir` that clears a lock left by a killed writer; they never break it silently. `rotate` takes it only to date the
+- **One writer at a time.** `add` and `revoke` take `<register>.lock` (a file made with O_EXCL, never `mkdir`: harbor#1378) and fail after
+  30s with the `rm -f` that clears a lock left by a killed writer (`rmdir` for an older version's directory); they never break it silently. `rotate` takes it only to date the
   entry after the value is kept, so a busy register costs it the dates, with a warning, never the rotation. `rotate` and
   `revoke` refuse a register that does not parse cleanly, and `revoke` removes the value only once `has` says 4.
 - **`--locked`** (`rotate`) stores the new value with `-T ""`, as `secret put --locked` does. Without it the value is
