@@ -240,7 +240,7 @@ gen_setup() { sh "$T_ROOT/bin/member-windows.sh" --setup --pin "$PIN40" --user a
 t_section "it parses, and lints clean for PowerShell 7 and 5.1"
 gen_setup; t_eq "member-windows.sh --setup prints" 0 "$?"
 sh "$T_ROOT/bin/member-windows.sh" --uninstall > "$ADMIN/uninstall-printed.ps1" 2>/dev/null; runnable "$ADMIN/uninstall-printed.ps1" "$UNINST"
-mkdir -p "$SIM/lint"; cp "$ADMIN/printed.ps1" "$SIM/lint/setup.ps1"; cp "$ADMIN/uninstall-printed.ps1" "$SIM/lint/uninstall.ps1"
+mkdir -p "$SIM/lint"; cp "$ADMIN/printed.ps1" "$SIM/lint/setup.ps1"; cp "$ADMIN/uninstall-printed.ps1" "$SIM/lint/uninstall.ps1"; sed -n "s/^Put 'update\\\\harbor-update.ps1' '\(.*\)'\$/\1/p" "$ADMIN/printed.ps1" | base64 -d > "$SIM/lint/update.ps1"   # harbor#1589
 ST="$T_TMP/stage"; mkdir -p "$ST/harbor/bin" "$ST/harbor/MEMORY/OBSERVABILITY/member"
 printf '{"env":{"HARBOR_MEMBER_ROLE":"member"}}\n' > "$ST/managed-settings.json"
 printf '#!/bin/sh\necho "a $b" `c` \047q\047 $(d)\n' > "$ST/harbor/bin/hook.sh"

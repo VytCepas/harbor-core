@@ -207,6 +207,15 @@ The dispatcher blocks a call if it fails, so a broken script stops all work unti
 
 Either works with Claude Code down, because neither needs a session.
 
+## Updates (harbor#1589)
+
+When you raise the hub pin, each laptop learns it at the next session start: the person sees one line, "a company update is ready", and nothing changes until they act.
+
+- **Windows (WSL):** the setup leaves a **Harbor update** shortcut on the shared desktop. It asks Windows for an administrator once, reads the pin from the hub policy the laptop has already verified, and runs the setup's own bootstrap and install at that pin, Windows half included. It refuses when no verified policy is on the laptop, and does nothing when the floor is already at the pin. A laptop set up before this change gets the shortcut only from one more setup run.
+- **macOS and Linux:** the line says to ask you; run `sudo sh /opt/harbor-core/bin/member-update.sh` there.
+
+Nothing runs on a schedule: the operator chose a click over a background job. The shortcut has never run on real Windows; `tests/member/windows/sim-windows.sh` proves it parses and lints in PowerShell 7 and 5.1 rules, and `tests/member/windows/script.test.sh` proves the root script inside.
+
 ## Leaving
 
 Only IT can remove this: a member can't, because the rules are root's. The decision that a person may uninstall at any time now means **through IT**. `--uninstall` revokes the token, removes the hub state and the managed floor, and leaves a plain install with no floor. Then remove the member from the hub repo and delete the token on GitHub.
