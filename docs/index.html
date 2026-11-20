@@ -1494,7 +1494,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/status/statusline/row2.test.sh</code></td><td><code>bin/access.sh bin/ci-github-plan.sh bin/ci-governor-hook.sh bin/ci-governor.sh bin/ci-runner-switch.sh bin/ci-runners-fleet-lib.sh bin/ci-runners-github-lib.sh bin/ci-runners-provision-lib.sh bin/ci-runners-watch-lib.sh bin/ci-runners.sh bin/event-bus.sh bin/library-hub.sh bin/library-log.sh bin/scope-roots.sh bin/secret bin/status-fleet-glyph.sh tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/statusline/subagent.test.sh</code></td><td><code>bin/status-fleet-glyph.sh bin/status-subagent-glyph.sh tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/usage-aggregate/usage-aggregate.test.sh</code></td><td><code>bin/* launchd/* tests/status/usage-aggregate/usage-aggregate.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/status/network/network.test.sh</code></td><td><code>bin/status-network.sh bin/event-bus.sh bin/library-log.sh tests/status/network/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/test/suite-select/suite-select.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/ci/verified/verified.test.sh</code></td><td><code>bin/ci-verified.sh tests/ci/verified/verified.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/runner/image.test.sh</code></td><td><code>runners/* contracts/suites.txt tests/ci/runner/image.test.sh tests/access/browser/browser.test.sh bin/browser* bin/access-browser* tests/lib/core.sh tests/lib/linux-sim.sh</code></td></tr>
@@ -2916,7 +2915,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/status-fleet-snapshot-refresh.sh</code></td><td>L0-5-interim (harbor#21) — write the fleet snapshot cache the statusline glyph reads.</td></tr>
 <tr><td><code>bin/status-fleet-watch.sh</code></td><td>status-fleet-watch.sh (harbor#1437) — the hourly fleet watch pass, scheduled by harbor: check id status.fleet-watch.</td></tr>
 <tr><td><code>bin/status-generate.sh</code></td><td>STATUS (harbor#3 follow-on) — generate docs/generated/status.md, the ONE place Harbor states</td></tr>
-<tr><td><code>bin/status-network.sh</code></td><td>status-network.sh (harbor#1582) — no bulk download over mobile data without the operator's yes (check status.network, operator request 2026-11-19).</td></tr>
 <tr><td><code>bin/status-obligations.sh</code></td><td>status-obligations.sh (harbor#1050) — the obligations ledger: a projection of the event bus.</td></tr>
 <tr><td><code>bin/status-plan-generate.sh</code></td><td>status-plan-generate.sh (harbor#117) — which plan tickets are DONE, derived and not stated.</td></tr>
 <tr><td><code>bin/status-subagent-glyph.sh</code></td><td>L0-5b (harbor#293) — Claude Code SUBAGENT statusline: one row per live agent.</td></tr>

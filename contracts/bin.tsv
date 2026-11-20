@@ -276,7 +276,6 @@ bin/status-subagent-glyph.sh	command	floor	Claude Code SUBAGENT statusline: one 
 bin/status-suggest-scan.sh	command	floor	repeated work in recent sessions, reduced to closed-vocabulary shapes: at most 3 candidates a skill, hook or job could take over. Read-only.	harbor#1485
 bin/status-telemetry-report.sh	command	floor	the signals Harbor captures, turned into answers. TSV on stdout. status-telemetry-report.sh approvals [--bus DIR] each approval	harbor#1181
 bin/status-usage-aggregate.sh	command	floor	durable per-day token usage, attributed.	harbor#44
-bin/status-network.sh	command	floor	the check status.network: on a metered network pause the jobs that pull megabytes, report other heavy processes, resume them off it.	harbor#1582
 bin/test-sandbox-make.sh	command	floor	build a disposable copy of ~/.claude's CONFIG surfaces for floor development. Everything in workstream B and K1/K2 runs against	harbor#33
 bin/test-suite-cache.sh	command	floor	a suite whose inputs already passed is reported cached, not re-run (harbor#1288)	harbor#1288
 bin/test-suite-run.sh	command	floor	run many suites at once, longest first, and say which failed (harbor#679)	harbor#679
