@@ -41,3 +41,9 @@ notify.unshown	point	the notification's subtitle	bin/library-alert.sh	a banner c
 dispatch.probe	point	cause	bin/event-dispatch.sh	the dispatcher's own probe that the bus passes a cause on
 check.<id>.ran	point	the check id	-	designed, not built: a check finished its run
 obligation.repair	point	the obligation id	-	designed, not built: a repair was attempted on an obligation
+network.metered	start	the constant `network`; the reason (android-hotspot:<if>, iphone-hotspot:<if>, listed-gateway, forced) is data.evidence	bin/status-network.sh	the network became metered (a phone hotspot): heavy jobs pause, bulk downloads ask
+network.unmetered	terminal	the constant `network`, repeating its start; the reason is data.evidence	bin/status-network.sh	the network is no longer metered: what was paused resumes
+network.paused	point	the launchd label	bin/status-network.sh	a heavy job was paused because the network is metered
+network.resumed	point	the launchd label	bin/status-network.sh	a paused job was resumed: the network is unmetered or the operator allowed it
+network.allowed	point	the launchd label	bin/status-network.sh	the operator allowed one job on this metered network
+network.hog	point	the nettop process name	bin/status-network.sh	a process not on the allow-list pulled more than the limit on mobile data
