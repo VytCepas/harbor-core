@@ -2,7 +2,6 @@
 name: audit-review-fanout
 description: "Review a code change with several cheap reviewers, each given a different lens, then verify every finding before reporting it. The deliverable is verified defects only, each with its evidence; none found is a valid result. USE WHEN review this PR, review the diff, code review, review my changes, audit this change, check before merge, second opinion on code. NOT FOR proving a test can fail (test-strength), or the merge decision (gate-merge)."
 architecture: code-review
-owns-content: "\bgh pr (diff|review)\b"
 ---
 
 # audit-review-fanout — distinct lenses, then verification
