@@ -137,6 +137,30 @@ done
 printf '[user]\ndefault = alice\r\n' > "$T_TMP/wsl.conf"; RC=0; sh "$IN" 2>/dev/null || RC=$?
 t_eq "the member already named, spaced and CRLF: exit 0" 0 "$RC"; t_eq "...and no second default" 1 "$(grep -c default "$T_TMP/wsl.conf")"
 
+t_section "the Harbor update shortcut (harbor#1589): the setup again, at the pin the hub signed"
+t_eq "setup leaves the bootstrap for it, byte for byte" same "$(cmp -s "$T_ROOT/bin/member-bootstrap.sh" "$SB/update/member-bootstrap.sh" && echo same)"
+UP="$(cat "$SB/update/harbor-update.ps1")"
+t_has "it asks Windows for an administrator itself" "$UP" "-Verb RunAs"
+t_eq "and runs the install inside twice, its Windows half between" 1 "$(l1="$(grep -n -F -- '-u root --exec /bin/sh $inner' "$SB/update/harbor-update.ps1" | sed -n 1p | cut -d: -f1)"; l3="$(grep -n -F -- '-File $half' "$SB/update/harbor-update.ps1" | cut -d: -f1)"; l2="$(grep -n -F -- '-u root --exec /bin/sh $inner' "$SB/update/harbor-update.ps1" | sed -n 2p | cut -d: -f1)"; [ "$l1" -lt "$l3" ] && [ "$l3" -lt "$l2" ] && echo 1)"
+t_has "the window waits, so the person reads the result" "$UP" 'Read-Host'
+t_hasnt "nothing evaluates a string" "$UP" 'Invoke-Expression'
+t_has "setup puts its shortcut on the shared desktop" "$S" "'Harbor update.lnk'"
+t_has "...running the script in the administrators' folder" "$S" "'update\\harbor-update.ps1'"
+UB="$T_TMP/upd-base"; mkdir -p "$UB/harbor/bin"; UIN="$T_TMP/upd-inner.sh"
+sed -e "s|/mnt/c/Program Files/ClaudeCode|$UB|g" -e "s|exec /bin/sh '$UB/update/member-bootstrap.sh'|exec /bin/sh $T_TMP/boot.sh|" "$SB/update/member-wsl-update.sh" > "$UIN"
+PIN2=fedcba9876543210fedcba9876543210fedcba98; printf '{"core":{"commit":"%s"}}\n' "$PIN2" > "$T_TMP/upol.json"
+stub "$UB/harbor/bin/hub-sync.sh" '[ "$1" = path ] && [ -z "${NO_POLICY:-}" ] && echo "'"$T_TMP/upol.json"'"; exit 0'
+printf '%s\n' "$PIN40" > "$UB/harbor/core.commit"
+: > "$CALLS"; sh "$UIN"; t_eq "a newer signed pin: the bootstrap runs" 0 "$?"
+t_has "...at the hub's pin, with the member's values" "$(cat "$CALLS")" "bootstrap --pin $PIN2 --user alice --hub fixture-org/fixture-hub --login alice-gh --signers $UB/harbor/hub-signers"
+printf '%s\n' "$PIN2" > "$UB/harbor/core.commit"; : > "$CALLS"
+t_has "already at the pin: nothing to do" "$(sh "$UIN")" 'already up to date'
+t_eq "...and no bootstrap" '' "$(cat "$CALLS")"
+: > "$CALLS"; RC=0; NO_POLICY=1 sh "$UIN" 2>/dev/null || RC=$?
+t_eq "no verified policy on the laptop: refused, before the bootstrap" "1 " "$RC $(cat "$CALLS")"
+printf '{"core":{"commit":"abc"}}\n' > "$T_TMP/upol.json"; RC=0; sh "$UIN" 2>/dev/null || RC=$?
+t_eq "a policy naming no 40-hex commit: refused" 1 "$RC"
+
 t_section "leaving"
 U="$(sh "$W" --uninstall)"
 t_has "removes the floor" "$U" "'harbor'"
@@ -146,6 +170,7 @@ t_hasnt "and only that: the whole key stays" "$U" 'Remove-Item -Recurse -Force $
 t_has "removes the shortcuts" "$U" 'Harbor setup.lnk'
 t_has "and the restart note" "$U" 'harbor-setup-restart.txt'
 t_has "both of them" "$U" 'Harbor support.lnk'
+t_has "and the update one, with its folder (harbor#1589)" "$U" 'Harbor update.lnk'
 t_section "the install inside ends at the token step (exit 4): setup still finishes, and says so"
 t_has "exit 4 is not a failure of the install" "$S" 'if ($rc -ne 0 -and $rc -ne 4)'
 t_has "the shortcuts still land, and the person is told the token is next" "$S" 'if ($rc -eq 4) {'
