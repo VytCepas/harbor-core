@@ -72,12 +72,12 @@ if [ "$WORDS" -ge 25 ] || [ "$WORK" -ge 2 ]; then WORKED=1; fi
 NEED=""
 if [ "$WORKED" -eq 1 ]; then
   printf '%s\n' "$REPLY" | LC_ALL=C grep -Eiq '^[[:space:]>*_#-]*Upgrade[[:space:]]*(\*\*|__)?[[:space:]]*:' \
-    || NEED="Add one last short line starting \"Upgrade:\": one plain tip for next time, specific to this task."
+    || NEED="End the answer with one line starting \"Upgrade:\" that names one concrete skill, pack, harbor command, connector or better way to ask that would have made this work better, specific to this task (company rules §1)."
 fi
 
 # §2: an answer decides something when its text says so ($DECIDES).
 if [ "$AGENTS" -eq 0 ] && printf '%s\n' "$REPLY" | sed -E "$BENIGN" | LC_ALL=C grep -Eiq "$DECIDES"; then
-  NEED="${NEED:+$NEED }This answer decides something and no second agent checked it: have a fresh agent check its claims against their sources, and leave out what it cannot confirm."
+  NEED="${NEED:+$NEED }This answer decides something and no second agent checked it: spawn a fresh agent with the claims and their sources, cut what it cannot support, and say how many claims held (company rules §2)."
 fi
 
 [ -n "$NEED" ] || exit 0
