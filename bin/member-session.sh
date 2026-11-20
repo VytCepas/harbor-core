@@ -111,7 +111,7 @@ repos_note() {
   _rn="$(awk -F'\t' 'NF >= 3 && $1 ~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/ { printf "%s%s", (n++ ? ", " : ""), $1 }' "$_rd/list" 2>/dev/null)" || _rn=''
   rm -rf "$_rd"
   [ -n "$_rn" ] || return 0
-  note "Harbor: these folders in ~/port are git repos Harbor does not govern yet: $_rn. Ask your agent to register each one."
+  note "Harbor: these project folders are not set up with the company checks yet: $_rn. Ask Claude to set them up."
   AGENT_NOTE="${AGENT_NOTE:+$AGENT_NOTE }Repos under ~/port that Harbor does not govern yet (company rule): $_rn. Tell the person, and register each with: sh ~/port/harbor/bin/harbor hub project register <name>. Registering writes into ~/port/harbor-private, so leave the run to them."
 }
 
@@ -123,6 +123,19 @@ memory_note() {
 }
 
 # A member's own tools (bin/member-tools.sh, control member.tools-sync): pulled from their private repo at every start. Bounded twice, fail-open, never a session problem.
+# harbor#1589: the hub signed a newer version than this laptop runs. The policy path is verified on every call, and core.commit is the root's own record of the floor.
+update_note() {
+  _up="$(sh "$HERE/hub-sync.sh" path 2>/dev/null)" || _up=''
+  [ -n "$_up" ] || return 0
+  _want="$(jq -r '.core.commit // empty' "$_up" 2>/dev/null)" || _want=''
+  _have="$(cat "$HERE/../core.commit" 2>/dev/null)" || _have=''
+  [ -n "$_want" ] && [ -n "$_have" ] && [ "$_want" != "$_have" ] || return 0
+  if [ -f "$HERE/../../update/harbor-update.ps1" ]; then
+    note "Harbor: a company update is ready. When you have a few minutes, double-click Harbor update on your desktop and click Yes."
+  else
+    note "Harbor: a company update is ready. Ask your admin to install it."
+  fi
+}
 tools_pull() {
   [ -f "$HERE/member-tools.sh" ] || return 0
   _tn="$(bounded "$((TIMEOUT * 2))" sh "$HERE/member-tools.sh" pull 2>/dev/null)" || _tn=''
@@ -161,6 +174,7 @@ start() {
     _an="$(sh "$HERE/hub-approval.sh" note SessionStart 2>/dev/null | jq -r '.systemMessage // empty' 2>/dev/null)" || _an=''
     [ -z "$_an" ] || note "$_an"
   fi
+  update_note
   repos_note
   memory_note
   tools_pull

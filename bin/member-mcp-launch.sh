@@ -166,6 +166,7 @@ done
 for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' | sort -u); do
   case "$_v" in PATH|LANG|LC_ALL|LC_CTYPE|TMPDIR) ;; *) case " $KEEP " in *" $_v "*) continue ;; esac; unset "$_v" 2>/dev/null || : ;; esac
 done
+LOG_FD=2   # an exported LOG_FD was just unset with the rest, and the refusals below would land on stdout, the MCP channel; unexported, so the server never sees it
 HOME_CONF="$(sed -n 's/^home=//p' "$ROOT/member.conf" 2>/dev/null | head -n 1)"
 case "$HOME_CONF" in /*) ;; *) refuse "$ROOT/member.conf names no absolute home" ;; esac
 export HOME="$HOME_CONF" USER="$(id -un)"

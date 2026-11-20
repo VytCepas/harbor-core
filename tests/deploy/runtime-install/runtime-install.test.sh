@@ -285,7 +285,7 @@ _bte UserPromptSubmit bt1
 printf 'def f():\n    return 1\n' >> "$BH/port/proj/app.py"
 _bto="$(_bte Stop bt1)"
 t_eq "the installed Stop hook blocks a registered non-harbor project's code change with no test" block "$(printf '%s' "$_bto" | jq -r .decision)"
-t_has "...naming that project" "$(printf '%s' "$_bto" | jq -r .reason)" "member.tests: you changed code in the project proj"
+t_has "...naming that project" "$(printf '%s' "$_bto" | jq -r .reason)" "member.tests: code changed in proj"
 t_eq "...and stands down once stop_hook_active is set (never a second block)" "" "$(_bte Stop bt1 ',"stop_hook_active":true')"
 t_eq "an event it is not bound to prints nothing" "" "$(_bte SessionStart bt1)"
 git -C "$BH/port/proj" checkout -q -- app.py

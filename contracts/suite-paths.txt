@@ -486,6 +486,7 @@ tests/standard/inventory/facts.test.sh bin/standard-inventory.sh bin/standard-re
 tests/standard/inventory/schedule.test.sh bin/standard-inventory.sh bin/check-registry-generate.sh bin/standard-register.sh bin/library-log.sh docs/reference/checks.md launchd/* standards/naming/aliases.tsv tests/standard/inventory/schedule.test.sh tests/lib/core.sh
 tests/standard/id-resolve/resolve.test.sh bin/standard-id-resolve.sh bin/library-log.sh bin/lint-conventions.sh standards/naming/* registries/coverage-incidents.tsv tests/lib/core.sh
 tests/deploy/launchd-sync/sync.test.sh bin/deploy-launchd-sync.sh bin/deploy-launchd-render.sh bin/library-log.sh bin/scope-roots.sh launchd/* contracts/roots.tsv tests/deploy/launchd-sync/sync.test.sh tests/lib/core.sh
+tests/deploy/launchd-payload/payload.test.sh launchd/* bin/deploy-runtime-install.sh bin/admission-install.sh bin/audit-collector-install.sh tests/deploy/launchd-payload/* tests/lib/core.sh
 tests/event/dispatch/reconcile.test.sh bin/event-dispatch.sh bin/event-bus.sh bin/library-log.sh contracts/event-rules.tsv docs/reference/checks.md bin/status-fleet-snapshot-refresh.sh bin/alert-notify.sh bin/session-*.sh tests/event/dispatch/fixture.sh tests/event/dispatch/reconcile.test.sh tests/lib/core.sh
 tests/agent/idle/idle.test.sh bin/agent-idle-check.sh bin/library-log.sh tests/agent/idle/idle.test.sh tests/lib/core.sh
 tests/check/run/run.test.sh bin/check-run.sh bin/library-log.sh contracts/scheduled-checks.tsv launchd/* docs/reference/checks.md tests/check/run/run.test.sh tests/lib/core.sh

@@ -122,7 +122,7 @@ yard() {
   session start
   _ctx="$(printf '%s' "$H_OUT" | jq -r '.hookSpecificOutput.additionalContext // ""' 2> /dev/null)"
   _msg="$(printf '%s' "$H_OUT" | jq -r '.systemMessage // ""' 2> /dev/null)"
-  _names() { printf '%s' "$1" | sed -n 's/.*git repos Harbor does not govern yet: \(.*\)\. Ask your agent.*/\1/p'; }
+  _names() { printf '%s' "$1" | sed -n 's/.*not set up with the company checks yet: \(.*\)\. Ask Claude.*/\1/p'; }
   eq yard.person 'a fresh git init and a clone are named to the person, and nothing else is' 'cloned-hub, fresh-init' "$(_names "$_msg")"
   case "$_ctx" in *"harbor hub project register"*cloned-hub*|*cloned-hub*"harbor hub project register"*) row PASS yard.agent 'the agent is told the register command' named 'additionalContext' ;;
     *) row FAIL yard.agent 'the agent is told the register command' "${_ctx:-nothing}" 'additionalContext' ;; esac

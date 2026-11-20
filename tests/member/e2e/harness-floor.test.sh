@@ -28,13 +28,20 @@ _cg add -A; _cg commit -qm 'the pinned core'
 _pin="$(_cg rev-parse HEAD)"
 # A policy naming the pin, signed, in the state the laptop holds. Serial above the last one so the session keeps it.
 e_policy "$RULES | .core.commit = \"$_pin\" | .hosts = [\"pkg.e2e-fixture.example\"]"
+mkdir -p "$SYS/update"; : > "$SYS/update/harbor-update.ps1"; printf "%040d\n" 0 > "$MR/core.commit"   # harbor#1589: an older floor, and the update script setup lands beside it on Windows
 e_session start
+t_has "harbor#1589: a hub pin ahead of the floor is told to the person, with the shortcut to click" "$(printf '%s' "$E_OUT" | jq -r '.systemMessage // ""')" 'double-click Harbor update'
 t_eq "CONTROL: the laptop took the pin" "$_pin" "$(jq -r .core.commit "$HS/policy.json")"
 # What a template gives it: PATH alone. HOME is root's, not the member's, and the role, hub and state come from member.conf.
 _rc=0; env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME=/var/empty HARBOR_MEMBER_ROOT="$_u/harbor" HARBOR_MEMBER_CORE_SOURCE="file://$_c" \
   sh "$_u/harbor/bin/member-update.sh" > "$T_TMP/upd.out" 2>&1 || _rc=$?
 t_eq "it runs with no role in the environment: $(grep -m1 FAIL "$T_TMP/upd.out" | cut -c1-120)" 0 "$_rc"
 t_eq "the pin moved" "$_pin" "$(cat "$_u/harbor/core.commit" 2>/dev/null)"
+printf '%s\n' "$_pin" > "$MR/core.commit"; e_session start
+t_eq "...and not once the floor is at the hub pin" 0 "$(printf '%s' "$E_OUT" | grep -c 'company update is ready')"
+rm -rf "$SYS/update"; printf "%040d\n" 0 > "$MR/core.commit"; e_session start
+t_has "...and with no update script beside the floor (macOS, Linux) it says who installs it" "$(printf '%s' "$E_OUT" | jq -r '.systemMessage // ""')" 'Ask your admin to install it'
+rm -f "$MR/core.commit"
 _stale=''
 sed -e 's/#.*//' -e 's/[[:space:]]*$//' -e '/^[[:space:]]*$/d' "$_c/contracts/member-files.txt" > "$T_TMP/urows"
 while read -r _s _d; do cmp -s "$_c/$_s" "$_u/harbor/bin/${_d:-${_s##*/}}" || _stale="$_stale ${_d:-${_s##*/}}"; done < "$T_TMP/urows"
