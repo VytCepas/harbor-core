@@ -1,6 +1,7 @@
 ---
 name: member-setup
 description: "Adopt Harbor in an organisation: hub repo, signing key, pinned harbor-core, a setup zip per colleague, releases. USE WHEN onboarding a company or colleague, building a setup zip, raising the hub pin. NOT FOR a project's own CI."
+owns-content: "member-setup-generate\.sh|hub-release\.sh|hub-pin-upgrade\.sh"
 ---
 
 # member-setup — Harbor for an organisation
