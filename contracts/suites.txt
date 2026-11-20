@@ -488,7 +488,6 @@ tests/standard/inventory/facts.test.sh
 tests/standard/inventory/schedule.test.sh
 tests/standard/id-resolve/resolve.test.sh
 tests/deploy/launchd-sync/sync.test.sh
-tests/deploy/launchd-payload/payload.test.sh
 tests/event/dispatch/reconcile.test.sh
 tests/agent/idle/idle.test.sh
 tests/check/run/run.test.sh

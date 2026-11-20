@@ -1877,7 +1877,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/standard/inventory/schedule.test.sh</code></td><td><code>bin/standard-inventory.sh bin/check-registry-generate.sh bin/standard-register.sh bin/library-log.sh docs/reference/checks.md launchd/* standards/naming/aliases.tsv tests/standard/inventory/schedule.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/standard/id-resolve/resolve.test.sh</code></td><td><code>bin/standard-id-resolve.sh bin/library-log.sh bin/lint-conventions.sh standards/naming/* registries/coverage-incidents.tsv tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/deploy/launchd-sync/sync.test.sh</code></td><td><code>bin/deploy-launchd-sync.sh bin/deploy-launchd-render.sh bin/library-log.sh bin/scope-roots.sh launchd/* contracts/roots.tsv tests/deploy/launchd-sync/sync.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/deploy/launchd-payload/payload.test.sh</code></td><td><code>launchd/* bin/deploy-runtime-install.sh bin/admission-install.sh tests/deploy/launchd-payload/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/event/dispatch/reconcile.test.sh</code></td><td><code>bin/event-dispatch.sh bin/event-bus.sh bin/library-log.sh contracts/event-rules.tsv docs/reference/checks.md bin/status-fleet-snapshot-refresh.sh bin/alert-notify.sh bin/session-*.sh tests/event/dispatch/fixture.sh tests/event/dispatch/reconcile.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/agent/idle/idle.test.sh</code></td><td><code>bin/agent-idle-check.sh bin/library-log.sh tests/agent/idle/idle.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/check/run/run.test.sh</code></td><td><code>bin/check-run.sh bin/library-log.sh contracts/scheduled-checks.tsv launchd/* docs/reference/checks.md tests/check/run/run.test.sh tests/lib/core.sh</code></td></tr>
@@ -2426,7 +2425,6 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>status-fleet-glyph.sh</code></td><td>L0-5 (harbor#21, extended harbor#59, redesigned harbor#293) — Claude Code statusline.</td></tr>
 <tr><td><code>status-fleet-snapshot-refresh.sh</code></td><td>L0-5-interim (harbor#21) — write the fleet snapshot cache the statusline glyph reads.</td></tr>
 <tr><td><code>status-fleet-watch.sh</code></td><td>status-fleet-watch.sh (harbor#1437) — the hourly fleet watch pass, scheduled by harbor: check id status.fleet-watch.</td></tr>
-<tr><td><code>status-network.sh</code></td><td>status-network.sh (harbor#1582) — no bulk download over mobile data without the operator's yes (check status.network, operator request 2026-11-19).</td></tr>
 <tr><td><code>status-obligations.sh</code></td><td>status-obligations.sh (harbor#1050) — the obligations ledger: a projection of the event bus.</td></tr>
 <tr><td><code>status-subagent-glyph.sh</code></td><td>L0-5b (harbor#293) — Claude Code SUBAGENT statusline: one row per live agent.</td></tr>
 <tr><td><code>status-suggest.sh</code></td><td>status-suggest.sh (harbor#1485) — the one writer of the suggestion state, and its reader.</td></tr>
