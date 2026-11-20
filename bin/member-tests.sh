@@ -205,7 +205,7 @@ stop_work() {
     _nf="$(wc -l < "$W/code" | tr -d ' ')"; _nl="$(size_of "$_p" "$STATE/$SID/$_n" "$W/code")"
     _arch=full; { [ "$_nf" -le 1 ] && [ "$_nl" -lt 20 ]; } && _arch=trivial
     _list="$(head -n 3 "$W/code" | tr '\n' ' ' | sed 's/ $//; s/ /, /g')"; [ "$_nf" -le 3 ] || _list="$_list and $((_nf - 3)) more"
-    printf 'member.tests: you changed code in the project %s (%s) and no test changed with it. Company rules §8: write the test now, by the architecture %s. Run it with the project'"'"'s own `sh tests/run.sh`, showing it red without the change and green with it. If no test can apply here, say so in one line.\n' "$_n" "$_list" "$(architecture "$_arch")" > "$W/out"
+    printf 'member.tests: code changed in %s (%s) with no test. Add one now (company rules §8), by %s: red without the change, green with it, run by `sh tests/run.sh`. If no test fits, say why in one line.\n' "$_n" "$_list" "$(architecture "$_arch")" > "$W/out"
     return 0
   done < "$W/projects"
   return 0
