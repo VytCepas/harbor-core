@@ -60,6 +60,27 @@ t_eq "bare Bash, an MCP call" none "$(verdict mcp__harbor_chrome__click)"
 printf '%s' "$_cfg" > "$CLAUDE_CONFIG_DIR/settings.json"
 t_eq "bare Monitor"          ask  "$(verdict Monitor 'tail -f x')"
 
+t_section "metered network (status.network, 2026-11-19): bulk downloads ask while status-network.sh says so"
+NR="$HOME/.local/state/harbor/net"; mkdir -p "$NR"
+printf '%s\n' 'Bash(docker pull *)' 'Bash(npm install*)' > "$NR/ask-rules"
+t_eq "docker pull asks on mobile data"      ask  "$(verdict Bash 'docker pull ubuntu')"
+t_eq "after cd && too"                       ask  "$(verdict Bash 'cd /x && npm install')"
+t_eq "auto mode denies it"                   deny "$(verdict Bash 'docker pull ubuntu' '{"permission_mode":"auto"}')"
+_rm="$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"docker pull ubuntu"},"permission_mode":"auto"}' | sh "$G")"
+t_has "the reason says metered, not a live system" "$_rm" 'the network is metered'
+t_has "and names the operator's way through" "$_rm" '! <command>'
+t_eq "a small command is not held"           none "$(verdict Bash 'git status')"
+t_eq "a settings rule still says live system" ask "$(verdict Bash 'acme --write x')"
+_rs="$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"acme --write x"}}' | sh "$G")"
+t_hasnt "and its reason is not the metered one" "$_rs" 'metered'
+_cfg2="$(cat "$CLAUDE_CONFIG_DIR/settings.json")"; printf '{}' > "$CLAUDE_CONFIG_DIR/settings.json"
+t_eq "no ask rules in settings at all: metered rules still hold" ask "$(verdict Bash 'docker pull ubuntu')"
+printf '%s' "$_cfg2" > "$CLAUDE_CONFIG_DIR/settings.json"
+touch -t "$(date -r $(( $(date +%s) - 600 )) +%Y%m%d%H%M.%S 2>/dev/null || date -d "@$(( $(date +%s) - 600 ))" +%Y%m%d%H%M.%S)" "$NR/ask-rules"
+t_eq "rules older than 5 min (the tick stopped) are not trusted" none "$(verdict Bash 'docker pull ubuntu')"
+rm -rf "$NR"
+t_eq "no rules file: unmetered, nothing held" none "$(verdict Bash 'docker pull ubuntu')"
+
 t_section "on a member box the dispatcher decides, so no verdict is printed"
 M="$T_TMP/member-bin"; mkdir -p "$M"
 cp "$T_ROOT/bin/admission-ask.sh" "$T_ROOT/bin/library-admission.sh" "$M/"; : > "$M/harbor-member-mode"

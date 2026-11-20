@@ -99,6 +99,7 @@ tests/status/statusline/machine.test.sh
 tests/status/statusline/row2.test.sh
 tests/status/statusline/subagent.test.sh
 tests/status/usage-aggregate/usage-aggregate.test.sh
+tests/status/network/network.test.sh
 tests/test/suite-select/suite-select.test.sh
 tests/ci/verified/verified.test.sh
 tests/ci/runner/image.test.sh
