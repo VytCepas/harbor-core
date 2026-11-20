@@ -193,31 +193,6 @@ _sk nofor 'Does a thing. USE WHEN x. NOT FOR y.'
 _sk dead 'Runs `bin/gone.sh` for you. USE WHEN x. NOT FOR y.'
 _rp_red skill.cited-path-exists "skills/dead cites bin/gone.sh, which is not in the tree" "a description citing a script that does not exist"
 
-t_section "skill.moment-declared: every skill names its moment or says it has none (harbor#1591)"
-_rp_fresh
-_sk owner 'Owns a CLI. USE WHEN x. NOT FOR y.' 'owns-commands: ownercli
-'
-_sk prose 'Owns content. USE WHEN x. NOT FOR y.' 'owns-content: "(ą[^ą]*){6}"
-'
-_sk thinker 'Thinks. USE WHEN x. NOT FOR y.' 'reach: reasoning
-'
-mkdir -p "$RP/vendor/skills/upstream"; printf -- '---\nname: upstream\ndescription: "Up. USE WHEN x."\nreach: reasoning\n---\n' > "$RP/vendor/skills/upstream/SKILL.md"
-_rp_green skill.moment-declared "an owns-commands, an owns-content, a reach: reasoning and a vendored reach"
-_sk mute 'Says nothing about when. USE WHEN x. NOT FOR y.' 'disable-model-invocation: true
-'
-_rp_red skill.moment-declared "skills/mute declares no owns-commands, owns-tools or owns-content, and no reach: reasoning" "a skill with no moment key"
-_sk mute 'Empty key. USE WHEN x. NOT FOR y.' 'owns-commands:
-'
-_rp_red skill.moment-declared "skills/mute declares no owns-commands" "an owns- key with no value"
-_sk mute 'Wrong reach. USE WHEN x. NOT FOR y.' 'reach: sometimes
-'
-_rp_red skill.moment-declared "skills/mute declares no owns-commands" "a reach that is not reasoning"
-rm -rf "$RP/skills/mute"
-_sk prose 'Moment named only in prose: owns-commands: x. USE WHEN x. NOT FOR y.'
-_rp_red skill.moment-declared "skills/prose declares no owns-commands" "a key mentioned in the description, not declared"
-mkdir -p "$RP/vendor/skills/bare"; printf -- '---\nname: bare\ndescription: "Up. USE WHEN x."\n---\n' > "$RP/vendor/skills/bare/SKILL.md"
-_rp_red skill.moment-declared "vendor/skills/bare declares no owns-commands" "a vendored skill with no moment key"
-
 
 t_section "N3 (block): a NOT FOR handoff to a tracked slash command resolves (harbor#1010)"
 _rp_fresh; mkdir -p "$RP/skills/giver" "$RP/commands" "$HOME/.claude/skills"

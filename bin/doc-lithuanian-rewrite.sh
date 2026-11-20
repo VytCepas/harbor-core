@@ -4,9 +4,7 @@
 #
 #   sh doc-lithuanian-rewrite.sh [--model haiku|sonnet] [FILE]    FILE, or stdin when there is none
 #
-# stdout is the text to use, and only on exit 0: the rewrite, or the input when it was already good. On exit 3 stdout is EMPTY
-# (harbor#1591): it printed the unchanged original until then, so `> OUT` and a send went out unreviewed while the
-# fix line sat on stderr. stderr says which.
+# stdout is always the text to use: the rewrite, or the original when the rewrite fails the check. stderr says which.
 # Exit 0 rewritten (or already good), 3 original kept (the check failed, the model did not answer in time), 2 usage
 # (an unknown flag or model, a FILE that cannot be read, no text).
 #
@@ -79,7 +77,7 @@ _model() {
   fi
 }
 
-_keep() { log_warn "kept the original: $1"; log_fix "rewrite it by hand from skills/doc-lithuanian-prose/SKILL.md"; log_end || :; exit 3; }
+_keep() { log_warn "kept the original: $1"; log_fix "rewrite it by hand from skills/doc-lithuanian-prose/SKILL.md"; log_end || :; cat "$T/in"; exit 3; }
 
 # No timeout(1) on BSD: the model runs in the background and a watchdog kills it. The watchdog's own output goes to
 # /dev/null, so a caller reading this script's stdout never waits on its sleep.

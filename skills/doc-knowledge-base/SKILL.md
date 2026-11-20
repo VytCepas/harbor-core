@@ -2,7 +2,6 @@
 name: doc-knowledge-base
 description: "Design or restructure a knowledge base (a wiki, a document base, a shared agent memory store) so a person can browse it and an agent can find answers with list, read and keyword search alone, no RAG, to standards/knowledge-base.md. Output is a structure proposal or a conforming base, with a findability baseline and an after-measure. USE WHEN structure a wiki, reorganise a wiki or document base, dedupe pages, design a knowledge base, handbook or shared memory store, shelves and books, page templates, tags or metadata for pages, maps of content, llms.txt, entry page, glossary, findability, agents cannot find docs, avoid RAG or vector search. NOT FOR writing one page's content (write it to the page shape directly), Harbor's own doc kinds and front matter (standards/naming.md, harbor/D-90), or a code review."
 disable-model-invocation: true
-reach: reasoning
 ---
 
 # doc-knowledge-base — a base people browse and agents navigate, without RAG

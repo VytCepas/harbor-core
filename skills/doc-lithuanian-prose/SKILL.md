@@ -2,8 +2,6 @@
 name: doc-lithuanian-prose
 description: "How a Lithuanian sentence is written for a person: verbs over noun chains, plain words for kanceliarizmai, native connectives, one-word hedges, numbers and punctuation, English jargon with an apostrophe ending, drawn from good publicists and the operator's own edits. USE WHEN writing any Lithuanian text a person reads — mail, DM, ticket or thread comment, report, document, slide, client write-up. NOT FOR mail structure or length (mail-cal Message shape, formerly Draft shape), the five outbound moves (doc-deliverable-contract), or English text."
 disable-model-invocation: true
-owns-content: "([ąčęėįšųūžĄČĘĖĮŠŲŪŽ][^ąčęėįšųūžĄČĘĖĮŠŲŪŽ]*){6}"
-gate-commands: gmail-write
 ---
 
 # doc-lithuanian-prose

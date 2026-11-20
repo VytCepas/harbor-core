@@ -2,7 +2,6 @@
 name: audit-claims
 description: "A fresh-context verifier checks each claim of an answer against its source before it ships. USE WHEN an answer carries a number, an exists/absent, a recommendation or a done, or leaves the session. NOT FOR a code diff (audit-review-fanout)."
 architecture: decision-check analysis research
-reach: reasoning
 ---
 
 # audit-claims — a second reader who did not write the answer

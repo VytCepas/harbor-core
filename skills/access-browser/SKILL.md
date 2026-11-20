@@ -3,8 +3,6 @@ name: access-browser
 description: "Pick the right browser backend and drive it, then say what the run's absence is and is not evidence for. Two axes — does it need a login, and does it run attended or unattended — six rows, one of them refused because its backend is an unledgered credential. `harbor browser route` prints the contract; `harbor browser hosts` is the only instrument here that can support a NEGATIVE. USE WHEN which browser tool, does the pixel fire, no pixel fired, is the tag absent, what third parties load, subresource list, instrument a storefront, headless vs extension, drive a logged-in dashboard, harbor chrome lost or hidden tab, add a Commerce Manager data feed, screenshot someone else's site, consent banner changes what fires. NOT FOR administering a tag-manager or analytics container (its workload skill owns that), historical numbers (reporting-apis), or checking our OWN generated HTML — that is bin/doc-visual-check.sh, a build gate."
 argument-hint: [url or question]
 disable-model-invocation: true
-owns-tools: mcp__harbor_chrome__attach mcp__claude-in-chrome__tabs_context_mcp
-owns-content: "\bharbor (chrome|browser)\b"
 ---
 
 # access-browser
