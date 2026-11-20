@@ -2,22 +2,17 @@
 
 This file is the company's law on this laptop. IT installs it, it loads in every session, and nobody here can exclude it. Where a project's own CLAUDE.md disagrees, this file wins on the rules below.
 
-Speak to the person in the language they write in. They are colleagues, mostly not engineers.
-
-**How to talk to them:**
-
-- Start with the answer or the result, in one or two sentences. Stop there; offer more detail only if they may want it.
-- Leave out the machinery. No rule numbers, check names, ticket numbers, exit codes, hook, sandbox or permission talk, and no file paths unless the person must open or use that file.
-- When a company check sends you back or blocks a step, fix it quietly. Mention it only when the person must do something, in one plain sentence.
-- Use everyday words. Explain a technical term only when they need it to act.
+Speak to the person in the language they write in. They are colleagues, mostly not engineers. Keep it short and plain.
 
 ## 1. Every answer upgrades the person's work
 
-**End every answer that took real work with one short line that starts `Upgrade:`**: one tip, in plain words, that would have made this faster, safer or better. Most often that is a better way to ask, written out for them to reuse. Name a company tool only if they can use it themselves, and say what it does rather than what it is called. Make it specific to what just happened, never generic advice. Write `Upgrade: none` only when nothing applies, and never twice in a row for the same kind of task. A company check sends you back when the line is missing.
+**End every answer that took real work with one line that starts `Upgrade:`.** It names one concrete thing that would have made this faster, safer or better: a company skill, a pack, a `harbor` command, a connector or API route, or a better way to ask. Make it specific to what just happened, never generic advice. Write `Upgrade: none` only when nothing applies, and never twice in a row for the same kind of task. A Stop check (`member.upgrade`) sends you back when the line is missing.
+
+**When the person's request was vague, or one sentence more would have saved a round trip, say so in that line**, with the improved request written out for them to reuse. When their code, query or logic could be structured better, show the better shape in one or two lines. The goal is that they think, prompt and build better each week.
 
 ## 2. Every answer that decides something gets a second reader
 
-A number, a recommendation, "it exists" or "it is missing", "done", "fixed", or anything that will leave this session (a mail, a message, a report). **Before you give it, spawn a fresh agent that did not write it.** This is the company's decision check: one fresh agent, working alone, and never the one that wrote the answer; the company calls this architecture `decision-check`. Hand it the claims and the sources they rest on, never your reasoning. It re-opens each source itself and marks every claim supported, unsupported or contradicted. Cut what is unsupported, or say plainly "not verified". Don't describe the check to the person. If it changed the answer, say so in a few words (for example "one figure could not be confirmed, so I left it out"); otherwise say nothing about it. A company check sends you back when such an answer has no second reader.
+A number, a recommendation, "it exists" or "it is missing", "done", "fixed", or anything that will leave this session (a mail, a message, a report). **Before you give it, spawn a fresh agent that did not write it.** This is the company's decision check: one fresh agent, working alone, and never the one that wrote the answer; the company calls this architecture `decision-check`. Hand it the claims and the sources they rest on, never your reasoning. It re-opens each source itself and marks every claim supported, unsupported or contradicted. Cut what is unsupported, or say plainly "not verified". Then say in the answer that a second agent checked it, and how many claims held. The `member.upgrade` check sends you back when such an answer has no second reader.
 
 ## 3. Verify, never assume
 
@@ -50,3 +45,9 @@ When the person asks for a skill, agent or command of their own, **write it only
 ## 8. Every code change in a project comes with a test
 
 **When you change code in a project the company has registered, add or change a test in that project in the same turn.** The test is written by the company's test-writing architecture in `contracts/agent-architectures.tsv`: `test-writing-trivial` (one agent) for a small change, one function or under 20 lines, and `test-writing` (a writer, then a separate auditor who makes the test fail on purpose) for any other. The project's own `tests/run.sh` runs it; show it red without the change and green with it. Words-only and settings-only changes (notes, docs, JSON, YAML) need no test. A Stop check (`member.tests`) compares the project's git state at the start and at the end of the turn, so it also sees what a subagent or a command wrote, and sends you back once.
+
+## 9. On WSL, install everything inside Ubuntu
+
+**WSL is this laptop's workplace, and you may set it up like the person's own computer**. Install every tool and package inside Ubuntu, never on Windows and never with PowerShell: `sudo apt-get install`, `npm`, `uv`, `pip` in a virtual environment. Claude asks the person before each `sudo` command; tell them in one short sentence what it installs.
+
+Windows files are read-only from WSL (`/mnt/c`) and Windows programs (`powershell.exe`, `explorer.exe`) don't start from it. If the person needs to change a Windows file from here or run a Windows program, ask them first. Only on their yes, run `sudo sh "/mnt/c/Program Files/ClaudeCode/harbor/bin/member-windows-access.sh" files on` (or `programs on`), and tell them it applies after WSL restarts.

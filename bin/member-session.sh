@@ -111,7 +111,7 @@ repos_note() {
   _rn="$(awk -F'\t' 'NF >= 3 && $1 ~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/ { printf "%s%s", (n++ ? ", " : ""), $1 }' "$_rd/list" 2>/dev/null)" || _rn=''
   rm -rf "$_rd"
   [ -n "$_rn" ] || return 0
-  note "Harbor: these project folders are not set up with the company checks yet: $_rn. Ask Claude to set them up."
+  note "Harbor: these folders in ~/port are git repos Harbor does not govern yet: $_rn. Ask your agent to register each one."
   AGENT_NOTE="${AGENT_NOTE:+$AGENT_NOTE }Repos under ~/port that Harbor does not govern yet (company rule): $_rn. Tell the person, and register each with: sh ~/port/harbor/bin/harbor hub project register <name>. Registering writes into ~/port/harbor-private, so leave the run to them."
 }
 

@@ -38,12 +38,12 @@ if [ "$INNER" = 0 ]; then
   [ -z "$CO" ] || [ -d "$CO/send-to-colleagues" ] || { echo "sim-windows: SIM_WINDOWS_COLLEAGUE has no send-to-colleagues/: $CO" >&2; exit 2; }
   [ -z "$CO" ] || { mkdir -p "$_x/colleague"; cp -R "$CO/send-to-colleagues" "$CO/zips" "$_x/colleague/"; }
   NAME="sim-windows-$$"
-  COPYFILE_DISABLE=1 tar -C "$ROOT" -cf - bin contracts standards tests/lib tests/member -C "$_x" . 2>/dev/null \
+  # shellcheck disable=SC2046 # every top folder contracts/member-files.txt names, derived: a fixed list missed hooks/ from 2026-11-11
+  COPYFILE_DISABLE=1 tar -C "$ROOT" -cf - $(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$ROOT/contracts/member-files.txt" | awk '{ sub(/\/.*/, "", $1); print $1 }' | sort -u) bin contracts standards tests/lib tests/member -C "$_x" . 2>/dev/null \
     | docker run --rm -i --network none --name "$NAME" --entrypoint sh "$IMAGE" -c \
       'mkdir -p /src/repo && tar -xf - -C /src/repo 2>/dev/null; exec sh /src/repo/tests/member/windows/sim-windows.sh --inner'
   exit $?
 fi
-
 [ "$(id -u)" -eq 0 ] && [ -x /usr/bin/pwsh ] || { echo "sim-windows: --inner runs as root in the sim-windows image" >&2; exit 2; }
 . "$(dirname "$0")/../../lib/core.sh"; t_init sim-windows
 . "$T_ROOT/tests/member/fixture.sh"
@@ -223,7 +223,7 @@ full_rc() { ( cd "$SIM" && pwsh -NonInteractive -Command "& '$1' *> \$null; [IO.
 calls() { grep -v '^---' "$LOG" 2>/dev/null; }
 seq_of() { calls | sed -n -e 's/^\(wsl\.exe [^/]*\).*/\1/p' -e 's/^\(powershell\.exe\).*/\1/p' | sed 's/ *$//' | tr '\n' '|'; }
 win_reset() { rm -f "$C/ProgramData/harbor-setup-restart.txt"; rm -rf "$SIM"/inner-*.log "$CC" "$DESK"/*.lnk "$MENU"/*.lnk "$SIM/state" "$SIM/reg/HKLM/SOFTWARE/Policies/Claude" "$SIM/reg/HKLM/SOFTWARE/Policies/ClaudeCode"; mkdir -p "$SIM/state"; : > "$LOG"; : > "$SIM/distro-calls"; }
-distro_reset() { userdel -r alice >/dev/null 2>&1; rm -rf /home/alice /opt/harbor-core /opt/harbor-member.ps1 /etc/wsl.conf /etc/sudoers.d/harbor-member-prereqs /etc/profile.d/harbor-member.sh; }
+distro_reset() { userdel -r alice >/dev/null 2>&1; rm -rf /home/alice /opt/harbor-core /opt/harbor-member.ps1 /etc/wsl.conf /etc/sudoers.d/harbor-member-prereqs /etc/sudoers.d/harbor-member-admin /etc/wsl.conf.harbor-choice /etc/profile.d/harbor-member.sh; }
 snap() { find "$C" "$SIM/reg" /etc/wsl.conf /etc/sudoers.d /etc/profile.d/harbor-member.sh -type f 2>/dev/null | LC_ALL=C sort | while IFS= read -r _f; do printf '%s %s\n' "$(sha256sum < "$_f" | cut -c1-16)" "$_f"; done; }
 lnks() { find "$DESK" "$MENU" -name '*.lnk'; }
 regval() { cat "$SIM/reg/HKLM/SOFTWARE/Policies/$1" 2>/dev/null; }
@@ -307,7 +307,8 @@ t_eq "the Windows half ran from the folder only an admin writes" 'powershell.exe
 t_eq "the setup folder is gone at the end" no "$([ -e "$CC/setup" ] && echo yes || echo no)"
 t_eq "the member exists in the distro" 0 "$(id -u alice >/dev/null 2>&1; echo $?)"
 t_eq "and is not an admin there" '' "$(id -Gn alice | tr ' ' '\n' | grep -x 'sudo\|admin\|root\|docker')"
-t_eq "and is the default user" "$(printf '\n[user]\ndefault=alice')" "$(cat /etc/wsl.conf)"
+t_eq "and is the default user, C: read-only and Windows programs off (harbor#1581)" "$(printf '\n[user]\ndefault=alice\n\n[boot]\ncommand=mount -o remount,ro /mnt/c\n\n[interop]\nenabled=false\nappendWindowsPath=false')" "$(cat /etc/wsl.conf)"
+t_eq "the member has passwordless sudo on WSL in its own file: root's, 0440, and visudo accepts it (harbor#1581)" 'alice ALL=(ALL:ALL) NOPASSWD: ALL|440 root|ok' "$(grep -v '^#' /etc/sudoers.d/harbor-member-admin 2>/dev/null)|$(stat -c '%a %U' /etc/sudoers.d/harbor-member-admin 2>/dev/null)|$(visudo -cqf /etc/sudoers.d/harbor-member-admin && echo ok)"
 t_eq "HKLM disableWslSessions is the DWord 0" 'DWord:0' "$(regval Claude/disableWslSessions)"
 t_eq "no HKLM ClaudeCode policy was written" no "$([ -e "$REG/ClaudeCode" ] && echo yes || echo no)"
 t_has "the ledger is append-only for Users" "$(calls | grep '^icacls.exe')" 'guard-decisions.jsonl /grant *S-1-5-32-545:(AD)'
@@ -361,7 +362,7 @@ win_reset; distro_reset; echo on > "$SIM/state/feature"; echo on > "$SIM/state/d
 ps_run "$SETUP"
 t_eq "exit 4: the floor is on, the token step is next (no token in the sim)" 4 "$RC"
 t_hasnt "WSL is not installed" "$(calls)" '--install'
-t_eq "its section stays, the member's is added" "$(printf '[boot]\nsystemd=true\n\n[user]\ndefault=alice')" "$(cat /etc/wsl.conf)"
+t_eq "its section stays, the member's is added" "$(printf '[boot]\nsystemd=true\ncommand=mount -o remount,ro /mnt/c\n\n[user]\ndefault=alice\n\n[interop]\nenabled=false\nappendWindowsPath=false')" "$(cat /etc/wsl.conf)"
 t_eq "the floor landed" yes "$([ -f "$CC/managed-settings.json" ] && echo yes)"
 
 t_section "another default user in /etc/wsl.conf stops before anything lands"
