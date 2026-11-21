@@ -92,3 +92,5 @@ hub-fetch.sh    VERB  feeds hub-digest.sh in the same workflow; an admin can run
 bq-load.sh      VERB  the hub-bq-load workflow runs it (patches/hub/hub-bq-load.patch.md), a patch this sweep does not read; nothing runs until the operator applies it and J1 has its own yes (harbor#1278)
 member-update.sh  VERB  IT runs it as root during the pilot; its schedule needs the operator's own yes, so nothing calls it (harbor#1278)
 hub-release.sh  VERB  the hub admin runs it by hand once per release: it ends at the hub branch the admin signs, so nothing can schedule it (harbor#1278)
+access-desktop.sh           VERB  harbor desktop's client, called by access-desktop-mcp.ts (harbor#1440); a caller in another language is not a call C8 can see
+access-desktop-mcp.ts       VERB  the harbor_desktop MCP server, registered once with `claude mcp add` by the operator (harbor#1440); no script calls it
