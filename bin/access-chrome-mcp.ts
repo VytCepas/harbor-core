@@ -33,6 +33,15 @@ const HOSTS_FILE = path.join(ROOT, 'contracts', 'browser-agent-hosts.txt');
 const ROUTER = 'contracts/browser-routing.md, row 4';
 const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const OUT_MAX = 100000;
+const REDACT = path.join(HERE, 'access-redact.sh');
+// Every reply passes bin/access-redact.sh (contracts/secret-intake.md): a page shows autofilled passwords and keys
+// that are displayed once, and a reply is what the agent reads. Fail closed: a redactor that cannot run withholds it.
+function redacted(text: string): string {
+  const r = spawnSync('/bin/sh', [REDACT], { input: text, encoding: 'utf8', maxBuffer: 16 * OUT_MAX, timeout: 15000, env: { PATH: PATH_FIXED, LC_ALL: 'C' } });
+  if (r.status === 0 && typeof r.stdout === 'string') return text.endsWith('\n') ? r.stdout : r.stdout.replace(/\n$/, '');
+  const why = typeof r.stdout === 'string' && r.stdout.startsWith('[harbor') ? r.stdout.trim() : `exit ${r.status ?? r.signal ?? 'none'}`;
+  return `[harbor chrome: output withheld, the credential redactor failed: ${why}]`;
+}
 const SETTLE_MS: number = SEAMS.settleMs ?? 500;   // the extension detached a tab ~300 ms after an input (2026-10-14); the shell waited 1 s
 const PATH_FIXED = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin';
 const KEEP = ['HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TERM', 'CLAUDE_CODE_SESSION_ID', 'HARBOR_ACCESS_BROWSER_SESSION'];
@@ -655,6 +664,18 @@ async function scripted(c: Conn, S: string, wd: string, verb: string, args: stri
   if (pu && hostOk(pu)) { try { fs.writeFileSync(path.join(wd, '.last-url'), pu + '\n'); } catch { /* a courtesy for the re-attach */ } }
   return { text: scrub(out), isError: false };
 }
+// An image cannot be redacted, so a screenshot or pdf of a page that SHOWS a credential is refused: the shown-secret
+// probe of contracts/browser-script.tsv, which the shell route runs too. Fail closed when it cannot be read.
+async function shownSecretGuard(c: Conn, S: string, wd: string, verb: string): Promise<void> {
+  const fn = SCRIPTS['shown-secret'];
+  if (!fn) refuse(`${verb} refused: no shown-secret row in contracts/browser-script.tsv, so the page cannot be checked`, 'git checkout -- contracts/browser-script.tsv');
+  const r = await c.run({ _: ['eval', fn] }, wd, true).catch((e) => { if (e instanceof Gone) goneRefusal(S); throw e; });
+  if (r.isError) refuse(`${verb} refused: the page could not be checked for a shown credential`, 'harbor chrome snapshot, then try again');
+  const k = spawnSync('/bin/sh', [REDACT, '--check'], { input: r.text ?? '', encoding: 'utf8', maxBuffer: 16 * OUT_MAX, timeout: 15000, env: { PATH: PATH_FIXED, LC_ALL: 'C' } });
+  if (k.status === 1) refuse(`${verb} refused: the page shows a credential (a key or token, or a secret URL parameter), and an image cannot be redacted`,
+    "copy it with the page's own Copy button, then: harbor access add|rotate <id> --value-clipboard (contracts/secret-intake.md); close the dialog before any screenshot");
+  if (k.status !== 0) refuse(`${verb} refused: the credential check failed (exit ${k.status ?? k.signal ?? 'none'})`, 'sh bin/access-redact.sh --check </dev/null');
+}
 async function hot(S: string, verb: string, args: string[], tm: Timing, confirmed = false, shown = false): Promise<Res> {
   const t0 = performance.now();
   const wd = workdirOf(S);
@@ -730,6 +751,7 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
   if (verb === 'goto') apiFirst(verb, args[0], ui, wd);
   const c = await connectOrGone(S);
   await submitGuard(c, S, wd, verb, args);
+  if (verb === 'screenshot' || verb === 'pdf') await shownSecretGuard(c, S, wd, verb);
   if (byText) {   // the ref goes first in --text='s place, and the call runs again as the ref click it now is
     const t = await refForText(c, S, wd, verb, byText);
     const r = await hot(S, verb, [t.ref, ...args.filter((a) => !a.startsWith('--text='))], tm, confirmed, shown);
@@ -991,7 +1013,7 @@ async function handle(msg: any): Promise<any | null> {
   else if (method === 'tools/call') {
     if (typeof params.name !== 'string') return err(-32602, 'name must be a string');
     const r = await call(params.name, params.arguments ?? {});
-    result = { content: [{ type: 'text', text: r.text }], isError: r.isError };
+    result = { content: [{ type: 'text', text: redacted(r.text) }], isError: r.isError };
   } else return err(-32601, `method not found: ${method}`);
   return { jsonrpc: '2.0', id: mid, result };
 }

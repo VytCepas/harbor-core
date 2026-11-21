@@ -304,7 +304,7 @@ t_has "naming the loopback rule" "$(out)" "nor, in a headless lane, a loopback d
 t_eq "none of those reached the CLI" 0 "$(grep -c . "$CALLS")"
 t_has "hosts names the rule and the lane" "$(ag hosts >/dev/null; out)" "headless lane only: http://localhost:<port>"
 # Mutants: the authority line removed, or the lane check made always true: the refusals above can fail.
-LM="$T_TMP/lmutant"; mkdir -p "$LM/bin" "$LM/contracts"; cp "$T_ROOT/bin/library-log.sh" "$LM/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$T_ROOT/contracts/browser-script.tsv" "$T_ROOT/contracts/live-change-words.txt" "$LM/contracts/"
+LM="$T_TMP/lmutant"; mkdir -p "$LM/bin" "$LM/contracts"; cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/access-redact.sh" "$T_ROOT/bin/admission-egress.sh" "$LM/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$T_ROOT/contracts/browser-script.tsv" "$T_ROOT/contracts/live-change-words.txt" "$LM/contracts/"
 sed '/^  case "\$_a" in localhost:\*|127.0.0.1:\*) ;; \*) return 1 ;; esac$/d' "$AGENT" > "$LM/bin/access-browser-agent.sh"
 t_eq "the authority mutant differs from the script" yes "$(cmp -s "$AGENT" "$LM/bin/access-browser-agent.sh" || echo yes)"
 t_eq "and without the authority line http://evil.example:3000/ goes through in the lane" "exit 0" "$(LAG_AGENT="$LM/bin/access-browser-agent.sh" lag goto http://evil.example:3000/)"

@@ -62,7 +62,7 @@ t_has "...refused for no match, not for its length" "$(txt)" "no element on the 
 t_eq "a 201-character name is refused" "exit 1" "$(mcp click "--text=x$_n200")"
 t_has "...for its length" "$(txt)" "1..200 characters"
 # The single-match line removed, a unique name must stop clicking: the arms above can fail.
-mkdir -p "$T_TMP/mut3/bin" "$T_TMP/mut3/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$T_TMP/mut3/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/mut3/contracts/"
+mkdir -p "$T_TMP/mut3/bin" "$T_TMP/mut3/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/admission-egress.sh" "$T_TMP/mut3/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/mut3/contracts/"
 _old="$SRV"; SRV="$T_TMP/mut3/bin/access-chrome-mcp.ts"; cp "$_old" "$SRV"
 # The control: the unchanged server in the mutant's directory clicks, so the red below is the mutation's (it once lacked
 # live-change-words.txt, and every click there was refused whatever the mutant did).

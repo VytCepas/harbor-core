@@ -144,6 +144,7 @@ hand-kept account of direction and status; this table is what exists.
 | [scaffolder-plugins.tsv](./scaffolder-plugins.tsv) | tsv | scaffolder-plugins.tsv (harbor#999, #966) - the names yard publishes its Claude Code plugins under. |
 | [scheduled-checks.tsv](./scheduled-checks.tsv) | tsv | scheduled-checks.tsv (harbor#1437) — the read-only checks launchd runs from main through bin/check-run.sh. |
 | [seams.tsv](./seams.tsv) | tsv | seams.tsv (harbor#1425) — one row per cross-repo contract: who produces it, who consumes it, its copy, its pin. |
+| [secret-intake.md](./secret-intake.md) | md | Secret intake — a credential reaches the store without an agent reading it |
 | [secret-legacy-refs.txt](./secret-legacy-refs.txt) | txt | secret-legacy-refs.txt (harbor#1205) - secret refs bin/secret still serves with no register entry. Only goes down. |
 | [session-waiting.tsv](./session-waiting.tsv) | tsv | session-waiting.tsv (harbor#1043, #1044) — rule 2 of hooks/session-state/session-state.sh: when is the operator the one being waited on? |
 | [shims.tsv](./shims.tsv) | tsv | shims.tsv — the commands the operator types, and the file each one is. harbor#630. |
