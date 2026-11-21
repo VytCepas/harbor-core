@@ -4,7 +4,9 @@
 #
 #   sh doc-lithuanian-rewrite.sh [--model haiku|sonnet] [FILE]    FILE, or stdin when there is none
 #
-# stdout is always the text to use: the rewrite, or the original when the rewrite fails the check. stderr says which.
+# stdout is the text to use, and only on exit 0: the rewrite, or the input when it was already good. On exit 3 stdout is EMPTY
+# (harbor#1591): it printed the unchanged original until then, so `> OUT` and a send went out unreviewed while the
+# fix line sat on stderr. stderr says which.
 # Exit 0 rewritten (or already good), 3 original kept (the check failed, the model did not answer in time), 2 usage
 # (an unknown flag or model, a FILE that cannot be read, no text).
 #
@@ -67,17 +69,19 @@ is already good comes back unchanged. Output the rewritten text only.
 EOF
 } > "$T/system"
 
+# Runs only in the background below; exec makes the model the process the watchdog kills, not a subshell that leaves
+# it running (harbor#1592 review).
 _model() {
   if [ -n "${HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND:-}" ]; then
-    sh -c "$HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND" < "$T/in"
+    exec sh -c "$HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND" < "$T/in"
   else
     command -v claude >/dev/null 2>&1 || return 1
-    claude -p --model "$MODEL" --setting-sources "" --strict-mcp-config --tools "" --no-session-persistence \
+    exec claude -p --model "$MODEL" --setting-sources "" --strict-mcp-config --tools "" --no-session-persistence \
       --system-prompt-file "$T/system" < "$T/in"
   fi
 }
 
-_keep() { log_warn "kept the original: $1"; log_fix "rewrite it by hand from skills/doc-lithuanian-prose/SKILL.md"; log_end || :; cat "$T/in"; exit 3; }
+_keep() { log_warn "kept the original: $1"; log_fix "rewrite it by hand from skills/doc-lithuanian-prose/SKILL.md"; log_end || :; exit 3; }
 
 # No timeout(1) on BSD: the model runs in the background and a watchdog kills it. The watchdog's own output goes to
 # /dev/null, so a caller reading this script's stdout never waits on its sleep.
