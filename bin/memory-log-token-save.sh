@@ -24,28 +24,13 @@ esac
 . "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-log.sh"
 log_init save-log-token
 
-if command -v pbpaste >/dev/null 2>&1; then CLIP=mac
-elif command -v wl-paste >/dev/null 2>&1; then CLIP=wl
-elif command -v xclip >/dev/null 2>&1; then CLIP=xclip
-elif command -v xsel >/dev/null 2>&1; then CLIP=xsel
-elif command -v powershell.exe >/dev/null 2>&1; then CLIP=wsl
-else
-  log_fail "no clipboard tool — looked for pbpaste, wl-paste, xclip, xsel and powershell.exe (WSL2)"
+# The clipboard's readers live in library-clipboard.sh, installed beside this file as library-log.sh is.
+. "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/library-clipboard.sh"
+if ! clip_detect; then
+  log_fail "no clipboard tool — looked for $(clip_tools)"
   log_fix "install wl-clipboard (Wayland), xclip or xsel (X11), then run this again"
   log_end || :; exit 2
 fi
-clip_read() {
-  case "$CLIP" in
-    mac) pbpaste ;; wl) wl-paste --no-newline ;; xclip) xclip -selection clipboard -o ;;
-    xsel) xsel --clipboard --output ;; wsl) powershell.exe -NoProfile -Command Get-Clipboard | tr -d '\r' ;;
-  esac
-}
-clip_clear() {
-  case "$CLIP" in
-    mac) pbcopy < /dev/null ;; wl) wl-copy --clear ;; xclip) xclip -selection clipboard -i < /dev/null ;;
-    xsel) xsel --clipboard --clear ;; wsl) clip.exe < /dev/null ;;
-  esac
-}
 
 DEST="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.helm-log-token"   # legacy plaintext, removed once the store holds it
 SECRET="${HARBOR_ACCESS_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}"; [ -n "$SECRET" ] || SECRET="$HOME/.local/bin/secret"
