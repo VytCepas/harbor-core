@@ -59,7 +59,7 @@ t_has "...refused for no match, not for its length" "$(txt)" "no element on the 
 t_eq "a 201-character name is refused" "exit 1" "$(mcp click "--text=x$_n200")"
 t_has "...for its length" "$(txt)" "1..200 characters"
 # The single-match line removed, a unique name must stop clicking: the arms above can fail.
-mkdir -p "$T_TMP/mut3/bin" "$T_TMP/mut3/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/admission-egress.sh" "$T_TMP/mut3/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$T_TMP/mut3/contracts/"
+mkdir -p "$T_TMP/mut3/bin" "$T_TMP/mut3/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$T_TMP/mut3/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$T_TMP/mut3/contracts/"
 sed 's/^  if (pick.length === 1) return pick\[0\];/  if (false) return pick[0];/' "$SRV" > "$T_TMP/mut3/bin/access-chrome-mcp.ts"
 t_eq "the mutant differs from the server" yes "$(cmp -s "$SRV" "$T_TMP/mut3/bin/access-chrome-mcp.ts" || echo yes)"
 _old="$SRV"; SRV="$T_TMP/mut3/bin/access-chrome-mcp.ts"

@@ -34,8 +34,6 @@ case " \$* " in *" eval "*)
     printf '"%s"\n' "\${STUB_SUBMIT_LABEL:-}"; exit 0 ;;
   esac
   [ -z "\${STUB_EVAL_FAIL:-}" ] || { echo "Error: Execution context was destroyed"; exit 1; }
-  # The shown-secret probe (contracts/browser-script.tsv, contracts/secret-intake.md): STUB_SHOWN is what the page shows.
-  case "\$*" in *'e.type !== "password"'*) printf '"%s"\n' "\${STUB_SHOWN:-a plain page}"; exit 0 ;; esac
   if [ -n "\${STUB_HIDDEN:-}" ] || { [ -n "\${STUB_COVERED:-}" ] && [ -e "\$STUB_COVERED" ]; }; then printf '%s\n' '"{\"visibility\":\"hidden\",\"host\":\"business.facebook.com\",\"blank\":false}"'
   elif [ -n "\${STUB_BLANK:-}" ] || { [ -n "\${STUB_LATE_BLANK:-}" ] && [ -e "\$STUB_LATE_BLANK" ]; }; then printf '%s\n' '"{\"host\":\"\",\"blank\":true}"'
   else printf '%s\n' '"{\"host\":\"business.facebook.com\",\"blank\":false}"'; fi

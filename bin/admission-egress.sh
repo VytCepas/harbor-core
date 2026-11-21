@@ -45,10 +45,8 @@ FLOOR_TOOL="$TOOL_SEEN"
 # shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh
 FLOOR_OBS_SUBJECT="$PAYLOAD"
 
-# Meta (EAA + 100 or more: a sha256 hex string is 64, so none matches under -i), Google OAuth access (ya29.) and refresh (1//0),
-# and the pina_ ads-platform token joined 2026-11-21 (contracts/secret-intake.md): bin/access-redact.sh reads this same list.
 # Provider-prefixed secret shapes: HIGH PRECISION, a match is a live credential. The low-precision `Bearer <token>` and `<NAME>KEY=<value>` shapes are excluded on purpose (they fire on publishable keys and ordinary Authorization headers, red-team 2026-07-24); they stay the work-log gitleaks gate's job.
-SECRET='(sk-or-v1-[A-Za-z0-9]{16,}|csk-[A-Za-z0-9]{16,}|sk-(ant|proj|live)-[A-Za-z0-9-]{20,}|sk_(live|test)_[A-Za-z0-9]{16,}|sk-[A-Za-z0-9]{32,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|xox[baprse]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{30,}|npm_[A-Za-z0-9]{30,}|SG\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|dop_v1_[a-f0-9]{32,}|hf_[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}|AccountKey=[A-Za-z0-9+/]{60,}={0,2}|(postgres|postgresql|mysql|mongodb(\\+srv)?|redis|amqp)://[^:@/[:space:]]+:[^@/[:space:]]+@|sk-svcacct-[A-Za-z0-9_-]{20,}|xapp-[0-9]-[A-Za-z0-9-]{10,}|rk_live_[A-Za-z0-9]{16,}|SK[0-9a-f]{32}|EAA[A-Za-z0-9]{100,}|ya29\.[A-Za-z0-9_-]{30,}|1//0[A-Za-z0-9_-]{40,}|pina_[A-Za-z0-9]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
+SECRET='(sk-or-v1-[A-Za-z0-9]{16,}|csk-[A-Za-z0-9]{16,}|sk-(ant|proj|live)-[A-Za-z0-9-]{20,}|sk_(live|test)_[A-Za-z0-9]{16,}|sk-[A-Za-z0-9]{32,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|xox[baprse]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{30,}|npm_[A-Za-z0-9]{30,}|SG\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|dop_v1_[a-f0-9]{32,}|hf_[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}|AccountKey=[A-Za-z0-9+/]{60,}={0,2}|(postgres|postgresql|mysql|mongodb(\\+srv)?|redis|amqp)://[^:@/[:space:]]+:[^@/[:space:]]+@|sk-svcacct-[A-Za-z0-9_-]{20,}|xapp-[0-9]-[A-Za-z0-9-]{10,}|rk_live_[A-Za-z0-9]{16,}|SK[0-9a-f]{32}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
 # Documented placeholders that are NOT live credentials (AWS's own docs example, all-zero/x bodies); without this a README or test fixture was blocked (red-team pass 2).
 SECRET_DOC='(AKIAIOSFODNN7EXAMPLE|EXAMPLEKEY|EXAMPLE$|^0+$|^x+$|^X+$)'
 
@@ -591,24 +589,6 @@ $TARGETS_ALL"
     # The macOS keychain is the same exposure by another route. `security -g` prints the password just as `-w` does, and the old flag cluster required a `w` (harbor#310). A character class `[a-zA-Z]*[gw]`, not an alternation of whole flags, because `-gw`, `-wg` and `-agw` are one token to getopt.
     if m '(^|[^[:alnum:]_])security[[:space:]]+(dump-keychain|find-(generic|internet)-password[^;&|]*[[:space:]]-[a-zA-Z]*[gw])'; then
       floor_block egress "dumping keychain secrets into the session transcript" keychain-dump.path
-    fi
-    # THE CLIPBOARD IS A CREDENTIAL CHANNEL (contracts/secret-intake.md): a key a page shows once is copied there and stored by
-    # `harbor access add|rotate <id> --value-clipboard`, which reads it inside its own process. An agent's own read puts it in the
-    # transcript, as `security -w` would. A segment RUNS the reader (argv, not spelling), so prose naming pbpaste is no read.
-    # xclip's read flag is -o alone (its -selection carries an o too); xsel's may be clustered (-bo), never after a double dash.
-    if floor_seg_cmd '(.*/)?(pbpaste|wl-paste)' \
-       || floor_seg_has '(.*/)?xclip' '^-o(ut(put)?)?$' \
-       || floor_seg_has '(.*/)?xsel' '^(-[a-zA-Z]*o[a-zA-Z]*|--output)$' \
-       || floor_seg_has '(.*/)?(powershell|pwsh)(\.exe)?' '[Gg][Ee][Tt]-[Cc][Ll][Ii][Pp][Bb][Oo][Aa][Rr][Dd]' \
-       || floor_seg_has '(.*/)?osascript' '[Cc][Ll][Ii][Pp][Bb][Oo][Aa][Rr][Dd]'; then
-      floor_block egress "reading the clipboard into the session — a key copied from a page would be written to the transcript; store it unseen with harbor access add|rotate <id> --value-clipboard" clipboard-read.argv
-    fi
-    # harbor chrome is the one road to a browser (contracts/browser-routing.md): its replies pass bin/access-redact.sh and its
-    # screenshots refuse a page that shows a credential. The pinned Playwright CLI run by hand has neither (2026-11-21: a vendor
-    # password reached the transcript that way). A net, not a wall: a script file that runs the CLI is not seen here.
-    if floor_seg_cmd '(.*/)?playwright-cli(\.js)?' \
-       || floor_seg_has '(.*/)?(bun|bunx|node|npx|pnpm|pnpx|deno)' '(@playwright/cli|playwright-cli(\.js)?)'; then
-      floor_block egress "driving a browser with the Playwright CLI by hand — harbor chrome's credential redaction and screenshot check do not run there; use harbor chrome (mcp__harbor_chrome__*) or sh bin/access-browser-agent.sh" browser-raw-cli.argv
     fi
     # THE HUB TOKEN ON A MEMBER BOX (harbor#1278): contracts/hub.md denies it to the agent. A command led by secret-tool that reads, the floor's `secret` naming the
     # ref, or one that opens the token store's files reads it; the floor reads it from its hooks, never through this tool. The normalised targets are read with

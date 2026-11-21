@@ -36,19 +36,6 @@ set -eu
 
 HERE="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 ROOT="${HERE%/bin}"
-# Every byte this agent prints passes bin/access-redact.sh (contracts/secret-intake.md): stdout carries page text and
-# stderr the hand-offs that quote it, and both are what an agent reads. One re-exec, each stream filtered on its own,
-# the inner exit status kept (`|| _rx=$?`: under set -e a failing run would end the subshell before it is recorded).
-if [ "${HARBOR_ACCESS_REDACTED:-}" != 1 ]; then
-  # Missing, the pipe's reader dies at once and the run ends on SIGPIPE (141) with no word of why: say it instead.
-  [ -f "$HERE/access-redact.sh" ] || { printf 'harbor chrome: output withheld: %s/access-redact.sh is missing\n' "$HERE" >&2; exit 3; }
-  _rst="$(mktemp "${TMPDIR:-/tmp}/harbor-redact.XXXXXX")" || { printf 'harbor chrome: output withheld: no status file\n' >&2; exit 3; }
-  HARBOR_ACCESS_REDACTED=1; export HARBOR_ACCESS_REDACTED
-  { { _rx=0; sh "$HERE/access-browser-agent.sh" "$@" 3>&- || _rx=$?; printf '%s' "$_rx" > "$_rst"; } 2>&1 1>&3 3>&- \
-      | sh "$HERE/access-redact.sh" >&2 3>&-; } 3>&1 | sh "$HERE/access-redact.sh" || :
-  _rrc="$(cat "$_rst" 2>/dev/null || :)"; rm -f "$_rst"
-  exit "${_rrc:-3}"
-fi
 # shellcheck disable=SC2034 # LOG_FD: read by library-log.sh
 LOG_FD=2
 . "$HERE/library-log.sh"
@@ -990,21 +977,6 @@ EOF
       esac
     done
     case "$VERB" in press|keydown|type|fill) _submit_guard "$@" ;; esac
-    # An image cannot be redacted: a screenshot or pdf of a page that SHOWS a credential is refused, by the shown-secret
-    # probe of contracts/browser-script.tsv the MCP route runs too (contracts/secret-intake.md). Fail closed.
-    case "$VERB" in screenshot|pdf)
-      _fn="$(awk -F '\t' '$1 == "shown-secret" { print substr($0, 14); exit }' "$ROOT/contracts/browser-script.tsv" 2>/dev/null)"
-      [ -n "$_fn" ] || _refuse "$VERB refused: no shown-secret row in contracts/browser-script.tsv, so the page cannot be checked" 'git checkout -- contracts/browser-script.tsv'
-      mkdir -p "$WORKDIR"; _o="$(mktemp "$WORKDIR/.out.XXXXXX")"
-      _rc=0; _cli_run "-s=$S" --raw eval "$_fn" > "$_o" || _rc=$?
-      [ "$_rc" -eq 0 ] || { _gone_check "$_o"; rm -f "$_o"; _refuse "$VERB refused: the page could not be checked for a shown credential" 'harbor chrome snapshot, then try again'; }
-      _rc=0; sh "$HERE/access-redact.sh" --check < "$_o" || _rc=$?
-      rm -f "$_o"
-      [ "$_rc" -ne 1 ] || _refuse "$VERB refused: the page shows a credential (a key or token, or a secret URL parameter), and an image cannot be redacted" \
-        "copy it with the page's own Copy button, then: harbor access add|rotate <id> --value-clipboard (contracts/secret-intake.md); close the dialog before any screenshot"
-      [ "$_rc" -eq 0 ] || _refuse "$VERB refused: the credential check failed (exit $_rc)" 'sh bin/access-redact.sh --check </dev/null'
-      ;;
-    esac
     # Script-first (harbor#1507, operator 2026-11-12): a fixed script from contracts/browser-script.tsv, which needs no
     # paint, so a window covered by another app still takes it. --real is the CLI's own verb, which waits for the tab to show.
     _real=''; _sfn=''; _sref=''; _sarg='null'

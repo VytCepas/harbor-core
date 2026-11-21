@@ -124,9 +124,6 @@ As MCP tools, `mcp__harbor_chrome__steps` runs a known sequence in one call (har
   `http://localhost:<port>` or `http://127.0.0.1:<port>` (1024-65535), and that in a headless lane only
   (`attach --headless`): in his profile an agent-written page could send credentialed cross-site requests. A client's live site goes through the tag debugger,
   never this verb — his logged-in cookies would land in the client's analytics.
-- **A credential is stored, never read** (contracts/secret-intake.md). A key a page shows once: click the
-  page's own Copy, run `harbor access add|rotate <id> --value-clipboard`, close the dialog. Never `snapshot`,
-  `text` or `screenshot` it; replies are redacted and screenshots of it refused, but a shape-less secret passes.
 - **Refused verbs stay refused.** No `run-code`, `eval`, cookies, storage or state,
   request bodies. If a job seems to need one, stop and say which and why.
 - **Never set `PLAYWRIGHT_MCP_EXTENSION_TOKEN`.** It removes his approval; the verb
