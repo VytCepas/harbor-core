@@ -256,7 +256,7 @@ t_has "naming it per-call" "$(out)" "never exported"
 # The guard line removed, the same Delete click must go through: the arms above can fail.
 M="$T_TMP/mutant"; mkdir -p "$M/bin" "$M/contracts"
 sed 's/^\( *\)_handoff "destructive .*/\1:/' "$AGENT" > "$M/bin/access-browser-agent.sh"
-cp "$T_ROOT/bin/library-log.sh" "$M/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$T_ROOT/contracts/browser-script.tsv" "$T_ROOT/contracts/live-change-words.txt" "$M/contracts/"
+cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/access-redact.sh" "$T_ROOT/bin/admission-egress.sh" "$M/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$T_ROOT/contracts/browser-script.tsv" "$T_ROOT/contracts/live-change-words.txt" "$M/contracts/"
 t_eq "the mutant differs from the script" yes "$(cmp -s "$AGENT" "$M/bin/access-browser-agent.sh" || echo yes)"
 t_eq "and without the guard line the Delete click goes through" "exit 0" \
   "$(rc env HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc TMPDIR="$T_TMP" sh "$M/bin/access-browser-agent.sh" click e4)"
