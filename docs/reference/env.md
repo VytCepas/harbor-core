@@ -34,6 +34,9 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_ACCESS_CLAUDE_JSON` | path | `$HOME/.claude.json` | Path of the claude.json file access-browser-agent checks for a configured @playwright/mcp server (default ~/.claude.json) | access |  | tests only |
 | `HARBOR_ACCESS_CONFINEMENT_CACHE` | path | `$HOME/.cache/harbor/confinement` | Directory holding the minted GitHub App tokens and table copied in for confined sessions (default ~/.cache/harbor/confinement) | standard |  | tests only |
 | `HARBOR_ACCESS_CONFINEMENT_GCX` | test-only | `gcx` | Name or path of the gcx command used by the access-confinement hook; only the hook's suite checks its default (gcx) | access |  | tests only |
+| `HARBOR_ACCESS_DESKTOP_APP` | path | `$_app_default` | Path of the harbor desktop helper app; its fixed path and signature carry the macOS grants | access |  | tests only |
+| `HARBOR_ACCESS_DESKTOP_IDLE` | tuning | `900` | Seconds the harbor desktop helper may sit idle before it exits (default 900) | access |  | tests only |
+| `HARBOR_ACCESS_DESKTOP_STATE` | path | `$HOME/.local/state/harbor/desktop` | Directory of the harbor desktop helper socket, audit log and captures | access |  | tests only |
 | `HARBOR_ACCESS_DIR` | path | none | directory of access route cards read to pick the account for a host; unset uses the private layer's access/ directory | access |  | tests only |
 | `HARBOR_ACCESS_HOSTS_FILE` | test-only | `$ROOT/contracts/browser-agent-hosts.txt` | Hosts allowlist file that access-browser-hosts-add writes to, default contracts/browser-agent-hosts.txt; a test seam | access |  | tests only |
 | `HARBOR_ACCESS_PLAYWRIGHT_CLI` | test-only | none | Path of a stub standing in for the Playwright CLI so the browser-agent suites run without a real browser | access |  | tests only |
