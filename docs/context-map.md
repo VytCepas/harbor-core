@@ -109,7 +109,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | proposal | proposal-pipeline | 1 | 2 | 0 | 0 | 0 | 0 |
 | scope | coordination | 14 | 23 | 0 | 1 | 0 | 5 |
 | session | data-plane | 14 | 5 | 0 | 8 | 0 | 0 |
-| skill | catalog | 5 | 18 | 0 | 8 | 0 | 16 |
+| skill | catalog | 5 | 18 | 0 | 8 | 0 | 17 |
 | standard | policy-function | 18 | 29 | 127 | 16 | 14 | 64 |
 | status | observability | 14 | 31 | 0 | 13 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |

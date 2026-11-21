@@ -2,6 +2,7 @@
 name: doc-atlas
 description: "The single owner of human-readable HTML artefacts on this box: an atlas whose subject is a DRAWING, not prose. The diagram takes the whole stage with pan-and-zoom navigation, clicking any component opens structured fields — what it is, what it carries, why it exists, which files it lives in — and nothing is learned by scrolling. Tabs group the diagrams, dropdowns hold the detail, every authored string has an enforced word ceiling, and the output lands in ~/Deliverables/<date>-<slug>/ as a local file. Renders archify specs. USE WHEN presenting an architecture, a technology stack, a module or connection structure to a person; when an existing atlas needs updating; when somebody asks for a diagram they can click. NOT FOR a status write-up, a what-changed report, findings, or test output — those belong in the terminal, the PR body or a repo doc, and an HTML page that reproduces terminal output is never opened twice. NOT FOR a projection of a TOPOLOGY.md, which is `topology`'s own report-gen.sh. NOT FOR a page a person studies or learns a topic from (`doc-learning-artifact`)."
 argument-hint: [system to draw, or the deliverable folder to update]
+owns-content: "topology-diagram\.sh|archify"
 ---
 
 # atlas

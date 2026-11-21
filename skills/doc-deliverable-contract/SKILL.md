@@ -2,6 +2,8 @@
 name: doc-deliverable-contract
 description: "Before writing anything a person outside this session will read — a client thread reply, a ticket comment, a recommendation, a proposal — restate the contract as your own constraint: the verb in the ask and what it licenses, the audience and therefore the language, and the word ceiling. Then hit the five moves — locus, elimination, ownership, their currency, termination. USE WHEN replying to a client or account team, answering a thread, writing a recommendation or proposal, drafting a ticket comment, sending findings to anyone, or when a correct analysis needs to become a usable answer. NOT FOR the investigation itself (casefile), or the durable map (topology)."
 argument-hint: [what you are about to send, and to whom]
+owns-commands: gmail-write
+owns-content: "\b(cu (comment|new|dm)|gh (issue|pr) comment)\b"
 ---
 
 # doc-deliverable-contract
