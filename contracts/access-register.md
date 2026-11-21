@@ -87,7 +87,9 @@ on members too; `hub-token`, the one ref the floor's guards name, is a `tool-req
 `terms.tsv` is refused there), so on a member `add` does not require or judge `--vendor-name`, and says so.
 **Value hygiene:** with `--value-stdin`, `add` and `rotate` trim whitespace around the value and refuse one with
 whitespace inside it, printing its length and never the value; `add --verbatim` (field `value-shape: verbatim`) stores
-a key file or JSON byte for byte instead.
+a key file or JSON byte for byte instead. `--value-clipboard` (on `add` and `rotate`) takes the value from the clipboard
+into that same stdin path, never shown, and empties the clipboard after: the route for a key a page shows once
+(contracts/secret-intake.md).
 
 ## A renamed ref: one credential, two names, until remove_by
 
@@ -135,6 +137,7 @@ harbor access check         # well formed, no credential value; exit 2 with no r
 harbor access stored        # every item bin/secret holds: registered, grandfathered, REVOKED or UNREGISTERED (exit 1)
 harbor access status [-v] [id...]          # stored, alive, in date: what is wrong and since when (exit 1 on a red)
 harbor access rotate <id> [--value-stdin] [--locked]  # a new value, kept only if the entry's check passes on it
+harbor access add|rotate … --value-clipboard          # the value from the clipboard, unseen; the clipboard emptied after
 harbor access revoke <id>                  # refuse the ref from now on, then remove the stored value
 harbor access renamed <ref>                # registered name, other name, remove_by of the open rename naming it
 harbor access move <old-ref> [--locked]    # the entry names the new ref; the value is copied; the old item stays

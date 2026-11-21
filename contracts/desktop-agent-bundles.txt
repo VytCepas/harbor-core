@@ -1,0 +1,11 @@
+# desktop-agent-bundles.txt (harbor#1440, harbor/D-95): the Mac apps harbor desktop may read and drive, by bundle id.
+#
+# WHY: one Accessibility grant reaches every app on the Mac, so which apps the helper touches is this list, not the
+# grant. The helper (bin/access-desktop-helper.swift) reads this file, then the private layer's desktop-bundles.txt, at
+# launch and on `reload`. An app on neither is refused; an app on the helper's hard deny list (password managers,
+# Keychain, System Settings, terminals) is refused whatever this file says. A browser listed here is also held to
+# harbor chrome's host list (contracts/browser-agent-hosts.txt): the page it shows must be on it.
+# One bundle id per line; find one with `sh bin/access-desktop.sh apps`.
+com.apple.TextEdit
+com.apple.calculator
+com.google.Chrome

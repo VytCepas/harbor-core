@@ -12,6 +12,9 @@ when_to_use
 owns-commands
 owns-tools
 inline-section
+owns-content
+gate-commands
+reach
 architecture
 id
 event

@@ -190,7 +190,7 @@ SKILL_HOMES="$ROOT/vendor/skills $ROOT/skills"
 # Twelve of them; everything else stayed in the single block that reads it. The
 # prose explaining each one stays with the rule that owns the question — the
 # pointer is the symbol name, which greps to both places.
-ALLOWED='name|description|when_to_use|user-invocable|argument-hint|allowed-tools|disable-model-invocation|version|effort|context|model|license|metadata|owns-commands|owns-tools|inline-section|architecture'
+ALLOWED='name|description|when_to_use|user-invocable|argument-hint|allowed-tools|disable-model-invocation|version|effort|context|model|license|metadata|owns-commands|owns-tools|owns-content|gate-commands|inline-section|reach|architecture'
 PROV="$ROOT/vendor/skills/PROVENANCE.md"
 CI="$ROOT/.github/workflows/governance.yml"
 _MAN="$ROOT/contracts/suites.txt"
@@ -761,13 +761,14 @@ rule "posix.shebang-strict bin/*.sh use #!/usr/bin/env sh + strict mode (documen
 #   library-git-safe.sh — SOURCED, the same reason (harbor#1278)
 #   library-board.sh   — SOURCED, the same reason (harbor#1278; operator yes 2026-11-08)
 #   library-pack-version.sh — SOURCED, the same reason (harbor#1278)
+#   library-clipboard.sh — SOURCED, the same reason (harbor#1597)
 #   worklog-*.sh   — contractually fail-open ("every path exits 0"); -e would abort
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   [ -L "$f" ] && continue   # a rename shim (renames.tsv remove_by) is an old name of a file judged under its own (harbor#961)
   b="$(basename "$f")"
   head -1 "$f" | grep -q '^#!/usr/bin/env sh$' || bad posix.shebang-strict "wrong shebang: ${f#$ROOT/}"
-  case "$b" in library-admission.sh|library-log.sh|deploy-install-lib.sh|library-fs.sh|library-gate.sh|library-hub.sh|library-git-safe.sh|library-board.sh|library-pack-version.sh|audit-stream-lib.sh|library-alert.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
+  case "$b" in library-admission.sh|library-log.sh|deploy-install-lib.sh|library-fs.sh|library-gate.sh|library-hub.sh|library-git-safe.sh|library-board.sh|library-pack-version.sh|library-clipboard.sh|audit-stream-lib.sh|library-alert.sh|worklog-push.sh|ci-runners-fleet-lib.sh|ci-runners-provision-lib.sh|ci-runners-github-lib.sh|ci-runners-watch-lib.sh) continue ;; esac
   grep -qE '^set -(eu|u|euo)' "$f" || bad posix.shebang-strict "no strict mode: ${f#$ROOT/}"
 done
 # EXTENSIONLESS EXECUTABLES ARE SCRIPTS TOO (2026-07-30). Every rule in this file
@@ -867,7 +868,7 @@ _S4_HOOKS="admission-hook admission-observe context-resolve annotate-web prod-gu
 worklog-push memory-harvest injection-rule eval-replay-worker admission-bash
 admission-egress admission-self-edit admission-integrity admission-cloud admission-destroy library-admission
 admission-deliverables admission-api-route admission-ask
-admission-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert library-hub library-git-safe library-board library-pack-version ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
+admission-stop session-verdicts audit-triage failure-observe statusline ticket-note reply-shape library-log deploy-install-lib library-fs library-alert library-hub library-git-safe library-board library-pack-version library-clipboard ci-runners-fleet-lib ci-runners-provision-lib ci-runners-github-lib ci-runners-watch-lib library-gate audit-stream-lib session-react-lib"
 for f in "$ROOT"/bin/*.sh $(_engines); do
   [ -f "$f" ] || continue
   [ -L "$f" ] && continue   # a rename shim (harbor#961) answers under its new name
@@ -6940,7 +6941,8 @@ _l1_tsv="$ROOT/contracts/log-exempt.tsv"
 # and guard-stop, a protocol like the test harness's summary rather than a run log. library-fs.sh prints a
 # value and logs nothing: a library, like log-lib. So do library-hub.sh and library-board.sh (harbor#1278).
 # library-alert.sh is a library too: its one stderr line IS the notification, said when no desktop channel takes it.
-_l1_named='bin/library-log.sh bin/lint-conventions.sh bin/library-fs.sh bin/library-alert.sh bin/library-hub.sh bin/library-board.sh bin/library-git-safe.sh'
+# library-clipboard.sh prints only the clipboard it is asked for, and logs nothing: a library, like library-fs.sh (harbor#1597).
+_l1_named='bin/library-log.sh bin/lint-conventions.sh bin/library-fs.sh bin/library-alert.sh bin/library-hub.sh bin/library-board.sh bin/library-git-safe.sh bin/library-clipboard.sh'
 _l1_code() { sed -e 's/^[[:space:]]*#.*$//' -e 's/[[:space:]]#.*$//' "$1"; }  # comments blanked, lines kept
 _l1_uses() { _l1_code "$1" | grep -qE '(^|[;&|[:space:]])\.[[:space:]]+[^;]*library-log\.sh'; }
 _l1_floor() { # channel 2: library-admission.sh, or F1's mark of an installed floor file
@@ -7866,6 +7868,40 @@ for _ds_d in "$ROOT"/skills/*/; do
   if [ "${_ds_v:-0}" -gt 1 ]; then
     bad skill.description-shape "skills/$_ds_n declares $_ds_v visibility keys; keep one (disable-model-invocation)" "skills/$_ds_n"
   fi
+done
+}
+
+# ── skill.moment-declared · every skill names the moment it applies, or says it has none (harbor#1591, block) ──
+# context-rules/user/skill-on-first-use names a skill on the calls it owns, and owns only what the frontmatter declares:
+# measured 2026-11-20, 4 of 45 installed skills declared anything, and a hidden skill with no moment was read in 4 of 10
+# sessions that needed it. So each skill under skills/ and vendor/skills/ carries an owns- key (commands, tools, content)
+# or `reach: reasoning` for one no tool call marks. Frontmatter only, for skill.use-when's reason: prose about a key is
+# not the key. Every tracked skill is in the repo and the remedy is one line, so it blocks.
+rule_skill_moment_declared() {
+rule "skill.moment-declared every tracked skill declares an owns- key or reach: reasoning; a gate has an owner, a content regex compiles (harbor#1591)"
+for _md_h in $SKILL_HOMES; do
+  for _md_d in "$_md_h"/*/; do
+    [ -f "$_md_d/SKILL.md" ] || continue
+    _md_fm="$(awk 'NR==1 && $0 !~ /^---[[:space:]]*$/ { exit } NR>1 && $0 ~ /^---[[:space:]]*$/ { exit } NR>1' "$_md_d/SKILL.md")"
+    _md_p="${_md_d#"$ROOT"/}"; _md_p="${_md_p%/}"
+    # The engine indexes only a skill with an owns- key, so a gate on any other skill never fires (harbor#1592 review).
+    _md_own=0; printf '%s\n' "$_md_fm" | grep -qE '^owns-(commands|tools|content):[[:space:]]*[^[:space:]]' && _md_own=1
+    if [ "$_md_own" = 0 ] && printf '%s\n' "$_md_fm" | grep -qE '^gate-commands:[[:space:]]*[^[:space:]]'; then
+      bad skill.moment-declared "$_md_p declares gate-commands but no owns- key — the gate holds only calls the skill owns, so it never fires" "$_md_p"
+    fi
+    # A regex jq cannot compile matches nothing in the engine, silently, so it is caught here (harbor#1592 review).
+    _md_re="$(printf '%s\n' "$_md_fm" | sed -n 's/^owns-content:[[:space:]]*//p' | sed 's/^["'\'']//; s/["'\'']$//')"
+    if [ -n "$_md_re" ]; then
+      if ! command -v jq >/dev/null 2>&1; then
+        bad skill.moment-declared "$_md_p owns-content cannot be checked: jq is not installed" "$_md_p"
+      elif ! jq -n --arg r "$_md_re" '"" | test($r)' >/dev/null 2>&1; then
+        bad skill.moment-declared "$_md_p owns-content is not a regex jq can compile, so it matches nothing: $_md_re" "$_md_p"
+      fi
+    fi
+    [ "$_md_own" = 1 ] && continue
+    printf '%s\n' "$_md_fm" | grep -qE '^reach:[[:space:]]*reasoning[[:space:]]*$' && continue
+    bad skill.moment-declared "$_md_p declares no owns-commands, owns-tools or owns-content, and no reach: reasoning — nothing can name it at the moment it applies" "$_md_p"
+  done
 done
 }
 
