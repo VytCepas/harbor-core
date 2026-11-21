@@ -352,9 +352,11 @@ unless a call names the foreground, and every input reports `took_focus` and `mo
 
 **What `harbor desktop` refuses.** An app not on the allow-list; an app on the helper's hard deny list whatever the list
 says (Keychain, Passwords, System Settings, terminals, password managers); a browser whose shown page is off harbor
-chrome's host list; a press, menu item or Enter whose label carries a live-change word, and every script and Shortcut
-run, unless a confirm tool behind a `permissions.ask` rule passes it; a ref read before the app restarted (`gen`). The
-sandboxed shell cannot reach the helper's socket (measured 2026-11-21), so these are the paths in.
+chrome's host list; a press, menu item or value set whose label carries a live-change word, Enter or Space, and every
+script and Shortcut run, unless a confirm tool behind a `permissions.ask` rule passes it; a typed line break; a script
+that names a hard-denied app (by name or bundle id; best effort, since a script can reach an app indirectly, so the
+dialog stays the boundary for scripts and Shortcuts, whose content the helper cannot see); a ref read before the app
+restarted (`gen`). The sandboxed shell cannot reach the helper's socket (measured 2026-11-21), so these are the paths in.
 
 | Measured 2026-11-21 (macOS 27.0.1) | Result |
 |---|---|
@@ -363,8 +365,10 @@ sandboxed shell cannot reach the helper's socket (measured 2026-11-21), so these
 | AppleScript through the helper | unconfirmed refused; confirmed ran and returned the document name |
 | Enter unconfirmed | refused |
 | Window capture | refused until Screen Recording is granted (SCStream -3801) |
-| Rebuild with an ad-hoc signature | Accessibility grant lost: sign with `access-desktop-build.sh --make-identity`'s certificate | Nothing here provides trusted
-input from a real keyboard or pointer, so an agent driving a guest's screen is driving an untrusted surface.
+| Rebuild with an ad-hoc signature | Accessibility grant lost: sign with `access-desktop-build.sh --make-identity`'s certificate |
+
+Nothing here provides trusted input from a real keyboard or pointer, so an agent driving a guest's screen is driving
+an untrusted surface.
 
 **The trigger for step 4 is a missing broker, named.** #1444's trigger comment quotes this table and says: *the app is
 `<name>`; step 1 is missing because `<no API, CLI or MCP / the API cannot do `<verb>`>`; step 2 is missing because

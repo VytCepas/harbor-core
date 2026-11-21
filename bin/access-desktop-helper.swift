@@ -18,6 +18,9 @@ let hardDeny: Set<String> = [  // secrets and the machine's own controls: never,
   "com.apple.keychainaccess", "com.apple.Passwords", "com.apple.systempreferences", "com.apple.SecurityAgent",
   "com.apple.Terminal", "com.googlecode.iterm2", "com.1password.1password", "com.agilebits.onepassword7",
   "com.bitwarden.desktop", "com.apple.ScreenSharing", "com.apple.Console"]
+// The same apps by the names a script uses (`tell application "Terminal"`, `Application('Keychain Access')`).
+let hardDenyNames: [String] = ["keychain access", "passwords", "system settings", "system preferences", "securityagent",
+  "terminal", "iterm", "iterm2", "1password", "1password 7", "bitwarden", "screen sharing", "console"]
 let browsers: Set<String> = ["com.google.Chrome", "com.google.Chrome.canary", "com.apple.Safari",
   "company.thebrowser.Browser", "org.mozilla.firefox", "com.microsoft.edgemac", "com.brave.Browser"]
 
@@ -184,7 +187,8 @@ func act(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: Any] 
 func setValue(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: Any] {
   try checkGen(a, r); try browserGate(a)
   let e = try resolve(a, (r["ref"] as? String) ?? "")
-  _ = try expectLabel(e, r)
+  let lab = try expectLabel(e, r)
+  try gate(lab, r)  // a checkbox or switch set by value is a press by another name
   guard let v = r["value"] as? String else { throw Fail(msg: "value missing") }
   let b = (front(), pointer())
   let err = AXUIElementSetAttributeValue(e, kAXValueAttribute as CFString, v as CFString)
@@ -214,9 +218,20 @@ func menu(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: Any]
 let named: [String: CGKeyCode] = ["return": 36, "enter": 76, "tab": 48, "space": 49, "delete": 51, "escape": 53,
   "left": 123, "right": 124, "down": 125, "up": 126, "home": 115, "end": 119, "pageup": 116, "pagedown": 121,
   "forwarddelete": 117]
+// Return, keypad Enter and Space submit or press the focused control (D-94's set); a typed line break is a Return.
+let submitKeys: Set<String> = ["return", "enter", "space"]
+func submitGate(_ k: String, _ r: [String: Any]) throws {
+  if submitKeys.contains(k) && (r["confirmed"] as? Bool) != true {
+    throw Fail(msg: "live change refused: \(k) can submit a form or press a button — the operator confirms one call") }
+}
+func typeGate(_ text: String) throws {
+  if text.contains(where: { $0 == "\n" || $0 == "\r" || $0 == "\r\n" || $0 == "\u{3}" }) {
+    throw Fail(msg: "live change refused: a typed line break submits like Enter — type the text without it, then confirm_key return") }
+}
 func typeText(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: Any] {
   try browserGate(a)
   guard let text = r["text"] as? String else { throw Fail(msg: "text missing") }
+  try typeGate(text)
   let b = (front(), pointer())
   for var u in text.utf16 {
     for down in [true, false] {
@@ -233,8 +248,7 @@ func key(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: Any] 
   let parts = ((r["combo"] as? String) ?? "").lowercased().split(separator: "+").map(String.init)
   guard let k = parts.last, let code = named[k] else {
     throw Fail(msg: "key: named keys only (\(named.keys.sorted().joined(separator: ","))); letter shortcuts go through menu") }
-  if ["return", "enter"].contains(k) && (r["confirmed"] as? Bool) != true {
-    throw Fail(msg: "live change refused: \(k) can submit a form — the operator confirms one call") }
+  try submitGate(k, r)
   var flags: CGEventFlags = []
   for m in parts.dropLast() {
     switch m { case "cmd": flags.insert(.maskCommand); case "shift": flags.insert(.maskShift)
@@ -284,7 +298,16 @@ func shot(_ a: NSRunningApplication, _ r: [String: Any], _ dir: String) throws -
 }
 
 // ── Apple Events (AppleScript / JXA), run in this process so Automation consent is this app's ──
+// A script that names a hard-denied app is refused before the dialog. Best effort: a script can still reach one
+// indirectly (do shell script, a variable app name), so for scripts the operator's dialog stays the boundary.
+func scriptDeny(_ src: String) throws {
+  let l = src.lowercased()
+  for id in hardDeny where l.contains(id.lowercased()) { throw Fail(msg: "refused: the script names \(id), on the hard deny list") }
+  for n in hardDenyNames where l.contains("\"\(n)\"") || l.contains("'\(n)'") {
+    throw Fail(msg: "refused: the script names \(n), on the hard deny list") }
+}
 func script(_ r: [String: Any]) throws -> [String: Any] {
+  try scriptDeny((r["source"] as? String) ?? "")
   guard (r["confirmed"] as? Bool) == true else { throw Fail(msg: "script refused: every script is a change the operator confirms") }
   guard let src = r["source"] as? String else { throw Fail(msg: "source missing") }
   let lang = (r["language"] as? String) == "javascript" ? "JavaScript" : "AppleScript"
@@ -309,11 +332,17 @@ func shortcuts(_ r: [String: Any]) throws -> [String: Any] {
   let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/shortcuts")
   p.arguments = run ? ["run", r["name"] as! String] + ((r["input"] as? String).map { ["-i", $0] } ?? []) : ["list"]
   let o = Pipe(), e = Pipe(); p.standardOutput = o; p.standardError = e
-  try p.run(); p.waitUntilExit()
-  let out = String(data: o.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-  if p.terminationStatus != 0 {
-    throw Fail(msg: "shortcuts exit \(p.terminationStatus): \(String(data: e.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "")") }
-  return ["result": String(out.prefix(20000))]
+  try p.run()
+  // Drain both pipes while it runs: waiting first deadlocks once output fills the pipe (~64 KB). Under nc's 30 s.
+  var od = Data(), ed = Data()
+  let g = DispatchGroup()
+  g.enter(); DispatchQueue.global().async { od = o.fileHandleForReading.readDataToEndOfFile(); g.leave() }
+  g.enter(); DispatchQueue.global().async { ed = e.fileHandleForReading.readDataToEndOfFile(); g.leave() }
+  if g.wait(timeout: .now() + 25) == .timedOut { p.terminate(); throw Fail(msg: "shortcut stopped: no result in 25 s") }
+  p.waitUntilExit()
+  let out = String(data: od, encoding: .utf8) ?? ""
+  if p.terminationStatus != 0 { throw Fail(msg: "shortcuts exit \(p.terminationStatus): \(String(data: ed, encoding: .utf8) ?? "")") }
+  return ["result": String(out.prefix(20000)), "truncated": out.count > 20000]
 }
 
 // ── dispatch ──
@@ -427,6 +456,16 @@ func selftest(_ cfg: [String: String]) -> Never {
   check("a ref with no expected label is refused", refused { try expectMatch("7 | Seven", [:]) }.contains("expect missing"))
   check("a moved ref is refused (reads 8, expected 7)", refused { try expectMatch("8 | Eight", ["expect": "Seven"]) }.contains("stale ref"))
   check("the ref still on its label passes", refused { try expectMatch("7 | Seven", ["expect": "Seven"]) } == "")
+  check("Space needs a confirm (it presses the focused button)", refused { try submitGate("space", [:]) }.contains("live change refused"))
+  check("Return needs a confirm", refused { try submitGate("return", [:]) }.contains("live change refused"))
+  check("a confirmed Return passes", refused { try submitGate("return", ["confirmed": true]) } == "")
+  check("Tab passes", refused { try submitGate("tab", [:]) } == "")
+  check("a typed line break is refused", refused { try typeGate("hello\nworld") }.contains("line break"))
+  check("plain typed text passes", refused { try typeGate("labas, pasauli") } == "")
+  check("a script naming Terminal is refused", refused { try scriptDeny("tell application \"Terminal\" to do script \"ls\"") }.contains("hard deny"))
+  check("a JXA script naming Keychain Access is refused", refused { try scriptDeny("Application('Keychain Access').activate()") }.contains("hard deny"))
+  check("a script naming a denied bundle id is refused", refused { try scriptDeny("tell application id \"com.apple.Terminal\" to quit") }.contains("hard deny"))
+  check("a script for TextEdit passes", refused { try scriptDeny("tell application \"TextEdit\" to get name of front document") } == "")
   let keep = words; words = []
   check("an empty word list refuses every guarded call", refused { try gate("Seven", [:]) }.contains("missing or empty"))
   words = keep

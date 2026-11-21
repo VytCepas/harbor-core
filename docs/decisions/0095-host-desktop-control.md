@@ -30,8 +30,10 @@ Amends harbor#1440's routing order and DE-40's "do instead": a Mac app with no b
    value, capture a window, run a script, run a Shortcut). Which apps they may touch is an allow-list file, not code.
 3. **Background only by default.** A verb that would raise an app, move the pointer or take focus is refused unless
    the call names the foreground explicitly.
-4. **Changes ask.** A press on an element whose label carries a word of `contracts/live-change-words.txt`, a value set,
-   a script and a Shortcut run go through the operator's dialog, as D-94 does for the browser.
+4. **Changes ask.** A press, menu item or value set on an element whose label carries a word of
+   `contracts/live-change-words.txt`, Enter or Space, a script and a Shortcut run go through the operator's dialog, as
+   D-94 does for the browser; a typed line break is refused. A plain field's value is set without a dialog, as
+   harbor chrome's `fill` is.
 5. **The guest stays** for apps that must not see host state (#1444); this record removes it as the only route.
 
 ## Consequences
