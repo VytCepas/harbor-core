@@ -201,6 +201,8 @@ rule:egress:hub-token-read	rule	egress:hub-token-read	2026-11-08	core
 rule:egress:key-material-egress	rule	egress:key-material-egress	2026-10-17	core
 rule:egress:key-material-read	rule	egress:key-material-read	2026-10-17	core
 rule:egress:keychain-dump	rule	egress:keychain-dump	2026-10-17	core
+rule:egress:clipboard-read	rule	egress:clipboard-read	2026-11-21	core
+rule:egress:browser-raw-cli	rule	egress:browser-raw-cli	2026-11-21	core
 rule:egress:privileged-jwt-egress	rule	egress:privileged-jwt-egress	2026-10-17	core
 rule:egress:project-cred-egress	rule	egress:project-cred-egress	2026-10-17	core
 rule:egress:provider-secret-egress	rule	egress:provider-secret-egress	2026-10-17	core

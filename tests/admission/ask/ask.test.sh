@@ -52,6 +52,64 @@ t_eq "auto mode denies an MCP click too" deny "$(verdict mcp__harbor_chrome__con
 t_eq "default mode still asks" ask  "$(verdict Bash 'acme --write x' '{"permission_mode":"default"}')"
 t_eq "acceptEdits still asks"  ask  "$(verdict Bash 'acme --write x' '{"permission_mode":"acceptEdits"}')"
 
+t_section "auto mode: the operator's yes to a question quoting this exact call lets it through once"
+_iso() { date -u -r "$1" +%Y-%m-%dT%H:%M:%S.000Z 2>/dev/null || date -u -d "@$1" +%Y-%m-%dT%H:%M:%S.000Z; }
+NOW="$(_iso "$(date +%s)")"; OLD="$(_iso $(( $(date +%s) - 7200 )))"
+TP="$T_TMP/t.jsonl"
+use() { jq -cn --arg i "$1" --arg n "$2" --argjson in "$3" '{type:"assistant",message:{content:[{type:"tool_use",id:$i,name:$n,input:$in}]}}' >> "$TP"; }
+res() { jq -cn --arg i "$1" --arg c "$2" '{type:"user",message:{content:[{type:"tool_result",tool_use_id:$i,content:[{type:"text",text:$c}]}]}}' >> "$TP"; }
+ans() { # <id> <question> <answer> [timestamp] [sidechain]
+  jq -cn --arg i "$1" --arg q "$2" --arg a "$3" --arg ts "${4:-$NOW}" --argjson sc "${5:-false}" \
+    '{type:"user",isSidechain:$sc,timestamp:$ts,message:{content:[{type:"tool_result",tool_use_id:$i,content:"answered"}]},toolUseResult:{questions:[{question:$q}],answers:{($q):$a}}}' >> "$TP"; }
+refusal() { use c1 mcp__harbor_chrome__click '{"args":["e4"]}'; res c1 "  FAIL: hand-off: destructive click refused: 'button \"Delete campaign\"' (e4) matches 'delete' — the operator confirms one call"; }
+ASKQ='Click e4, button "Delete campaign", in the ads console?'
+cc() { verdict mcp__harbor_chrome__confirm_click '' "$(jq -cn --arg tp "$TP" --argjson a "${1:-[\"e4\"]}" '{permission_mode:"auto",transcript_path:$tp,tool_input:{args:$a}}')"; }
+: > "$TP"; refusal; use q1 AskUserQuestion '{}'; ans q1 "$ASKQ" 'Yes, click it'
+t_eq "a yes quoting the ref and the refused label allows confirm_click" allow "$(cc)"
+_ry="$(jq -cn --arg tp "$TP" '{tool_name:"mcp__harbor_chrome__confirm_click",tool_input:{args:["e4"]},permission_mode:"auto",transcript_path:$tp}' | sh "$G")"
+t_has "...saying it runs once" "$_ry" 'runs once'
+t_eq "...for that ref only" deny "$(cc '["e5"]')"
+use k1 mcp__harbor_chrome__confirm_click '{"args":["e4"]}'; res k1 'clicked button by script'
+t_eq "a completed confirm_click spends the yes" deny "$(cc)"
+use q2 AskUserQuestion '{}'; ans q2 "$ASKQ" 'yes'
+t_eq "a new yes after it allows the next one" allow "$(cc)"
+: > "$TP"; refusal; use q1 AskUserQuestion '{}'; ans q1 'Click e4?' 'Yes'
+t_eq "a yes that names the ref but not the label is not enough" deny "$(cc)"
+: > "$TP"; use q1 AskUserQuestion '{}'; ans q1 "$ASKQ" 'Yes'
+t_eq "a yes with no refusal on record has no label to check" deny "$(cc)"
+: > "$TP"; refusal; use q1 AskUserQuestion '{}'; ans q1 "$ASKQ" 'No, leave it'
+t_eq "a no denies" deny "$(cc)"
+: > "$TP"; refusal; use q1 AskUserQuestion '{}'; ans q1 "$ASKQ" 'Yes' "$OLD"
+t_eq "a yes older than 30 min has lapsed" deny "$(cc)"
+: > "$TP"; refusal; use q1 AskUserQuestion '{}'; ans q1 "$ASKQ" 'Yes' "$NOW" true
+t_eq "a subagent's record is not the operator's yes" deny "$(cc)"
+: > "$TP"; refusal; use q1 Bash '{"command":"true"}'; ans q1 "$ASKQ" 'Yes'
+t_eq "answers on another tool's result are not an AskUserQuestion" deny "$(cc)"
+printf 'not json at all\n' > "$TP"; refusal; use q1 AskUserQuestion '{}'; ans q1 "$ASKQ" 'Yes'
+t_eq "a broken transcript line is skipped, not fatal" allow "$(cc)"
+t_eq "no transcript: the deny stands" deny "$(verdict mcp__harbor_chrome__confirm_click '' '{"permission_mode":"auto","transcript_path":"/nonexistent/t.jsonl","tool_input":{"args":["e4"]}}')"
+: > "$TP"; use q1 AskUserQuestion '{}'; ans q1 'Run `acme --write x` now?' 'Yes, run it'
+bv() { verdict Bash "$1" "$(jq -cn --arg tp "$TP" --arg c "$1" '{permission_mode:"auto",transcript_path:$tp,tool_input:{command:$c}}')"; }
+t_eq "a command quoted whole in the question is allowed" allow "$(bv 'acme --write x')"
+t_eq "...not a longer one" deny "$(bv 'acme --write x --all')"
+_cfg3="$(cat "$CLAUDE_CONFIG_DIR/settings.json")"
+printf '%s' '{"permissions":{"ask":["Bash(/cfg/bin/gate-approve.sh *)"]}}' > "$CLAUDE_CONFIG_DIR/settings.json"
+: > "$TP"; use q1 AskUserQuestion '{}'; ans q1 'Run `/cfg/bin/gate-approve.sh merge 12` now?' 'Yes'
+t_eq "the merge/deploy approval gate is never approved by a question" deny "$(bv '/cfg/bin/gate-approve.sh merge 12')"
+printf '%s' "$_cfg3" > "$CLAUDE_CONFIG_DIR/settings.json"
+_rd="$(jq -cn --arg tp "$TP" '{tool_name:"mcp__harbor_chrome__confirm_click",tool_input:{args:["e9"]},permission_mode:"auto",transcript_path:$tp}' | sh "$G")"
+t_has "the auto-mode deny names the AskUserQuestion way" "$_rd" 'Ask the operator with AskUserQuestion'
+t_has "...and what confirm_click must quote" "$_rd" 'the ref and the label'
+t_eq "default mode still shows the dialog, yes or not" ask "$(verdict Bash 'acme --write x' "$(jq -cn --arg tp "$TP" '{permission_mode:"default",transcript_path:$tp}')")"
+# The label requirement removed, a yes naming only the ref passes: the "not enough" arm above can fail.
+MU="$T_TMP/mut-bin"; mkdir -p "$MU"; cp "$T_ROOT/bin/library-admission.sh" "$MU/"
+sed 's/and ((\$labels\[\$call.ref\] \/\/ "") as \$l | \$l != "" and (\$qq | contains(\$l | norm)))//' "$G" > "$MU/admission-ask.sh"
+t_eq "the label mutant differs from the guard" yes "$(cmp -s "$G" "$MU/admission-ask.sh" || echo yes)"
+: > "$TP"; refusal; use q1 AskUserQuestion '{}'; ans q1 'Click e4?' 'Yes'
+_G="$G"; G="$MU/admission-ask.sh"
+t_eq "and without the label check a ref-only yes is allowed" allow "$(cc)"
+G="$_G"
+
 t_section "a bare entry matches every call of that tool"
 _cfg="$(cat "$CLAUDE_CONFIG_DIR/settings.json")"
 printf '%s' '{"permissions":{"ask":["Bash"]}}' > "$CLAUDE_CONFIG_DIR/settings.json"
@@ -92,7 +150,7 @@ _r="$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"acme --write x"}
 t_has "reason names the rule" "$_r" 'Bash(acme --write *)'
 t_has "an ask's reason waits for a yes" "$_r" 'waits for your yes'
 _ra="$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"acme --write x"},"permission_mode":"auto"}' | sh "$G")"
-t_has "an auto-mode deny tells the model the operator runs it" "$_ra" 'ask the operator to run this command as `! <command>`'
+t_has "an auto-mode deny tells the model the operator can run it" "$_ra" 'they run it as `! <command>`'
 t_hasnt "an auto-mode deny never says it waits for a yes" "$_ra" 'waits for your yes'
 t_eq "malformed stdin"       ""   "$(printf 'not json' | sh "$G")"
 printf 'broken' > "$CLAUDE_CONFIG_DIR/settings.json"

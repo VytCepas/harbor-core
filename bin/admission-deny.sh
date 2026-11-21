@@ -209,8 +209,7 @@ NEW="$(jq --argjson ADD "$ADD" \
 
 # THE APPROVAL GATE'S RULES (harbor#1018, docs/design/approval-gate.md). `ask` makes every gate-approve.sh call show Claude Code's own dialog, in auto mode too; the allow rules let the unattended merge and queue run without the classifier. Each names the INSTALLED copy under this config dir, which the floor guards; guard-bash refuses every other spelling. Append-only like the deny entries.
 # harbor#1488: harbor chrome's confirm_click runs only while its ask rule is present, so each consequential click (Turn on, Apply, Publish, Delete) is the operator's click in the same dialog.
-# D-95: harbor desktop's confirm tools, script and shortcut_run pass the helper's confirm flag only while their ask rule is present.
-GATE_ASK="$(jq -n --arg d "$DIR" '["Bash(\($d)/bin/gate-approve.sh *)", "mcp__harbor_chrome__confirm_click"] + (["confirm_press","confirm_menu","confirm_key","script","shortcut_run"] | map("mcp__harbor_desktop__" + .))')"
+GATE_ASK="$(jq -n --arg d "$DIR" '["Bash(\($d)/bin/gate-approve.sh *)", "mcp__harbor_chrome__confirm_click"]')"
 # The ship runner (harbor#1060) is allowed for `night` only: its `deploy` is gate-approve.sh's child, never a rule's.
 GATE_ALLOW="$(jq -n --arg d "$DIR" '["Bash(\($d)/bin/gate-merge.sh *)", "Bash(\($d)/bin/gate-queue.sh *)", "Bash(\($d)/bin/deploy-fleet.sh night*)"]')"
 # harbor#1507: harbor chrome's read-only verbs skip the auto-mode classifier, which held every read ~1-2 s and denied some
@@ -218,9 +217,7 @@ GATE_ALLOW="$(jq -n --arg d "$DIR" '["Bash(\($d)/bin/gate-merge.sh *)", "Bash(\(
 # fill/find/press/type were allowed by hand before and are named here so the install owns them. click, goto and the
 # rest stay with the classifier, and confirm_click stays an ask.
 CHROME_ALLOW="$(jq -n '["snapshot","screenshot","state","timing","tabs","tab_list","status","doctor","hosts","console","text","fill","find","press","type"] | map("mcp__harbor_chrome__" + .)')"
-# D-95: harbor desktop's reads skip the classifier too; its inputs (press, menu, set_value, type, key, action) stay with it.
-DESKTOP_ALLOW="$(jq -n '["doctor","apps","windows","tree","shot","shortcuts_list"] | map("mcp__harbor_desktop__" + .)')"
-GATE_ALLOW="$(jq -n --argjson g "$GATE_ALLOW" --argjson c "$CHROME_ALLOW" --argjson k "$DESKTOP_ALLOW" '$g + $c + $k')"
+GATE_ALLOW="$(jq -n --argjson g "$GATE_ALLOW" --argjson c "$CHROME_ALLOW" '$g + $c')"
 NEW="$(printf '%s' "$NEW" | jq --argjson a "$GATE_ASK" --argjson l "$GATE_ALLOW" '
   .permissions.ask = (((.permissions.ask // []) + $a) | unique)
   | .permissions.allow = (((.permissions.allow // []) + $l) | unique)')"

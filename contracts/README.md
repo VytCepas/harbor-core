@@ -73,7 +73,6 @@ hand-kept account of direction and status; this table is what exists.
 | [decision-orphans.tsv](./decision-orphans.tsv) | tsv | decision-orphans.tsv (harbor#1029) - the deliberate orphans of standard.decision-orphan. |
 | [decision-reach.tsv](./decision-reach.tsv) | tsv | decision-reach.tsv (harbor#1429) - the surfaces of this repo that are read outside it. |
 | [descriptor.md](./descriptor.md) | md | Descriptor seam (L3 → L2 + L0) — ALREADY FIRST-CLASS: EXTEND, do not reinvent |
-| [desktop-agent-bundles.txt](./desktop-agent-bundles.txt) | txt | desktop-agent-bundles.txt (harbor#1440, harbor/D-95): the Mac apps harbor desktop may read and drive, by bundle id. |
 | [dev-paths-allow.tsv](./dev-paths-allow.tsv) | tsv | dev-paths-allow.tsv (harbor#1275) - core code that may name a dev-layer path because it works without it in the export. |
 | [doc-folders.tsv](./doc-folders.tsv) | tsv | doc-folders.tsv (harbor#1435) — the kind of a docs/ folder or file that standards/naming/kinds.tsv has no row for. |
 | [domain-allow.tsv](./domain-allow.tsv) | tsv | domain-allow.tsv (harbor#1274) - core paths that may name a workload tool because harbor's own logic needs the name. |
@@ -145,6 +144,7 @@ hand-kept account of direction and status; this table is what exists.
 | [scaffolder-plugins.tsv](./scaffolder-plugins.tsv) | tsv | scaffolder-plugins.tsv (harbor#999, #966) - the names yard publishes its Claude Code plugins under. |
 | [scheduled-checks.tsv](./scheduled-checks.tsv) | tsv | scheduled-checks.tsv (harbor#1437) — the read-only checks launchd runs from main through bin/check-run.sh. |
 | [seams.tsv](./seams.tsv) | tsv | seams.tsv (harbor#1425) — one row per cross-repo contract: who produces it, who consumes it, its copy, its pin. |
+| [secret-intake.md](./secret-intake.md) | md | Secret intake — a credential reaches the store without an agent reading it |
 | [secret-legacy-refs.txt](./secret-legacy-refs.txt) | txt | secret-legacy-refs.txt (harbor#1205) - secret refs bin/secret still serves with no register entry. Only goes down. |
 | [session-waiting.tsv](./session-waiting.tsv) | tsv | session-waiting.tsv (harbor#1043, #1044) — rule 2 of hooks/session-state/session-state.sh: when is the operator the one being waited on? |
 | [shims.tsv](./shims.tsv) | tsv | shims.tsv — the commands the operator types, and the file each one is. harbor#630. |
