@@ -33,7 +33,7 @@ cd "$BH"
 pw "-s=$SESSION" open "$URL" "--config=$BH/cfg.json" >"$BH/open.out" 2>&1 || { cat "$BH/open.out"; echo "benchmark: FAIL — the headless daemon did not start"; exit 1; }
 
 # before: the launcher's loop and the shell agent, copied without the .ts so the loop is what serves
-cp "$ROOT/bin/access-chrome-mcp.py" "$ROOT/bin/access-browser-agent.sh" "$ROOT/bin/library-log.sh" "$ROOT/bin/scope-roots.sh" "$ROOT/bin/access-redact.sh" "$ROOT/bin/admission-egress.sh" "$BH/legacy/bin/"
+cp "$ROOT/bin/access-chrome-mcp.py" "$ROOT/bin/access-browser-agent.sh" "$ROOT/bin/library-log.sh" "$ROOT/bin/scope-roots.sh" "$BH/legacy/bin/"
 cp "$ROOT/contracts/browser-agent-hosts.txt" "$ROOT/contracts/browser-script.tsv" "$ROOT/contracts/live-change-words.txt" "$ROOT/contracts/roots.tsv" "$BH/legacy/contracts/"
 DRV="$HERE/benchmark-driver.ts"
 OLD="$(bun "$DRV" before "$OLD_N" click REF -- python3 -I "$BH/legacy/bin/access-chrome-mcp.py")"

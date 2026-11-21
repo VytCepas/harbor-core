@@ -14,8 +14,6 @@
 #   harbor access stored                  every item bin/secret holds, and whether an entry names it (exit 1 if not)
 #   harbor access status [-v|--json] [id...]  is each credential stored, alive, in date: what is wrong, and since when; --json: the same facts as data
 #   harbor access rotate <id> [--value-stdin] [--locked]   a new value, kept only if the entry's check passes on it
-#   harbor access add|rotate … --value-clipboard   the value from the clipboard, never shown: the protocol for a key a
-#                                         page displays once (Copy on the page, then this); the clipboard is emptied after
 #
 # A PIPED VALUE IS CHECKED BEFORE IT IS STORED (harbor#978, measured 2026-11-13: a clipboard copy put four characters and a
 # space in front of an ad platform's app secret). With --value-stdin, add and rotate trim surrounding whitespace and newlines and refuse
@@ -63,7 +61,7 @@ LINT_NAME="${ACCESS_LINT_NAME:-$SRC/lint-name.sh}"
 MEMBER_MODE=0; [ ! -f "$SRC/harbor-member-mode" ] || [ -L "$SRC/harbor-member-mode" ] || MEMBER_MODE=1   # as bin/secret reads it
 
 fail() { log_fail "$1"; log_fix "$2"; log_end || :; exit "${3:-1}"; }
-usage() { sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,39p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 # The register file: <access dir>/register.md. Empty stdout and exit 1 when there is no register directory.
 register_file() {
@@ -823,23 +821,6 @@ VERB="${1:-}"; [ $# -eq 0 ] || shift
 if [ "$VERB" != status ]; then
   for _a in "$@"; do [ "$_a" != --json ] || fail "'$VERB' has no --json; only status does" "harbor access status --json" 2; done
 fi
-# --value-clipboard (contracts/secret-intake.md): add and rotate take the value from the clipboard, piped into this same
-# command's --value-stdin, so it is never typed, never on a screen, never argv and never a file. The clipboard is emptied
-# after, whatever the outcome: a credential left there is one paste from a chat window.
-case "$VERB" in add|rotate)
-  _vc=0; _vs=0
-  for _a in "$@"; do case "$_a" in --value-clipboard) _vc=1 ;; --value-stdin) _vs=1 ;; esac; done
-  if [ "$_vc" = 1 ]; then
-    [ "$_vs" = 0 ] || fail "--value-clipboard and --value-stdin both name the value's source; give one" "harbor access $VERB … --value-clipboard" 2
-    . "$SRC/library-clipboard.sh"
-    clip_detect || fail "no clipboard tool: looked for $(clip_tools)" "install wl-clipboard (Wayland), xclip or xsel (X11), or pipe the value with --value-stdin" 2
-    for _a in "$@"; do shift; [ "$_a" = --value-clipboard ] || set -- "$@" "$_a"; done
-    _crc=0
-    clip_read | sh "$SRC/access.sh" "$VERB" "$@" --value-stdin || _crc=$?
-    if clip_clear; then log_note "the clipboard was emptied"; else log_warn "the clipboard could not be emptied: copy something else over it"; fi
-    exit "$_crc"
-  fi ;;
-esac
 case "$VERB" in
   add) cmd_add "$@" ;;
   list) cmd_list ;;

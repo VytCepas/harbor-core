@@ -33,15 +33,6 @@ const HOSTS_FILE = path.join(ROOT, 'contracts', 'browser-agent-hosts.txt');
 const ROUTER = 'contracts/browser-routing.md, row 4';
 const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const OUT_MAX = 100000;
-const REDACT = path.join(HERE, 'access-redact.sh');
-// Every reply passes bin/access-redact.sh (contracts/secret-intake.md): a page shows autofilled passwords and keys
-// that are displayed once, and a reply is what the agent reads. Fail closed: a redactor that cannot run withholds it.
-function redacted(text: string): string {
-  const r = spawnSync('/bin/sh', [REDACT], { input: text, encoding: 'utf8', maxBuffer: 16 * OUT_MAX, timeout: 15000, env: { PATH: PATH_FIXED, LC_ALL: 'C' } });
-  if (r.status === 0 && typeof r.stdout === 'string') return text.endsWith('\n') ? r.stdout : r.stdout.replace(/\n$/, '');
-  const why = typeof r.stdout === 'string' && r.stdout.startsWith('[harbor') ? r.stdout.trim() : `exit ${r.status ?? r.signal ?? 'none'}`;
-  return `[harbor chrome: output withheld, the credential redactor failed: ${why}]`;
-}
 const SETTLE_MS: number = SEAMS.settleMs ?? 500;   // the extension detached a tab ~300 ms after an input (2026-10-14); the shell waited 1 s
 const PATH_FIXED = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin';
 const KEEP = ['HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TERM', 'CLAUDE_CODE_SESSION_ID', 'HARBOR_ACCESS_BROWSER_SESSION'];
@@ -59,7 +50,7 @@ const DESTRUCTIVE: string[] = (() => { try { return fs.readFileSync(path.join(RO
 
 // Run by the shell agent: the verbs that touch Chrome's windows or wait on the operator.
 const LONG: Record<string, number> = { attach: 900, 'wait-signin': 900 };   // seconds
-const AGENT_VERBS = new Set(['attach', 'status', 'doctor', 'detach', 'tabs', 'front', 'wait-signin', 'hosts', 'tab-new']);
+const AGENT_VERBS = new Set(['attach', 'signin', 'status', 'doctor', 'detach', 'tabs', 'front', 'wait-signin', 'hosts', 'tab-new']);
 // Run here. Default-deny: absent on purpose are run-code, eval, cookie-*, *storage-*, state-save/load, requests, route, install...
 const HOT_VERBS = new Set(['state', 'timing', 'text', 'goto', 'tab-list', 'tab-select', 'tab-close', 'snapshot', 'find', 'screenshot', 'pdf',
   'go-back', 'go-forward', 'reload', 'console', 'resize', 'click', 'dblclick', 'hover', 'fill', 'type', 'select', 'check', 'uncheck',
@@ -73,17 +64,28 @@ const SCRIPTED = new Set(['click', 'dblclick', 'hover', 'check', 'uncheck', 'sel
 // Verbs that wait for their target to show before acting: on a hidden tab they time out having done nothing, so a retry
 // after front cannot act twice.
 const SHOWN_RETRY_VERBS = new Set(['click', 'dblclick', 'fill', 'select', 'check', 'uncheck', 'hover', 'drag']);
+// --text=<name> names the target for these verbs, so a steps call can fill and click on a page whose refs it has not seen.
+// click and dblclick match any named element; a field verb matches only the roles it acts on, so a heading or button sharing a
+// field's label is not a candidate. The value is the positional count the verb keeps beside --text (fill: its text).
+const TEXT_ROLES: Record<string, Set<string> | null> = { click: null, dblclick: null, hover: null, text: null,
+  fill: new Set(['textbox', 'searchbox', 'combobox', 'spinbutton']), select: new Set(['combobox', 'listbox']),
+  check: new Set(['checkbox', 'radio', 'switch', 'menuitemcheckbox', 'menuitemradio']), uncheck: new Set(['checkbox', 'switch', 'menuitemcheckbox']) };
+const TEXT_KEEP: Record<string, [number, number]> = { fill: [1, 1], select: [1, Infinity], check: [0, 0], uncheck: [0, 0], hover: [0, 0], text: [0, 0] };
 
 const VERBS: Record<string, string> = {
-  attach: "connect to the operator's Chrome (a window of its own; the operator clicks Connect unless the extension token is registered), " +
-    'or, with args ["--headless"] and a lane, a throwaway headless Chrome with no login on the same host allow-list',
+  attach: "start this session's AGENT Chrome: a separate, headless Chrome on a copy of the agent profile the operator signed in to, so the operator's own Chrome is never touched " +
+    'and lanes run side by side (args ["--show"]: the same in a window of its own). args ["--headless"]: a throwaway Chrome with no profile. ' +
+    'args ["--operator"]: the operator\'s own Chrome through the extension, only when the operator asks for it',
+  signin: 'open ONE window of the agent Chrome for the operator to sign in once (args: [https url on an allowed host]); ' +
+    'every later attach copies that profile. args ["--done"] closes it after they say they are signed in',
   status: "this session's browser name, pin, profile and workdir",
   state: "the page's own visibility, focus and load state",
   timing: "the page's own clock as JSON (no args): navigation timing, the latest LCP, now, and every own-origin resource as " +
     '{path, initiatorType, startTime, responseEnd, duration, transferSize}, in whole ms; for a prod-vs-rebuild timing parity check',
-  text: 'the visible text of the page, or of one element (args: [] or [ref]); cheaper than snapshot or screenshot for reading',
+  text: 'the visible text of the page, or of one element (args: [] or [ref] or [--text=<name>]); cheaper than snapshot or screenshot for reading',
   steps: 'run several verbs in one call, in order, stopping at the first failure (steps: [{verb, args}], at most 25; every guard runs per step; ' +
-    'not attach, detach, front, tabs, wait-signin or confirm_click). Only the last step returns its full output',
+    'not attach, detach, front, tabs, wait-signin or confirm_click). Name a target by --text=<name> on click, fill, select, check, uncheck, ' +
+    'hover and text, so one call can goto, fill a form and submit it with no snapshot first. Only the last step returns its full output',
   doctor: 'is harbor chrome ready on this box',
   detach: "release the operator's Chrome; always run it when done",
   tabs: "every Chrome tab by window, query strings cut; = marks this session's page",
@@ -101,8 +103,12 @@ const VERBS: Record<string, string> = {
   click: 'click a ref by script, which works on a covered window (args: [ref]); or by its visible name with no find first (args: ["--text=Save changes"]: ' +
     'the one exact match is clicked, else the one partial match; several are refused listing their refs, none points at find); --real for the Playwright click ([ref, button], --modifiers=<key>), --force for a press at its box',
   dblclick: 'double-click a ref, or --text=<name>, by script; --real for the Playwright one',
-  hover: 'hover a ref by script; --real for the Playwright one', fill: 'fill a field (args: [ref, text], --submit)', type: 'type text (args: [text], --submit)',
-  select: 'select options of a native <select> by script (args: [ref, value, ...]); --real for the Playwright one', check: 'check a ref by script; --real for the Playwright one', uncheck: 'uncheck a ref by script; --real for the Playwright one',
+  hover: 'hover a ref, or --text=<name>, by script; --real for the Playwright one',
+  fill: 'fill a field (args: [ref, text] or [--text=<field label>, text], --submit); --text matches textboxes, searchboxes, comboboxes and spinbuttons only',
+  type: 'type text (args: [text], --submit)',
+  select: 'select options of a native <select> by script (args: [ref, value, ...] or [--text=<label>, value, ...]); --real for the Playwright one',
+  check: 'check a ref, or --text=<label> of a checkbox, radio or switch, by script; --real for the Playwright one',
+  uncheck: 'uncheck a ref, or --text=<label> of a checkbox or switch, by script; --real for the Playwright one',
   scroll: 'scroll at once, on a covered window too (args: [pixels] the page, [pixels, ref] that element, [ref] into view)',
   drag: 'drag (args: [from-ref, to-ref])', press: 'press a key (args: [key])',
   keydown: 'key down (args: [key])', keyup: 'key up (args: [key])',
@@ -355,7 +361,7 @@ async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: 
   if (!found) refuse(`ref ${ref} is not in the current snapshot (stale after a page change)`, 'harbor chrome snapshot');
   const lab = label.replace(/[ \t]+/g, ' ').replace(/^ *- /, '').replace(/ $/, '');
   const hit = destructive(lab);
-  if (hit && !confirmed) handoff(`destructive ${verb} refused: '${lab}' (${ref}) matches '${hit}' — the operator confirms one call`, `${verb === 'click' ? `mcp__harbor_chrome__confirm_click with args ["${ref}"] (the operator approves it in the dialog); or ` : ''}HARBOR_ACCESS_BROWSER_CONFIRM=${ref} harbor chrome ${verb} ${ref}`);
+  if (hit && !confirmed) handoff(`destructive ${verb} refused: '${lab}' (${ref}) matches '${hit}' — the operator confirms one call`, `${verb === 'click' ? `mcp__harbor_chrome__confirm_click with args ["${ref}"] (the operator approves it in the dialog; in auto mode, first AskUserQuestion quoting ${ref} and ${lab}, and their "Yes" lets one call through); or ` : ''}HARBOR_ACCESS_BROWSER_CONFIRM=${ref} harbor chrome ${verb} ${ref}`);
   if (confirmed) { try { fs.appendFileSync(path.join(wd, '.confirmed.tsv'), `${new Date().toISOString()}\t${ref}\t${hit || '-'}\t${lab}\n`); } catch { /* the dialog is the record */ } }
   return { root, frame: '-' + tf, box, label: lab, file: g };
 }
@@ -392,10 +398,11 @@ const NAMED = /^\s*- ([a-z]+) "((?:[^"\\]|\\.)*)"/;
 const TEXT_LIST = 10;
 async function refForText(c: Conn, S: string, wd: string, verb: string, q: string): Promise<{ ref: string; what: string }> {
   const want = q.replace(/\s+/g, ' ').trim().toLowerCase();
+  const roles = TEXT_ROLES[verb] ?? null;
   const { body } = await guardLines(c, S, wd, verb, `--text=${q}`);
   const hits: { ref: string; what: string; exact: boolean }[] = [];
   for (const line of body) {
-    const m = NAMED.exec(line); if (!m) continue;
+    const m = NAMED.exec(line); if (!m || (roles && !roles.has(m[1]))) continue;
     const ref = (attrs(line).match(/\[ref=([a-z0-9]+)\]/g) ?? []).slice(-1)[0]?.slice(5, -1);
     const box = /\[box=([-0-9.,]+)\]/.exec(attrs(line))?.[1];
     if (!ref || (box && box.split(',').slice(2).some((n) => Number(n) <= 0))) continue;   // no ref, or zero-size: nothing to click
@@ -404,7 +411,7 @@ async function refForText(c: Conn, S: string, wd: string, verb: string, q: strin
   }
   const pick = hits.some((h) => h.exact) ? hits.filter((h) => h.exact) : hits;
   if (pick.length === 1) return pick[0];
-  if (!pick.length) refuse(`${verb} --text=${q}: no element on the page has that name`, `mcp__harbor_chrome__find with args ["${q}"]`);
+  if (!pick.length) refuse(`${verb} --text=${q}: no ${roles ? [...roles].join(', ') : 'element'} on the page has that name`, `mcp__harbor_chrome__find with args ["${q}"]`);
   const list = pick.slice(0, TEXT_LIST).map((h) => `${h.what} (${h.ref})`).join('; ');
   return refuse(`${verb} --text=${q}: ${pick.length} elements match — ${list}${pick.length > TEXT_LIST ? '; …' : ''}`, `mcp__harbor_chrome__${verb} with args ["<one of those refs>"]`);
 }
@@ -502,7 +509,9 @@ function signedOut(wd: string, url: string): never {
   const app = readText(path.join(wd, '.app-host')).trim() || urlHost(url);
   const acct = accountFor(app);
   return handoff(`signed out: ${app} sent this session to a sign-in page (${urlHost(url)}). Signing in is the operator's: harbor never fills a password or picks a password-manager entry`,
-    `operator: sign in${acct ? ` as ${acct}` : ''}; then harbor chrome wait-signin`);
+    fs.existsSync(path.join(wd, '.agent'))
+      ? `operator: sign in to ${app}${acct ? ` as ${acct}` : ''} in the agent Chrome: mcp__harbor_chrome__signin with args ["https://${app}/"], then signin --done and attach again`
+      : `operator: sign in${acct ? ` as ${acct}` : ''}; then harbor chrome wait-signin`);
 }
 
 // ── one hot verb ────────────────────────────────────────────────────────────
@@ -529,11 +538,12 @@ function optionGuards(verb: string, args: string[], wd: string) {
       if (verb !== 'click' && verb !== 'dblclick') refuse(`option refused: ${a} — --modifiers is for click and dblclick`);
     } else if (a === '--force') { if (verb !== 'click') refuse('option refused: --force is for click only; the mouse verbs it uses carry no click count'); }
     else if (a.startsWith('--text=')) {
-      if (verb !== 'click' && verb !== 'dblclick') refuse(`option refused: ${a} — --text= is for click and dblclick`);
+      if (!(verb in TEXT_ROLES)) refuse(`option refused: ${a} — --text= is for ${Object.keys(TEXT_ROLES).join(', ')}`);
       if (!/[^\s]/.test(a.slice(7)) || a.length > 207) refuse(`option refused: --text= takes the element's visible name, 1..200 characters`);
     }
     else if (a === '--submit') { if (verb !== 'fill' && verb !== 'type') refuse('option refused: --submit is for fill and type'); }
     else if (a === '--real') { if (!SCRIPTED.has(verb) || verb === 'scroll') refuse('option refused: --real is for click, dblclick, hover, check, uncheck and select'); }
+    else if (a.startsWith('--ui=')) { if (verb !== 'goto') refuse('option refused: --ui= is for goto (and tab_new, attach --show)'); }
     else if (a.startsWith('-')) refuse(`option refused: ${a} — only --filename=<name>, on fill and type --submit, on click --force and --modifiers=<Alt|Control|ControlOrMeta|Meta|Shift>, on click and dblclick --text=<name>, and --real on the scripted verbs`);
   }
 }
@@ -572,6 +582,28 @@ function hostGuard(verb: string, args: string[], headless: boolean) {
   const mm = m.replace(/the live-walk repo$/, repo);
   if (ts) handoff(mm, `cd ${ts} && just live`);
   handoff(mm, `${repo} is not registered on this box (sh bin/scope-roots.sh --repos); register it in harbor-private/repos.tsv`);
+}
+// API FIRST, ENFORCED (operator 2026-11-20): a vendor UI whose route card ranks cli, api or mcp above the browser is refused,
+// naming the card's first move; a call that needs the UI says why with --ui=<why>, kept in .ui-reasons.tsv. The mapping is the
+// card's own `ui-hosts:` and `via:`, read by context-rules/user/browser-last-tier.sh --check, the note's own reader, so the two
+// cannot disagree. No register, no mapping, no script: no match (the note's alarm names a broken mapping).
+const LAST_TIER = path.join(ROOT, 'context-rules', 'user', 'browser-last-tier.sh');
+function uiWhy(verb: string, args: string[]): { ui: string; args: string[] } {
+  const u = args.filter((a) => a.startsWith('--ui='));
+  if (u.length > 1) refuse(`${verb} takes one --ui=`);
+  if (!u.length) return { ui: '', args };
+  const ui = u[0].slice(5).trim();
+  if (ui.length < 3 || ui.length > 200 || /[\x00-\x1f\x7f]/.test(ui)) refuse('--ui= takes why the task needs the UI, 3..200 characters on one line');
+  return { ui, args: args.filter((a) => !a.startsWith('--ui=')) };
+}
+function apiFirst(verb: string, url: string, ui: string, wd: string) {
+  if (!url || !fs.existsSync(LAST_TIER)) return;
+  const r = spawnSync('sh', [LAST_TIER, '--check', url], { encoding: 'utf8', env: scopeEnv(), timeout: 10000 });
+  const [card, tier, use] = ((r.status === 0 ? r.stdout : '') || '').split('\n')[0].split('\t');
+  if (!card || !tier) return;
+  if (ui) { try { fs.appendFileSync(path.join(wd, '.ui-reasons.tsv'), `${new Date().toISOString()}\t${card}\t${urlHost(url)}\t${ui}\n`); } catch { /* the call carries it */ } return; }
+  refuse(`api first: ${card} is reached at tier ${tier}, ahead of the browser (cli > api > mcp > browser). Its first move: ${use || 'see the card'}`,
+    `take that route; only when the task needs this UI: mcp__harbor_chrome__${verb} with args ["${bareUrl(url)}", "--ui=<why the UI and not the ${tier}>"]`);
 }
 // The CLI's own argument object (minimist, positionals as strings): the options this file admits, then the rest.
 function cliArgs(verb: string, args: string[]): Record<string, unknown> {
@@ -623,23 +655,24 @@ async function scripted(c: Conn, S: string, wd: string, verb: string, args: stri
   if (pu && hostOk(pu)) { try { fs.writeFileSync(path.join(wd, '.last-url'), pu + '\n'); } catch { /* a courtesy for the re-attach */ } }
   return { text: scrub(out), isError: false };
 }
-// An image cannot be redacted, so a screenshot or pdf of a page that SHOWS a credential is refused: the shown-secret
-// probe of contracts/browser-script.tsv, which the shell route runs too. Fail closed when it cannot be read.
-async function shownSecretGuard(c: Conn, S: string, wd: string, verb: string): Promise<void> {
-  const fn = SCRIPTS['shown-secret'];
-  if (!fn) refuse(`${verb} refused: no shown-secret row in contracts/browser-script.tsv, so the page cannot be checked`, 'git checkout -- contracts/browser-script.tsv');
-  const r = await c.run({ _: ['eval', fn] }, wd, true).catch((e) => { if (e instanceof Gone) goneRefusal(S); throw e; });
-  if (r.isError) refuse(`${verb} refused: the page could not be checked for a shown credential`, 'harbor chrome snapshot, then try again');
-  const k = spawnSync('/bin/sh', [REDACT, '--check'], { input: r.text ?? '', encoding: 'utf8', maxBuffer: 16 * OUT_MAX, timeout: 15000, env: { PATH: PATH_FIXED, LC_ALL: 'C' } });
-  if (k.status === 1) refuse(`${verb} refused: the page shows a credential (a key or token, or a secret URL parameter), and an image cannot be redacted`,
-    "copy it with the page's own Copy button, then: harbor access add|rotate <id> --value-clipboard (contracts/secret-intake.md); close the dialog before any screenshot");
-  if (k.status !== 0) refuse(`${verb} refused: the credential check failed (exit ${k.status ?? k.signal ?? 'none'})`, 'sh bin/access-redact.sh --check </dev/null');
-}
 async function hot(S: string, verb: string, args: string[], tm: Timing, confirmed = false, shown = false): Promise<Res> {
   const t0 = performance.now();
   const wd = workdirOf(S);
   envGuards(wd);
   if (!HOT_VERBS.has(verb)) refuse(`verb refused: ${verb} — not on the allowlist in bin/access-browser-agent.sh`, 'harbor chrome help');
+  // --text=<name> on a field verb (click and dblclick parse theirs below): the ref is read from the guard snapshot, then the call
+  // runs again as the ref call it now is, through every guard that one takes.
+  if (verb in TEXT_KEEP && args.some((a) => a.startsWith('--text='))) {
+    optionGuards(verb, args, wd);
+    const named = args.filter((a) => a.startsWith('--text=')), rest = args.filter((a) => !a.startsWith('--text='));
+    const pos = rest.filter((a) => !a.startsWith('--')).length, [lo, hi] = TEXT_KEEP[verb];
+    if (named.length > 1) refuse(`${verb} takes one --text=`);
+    if (pos < lo || pos > hi) refuse(`${verb} --text=<name> takes ${hi === 0 ? 'no other argument' : hi === lo ? `exactly ${lo} other argument, the text to fill` : `${lo} or more values`}; a ref and --text together are refused`, 'harbor chrome snapshot');
+    const q = named[0].slice(7);
+    const t = await refForText(await connectOrGone(S), S, wd, verb, q);
+    const r = await hot(S, verb, [t.ref, ...rest], tm, confirmed, shown);
+    return { text: `[--text=${q} is ${t.what} (${t.ref})]\n${r.text}`, isError: r.isError };
+  }
   if (verb === 'state') {
     if (args.length) refuse('state takes no arguments; its expression is fixed', 'harbor chrome state');
     const c = await connectOrGone(S);
@@ -691,10 +724,12 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
     if (force && mods) refuse('--force cannot carry --modifiers; the mouse verbs it uses take none');
   }
   if (verb === 'upload') uploadGuards(args);
+  let ui = '';
+  if (verb === 'goto') ({ ui, args } = uiWhy(verb, args));
   hostGuard(verb, args, headlessLane(S, wd));
+  if (verb === 'goto') apiFirst(verb, args[0], ui, wd);
   const c = await connectOrGone(S);
   await submitGuard(c, S, wd, verb, args);
-  if (verb === 'screenshot' || verb === 'pdf') await shownSecretGuard(c, S, wd, verb);
   if (byText) {   // the ref goes first in --text='s place, and the call runs again as the ref click it now is
     const t = await refForText(c, S, wd, verb, byText);
     const r = await hot(S, verb, [t.ref, ...args.filter((a) => !a.startsWith('--text='))], tm, confirmed, shown);
@@ -785,6 +820,7 @@ function agentEnv(S: string, lane: string): NodeJS.ProcessEnv {
   env.PATH = PATH_FIXED;
   if (!env.CLAUDE_CODE_SESSION_ID && !env.HARBOR_ACCESS_BROWSER_SESSION) env.HARBOR_ACCESS_BROWSER_SESSION = `mcp-${process.ppid}`;
   if (lane) env.HARBOR_ACCESS_BROWSER_LANE = lane;   // access-browser-agent.sh validates it
+  env.HARBOR_ACCESS_ENFORCE = '1';   // an agent's call: the shell agent refuses --operator and enforces api first and --show's --ui=
   for (const [k, v] of Object.entries(SEAMS.agentEnv ?? {})) env[k] = String(v);
   return env;
 }
@@ -821,7 +857,7 @@ async function reattached(S: string, lane: string, verb: string, args: string[],
   if (verb !== 'goto' || !(e instanceof Refusal) || !e.message.startsWith('hand-off: no Chrome is connected')) return null;
   const wd = workdirOf(S);
   const last = readText(path.join(wd, '.last-url')).trim();
-  if (!last || fs.existsSync(path.join(wd, '.headless')) || !REATTACH_CLOSE.test(lastClose(S)) || !hostOk(args[0] ?? '') || !tokenRegistered()) return null;
+  if (!last || fs.existsSync(path.join(wd, '.headless')) || fs.existsSync(path.join(wd, '.agent')) || !REATTACH_CLOSE.test(lastClose(S)) || !hostOk(args[0] ?? '') || !tokenRegistered()) return null;
   const a = await viaAgent(S, 'attach', [], lane);
   conns.get(S)?.close(); conns.delete(S);
   if (a.isError) return null;
@@ -908,6 +944,10 @@ async function call(name: string, argsIn: unknown): Promise<Res> {
   async function once(tm: Timing): Promise<Res> {
     try {
       if (AGENT_VERBS.has(verb)) {
+        if (verb === 'attach' && (args as string[]).includes('--operator')) {
+          refuse("attach --operator refused: agents never drive the operator's own Chrome (operator 2026-11-20)",
+            'mcp__harbor_chrome__attach with no args (the agent Chrome); only the operator opens their own, from their own terminal');
+        }
         const r = await viaAgent(S, verb, args as string[], lane);
         if (verb === 'attach' || verb === 'detach') { conns.get(S)?.close(); conns.delete(S); }   // a new daemon, a new socket
         return r;
@@ -951,7 +991,7 @@ async function handle(msg: any): Promise<any | null> {
   else if (method === 'tools/call') {
     if (typeof params.name !== 'string') return err(-32602, 'name must be a string');
     const r = await call(params.name, params.arguments ?? {});
-    result = { content: [{ type: 'text', text: redacted(r.text) }], isError: r.isError };
+    result = { content: [{ type: 'text', text: r.text }], isError: r.isError };
   } else return err(-32601, `method not found: ${method}`);
   return { jsonrpc: '2.0', id: mid, result };
 }

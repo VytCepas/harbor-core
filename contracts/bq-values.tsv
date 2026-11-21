@@ -1403,7 +1403,3 @@ rule	1393	check.status.network	live	standards/naming/controls.tsv
 rule	1394	status.network	live	standards/naming/controls.tsv, the id less its family
 rule	1395	skill.moment-declared	live	standards/naming/controls.tsv
 rule	1396	moment-declared	live	standards/naming/controls.tsv, the id less its family
-rule	1397	admission.clipboard-read	live	standards/naming/controls.tsv
-rule	1398	admission.browser-raw-cli	live	standards/naming/controls.tsv
-rule	1399	clipboard-read	live	standards/naming/controls.tsv, the id less its family
-rule	1400	browser-raw-cli	live	standards/naming/controls.tsv, the id less its family

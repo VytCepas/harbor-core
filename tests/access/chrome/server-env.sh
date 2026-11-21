@@ -11,7 +11,7 @@ if ! command -v bun >/dev/null 2>&1; then
 fi
 SRVSRC="$T_ROOT/bin/access-chrome-mcp.ts"; AG="$T_ROOT/bin/access-browser-agent.sh"
 X="$T_TMP/x"; mkdir -p "$X/bin" "$X/contracts"; cp "$SRVSRC" "$X/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$T_ROOT/contracts/browser-script.tsv" "$T_ROOT/contracts/live-change-words.txt" "$X/contracts/"
-cp "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/access-redact.sh" "$T_ROOT/bin/admission-egress.sh" "$X/bin/"; cp "$T_ROOT/contracts/roots.tsv" "$X/contracts/"
+cp "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/library-log.sh" "$X/bin/"; cp "$T_ROOT/contracts/roots.tsv" "$X/contracts/"
 SRV="$X/bin/access-chrome-mcp.ts"
 CTL="$T_TMP/ctl"; mkdir -p "$CTL"; SOCK="$T_TMP/d.sock"; PH="$T_TMP/priv-hosts.txt"; : > "$PH"
 DD="$T_TMP/daemons"; mkdir -p "$DD/0123"; WD="$T_TMP/harbor-browser/claude-abc123def456"
@@ -24,6 +24,7 @@ PRIV="$T_TMP/nopriv"; mkdir -p "$PRIV"; seams 0; sess 1
 cat > "$X/bin/access-browser-agent.sh" <<'EOF'
 for a in "$@"; do printf 'arg=%s\n' "$a"; done
 printf 'session=%s lane=%s path=%s private=%s\n' "${HARBOR_ACCESS_BROWSER_SESSION:-}" "${HARBOR_ACCESS_BROWSER_LANE:-}" "$PATH" "${HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS:-none}"
+printf 'enforce=%s\n' "${HARBOR_ACCESS_ENFORCE:-}"
 # front: shows the tab (the daemon stops reading hidden and failing), or refuses as for a window holding the operator's tabs
 case "$1" in front) [ ! -e "$STUB_CTL/front_refuses" ] || { echo "FAIL: front: window 9 holds 1 tab(s) that are not this session's"; exit 1; }; rm -f "$STUB_CTL/hidden" "$STUB_CTL/fail"; echo "  ok: front: window 9 tab 2 is the tab Chrome shows; focus left where it was" >&2 ;; esac
 case "$1" in tabs) cat "$STUB_TABS" 2>/dev/null || : ;; attach) [ -z "${STUB_REATTACH:-}" ] || cp "$STUB_REATTACH.keep" "$STUB_REATTACH" ;; esac
