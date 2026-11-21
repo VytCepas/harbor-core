@@ -18,6 +18,7 @@
 #   ticket   the first harbor issue its header cites; - when it cites none
 path	form	layer	purpose	ticket
 bin/access-browser-agent.sh	command	floor	`harbor chrome`: drive the operator's own Chrome through the Playwright Extension, attended and guarded (harbor#472; router row	harbor#472
+bin/access-oauth.sh	command	floor	`harbor access add|rotate … --value-oauth`: a token from an OAuth consent, code taken on loopback and exchanged off argv, stored without the agent seeing code or token	harbor#1597
 bin/access-browser-cdp.mjs	command	tool	raw Chrome DevTools Protocol against the system Chrome.	-
 bin/access-browser-flow.sh	command	floor	record a browser flow once and replay it from a file on a disposable signed-out headless browser, never the attended `harbor chrome` channel.	harbor#1445
 bin/access-browser-hosts-add.sh	command	floor	propose a host for `harbor chrome` goto/tab-new, and on --apply write it to contracts/browser-agent-hosts.txt in the file's own	harbor#900

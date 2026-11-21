@@ -16,6 +16,9 @@
 #   harbor access rotate <id> [--value-stdin] [--locked]   a new value, kept only if the entry's check passes on it
 #   harbor access add|rotate … --value-clipboard   the value from the clipboard, never shown: the protocol for a key a
 #                                         page displays once (Copy on the page, then this); the clipboard is emptied after
+#   harbor access add|rotate … --value-oauth --oauth-authorize URL --oauth-token URL --oauth-client-id ID
+#                          --oauth-client-ref REF   a token from an OAuth consent in the agent Chrome; code and token never
+#                                         shown (bin/access-oauth.sh --help has the rest of the --oauth-* flags)
 #
 # A PIPED VALUE IS CHECKED BEFORE IT IS STORED (harbor#978, measured 2026-11-13: a clipboard copy put four characters and a
 # space in front of an ad platform's app secret). With --value-stdin, add and rotate trim surrounding whitespace and newlines and refuse
@@ -63,7 +66,7 @@ LINT_NAME="${ACCESS_LINT_NAME:-$SRC/lint-name.sh}"
 MEMBER_MODE=0; [ ! -f "$SRC/harbor-member-mode" ] || [ -L "$SRC/harbor-member-mode" ] || MEMBER_MODE=1   # as bin/secret reads it
 
 fail() { log_fail "$1"; log_fix "$2"; log_end || :; exit "${3:-1}"; }
-usage() { sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 # The register file: <access dir>/register.md. Empty stdout and exit 1 when there is no register directory.
 register_file() {
@@ -826,6 +829,11 @@ fi
 # --value-clipboard (contracts/secret-intake.md): add and rotate take the value from the clipboard, piped into this same
 # command's --value-stdin, so it is never typed, never on a screen, never argv and never a file. The clipboard is emptied
 # after, whatever the outcome: a credential left there is one paste from a chat window.
+# --value-oauth (contracts/secret-intake.md): the value is a token from an OAuth consent; access-oauth.sh takes the code
+# on loopback, exchanges it and pipes the token back into this command's --value-stdin.
+case "$VERB" in add|rotate)
+  for _a in "$@"; do [ "$_a" != --value-oauth ] || exec sh "$SRC/access-oauth.sh" "$VERB" "$@"; done ;;
+esac
 case "$VERB" in add|rotate)
   _vc=0; _vs=0
   for _a in "$@"; do case "$_a" in --value-clipboard) _vc=1 ;; --value-stdin) _vs=1 ;; esac; done
