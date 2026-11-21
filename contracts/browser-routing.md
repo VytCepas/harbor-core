@@ -341,14 +341,32 @@ step that exists, and say which step and why when skipping one:
 |---|---|---|---|
 | 1 | **Broker** | A narrow, credential-holding channel with a short verb list, the credential outside the confinement: an API or CLI behind a wrapper, or an MCP server. A new app gets one **before** anything below is considered | the mail and calendar wrappers, the ticket CLI, `gh`, the remote MCP connectors; `harbor chrome` is the broker for a web UI, which is step 2 |
 | 2 | **Browser via `harbor chrome`** | The app has a web UI the operator is signed in to: rows 1 to 4 above, row 4 for a logged-in one. Never `allowAppleEvents` (DE-40) | `harbor chrome`, `harbor browser` |
-| 3 | **Guest** (#1444) | A Lume macOS guest, built only for an app that has **no broker and no web UI**, and for the clean-Mac install test. Not built until a task names the app | not built; trigger open |
+| 3 | **Desktop via `harbor desktop`** (harbor/D-95) | A Mac app with no broker and no web UI, driven **in the background** through general verbs: the Accessibility tree (read, press, set a value, menus), keys and text posted to that app only, a window capture that does not raise it, AppleScript/JXA and Shortcuts. One helper app (`bin/access-desktop-helper.swift`) holds the grants; apps are an allow-list (`contracts/desktop-agent-bundles.txt`), never code | `harbor desktop`, the `harbor_desktop` MCP server |
+| 4 | **Guest** (#1444) | A Lume macOS guest, for an app that must not see host state, and for the clean-Mac install test. Not built until a task names the app | not built; trigger open |
 
-Screen control of the operator's own desktop is not a step: it is what step 3 replaces. Nothing here provides trusted
+Screen control of the operator's own desktop is still not a step: `harbor desktop` never moves the pointer or takes focus
+unless a call names the foreground, and every input reports `took_focus` and `moved_pointer` so a regression shows.
+
+**What `harbor desktop` refuses.** An app not on the allow-list; an app on the helper's hard deny list whatever the list
+says (Keychain, Passwords, System Settings, terminals, password managers); a browser whose shown page is off harbor
+chrome's host list; a press, menu item or Enter whose label carries a live-change word, and every script and Shortcut
+run, unless a confirm tool behind a `permissions.ask` rule passes it; a ref read before the app restarted (`gen`). The
+sandboxed shell cannot reach the helper's socket (measured 2026-11-21), so these are the paths in.
+
+| Measured 2026-11-21 (macOS 27.0.1) | Result |
+|---|---|
+| AXPress on a hidden Calculator, Chrome in front | 7 + 3 = 10; focus and pointer unchanged on all four presses |
+| Menu, set-value and posted text in a hidden TextEdit | all landed, Lithuanian letters included; focus and pointer unchanged |
+| AppleScript through the helper | unconfirmed refused; confirmed ran and returned the document name |
+| Enter unconfirmed | refused |
+| Window capture | refused until Screen Recording is granted (SCStream -3801) |
+| Rebuild with an ad-hoc signature | Accessibility grant lost: sign with `access-desktop-build.sh --make-identity`'s certificate | Nothing here provides trusted
 input from a real keyboard or pointer, so an agent driving a guest's screen is driving an untrusted surface.
 
-**The trigger for step 3 is a missing broker, named.** #1444's trigger comment quotes this table and says: *the app is
+**The trigger for step 4 is a missing broker, named.** #1444's trigger comment quotes this table and says: *the app is
 `<name>`; step 1 is missing because `<no API, CLI or MCP / the API cannot do `<verb>`>`; step 2 is missing because
-`<it has no web UI>`*. A comment that cannot fill those three blanks has not fired the trigger.
+`<it has no web UI>`; step 3 is missing because `<the app must not see host state / it needs the foreground>`*. A
+comment that cannot fill those blanks has not fired the trigger.
 
 **Adding a broker is a step-1 deliverable, not an exemption.** It states the verbs it grants, where its credential
 lives, and what it refuses, in the shape of `harbor chrome`'s guardrail table above. A broker that runs as a local MCP

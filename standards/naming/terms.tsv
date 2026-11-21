@@ -351,6 +351,7 @@ num	abbreviation	num	-	-	experimental	-	harbor#1449 (D-18 registered list extend
 md	extension	md	-	-	stable	-	harbor#950 (standard §6.3)	-	-	Registered extension-chain element (standard §6.3)
 sh	extension	sh	-	-	stable	-	harbor#950 (standard §6.3)	-	-	Registered extension-chain element (standard §6.3)
 mjs	extension	mjs	-	-	stable	-	harbor#950 (standard §6.3)	-	-	Registered extension-chain element (standard §6.3)
+swift	extension	swift	-	-	stable	-	harbor#1440 (D-95: the desktop helper needs AppKit, Accessibility and ScreenCaptureKit)	-	-	Registered extension-chain element: Swift source
 cjs	extension	cjs	-	-	stable	-	harbor#950 (standard §6.3)	-	-	Registered extension-chain element (standard §6.3)
 js	extension	js	-	-	stable	-	harbor#950 (standard §6.3)	-	-	Registered extension-chain element (standard §6.3)
 jsx	extension	jsx	-	-	stable	-	harbor#950 (standard §6.3)	-	-	Registered extension-chain element (standard §6.3)

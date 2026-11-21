@@ -73,6 +73,7 @@ hand-kept account of direction and status; this table is what exists.
 | [decision-orphans.tsv](./decision-orphans.tsv) | tsv | decision-orphans.tsv (harbor#1029) - the deliberate orphans of standard.decision-orphan. |
 | [decision-reach.tsv](./decision-reach.tsv) | tsv | decision-reach.tsv (harbor#1429) - the surfaces of this repo that are read outside it. |
 | [descriptor.md](./descriptor.md) | md | Descriptor seam (L3 → L2 + L0) — ALREADY FIRST-CLASS: EXTEND, do not reinvent |
+| [desktop-agent-bundles.txt](./desktop-agent-bundles.txt) | txt | desktop-agent-bundles.txt (harbor#1440, harbor/D-95): the Mac apps harbor desktop may read and drive, by bundle id. |
 | [dev-paths-allow.tsv](./dev-paths-allow.tsv) | tsv | dev-paths-allow.tsv (harbor#1275) - core code that may name a dev-layer path because it works without it in the export. |
 | [doc-folders.tsv](./doc-folders.tsv) | tsv | doc-folders.tsv (harbor#1435) — the kind of a docs/ folder or file that standards/naming/kinds.tsv has no row for. |
 | [domain-allow.tsv](./domain-allow.tsv) | tsv | domain-allow.tsv (harbor#1274) - core paths that may name a workload tool because harbor's own logic needs the name. |
