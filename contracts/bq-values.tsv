@@ -1401,3 +1401,37 @@ bus_kind	1391	network.allowed	live	contracts/event-kinds.tsv
 bus_kind	1392	network.hog	live	contracts/event-kinds.tsv
 rule	1393	check.status.network	live	standards/naming/controls.tsv
 rule	1394	status.network	live	standards/naming/controls.tsv, the id less its family
+rule	1395	skill.moment-declared	live	standards/naming/controls.tsv
+rule	1396	moment-declared	live	standards/naming/controls.tsv, the id less its family
+rule	1397	admission.clipboard-read	live	standards/naming/controls.tsv
+rule	1398	admission.browser-raw-cli	live	standards/naming/controls.tsv
+rule	1399	clipboard-read	live	standards/naming/controls.tsv, the id less its family
+rule	1400	browser-raw-cli	live	standards/naming/controls.tsv, the id less its family
+rule	1401	name.access-entry	live	standards/naming/controls.tsv
+rule	1402	access-entry	live	standards/naming/controls.tsv, the id less its family
+rule	1403	access.desktop-hard-deny	live	standards/naming/controls.tsv
+rule	1404	access.desktop-app-allow	live	standards/naming/controls.tsv
+rule	1405	access.desktop-browser-host	live	standards/naming/controls.tsv
+rule	1406	access.desktop-expect-label	live	standards/naming/controls.tsv
+rule	1407	access.desktop-live-change-word	live	standards/naming/controls.tsv
+rule	1408	access.desktop-live-change-list	live	standards/naming/controls.tsv
+rule	1409	access.desktop-submit-key	live	standards/naming/controls.tsv
+rule	1410	access.desktop-type-newline	live	standards/naming/controls.tsv
+rule	1411	access.desktop-focus	live	standards/naming/controls.tsv
+rule	1412	access.desktop-script-deny	live	standards/naming/controls.tsv
+rule	1413	access.desktop-script-confirm	live	standards/naming/controls.tsv
+rule	1414	access.desktop-shortcut-confirm	live	standards/naming/controls.tsv
+rule	1415	access.desktop-ask-rule	live	standards/naming/controls.tsv
+rule	1416	desktop-hard-deny	live	standards/naming/controls.tsv, the id less its family
+rule	1417	desktop-app-allow	live	standards/naming/controls.tsv, the id less its family
+rule	1418	desktop-browser-host	live	standards/naming/controls.tsv, the id less its family
+rule	1419	desktop-expect-label	live	standards/naming/controls.tsv, the id less its family
+rule	1420	desktop-live-change-word	live	standards/naming/controls.tsv, the id less its family
+rule	1421	desktop-live-change-list	live	standards/naming/controls.tsv, the id less its family
+rule	1422	desktop-submit-key	live	standards/naming/controls.tsv, the id less its family
+rule	1423	desktop-type-newline	live	standards/naming/controls.tsv, the id less its family
+rule	1424	desktop-focus	live	standards/naming/controls.tsv, the id less its family
+rule	1425	desktop-script-deny	live	standards/naming/controls.tsv, the id less its family
+rule	1426	desktop-script-confirm	live	standards/naming/controls.tsv, the id less its family
+rule	1427	desktop-shortcut-confirm	live	standards/naming/controls.tsv, the id less its family
+rule	1428	desktop-ask-rule	live	standards/naming/controls.tsv, the id less its family

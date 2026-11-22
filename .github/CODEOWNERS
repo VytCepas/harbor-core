@@ -77,8 +77,11 @@
 /bin/scope-managed-folders.sh @VytCepas
 /contracts/main-folders.txt @VytCepas
 /standards/naming/controls.tsv @VytCepas
+/bin/access-browser-agent.sh @VytCepas
 /bin/access-browser.sh @VytCepas
 /bin/access-github-app-install.sh @VytCepas
+/bin/access-oauth.sh @VytCepas
+/bin/access-redact.sh @VytCepas
 /bin/access.sh @VytCepas
 /bin/admission-api-route.sh @VytCepas
 /bin/admission-ask.sh @VytCepas
@@ -185,6 +188,7 @@
 /bin/idea @VytCepas
 /bin/library-alert.sh @VytCepas
 /bin/library-board.sh @VytCepas
+/bin/library-clipboard.sh @VytCepas
 /bin/library-fs.sh @VytCepas
 /bin/library-gate.sh @VytCepas
 /bin/library-git-safe.sh @VytCepas

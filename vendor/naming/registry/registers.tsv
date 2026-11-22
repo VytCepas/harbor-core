@@ -23,6 +23,7 @@
 #           (floor_block <guard> ... <rule> calls, as <guard>:<rule>), checks-table (the docs/reference/checks.md
 #           register), inject-ids (the id: of every rule pack in a folder, comma-separated folders),
 #           hook-rules (the id of every `# control: <id>` line in a git hook, comma-separated files),
+#           stamp-rules:<files>=<guard> (every [<guard>:<rule>] a non-shell gate prints, comma-separated files),
 #           required-checks:<file>=<repo> (a repo's rows), lines (one id per line, for fixtures)
 #   note    what the namespace holds
 id	file	select	census	note
@@ -39,6 +40,7 @@ repo-kind	repo-kinds.tsv	-	-	the top-level entries each kind of repo carries (§
 dialect	dialects.tsv	-	-	a naming dialect a repo may register for objects the standard does not name (D-33, D-53)
 lint	controls.tsv	type=lint	lint-rules:bin/lint-conventions.sh	a static rule; bin/lint-conventions.sh's ids are the census, bin/lint-name.sh's are read from this registry
 admission	controls.tsv	type=admission	guard-rules:bin/admission-*.sh	a refusal one of the admission guards prints as [<guard>:<rule>]
+admission-desktop	controls.tsv	type=admission	stamp-rules:bin/access-desktop-helper.swift,bin/access-desktop-mcp.ts=desktop	a refusal harbor desktop prints as [desktop:<rule>] (D-95, harbor#1599)
 check	controls.tsv	type=check	checks-table:docs/reference/checks.md	a scheduled check; its output is stamped [check:<id>]
 injection	controls.tsv	type=injection	inject-ids:context-rules	a rule pack the injection engine adds to a session
 ci	controls.tsv	type=ci	required-checks:contracts/required-checks.tsv=VytCepas/harbor	a required CI check on harbor's main

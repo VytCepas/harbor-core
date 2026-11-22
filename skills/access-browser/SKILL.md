@@ -3,6 +3,8 @@ name: access-browser
 description: "Pick the right browser backend and drive it, then say what the run's absence is and is not evidence for. Two axes — does it need a login, and does it run attended or unattended — six rows, one of them refused because its backend is an unledgered credential. `harbor browser route` prints the contract; `harbor browser hosts` is the only instrument here that can support a NEGATIVE. USE WHEN which browser tool, does the pixel fire, no pixel fired, is the tag absent, what third parties load, subresource list, instrument a storefront, headless vs extension, drive a logged-in dashboard, harbor chrome lost or hidden tab, add a Commerce Manager data feed, screenshot someone else's site, consent banner changes what fires. NOT FOR administering a tag-manager or analytics container (its workload skill owns that), historical numbers (reporting-apis), or checking our OWN generated HTML — that is bin/doc-visual-check.sh, a build gate."
 argument-hint: [url or question]
 disable-model-invocation: true
+owns-tools: mcp__harbor_chrome__attach mcp__claude-in-chrome__tabs_context_mcp
+owns-content: "\bharbor (chrome|browser)\b"
 ---
 
 # access-browser
@@ -92,11 +94,15 @@ asserts against exactly that.
 
 ## Driving a logged-in vendor UI — `harbor chrome`
 
-Row 4. The operator's own Chrome, every account he is signed in to, through the
-Playwright Extension and a pinned CLI. Attended: each attach waits for him.
+Row 4. **The agent Chrome, never the operator's own** (operator 2026-11-20): `attach` starts a
+separate, headless Chrome on a copy of the agent profile, so nothing opens in his Chrome and lanes
+run side by side. He signs in to that profile once; `attach --operator` (his own Chrome, through the
+Playwright Extension, attended) is only for when he asks for it.
 
 ```sh
-harbor chrome attach        # then tell him: on the Playwright tab, click Connect next to a tab
+harbor chrome attach        # the agent Chrome; refused with the sign-in hand-off until a profile exists
+harbor chrome signin https://<vendor host>/   # ONE window of the agent Chrome: he signs in to every vendor, then
+harbor chrome signin --done                    #   closes it; every later attach copies that profile
 harbor chrome tab-new https://ads.reddit.com/account/<id>/events-manager
 harbor chrome snapshot      # element refs; files land in the session workdir (`status` prints it)
 harbor chrome find 'Pixel ID'
@@ -109,7 +115,13 @@ harbor chrome attach --headless   # in a lane: throwaway headless Chrome, no log
 
 As MCP tools, `mcp__harbor_chrome__steps` runs a known sequence in one call (harbor#1507); the playbook says when.
 
-- **Signed in first, then Connect.** An app that is not signed in sends its own tab to
+- **API first, headless first, enforced.** A vendor UI whose route card ranks cli, api or mcp first is refused with
+  the card's first move: take it. Only when the task is the UI itself, repeat with `--ui=<why>`. `attach --show`
+  needs `--ui=<why>` too, and `attach --operator` is refused to every agent.
+- **A sign-in page in the agent Chrome is a hand-off to `signin`**, never a password typed by an agent.
+  The sign-in has to happen in that profile's own window: Playwright starts every Chrome with
+  `--use-mock-keychain`, so cookies a normal Chrome saved there would not decrypt.
+- **Operator's Chrome only (`--operator`): signed in first, then Connect.** An app that is not signed in sends its own tab to
   sign-in, and Chrome drops the extension's debugger on that navigation. With no controlled
   tab left the relay closes, and the next verb FAILs with `the relay last closed with … All
   controlled tabs detached`. This was measured on 2026-10-02 (harbor#920): an internal data host answered 401, redirected
@@ -122,6 +134,9 @@ As MCP tools, `mcp__harbor_chrome__steps` runs a known sequence in one call (har
   `http://localhost:<port>` or `http://127.0.0.1:<port>` (1024-65535), and that in a headless lane only
   (`attach --headless`): in his profile an agent-written page could send credentialed cross-site requests. A client's live site goes through the tag debugger,
   never this verb — his logged-in cookies would land in the client's analytics.
+- **A credential is stored, never read** (contracts/secret-intake.md). A key a page shows once: click the
+  page's own Copy, run `harbor access add|rotate <id> --value-clipboard`, close the dialog. Never `snapshot`,
+  `text` or `screenshot` it; replies are redacted and screenshots of it refused, but a shape-less secret passes.
 - **Refused verbs stay refused.** No `run-code`, `eval`, cookies, storage or state,
   request bodies. If a job seems to need one, stop and say which and why.
 - **Never set `PLAYWRIGHT_MCP_EXTENSION_TOKEN`.** It removes his approval; the verb

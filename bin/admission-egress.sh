@@ -45,8 +45,10 @@ FLOOR_TOOL="$TOOL_SEEN"
 # shellcheck disable=SC2034 # FLOOR_OBS_SUBJECT: read by library-admission.sh
 FLOOR_OBS_SUBJECT="$PAYLOAD"
 
+# Meta (EAA + 100 or more: a sha256 hex string is 64, so none matches under -i), Google OAuth access (ya29.) and refresh (1//0),
+# and the pina_ ads-platform token joined 2026-11-21 (contracts/secret-intake.md): bin/access-redact.sh reads this same list.
 # Provider-prefixed secret shapes: HIGH PRECISION, a match is a live credential. The low-precision `Bearer <token>` and `<NAME>KEY=<value>` shapes are excluded on purpose (they fire on publishable keys and ordinary Authorization headers, red-team 2026-07-24); they stay the work-log gitleaks gate's job.
-SECRET='(sk-or-v1-[A-Za-z0-9]{16,}|csk-[A-Za-z0-9]{16,}|sk-(ant|proj|live)-[A-Za-z0-9-]{20,}|sk_(live|test)_[A-Za-z0-9]{16,}|sk-[A-Za-z0-9]{32,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|xox[baprse]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{30,}|npm_[A-Za-z0-9]{30,}|SG\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|dop_v1_[a-f0-9]{32,}|hf_[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}|AccountKey=[A-Za-z0-9+/]{60,}={0,2}|(postgres|postgresql|mysql|mongodb(\\+srv)?|redis|amqp)://[^:@/[:space:]]+:[^@/[:space:]]+@|sk-svcacct-[A-Za-z0-9_-]{20,}|xapp-[0-9]-[A-Za-z0-9-]{10,}|rk_live_[A-Za-z0-9]{16,}|SK[0-9a-f]{32}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
+SECRET='(sk-or-v1-[A-Za-z0-9]{16,}|csk-[A-Za-z0-9]{16,}|sk-(ant|proj|live)-[A-Za-z0-9-]{20,}|sk_(live|test)_[A-Za-z0-9]{16,}|sk-[A-Za-z0-9]{32,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|xox[baprse]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{30,}|npm_[A-Za-z0-9]{30,}|SG\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|dop_v1_[a-f0-9]{32,}|hf_[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}|AccountKey=[A-Za-z0-9+/]{60,}={0,2}|(postgres|postgresql|mysql|mongodb(\\+srv)?|redis|amqp)://[^:@/[:space:]]+:[^@/[:space:]]+@|sk-svcacct-[A-Za-z0-9_-]{20,}|xapp-[0-9]-[A-Za-z0-9-]{10,}|rk_live_[A-Za-z0-9]{16,}|SK[0-9a-f]{32}|EAA[A-Za-z0-9]{100,}|ya29\.[A-Za-z0-9_-]{30,}|1//0[A-Za-z0-9_-]{40,}|pina_[A-Za-z0-9]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
 # Documented placeholders that are NOT live credentials (AWS's own docs example, all-zero/x bodies); without this a README or test fixture was blocked (red-team pass 2).
 SECRET_DOC='(AKIAIOSFODNN7EXAMPLE|EXAMPLEKEY|EXAMPLE$|^0+$|^x+$|^X+$)'
 
@@ -590,6 +592,24 @@ $TARGETS_ALL"
     if m '(^|[^[:alnum:]_])security[[:space:]]+(dump-keychain|find-(generic|internet)-password[^;&|]*[[:space:]]-[a-zA-Z]*[gw])'; then
       floor_block egress "dumping keychain secrets into the session transcript" keychain-dump.path
     fi
+    # THE CLIPBOARD IS A CREDENTIAL CHANNEL (contracts/secret-intake.md): a key a page shows once is copied there and stored by
+    # `harbor access add|rotate <id> --value-clipboard`, which reads it inside its own process. An agent's own read puts it in the
+    # transcript, as `security -w` would. A segment RUNS the reader (argv, not spelling), so prose naming pbpaste is no read.
+    # xclip's read flag is -o alone (its -selection carries an o too); xsel's may be clustered (-bo), never after a double dash.
+    if floor_seg_cmd '(.*/)?(pbpaste|wl-paste)' \
+       || floor_seg_has '(.*/)?xclip' '^-o(ut(put)?)?$' \
+       || floor_seg_has '(.*/)?xsel' '^(-[a-zA-Z]*o[a-zA-Z]*|--output)$' \
+       || floor_seg_has '(.*/)?(powershell|pwsh)(\.exe)?' '[Gg][Ee][Tt]-[Cc][Ll][Ii][Pp][Bb][Oo][Aa][Rr][Dd]' \
+       || floor_seg_has '(.*/)?osascript' '[Cc][Ll][Ii][Pp][Bb][Oo][Aa][Rr][Dd]'; then
+      floor_block egress "reading the clipboard into the session — a key copied from a page would be written to the transcript; store it unseen with harbor access add|rotate <id> --value-clipboard" clipboard-read.argv
+    fi
+    # harbor chrome is the one road to a browser (contracts/browser-routing.md): its replies pass bin/access-redact.sh and its
+    # screenshots refuse a page that shows a credential. The pinned Playwright CLI run by hand has neither (2026-11-21: a vendor
+    # password reached the transcript that way). A net, not a wall: a script file that runs the CLI is not seen here.
+    if floor_seg_cmd '(.*/)?playwright-cli(\.js)?' \
+       || floor_seg_has '(.*/)?(bun|bunx|node|npx|pnpm|pnpx|deno)' '(@playwright/cli|playwright-cli(\.js)?)'; then
+      floor_block egress "driving a browser with the Playwright CLI by hand — harbor chrome's credential redaction and screenshot check do not run there; use harbor chrome (mcp__harbor_chrome__*) or sh bin/access-browser-agent.sh" browser-raw-cli.argv
+    fi
     # THE HUB TOKEN ON A MEMBER BOX (harbor#1278): contracts/hub.md denies it to the agent. A command led by secret-tool that reads, the floor's `secret` naming the
     # ref, or one that opens the token store's files reads it; the floor reads it from its hooks, never through this tool. The normalised targets are read with
     # quotes dropped, as a shell reads `sec""ret`, never the raw text; a command word decides, so a commit message naming them is not a read.
@@ -640,6 +660,81 @@ $TARGETS_ALL"
       }
       END { exit !hit }'; then
       floor_block egress "reading the hub token into the session, which only the floor's own hooks may do" hub-token-read.argv
+    fi
+  fi
+  # BASH ON A MEMBER BOX (harbor#1278): the Read rows, as the Read and Grep tools are held to them. allowManagedPermissionRulesOnly drops the Read deny rows,
+  # so `cat .env`, `head ~/.aws/x` or a find that feeds a reader (-exec, -execdir, xargs) read what the Read tool may not. Argv decides, from the segment
+  # table: a reader's operands, a `<` redirect, a recursive search that walks into a row, and a find whose start folder or -name/-path filter selects one.
+  # A grep, awk or sed's first operand is its pattern or program, never a path, and cp's last is its destination. Fail-open with the table, as every argv rule here.
+  if [ "$TOOL" = "Bash" ] && floor_member_mode && [ -n "${FLOOR_SEGS:-}" ]; then
+    _mb_chk="$(printf '%s\n' "$FLOOR_SEGS" | awk '
+      function id_of(s,   p) { p = index(s, ":"); return substr(s, 1, p - 1) + 0 }
+      function val_of(s) { return substr(s, index(s, ":") + 1) }
+      function base(w) { sub(/.*\//, "", w); return tolower(w) }
+      BEGIN {
+        n = split("cat,bat,less,more,head,tail,strings,xxd,od,hexdump,base64,grep,egrep,fgrep,rg,ag,sort,cut,nl,tac,cp,awk,gawk,sed", a, ","); for (i = 1; i <= n; i++) RD[a[i]] = 1
+        n = split("sh,bash,dash,zsh,ksh,python,python3,perl,ruby,node", a, ","); for (i = 1; i <= n; i++) SH[a[i]] = 1
+      }
+      /^SEGC:/ { s = substr($0, 6); i = id_of(s); cmd[i] = base(val_of(s)); if (!(i in seen)) { seen[i] = 1; ord[++no] = i }; next }
+      /^SEGA:/ { s = substr($0, 6); i = id_of(s); arg[i, ++na[i]] = val_of(s); next }
+      /^SEGW:/ { s = substr($0, 6); if (base(val_of(s)) == "xargs") xa[id_of(s)] = 1; next }
+      /^SEGR:/ { s = substr($0, 6); r = val_of(s); op = substr(r, 1, index(r, ":") - 1); if (op ~ /^[0-9]*<$/) print "T\t" substr(r, index(r, ":") + 1); next }
+      END {
+        for (k = 1; k <= no; k++) { i = ord[k]; c = cmd[i]
+          if ((i in xa) && ((c in RD) || (c in SH))) feeds = 1
+          if (c == "find") for (j = 1; j < na[i]; j++) if (arg[i, j] ~ /^-(exec|execdir|ok|okdir)$/) { e = base(arg[i, j + 1]); if ((e in RD) || (e in SH)) feeds = 1 }
+        }
+        for (k = 1; k <= no; k++) { i = ord[k]; c = cmd[i]
+          if (c in RD) {
+            n = 0; dd = 0; pat = (c ~ /grep$/ || c == "rg" || c == "ag" || c ~ /^g?awk$/ || c == "sed"); rec = (c == "rg" || c == "ag")
+            for (j = 1; j <= na[i]; j++) { x = arg[i, j]
+              if (!dd && x == "--") { dd = 1; continue }
+              if (!dd && x ~ /^-./) {
+                if (x ~ /^(-e|-f|--regexp|--file|--expression)$/) { pat = 0; if (x ~ /^(-f|--file)$/ && j < na[i]) print "T\t" arg[i, j + 1]; j++ }
+                else if (c ~ /grep$/ && (x ~ /^-[a-zA-Z]*[rR]/ || x ~ /^--(dereference-)?recursive$/)) rec = 1
+                continue
+              }
+              o[++n] = x
+            }
+            last = (c == "cp" && n >= 2) ? n - 1 : n
+            for (j = (pat ? 2 : 1); j <= last; j++) { print "T\t" o[j]; if (rec) print "R\t" o[j] }
+            split("", o)
+          }
+          if (c == "find" && feeds) {
+            ns = 0; st0 = 0; nn = 0; np = 0; unf = 1; split("", st); split("", fn); split("", fp)
+            for (j = 1; j <= na[i]; j++) { x = arg[i, j]
+              if (!st0 && x !~ /^[-(!]/) { st[++ns] = x; continue }
+              st0 = 1
+              if (x ~ /^-(exec|execdir|ok|okdir)$/) break
+              if (x ~ /^-i?name$/ && j < na[i]) { unf = 0; fn[++nn] = arg[i, ++j]; continue }
+              if (x ~ /^-(i?path|i?wholename)$/ && j < na[i]) { unf = 0; fp[++np] = arg[i, ++j]; continue }
+            }
+            if (ns == 0) st[++ns] = "."
+            for (s = 1; s <= ns; s++) { print "T\t" st[s]; if (unf) print "R\t" st[s]
+              for (q = 1; q <= nn; q++) { g = fn[q]; print "G\t" g; gsub(/[*?]/, "k", g); print "T\t" st[s] "/" g }
+              for (q = 1; q <= np; q++) { g = fp[q]; print "G\t" g
+                if (substr(g, 1, 1) == "*") { g = substr(g, 2); gsub(/[*?]/, "k", g); print "T\t" st[s] g; print "H\t" st[s] "\t" g }
+                else { gsub(/[*?]/, "k", g); print "T\t" g } }
+            }
+          }
+        }
+      }' 2>/dev/null)" || _mb_chk=""
+    if [ -n "$_mb_chk" ]; then
+      rd_load
+      _mb_hit=0
+      while IFS="$(printf '\t')" read -r _mb_k _mb_a _mb_b; do
+        [ -n "$_mb_a" ] || continue
+        case "$_mb_k" in
+          T) rd_target "$(rd_abs "$_mb_a")" && _mb_hit=1 ;;
+          R) rd_reaches "$(rd_abs "$_mb_a")" && _mb_hit=1 ;;
+          G) rd_glob_selects "$(_rd_lc "$_mb_a")" && _mb_hit=1 ;;
+          H) rd_reaches "$(rd_abs "$_mb_a")" && rd_target "$HOME$_mb_b" && _mb_hit=1 ;;
+        esac
+        [ "$_mb_hit" = 0 ] || break
+      done <<ROWS
+$_mb_chk
+ROWS
+      [ "$_mb_hit" = 0 ] || floor_block egress "reading a credential file into the session from the shell, past the Read deny rows this box can't carry" key-material-read.argv
     fi
   fi
   # Outbound channels: network senders, remote copy, mailers, DNS-exfil tools, bash's /dev/tcp and /dev/udp redirects, clipboard, and publish-style CLIs with no URL of their own (gh gist/release, glab, pbcopy).

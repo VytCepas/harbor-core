@@ -61,6 +61,13 @@ t_eq "harbor chrome: the read verbs and fill/find/press/type are allowed, nothin
 t_eq "harbor chrome: confirm_click stays an ask" true "$(jq '.permissions.ask | index("mcp__harbor_chrome__confirm_click") != null' "$_s")"
 jq '.permissions.allow += ["mcp__harbor_chrome__click"]' "$_s" > "$T_TMP/wide"
 t_eq "RED-PROOF: an allowed click is seen" yes "$([ "$(chrome_allow "$T_TMP/wide")" != "$(chrome_allow "$_s")" ] && echo yes || echo no)"
+# D-95: harbor desktop's reads are allowed; its confirm tools are asks; its inputs stay with the classifier.
+desk() { jq -r --arg k "$2" '.permissions[$k][] | select(startswith("mcp__harbor_desktop__")) | sub("^mcp__harbor_desktop__"; "")' "$1" | sort | tr '\n' ' '; }
+t_eq "harbor desktop: the read verbs are allowed, nothing else" "apps doctor shortcuts_list shot tree windows " "$(desk "$_s" allow)"
+t_eq "harbor desktop: every confirm tool, script and shortcut_run is an ask" \
+  "confirm_key confirm_menu confirm_press confirm_set_value script shortcut_run " "$(desk "$_s" ask)"
+jq '.permissions.allow += ["mcp__harbor_desktop__press"]' "$_s" > "$T_TMP/wide"
+t_eq "RED-PROOF: an allowed desktop input is seen" yes "$([ "$(desk "$T_TMP/wide" allow)" != "$(desk "$_s" allow)" ] && echo yes || echo no)"
 ship_rules() { jq -r '[.permissions.ask[], .permissions.allow[]] | .[] | select(test("deploy-fleet"))' "$1"; }
 t_eq "the ship runner is allowed for night only (harbor#1060)" "Bash($CLAUDE_CONFIG_DIR/bin/deploy-fleet.sh night*)" "$(ship_rules "$_s")"
 jq '.permissions.allow += ["Bash('"$CLAUDE_CONFIG_DIR"'/bin/deploy-fleet.sh *)"]' "$_s" > "$T_TMP/wide"

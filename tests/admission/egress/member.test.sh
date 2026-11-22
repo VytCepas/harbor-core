@@ -8,5 +8,6 @@ t_init
 . "$T_ROOT/tests/admission/bash/fixture.sh"
 cd "$T_ROOT"
 : > "$CLAUDE_CONFIG_DIR/bin/harbor-member-mode"
+cp "$T_ROOT/contracts/member-guards.tsv" "$CLAUDE_CONFIG_DIR/bin/member-guards.tsv"   # the Read rows, as member-dispatch.sh installs them beside the guard
 t_table "$CLAUDE_CONFIG_DIR/bin/admission-egress.sh" "$T_ROOT/tests/admission/egress/member.jsonl"
 t_done

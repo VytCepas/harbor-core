@@ -89,10 +89,56 @@ BEGIN {
 FLOOR_OBS_SUBJECT="${CMD:-$TOOL}"
 # harbor#1278: on a member box the dispatcher decides. The fail-open trap is lifted so floor_member_stop's own refusal (exit 2) stands.
 if floor_member_mode; then trap - EXIT; floor_member_stop ask "ask-rule.argv"; exit 0; fi
+# THE OPERATOR'S YES IN AUTO MODE (operator 2026-11-20): pasting a `!` command for every live click was the cost of the deny (52 confirm_click
+# denials 11-17..11-20). An AskUserQuestion answer is written by Claude Code from the operator's own pick, never by the model, so a
+# "Yes..." to a question that quotes this exact call lets it through ONCE: any later completed run of the same call spends it, and it
+# lapses after 30 min. A command must be quoted whole; confirm_click must quote its ref and the label from the server's own refusal of
+# that ref, so the operator sees what the button is. Any fault reads as no yes, so the deny stands.
+ask_approved() {
+  _tp="$(floor_field '.transcript_path')"
+  [ -n "$_tp" ] && [ -f "$_tp" ] || return 1
+  if [ -n "$CMD" ]; then _call="$("$FLOOR_JQ" -cn --arg t "$TOOL" --arg c "$CMD" '{kind:"cmd",tool:$t,text:$c}')"
+  else _call="$(printf '%s' "$FLOOR_IN" | "$FLOOR_JQ" -c --arg t "$TOOL" '(.tool_input.args // []) as $a
+      | if $t == "mcp__harbor_chrome__confirm_click" then {kind:"click",tool:$t,args:$a,ref:([$a[] | select(startswith("-") | not)][0] // "" | if test("^(e[0-9]+|f[0-9]+e[0-9]+)$") then . else "" end)}
+        else {kind:"tool",tool:$t,args:$a} end')"; fi
+  [ -n "$_call" ] || return 1
+  _ok="$("$FLOOR_JQ" -nR --argjson call "$_call" '
+    def norm: tostring | gsub("\\s+"; " ");
+    def fresh($ts): (($ts // "") | sub("\\.[0-9]+Z$"; "Z") | try fromdateiso8601 catch 0) as $t | (now - $t) < 1800;
+    def same($u): $u.name == $call.tool and (if $call.kind == "cmd" then ($u.input.command // "") == $call.text else ($u.input.args // []) == $call.args end);
+    def quoted($q; $labels): ($q | norm) as $qq |
+      if $call.kind == "cmd" then $qq | contains($call.text | norm)
+      elif $call.kind == "click" then $call.ref != "" and ($qq | test("(^|[^a-z0-9])" + $call.ref + "([^a-z0-9]|$)"))
+        and (($labels[$call.ref] // "") as $l | $l != "" and ($qq | contains($l | norm)))
+      else ($qq | contains($call.tool)) and all($call.args[]; . as $a | $qq | contains($a | norm)) end;
+    reduce (inputs | fromjson? // empty | objects) as $r ({uses: {}, labels: {}, ok: false};
+      if $r.type == "assistant" then
+        reduce ($r.message.content[]? | objects | select(.type == "tool_use")) as $u (.; .uses[$u.id] = {name: $u.name, input: $u.input})
+      elif $r.type == "user" and $r.isSidechain != true then
+        reduce ($r.message.content[]? | objects | select(.type == "tool_result")) as $t (.;
+          .uses[$t.tool_use_id // ""] as $u
+          | if $u == null then .
+            elif $u.name == "AskUserQuestion" then
+              reduce (($r.toolUseResult.answers? // {}) | objects | to_entries[]) as $a (.;
+                if ($a.value | norm | ascii_downcase | ltrimstr(" ") | startswith("yes")) and quoted($a.key; .labels) and fresh($r.timestamp) then .ok = true else . end)
+            elif same($u) then .ok = false
+            elif ($u.name | test("^mcp__harbor_chrome__(click|steps)$")) then
+              reduce (($t | .content | if type == "array" then map(.text? // "") | join("\n") else tostring end)
+                | scan("destructive click refused: \u0027(.+?)\u0027 \\(([a-z0-9]+)\\)")) as $m (.; .labels[$m[1]] = $m[0])
+            else . end)
+      else . end)
+    | .ok' "$_tp" 2>/dev/null)" || return 1
+  [ "$_ok" = true ]
+}
 DECISION=ask; WHY="so it waits for your yes"
 if floor_no_human; then DECISION=deny; WHY="and no human can answer an ask here, so it is denied"
 elif [ "$(floor_field '.permission_mode')" = auto ]; then
-  DECISION=deny; WHY="and in auto mode an ask reaches the classifier, not the operator, so it is denied; ask the operator to run this command as \`! <command>\` at their prompt"
+  # The merge/deploy approval gate stays the dialog alone (docs/design/approval-gate.md): a question never approves it.
+  if ! printf '%s' "$HIT" | "$FLOOR_GREP" -qF gate-approve.sh && ask_approved; then DECISION=allow; WHY="and the operator answered yes to a question quoting this exact call, so it runs once"
+  else
+    _quote="the whole command"; [ "$TOOL" = mcp__harbor_chrome__confirm_click ] && _quote="the ref and the label from the click's refusal"
+    DECISION=deny; WHY="and in auto mode an ask reaches the classifier, not the operator, so it is denied. Ask the operator with AskUserQuestion, quoting $_quote in the question; an answer starting \"Yes\" lets the next identical call through once (30 min). Or they run it as \`! <command>\` at their prompt"
+  fi
 fi
 WHAT="this changes a live system"; REF="harbor#1545"
 if [ -n "$METERED" ] && printf '%s\n' "$METERED" | "$FLOOR_GREP" -qxF "$HIT"; then
