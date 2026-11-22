@@ -25,31 +25,31 @@ readv() { SC run "$1" V -- sh -c 'printf %s "$V"' 2>/dev/null; }
 
 t_section "add refuses a secret ref that breaks D-36, and the fix is the compliant rendering"
 BEFORE="$(cksum < "$REG")"
-t_eq "a ref with no system: exit 2" 2 "$(rc ADD github-push-tools token github-tools-push --vendor-name 'EXAMPLECO API GitHub' < /dev/null)"
-OUT="$(ADD github-push-tools token github-tools-push --vendor-name 'EXAMPLECO API GitHub' 2>&1 < /dev/null)"
+t_eq "a ref with no system: exit 2" 2 "$(rc ADD tt token github-tools-push --vendor-name 'EXAMPLECO API GitHub' < /dev/null)"
+OUT="$(ADD tt token github-tools-push --vendor-name 'EXAMPLECO API GitHub' 2>&1 < /dev/null)"
 t_has "...naming the rule" "$OUT" "[name.secret]"
 t_has "...and the compliant rendering as the fix" "$OUT" "fix: use harbor-github-tools-push"
-t_eq "a ref with no rendering at hand: exit 2" 2 "$(rc ADD github-push-tools token worklog-token --vendor-name 'EXAMPLECO API GitHub' < /dev/null)"
-t_has "...and the fix is the grammar with its slots" "$(ADD github-push-tools token worklog-token --vendor-name 'EXAMPLECO API GitHub' 2>&1 < /dev/null)" "--render secret system=harbor service=<vendor> identity=<account> purpose=<use>"
+t_eq "a ref with no rendering at hand: exit 2" 2 "$(rc ADD tt token worklog-token --vendor-name 'EXAMPLECO API GitHub' < /dev/null)"
+t_has "...and the fix is the grammar with its slots" "$(ADD tt token worklog-token --vendor-name 'EXAMPLECO API GitHub' 2>&1 < /dev/null)" "--render secret system=harbor service=<vendor> identity=<account> purpose=<use>"
 t_eq "the register is unchanged" "$BEFORE" "$(cksum < "$REG")"
 printf 'rename-1\tsecret:old-github\tharbor-github-tools-reports\tsecret\tS1\t2099-12-31\tfixture\n' >> "$REN"
-t_has "a ref a renames row moves: the fix names its new name" "$(ADD github-push-tools token old-github --vendor-name 'EXAMPLECO API GitHub' 2>&1 < /dev/null)" "fix: use harbor-github-tools-reports"
+t_has "a ref a renames row moves: the fix names its new name" "$(ADD tt token old-github --vendor-name 'EXAMPLECO API GitHub' 2>&1 < /dev/null)" "fix: use harbor-github-tools-reports"
 t_red name.secret
 
 t_section "a token or app names itself as the vendor shows it"
-t_eq "a token with no --vendor-name: exit 2" 2 "$(rc ADD github-push-tools token harbor-github-tools-push < /dev/null)"
-t_has "...and the fix renders <ORG> API <Platform> from the ref's service" "$(ADD github-push-tools token harbor-github-tools-push 2>&1 < /dev/null)" 'rename it on the vendor to "EXAMPLECO API GitHub"'
-t_eq "an app with no --vendor-name: exit 2" 2 "$(rc ADD github-app-tools app harbor-github-tools-oauth-client < /dev/null)"
-t_eq "the vendor's default name (Some Connector): exit 2" 2 "$(rc ADD github-app-tools app harbor-github-tools-oauth-client --vendor-name 'Some Connector' < /dev/null)"
-OUT="$(ADD github-app-tools app harbor-github-tools-oauth-client --vendor-name 'Some Connector' 2>&1 < /dev/null)"
+t_eq "a token with no --vendor-name: exit 2" 2 "$(rc ADD tt token harbor-github-tools-push < /dev/null)"
+t_has "...and the fix renders <ORG> API <Platform> from the ref's service" "$(ADD tt token harbor-github-tools-push 2>&1 < /dev/null)" 'rename it on the vendor to "EXAMPLECO API GitHub"'
+t_eq "an app with no --vendor-name: exit 2" 2 "$(rc ADD tt app harbor-github-tools-oauth-client < /dev/null)"
+t_eq "the vendor's default name (Some Connector): exit 2" 2 "$(rc ADD tt app harbor-github-tools-oauth-client --vendor-name 'Some Connector' < /dev/null)"
+OUT="$(ADD tt app harbor-github-tools-oauth-client --vendor-name 'Some Connector' 2>&1 < /dev/null)"
 t_has "...naming the rule" "$OUT" "[name.vendor-credential]"
 t_has "...and the fix is the rendering" "$OUT" 'rename it on the vendor to "EXAMPLECO API GitHub"'
-t_eq "a brand spelled wrong (Github): exit 2" 2 "$(rc ADD github-app-tools app harbor-github-tools-oauth-client --vendor-name 'EXAMPLECO API Github' < /dev/null)"
+t_eq "a brand spelled wrong (Github): exit 2" 2 "$(rc ADD tt app harbor-github-tools-oauth-client --vendor-name 'EXAMPLECO API Github' < /dev/null)"
 t_eq "an account needs none: exit 0" 0 "$(rc ADD a-mailbox account - < /dev/null)"
 t_red name.vendor-credential
 
 t_section "a compliant entry is written with both names"
-printf '%s' "$VAL" | ADD github-push-tools token harbor-github-tools-push --vendor-name 'EXAMPLECO API GitHub Northwind' --value-stdin > "$T_TMP/ok.out" 2>&1; _rc=$?
+printf '%s' "$VAL" | ADD github-push token harbor-github-tools-push --vendor-name 'EXAMPLECO API GitHub Northwind' --value-stdin > "$T_TMP/ok.out" 2>&1; _rc=$?
 t_eq "exit 0" 0 "$_rc"
 t_has "the ref" "$(cat "$REG")" "    secret: harbor-github-tools-push"
 t_has "the vendor-name" "$(cat "$REG")" "    vendor-name: EXAMPLECO API GitHub Northwind"
@@ -58,9 +58,9 @@ t_hasnt "no value left the process" "$(cat "$T_TMP/ok.out" "$REG")" "$VAL"
 
 t_section "check holds a hand-edited vendor-name to the same rule"
 printf '    vendor-name: Some Connector\n' > "$T_TMP/vn"
-entry gcloud-app-tools harbor-gcloud-tools-oauth-client; cat "$T_TMP/vn" >> "$REG"
+entry hand-app harbor-gcloud-tools-oauth-client; cat "$T_TMP/vn" >> "$REG"
 t_eq "check: exit 1" 1 "$(rc AX check)"
-t_has "...naming the entry and the rule" "$(AX check 2>&1)" "gcloud-app-tools: vendor-name [name.vendor-credential]"
+t_has "...naming the entry and the rule" "$(AX check 2>&1)" "hand-app: vendor-name [name.vendor-credential]"
 sed -i.bak 's/^    vendor-name: Some Connector$/    vendor-name: EXAMPLECO API Google Cloud/' "$REG"; rm -f "$REG.bak"
 t_eq "renamed on the vendor, check is green" 0 "$(rc AX check)"
 
@@ -82,8 +82,8 @@ t_eq "a connector ref the policy lists: exit 0" 0 "$(rc MADD acme-key acme-crm)"
 t_has "...and the note says the name is the policy's" "$(MADD acme-key2 acme-crm 2>&1)" "a connector ref the hub policy names"
 t_eq "a ref the policy does not list is still judged: exit 2" 2 "$(rc MADD other-key other-crm)"
 rm -f "$MB/../connectors.json"
-t_eq "off a member laptop hub-token passes the ref gate (exempt) and is refused for its missing vendor-name" 2 "$(rc ADD github-hub-two token hub-token < /dev/null)"
-t_has "...and it is the vendor-name that is missing" "$(ADD github-hub-two token hub-token 2>&1 < /dev/null)" "--vendor-name is missing"
+t_eq "off a member laptop hub-token passes the ref gate (exempt) and is refused for its missing vendor-name" 2 "$(rc ADD hub-two token hub-token < /dev/null)"
+t_has "...and it is the vendor-name that is missing" "$(ADD hub-two token hub-token 2>&1 < /dev/null)" "--vendor-name is missing"
 
 t_section "a renamed ref is one credential under both names until remove_by"
 entry old-entry old-github
@@ -129,49 +129,30 @@ t_eq "has the new name through the private row: 0" 0 "$(rc AX has harbor-gcloud-
 
 t_section "a piped value is trimmed, and one with whitespace inside is refused, saying only its length"
 SEC="AbCdEf0123456789secret"
-printf '  %s\n\n' "$SEC" | ADD github-trim-tools token harbor-github-tools-trim --vendor-name 'EXAMPLECO API GitHub' --value-stdin > "$T_TMP/trim.out" 2>&1; _rc=$?
+printf '  %s\n\n' "$SEC" | ADD trim-ok token harbor-github-tools-trim --vendor-name 'EXAMPLECO API GitHub' --value-stdin > "$T_TMP/trim.out" 2>&1; _rc=$?
 t_eq "surrounding spaces and newlines: exit 0" 0 "$_rc"
 t_eq "...the stored value is the credential alone" "$SEC" "$(readv harbor-github-tools-trim)"
 t_has "...and the trim is said, by count" "$(cat "$T_TMP/trim.out")" "trimmed 4 whitespace character(s)"
 BEFORE="$(cksum < "$REG")"
-printf 'Abcd %s\n' "$SEC" | ADD github-paste-tools token harbor-github-tools-paste --vendor-name 'EXAMPLECO API GitHub' --value-stdin > "$T_TMP/paste.out" 2>&1; _rc=$?
+printf 'Abcd %s\n' "$SEC" | ADD paste-bad token harbor-github-tools-paste --vendor-name 'EXAMPLECO API GitHub' --value-stdin > "$T_TMP/paste.out" 2>&1; _rc=$?
 t_eq "a prefix and a space in front (the 2026-11-13 paste): exit 2" 2 "$_rc"
 t_has "...saying the length" "$(cat "$T_TMP/paste.out")" "holds whitespace inside it (27 characters after trimming)"
 t_hasnt "...and never the value" "$(cat "$T_TMP/paste.out")" "$SEC"
 t_eq "...and nothing was written" "$BEFORE" "$(cksum < "$REG")"
 t_eq "...nor stored" 1 "$(rc SC run harbor-github-tools-paste V -- true)"
-t_eq "whitespace only: exit 2" 2 "$(printf ' \n ' | rc ADD github-blank-tools token harbor-github-tools-blank --vendor-name 'EXAMPLECO API GitHub' --value-stdin)"
+t_eq "whitespace only: exit 2" 2 "$(printf ' \n ' | rc ADD blank token harbor-github-tools-blank --vendor-name 'EXAMPLECO API GitHub' --value-stdin)"
 KEYF="$(printf '{\n  "type": "service_account"\n}\n')"
-printf '%s\n' "$KEYF" | ADD gcloud-key-tools token harbor-gcloud-tools-key --vendor-name 'EXAMPLECO API Google Cloud' --value-stdin --verbatim > /dev/null 2>&1; _rc=$?
+printf '%s\n' "$KEYF" | ADD key-file token harbor-gcloud-tools-key --vendor-name 'EXAMPLECO API Google Cloud' --value-stdin --verbatim > /dev/null 2>&1; _rc=$?
 t_eq "a key file with --verbatim: exit 0" 0 "$_rc"
 t_has "...the entry says so" "$(cat "$REG")" "    value-shape: verbatim"
 t_eq "...and it is stored byte for byte" "$(printf '%s\n' "$KEYF" | cksum)" "$(SC withfile harbor-gcloud-tools-key -- cat {} | cksum)"
-t_eq "--verbatim with no ref: exit 2" 2 "$(rc ADD github-none-tools token - --vendor-name 'EXAMPLECO API GitHub' --verbatim < /dev/null)"
-
-t_section "a token or app id is <service>-<purpose>-<identity> (harbor#1604); an account is not judged"
-BEFORE="$(cksum < "$REG")"
-t_eq "a token id with no identity (stape-api's shape): exit 2" 2 "$(rc ADD github-api token harbor-github-tools-api --vendor-name 'EXAMPLECO API GitHub' < /dev/null)"
-OUT="$(ADD github-api token harbor-github-tools-api --vendor-name 'EXAMPLECO API GitHub' 2>&1 < /dev/null)"
-t_has "...naming the rule" "$OUT" "[name.access-entry]"
-t_has "...and the fix renders the vendor and account off the ref" "$OUT" "--render access-entry service=github purpose=<use> identity=tools"
-t_eq "an app id whose first word is no vendor: exit 2" 2 "$(rc ADD harbor-claude-app app harbor-github-tools-oauth-client --vendor-name 'EXAMPLECO API GitHub' < /dev/null)"
-t_eq "the register is unchanged" "$BEFORE" "$(cksum < "$REG")"
-t_eq "an account keeps its own shape: exit 0" 0 "$(rc ADD tools-google account - < /dev/null)"
-t_red name.access-entry
-entry gcloud-store gcloud-store-x
-t_has "check holds a hand-added token id to the grammar" "$(AX check 2>&1)" "gcloud-store: id [name.access-entry]"
-sed -i.bak 's/^## gcloud-store$/## gcloud-store-operator/' "$REG"; rm -f "$REG.bak"
-t_hasnt "...and renamed it passes" "$(AX check 2>&1)" "gcloud-store-operator: id"
-t_hasnt "...and the old id is gone" "$(AX check 2>&1)" "gcloud-store: id"
+t_eq "--verbatim with no ref: exit 2" 2 "$(rc ADD v-none token - --vendor-name 'EXAMPLECO API GitHub' --verbatim < /dev/null)"
 
 t_section "red-proof: with the gates cut out, add takes what the real code refuses"
 mkdir -p "$T_TMP/mut"; cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/scope-roots.sh" "$T_ROOT/bin/secret" "$T_TMP/mut/"; export ACCESS_LINT_NAME="$T_ROOT/bin/lint-name.sh"
 sed 's/^ *\[ "\$REFNAME" = none \] || name_gate secret .*$/    :/' "$T_ROOT/bin/access.sh" > "$T_TMP/mut/access.sh"
 t_eq "mutant built: the secret gate is gone" 0 "$(grep -c 'name_gate secret "\$REFNAME"' "$T_TMP/mut/access.sh")"
-t_eq "the mutant registers github-tools-push" 0 "$(HARBOR_SCOPE_ROOT="$T_ROOT" rc sh "$T_TMP/mut/access.sh" add github-muta-tools --kind token --what w --use-when u --reaches r --cannot c --grant g --secret github-tools-push --vendor-name 'EXAMPLECO API GitHub' < /dev/null)"
+t_eq "the mutant registers github-tools-push" 0 "$(HARBOR_SCOPE_ROOT="$T_ROOT" rc sh "$T_TMP/mut/access.sh" add mut-a --kind token --what w --use-when u --reaches r --cannot c --grant g --secret github-tools-push --vendor-name 'EXAMPLECO API GitHub' < /dev/null)"
 sed 's/^    \[ -z "\$VNAME" \] || name_gate vendor-credential .*$/    :/' "$T_ROOT/bin/access.sh" > "$T_TMP/mut/access.sh"
-t_eq "the mutant registers Some Connector" 0 "$(HARBOR_SCOPE_ROOT="$T_ROOT" rc sh "$T_TMP/mut/access.sh" add gcloud-mutb-tools --kind app --what w --use-when u --reaches r --cannot c --grant g --secret harbor-gcloud-tools-mut --vendor-name 'Some Connector' < /dev/null)"
-sed 's/^      name_gate access-entry .*$/      :/' "$T_ROOT/bin/access.sh" > "$T_TMP/mut/access.sh"
-t_eq "mutant built: the id gate is gone" 0 "$(grep -c 'name_gate access-entry' "$T_TMP/mut/access.sh")"
-t_eq "the mutant registers the id github-api" 0 "$(HARBOR_SCOPE_ROOT="$T_ROOT" rc sh "$T_TMP/mut/access.sh" add github-api --kind token --what w --use-when u --reaches r --cannot c --grant g --secret harbor-github-tools-mutc --vendor-name 'EXAMPLECO API GitHub' < /dev/null)"
+t_eq "the mutant registers Some Connector" 0 "$(HARBOR_SCOPE_ROOT="$T_ROOT" rc sh "$T_TMP/mut/access.sh" add mut-b --kind app --what w --use-when u --reaches r --cannot c --grant g --secret harbor-gcloud-tools-mut --vendor-name 'Some Connector' < /dev/null)"
 t_done

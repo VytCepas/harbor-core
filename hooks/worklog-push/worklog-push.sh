@@ -111,7 +111,7 @@ fi
 
 # The token goes through the environment, never the URL (CONSTITUTION 4): the helper string shows in `ps`, the token does not, and git's error can no longer contain it.
 # Push to `origin`, not a URL: an explicit URL never advances origin/main, so `git status` showed a growing [ahead N] while every push succeeded.
-_wl_helper='!f(){ test "$1" = get && printf "username=x-access-token\npassword=%s\n" "$WORKLOG_TOKEN"; }; f'  # secret-seam: entry github-worklog-vytcepas, injected by secret run
+_wl_helper='!f(){ test "$1" = get && printf "username=x-access-token\npassword=%s\n" "$WORKLOG_TOKEN"; }; f'  # secret-seam: entry worklog-token, injected by secret run
 _wl_err="$(sh "$_wl_secret" run worklog-token WORKLOG_TOKEN -- git -c credential.helper="$_wl_helper" push --quiet origin main 2>&1)"
 _wl_rc=$?
 

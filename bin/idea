@@ -39,7 +39,7 @@ SECRET="${HARBOR_ACCESS_SECRET_BIN:-$(command -v secret 2>/dev/null || true)}"; 
 idea_git() {
   if [ -f "$SECRET" ] && sh "$SECRET" run worklog-token IDEA_TOKEN -- true >/dev/null 2>&1; then
     sh "$SECRET" run worklog-token IDEA_TOKEN -- sh -c \
-      'git -c http.extraHeader="Authorization: Basic $(printf "x-access-token:%s" "$IDEA_TOKEN" | base64 | tr -d "\n")" "$@"' idea-git "$@"  # secret-seam: entry github-worklog-vytcepas, injected by secret run
+      'git -c http.extraHeader="Authorization: Basic $(printf "x-access-token:%s" "$IDEA_TOKEN" | base64 | tr -d "\n")" "$@"' idea-git "$@"  # secret-seam: entry worklog-token, injected by secret run
     return
   fi
   return 3

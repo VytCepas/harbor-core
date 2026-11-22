@@ -58,7 +58,7 @@ egress and leak guards. `harbor access check` is red on any line shaped like a c
 
 ## Names: enforced at birth (harbor#978)
 
-Three names, each judged by `bin/lint-name.sh --check` against `standards/naming/surfaces.tsv`, so the rule is a registry
+Two names, both judged by `bin/lint-name.sh --check` against `standards/naming/surfaces.tsv`, so the rule is a registry
 row and not prose here:
 
 - **The ref** (surface `secret`, rule `name.secret`, harbor/D-36): `<system>-<service>-<identity>-<purpose>`, lowercase kebab.
@@ -71,18 +71,12 @@ row and not prose here:
   `<ORG> API <Platform> <Client>`, the org a registered `org` term in capitals (the box's own is a private-overlay row of
   `terms.tsv`, harbor/D-85; core's `EXAMPLECO` is the placeholder it retires), the platform a vendor's `pref` exactly as the vendor
   spells it. A vendor's default app name (a connector's own product name) is what this refuses: nobody could tell whose app it was.
-- **The entry id** of a `token` or `app` (surface `access-entry`, rule `name.access-entry`, harbor#1604):
-  `<service>-<purpose>-<identity>`, lowercase kebab, `service` a vendor term as in the ref, `identity` the account it acts
-  as or the client a per-account key serves, the last slot, so it may hold several words (`github-app-harbor-claude`,
-  `openai-ads-<client>`). An `account`, `role` or `mailbox` id keeps its own shape and is not judged. A renamed id gets an
-  `access-entry` row in `<access>/renames.tsv`; the ref it names does not change.
 
-`add` refuses (exit 2) a `--secret` the lint refuses, a `token` or `app` id it refuses, and a `token` or `app` with no `--vendor-name` or a bad one, and the
+`add` refuses (exit 2) a `--secret` the lint refuses and a `token` or `app` with no `--vendor-name` or a bad one, and the
 `fix:` line is the compliant rendering: the renames row's new name, `harbor-<ref>` when that passes, or the grammar for
 the ref; `<ORG> API <Platform>` rendered from the ref's service for the vendor name. On a terminal a missing vendor name
 is asked for like any field. The control's mode decides: at `block` (today) a finding refuses, at `warn` it is printed
-and passes. A lint that cannot judge refuses: fail closed. `check` judges every `vendor-name:` an entry carries and every `token` and
-`app` id.
+and passes. A lint that cannot judge refuses: fail closed. `check` judges every `vendor-name:` an entry carries.
 
 **Where each part comes from (share, harbor/D-83).** The gate, the two surfaces, the vendor terms, the name-create rows and
 the health check are **core**. A member laptop receives the lint and its registry in the pinned floor, flat in the
@@ -95,8 +89,7 @@ on members too; `hub-token`, the one ref the floor's guards name, is a `tool-req
 whitespace inside it, printing its length and never the value; `add --verbatim` (field `value-shape: verbatim`) stores
 a key file or JSON byte for byte instead. `--value-clipboard` (on `add` and `rotate`) takes the value from the clipboard
 into that same stdin path, never shown, and empties the clipboard after: the route for a key a page shows once
-(contracts/secret-intake.md). `--value-oauth` (on `add` and `rotate`) takes a token from an OAuth consent in harbor
-chrome into that same path, the code and the token never shown (`bin/access-oauth.sh`).
+(contracts/secret-intake.md).
 
 ## A renamed ref: one credential, two names, until remove_by
 
@@ -145,7 +138,6 @@ harbor access stored        # every item bin/secret holds: registered, grandfath
 harbor access status [-v] [id...]          # stored, alive, in date: what is wrong and since when (exit 1 on a red)
 harbor access rotate <id> [--value-stdin] [--locked]  # a new value, kept only if the entry's check passes on it
 harbor access add|rotate … --value-clipboard          # the value from the clipboard, unseen; the clipboard emptied after
-harbor access add|rotate … --value-oauth --oauth-…    # a token from an OAuth consent, code and token unseen (access-oauth.sh --help)
 harbor access revoke <id>                  # refuse the ref from now on, then remove the stored value
 harbor access renamed <ref>                # registered name, other name, remove_by of the open rename naming it
 harbor access move <old-ref> [--locked]    # the entry names the new ref; the value is copied; the old item stays

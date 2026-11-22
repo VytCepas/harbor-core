@@ -21,7 +21,7 @@ ADDC() { # <id> <ref> [extra args...]: add with the clipboard as the value's sou
 
 t_section "add --value-clipboard: stored, never shown, clipboard emptied"
 printf '  %s\n' "$VAL" > "$FAKE_CLIP"
-ADDC github-clip-one harbor-github-tools-clip --value-clipboard > "$T_TMP/out" 2> "$T_TMP/err" < /dev/null; _rc=$?
+ADDC clip-one harbor-github-tools-clip --value-clipboard > "$T_TMP/out" 2> "$T_TMP/err" < /dev/null; _rc=$?
 t_eq "it passes" 0 "$_rc"
 t_eq "the store holds the value, trimmed as --value-stdin trims it" "$VAL" "$(readv harbor-github-tools-clip)"
 t_eq "stdout never carries it" 0 "$(grep -c "$VAL" "$T_TMP/out")"
@@ -31,12 +31,12 @@ t_has "and says so" "$(cat "$T_TMP/err")" "the clipboard was emptied"
 
 t_section "a failed add still empties the clipboard"
 printf 'two words %s\n' "$VAL" > "$FAKE_CLIP"
-ADDC github-clip-two harbor-github-tools-cliptwo --value-clipboard > "$T_TMP/out" 2> "$T_TMP/err" < /dev/null; _rc=$?
+ADDC clip-two harbor-github-tools-cliptwo --value-clipboard > "$T_TMP/out" 2> "$T_TMP/err" < /dev/null; _rc=$?
 t_eq "a value with whitespace inside is refused, exit 2" 2 "$_rc"
 t_eq "and nothing of it is shown" 0 "$(cat "$T_TMP/out" "$T_TMP/err" | grep -c "$VAL")"
 t_eq "the clipboard is empty after" 0 "$(wc -c < "$FAKE_CLIP" | tr -d ' ')"
 printf '%s' "$VAL" > "$FAKE_CLIP"
-t_eq "--value-clipboard with --value-stdin is refused, exit 2" 2 "$(ADDC github-clip-3 harbor-github-tools-clipthree --value-clipboard --value-stdin >/dev/null 2>&1 < /dev/null; echo $?)"
+t_eq "--value-clipboard with --value-stdin is refused, exit 2" 2 "$(ADDC clip-3 harbor-github-tools-clipthree --value-clipboard --value-stdin >/dev/null 2>&1 < /dev/null; echo $?)"
 t_eq "rotate of an entry that does not exist fails, exit 2" 2 "$(AX rotate no-such-entry --value-clipboard >/dev/null 2>&1 < /dev/null; echo $?)"
 t_eq "and still empties the clipboard" 0 "$(wc -c < "$FAKE_CLIP" | tr -d ' ')"
 
@@ -44,7 +44,7 @@ t_section "no clipboard tool: a refusal naming what it looked for, never a silen
 . "$T_ROOT/tests/lib/linux-sim.sh"
 LX="$T_TMP/lx"; linux_path "$LX" pbpaste pbcopy wl-paste wl-copy xclip xsel powershell.exe clip.exe
 t_eq "control: that PATH has no pbpaste" "" "$(PATH="$LX" command -v pbpaste)"
-OUT="$(PATH="$LX" ADDC github-clip-4 harbor-github-tools-clipfour --value-clipboard 2>&1 < /dev/null)"; _rc=$?
+OUT="$(PATH="$LX" ADDC clip-4 harbor-github-tools-clipfour --value-clipboard 2>&1 < /dev/null)"; _rc=$?
 t_eq "exit 2" 2 "$_rc"
 t_has "naming the tools" "$OUT" "wl-paste"
 
@@ -55,7 +55,7 @@ for _d in "$T_ROOT"/*; do [ "${_d##*/}" = bin ] || ln -s "$_d" "$M/${_d##*/}"; d
 sed 's/^    if clip_clear; then log_note "the clipboard was emptied"; else log_warn .*$/    :/' "$T_ROOT/bin/access.sh" > "$M/bin/access.sh"
 t_eq "the mutant differs" yes "$(cmp -s "$T_ROOT/bin/access.sh" "$M/bin/access.sh" || echo yes)"
 printf '%s' "$VAL" > "$FAKE_CLIP"
-sh "$M/bin/access.sh" add github-clip-5 --kind token --what w --use-when u --reaches r --cannot c --grant g \
+sh "$M/bin/access.sh" add clip-5 --kind token --what w --use-when u --reaches r --cannot c --grant g \
   --secret harbor-github-tools-clipfive --vendor-name 'EXAMPLECO API GitHub' --value-clipboard >/dev/null 2>&1 < /dev/null
 t_eq "the add still stores it" "$VAL" "$(readv harbor-github-tools-clipfive)"
 t_eq "but the clipboard still holds it" "$VAL" "$(cat "$FAKE_CLIP")"

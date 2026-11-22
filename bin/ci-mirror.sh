@@ -59,10 +59,10 @@ HSLUG="${HARBOR_CI_SLUG:-$(slug_of_url "$(git -C "$ROOT" config --get remote.ori
 slug_valid "$HSLUG" || refuse "the harbor repo slug is unknown" "export HARBOR_CI_SLUG=<owner>/harbor"
 
 need_token() {
-  [ -n "${HARBOR_CI_CORE_MIRROR_TOKEN:-}" ] || refuse "HARBOR_CI_CORE_MIRROR_TOKEN is not set, so nothing can reach $CORE" "store the fine-grained harbor-core token as that harbor secret"  # secret-seam: Actions secret (entry github-mirror-vytcepas)
+  [ -n "${HARBOR_CI_CORE_MIRROR_TOKEN:-}" ] || refuse "HARBOR_CI_CORE_MIRROR_TOKEN is not set, so nothing can reach $CORE" "store the fine-grained harbor-core token as that harbor secret"  # secret-seam: Actions secret (entry harbor-core-mirror-token)
 }
 # gh calls against harbor-core carry the mirror token (gh sends GH_TOKEN as a header); harbor's own calls do not.
-core_gh() { GH_TOKEN="${HARBOR_CI_CORE_MIRROR_TOKEN}" gh "$@"; }  # secret-seam: entry github-mirror-vytcepas
+core_gh() { GH_TOKEN="${HARBOR_CI_CORE_MIRROR_TOKEN}" gh "$@"; }  # secret-seam: entry harbor-core-mirror-token
 
 # public-ci on the harbor PR head: STATE, DESC and URL as the caller set them.
 set_status() {
@@ -150,7 +150,7 @@ BASE_SHA="$(git -C "$ROOT" merge-base "$HEAD_SHA" HEAD 2>/dev/null)" || refuse "
 gate() { HARBOR_SCOPE_ROOT="$WT" sh "$SRC/deploy-push.sh" "$@"; }
 
 if [ "$MODE" = publish ]; then
-  AUTH="$(printf 'x-access-token:%s' "${HARBOR_CI_CORE_MIRROR_TOKEN}" | base64 | tr -d '\n')"  # secret-seam: entry github-mirror-vytcepas
+  AUTH="$(printf 'x-access-token:%s' "${HARBOR_CI_CORE_MIRROR_TOKEN}" | base64 | tr -d '\n')"  # secret-seam: entry harbor-core-mirror-token
   core_git() { GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: Basic $AUTH" git -C "$TDIR" "$@"; }
   core_git fetch -q origin || refuse "cannot fetch $CORE" "check HARBOR_CI_CORE_MIRROR_TOKEN (Contents: write)"
   git -C "$TDIR" rev-parse -q --verify refs/remotes/origin/main >/dev/null || refuse "$CORE has no main to publish onto" ""
@@ -185,7 +185,7 @@ if [ "$DRY" = 1 ]; then
 fi
 
 # The auth rides in git's environment as a header: not in the remote's URL, not in argv, not in .git/config.
-AUTH="$(printf 'x-access-token:%s' "${HARBOR_CI_CORE_MIRROR_TOKEN}" | base64 | tr -d '\n')"  # secret-seam: entry github-mirror-vytcepas
+AUTH="$(printf 'x-access-token:%s' "${HARBOR_CI_CORE_MIRROR_TOKEN}" | base64 | tr -d '\n')"  # secret-seam: entry harbor-core-mirror-token
 core_git() { GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: Basic $AUTH" git -C "$TDIR" "$@"; }
 
 core_git fetch -q origin || refuse "cannot fetch $CORE" "check HARBOR_CI_CORE_MIRROR_TOKEN (Contents: write)"

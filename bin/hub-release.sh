@@ -200,7 +200,7 @@ preflight() { # note|auto: auto makes a stale red-team record a finding when no 
   command -v jq >/dev/null 2>&1 || finding "jq is not installed" "$(pkg_hint jq)"
   command -v zip >/dev/null 2>&1 || finding "zip is not installed" "$(pkg_hint zip)"
   command -v "${HARBOR_EVAL_NODE:-node}" >/dev/null 2>&1 || finding "node is not installed: the red-team corpus's ccg harness would be skipped, and a skipped corpus is red" "$(pkg_hint node)"
-  if [ -z "${HARBOR_CI_CORE_MIRROR_TOKEN:-}" ]; then  # secret-seam: Actions secret (entry github-mirror-vytcepas), presence only
+  if [ -z "${HARBOR_CI_CORE_MIRROR_TOKEN:-}" ]; then  # secret-seam: Actions secret (entry harbor-core-mirror-token), presence only
     if [ "$MODE" = run ]; then finding "HARBOR_CI_CORE_MIRROR_TOKEN is not set, so the publish could not reach harbor-core" "run this tool under secret run, with the harbor-core mirror token as HARBOR_CI_CORE_MIRROR_TOKEN"
     else log_note "HARBOR_CI_CORE_MIRROR_TOKEN is not set; --run needs it"; fi
   fi
@@ -272,7 +272,7 @@ if [ -z "$MIRPR" ]; then
   MIRPR="$(printf '%s' "$PRS" | awk -v s="$HSLUG" 'NF { split($0, a, "#"); if (a[1] == s) n = a[2] } END { print n }')"
   [ -n "$MIRPR" ] || stop "no harbor PR to name for the publish" "pass --mirror-pr <n>, any harbor PR number"
 fi
-[ -n "${HARBOR_CI_CORE_MIRROR_TOKEN:-}" ] || stop "HARBOR_CI_CORE_MIRROR_TOKEN is not set, so nothing can reach harbor-core" "run this tool under secret run, with the harbor-core mirror token as HARBOR_CI_CORE_MIRROR_TOKEN"  # secret-seam: Actions secret (entry github-mirror-vytcepas), presence only
+[ -n "${HARBOR_CI_CORE_MIRROR_TOKEN:-}" ] || stop "HARBOR_CI_CORE_MIRROR_TOKEN is not set, so nothing can reach harbor-core" "run this tool under secret run, with the harbor-core mirror token as HARBOR_CI_CORE_MIRROR_TOKEN"  # secret-seam: Actions secret (entry harbor-core-mirror-token), presence only
 ( HARBOR_CI_CORE_MIRROR_DIR="$CORE"; export HARBOR_CI_CORE_MIRROR_DIR
   run_logged sh "$HARBOR/bin/ci-mirror.sh" --publish "$MIRPR" ) || stop "ci-mirror --publish refused: nothing after it ran" "the gate rows above name the fix"
 git -C "$CORE" fetch -q origin || stop "cannot fetch origin in $CORE" ""

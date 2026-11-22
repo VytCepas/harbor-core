@@ -1407,5 +1407,3 @@ rule	1397	admission.clipboard-read	live	standards/naming/controls.tsv
 rule	1398	admission.browser-raw-cli	live	standards/naming/controls.tsv
 rule	1399	clipboard-read	live	standards/naming/controls.tsv, the id less its family
 rule	1400	browser-raw-cli	live	standards/naming/controls.tsv, the id less its family
-rule	1401	name.access-entry	live	standards/naming/controls.tsv
-rule	1402	access-entry	live	standards/naming/controls.tsv, the id less its family
