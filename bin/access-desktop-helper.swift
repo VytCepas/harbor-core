@@ -14,6 +14,7 @@ struct Fail: Error { let msg: String }
 var allowed: Set<String> = []
 var words: [String] = []
 var hosts: [String] = []
+var missing: [String] = []  // policy files that could not be read: each reads as empty (fails closed), doctor names them
 let hardDeny: Set<String> = [  // secrets and the machine's own controls: never, whatever the list says
   "com.apple.keychainaccess", "com.apple.Passwords", "com.apple.systempreferences", "com.apple.SecurityAgent",
   "com.apple.Terminal", "com.googlecode.iterm2", "com.1password.1password", "com.agilebits.onepassword7",
@@ -25,14 +26,14 @@ let browsers: Set<String> = ["com.google.Chrome", "com.google.Chrome.canary", "c
   "company.thebrowser.Browser", "org.mozilla.firefox", "com.microsoft.edgemac", "com.brave.Browser"]
 
 func readList(_ path: String) -> [String] {
-  guard let s = try? String(contentsOfFile: path, encoding: .utf8) else { return [] }
+  guard let s = try? String(contentsOfFile: path, encoding: .utf8) else { missing.append(path); return [] }
   return s.split(separator: "\n").map { l in
     String(l.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
       .split(whereSeparator: { $0 == " " || $0 == "\t" }).joined(separator: " ")
   }.filter { !$0.isEmpty }
 }
 func loadPolicy(_ cfg: [String: String]) {
-  allowed = []
+  allowed = []; missing = []
   for p in (cfg["bundles"] ?? "").split(separator: ":") { allowed.formUnion(readList(String(p))) }
   words = (cfg["words"].map { readList($0) } ?? []).map { $0.lowercased() }
   hosts = []
@@ -76,9 +77,13 @@ func actions(_ e: AXUIElement) -> [String] {
   var a: CFArray?
   return AXUIElementCopyActionNames(e, &a) == .success ? ((a as? [String]) ?? []) : []
 }
-func label(_ e: AXUIElement) -> String {
-  [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute, "AXIdentifier", kAXHelpAttribute]
-    .compactMap { str(e, $0) }.map { String($0.prefix(120)) }.joined(separator: " | ")
+// cut nil is for the gates: a live word past the display cut still asks (review F7).
+func labelOf(_ parts: [String], cut: Int?) -> String {
+  parts.map { p in cut.map { String(p.prefix($0)) } ?? p }.joined(separator: " | ")
+}
+func label(_ e: AXUIElement, cut: Int? = 120) -> String {
+  labelOf([kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute, "AXIdentifier", kAXHelpAttribute]
+    .compactMap { str(e, $0) }, cut: cut)
 }
 func root(_ a: NSRunningApplication) -> AXUIElement {
   let r = AXUIElementCreateApplication(a.processIdentifier)
@@ -97,7 +102,7 @@ func resolve(_ a: NSRunningApplication, _ ref: String) throws -> AXUIElement {
 }
 // Refs are positions, and an app can re-lay its tree between reads (Calculator swaps AC for C): the caller names the
 // label it read, so a moved ref is refused instead of acting on a neighbour.
-func expectLabel(_ e: AXUIElement, _ r: [String: Any]) throws -> String { let lab = label(e); try expectMatch(lab, r); return lab }
+func expectLabel(_ e: AXUIElement, _ r: [String: Any]) throws -> String { try expectMatch(label(e), r); return label(e, cut: nil) }
 func expectMatch(_ lab: String, _ r: [String: Any]) throws {
   guard let want = r["expect"] as? String, !want.isEmpty else {
     throw Fail(msg: "expect missing: pass the element's label from tree, so a moved ref is refused") }
@@ -107,9 +112,12 @@ func checkGen(_ a: NSRunningApplication, _ r: [String: Any]) throws {
   if let g = r["gen"] as? String, g != gen(a) {
     throw Fail(msg: "stale: \(a.bundleIdentifier ?? "") restarted since the tree was read (gen \(g) → \(gen(a)))") }
 }
-// A browser is admitted only while its focused page is on the browser host allow-list (harbor chrome's list).
-func browserGate(_ a: NSRunningApplication) throws {
-  guard browsers.contains(a.bundleIdentifier ?? "") else { return }
+func isBrowser(_ a: NSRunningApplication) -> Bool { browsers.contains(a.bundleIdentifier ?? "") }
+func hostAllowed(_ h: String) -> Bool { hosts.contains(where: { h == $0 || h.hasSuffix("." + $0) }) }
+// A browser is admitted only while the page in the window acted on (default: the focused one, where keys and text
+// land) is on the browser host allow-list (harbor chrome's list). A ref names its own window (review F4).
+func browserGate(_ a: NSRunningApplication, window: AXUIElement? = nil, wait: Bool = true) throws {
+  guard isBrowser(a) else { return }
   var url: String? = nil
   func walk(_ e: AXUIElement, _ d: Int) {
     if url != nil || d > 30 { return }
@@ -117,19 +125,23 @@ func browserGate(_ a: NSRunningApplication) throws {
     for k in kids(e) { walk(k, d + 1) }
   }
   let ra = root(a)
-  if let w = attr(ra, kAXFocusedWindowAttribute) { walk(w as! AXUIElement, 0) }
-  if url == nil {  // Chromium builds its web tree only when an assistive client asks; ask, then look again
+  func look() { if let w = window ?? attr(ra, kAXFocusedWindowAttribute).map({ $0 as! AXUIElement }) { walk(w, 0) } }
+  look()
+  if url == nil && wait {  // Chromium builds its web tree only when an assistive client asks; ask, then look again
     AXUIElementSetAttributeValue(ra, "AXManualAccessibility" as CFString, kCFBooleanTrue)
     AXUIElementSetAttributeValue(ra, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
-    for _ in 0..<8 where url == nil {  // the tree builds asynchronously: up to 2 s
-      usleep(250_000)
-      if let w = attr(ra, kAXFocusedWindowAttribute) { walk(w as! AXUIElement, 0) }
-    }
+    for _ in 0..<8 where url == nil { usleep(250_000); look() }  // the tree builds asynchronously: up to 2 s
   }
   guard let u = url, let h = URL(string: u)?.host?.lowercased() else {
     throw Fail(msg: "refused: cannot read the browser's page address, so the host allow-list cannot be checked") }
-  if !hosts.contains(where: { h == $0 || h.hasSuffix("." + $0) }) {
+  if !hostAllowed(h) {
     throw Fail(msg: "refused: \(h) is not on the browser host allow-list (contracts/browser-agent-hosts.txt)") }
+}
+// The window a ref sits in: its first step from the app root, when that is a window.
+func refWindow(_ a: NSRunningApplication, _ ref: String) -> AXUIElement? {
+  guard let i = ref.split(separator: ".").first.flatMap({ Int($0) }) else { return nil }
+  let k = kids(root(a))
+  return i >= 0 && i < k.count && str(k[i], kAXRoleAttribute) == "AXWindow" ? k[i] : nil
 }
 func liveWord(_ s: String) -> String? {
   let l = s.lowercased()
@@ -146,17 +158,26 @@ func gate(_ text: String, _ r: [String: Any]) throws {
 
 func tree(_ a: NSRunningApplication, _ r: [String: Any]) -> [String: Any] {
   let maxDepth = (r["depth"] as? Int) ?? 14, cap = (r["max"] as? Int) ?? 1500
-  var lines: [String] = [], n = 0
-  let ra = root(a)
+  var lines: [String] = [], n = 0, deeper = false
+  let ra = root(a), browser = isBrowser(a)
+  if browser {  // build every window's web tree once, so each window is checked without its own 2 s wait
+    AXUIElementSetAttributeValue(ra, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+    AXUIElementSetAttributeValue(ra, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+    usleep(1_000_000)
+  }
   if (r["enhance"] as? Bool) == true {  // Chromium/Electron build their tree only when asked
     AXUIElementSetAttributeValue(ra, "AXManualAccessibility" as CFString, kCFBooleanTrue)
     AXUIElementSetAttributeValue(ra, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
     usleep(300_000)
   }
   func walk(_ e: AXUIElement, _ ref: String, _ d: Int) {
-    if n >= cap || d > maxDepth { return }
+    if n >= cap || d > maxDepth { deeper = deeper || d > maxDepth; return }
     n += 1
     let role = str(e, kAXRoleAttribute) ?? "?"
+    if browser && d == 1 && role == "AXWindow" {  // each browser window is read only while its page is allowed
+      if (try? browserGate(a, window: e, wait: false)) == nil {  // the refused page's host is not named either
+        lines.append(" \(ref) AXWindow (not read: its page is off the browser host list or unreadable)"); return }
+    }
     let acts = actions(e).filter { $0.hasPrefix("AX") && !["AXScrollToVisible", "AXShowDefaultUI", "AXShowAlternateUI"].contains($0) }
     let lab = label(e)
     if !(lab.isEmpty && acts.isEmpty && ["AXGroup", "AXUnknown", "AXSplitGroup", "AXLayoutArea"].contains(role)) {
@@ -166,13 +187,13 @@ func tree(_ a: NSRunningApplication, _ r: [String: Any]) -> [String: Any] {
     for (i, k) in kids(e).enumerated() { walk(k, ref.isEmpty ? "\(i)" : "\(ref).\(i)", d + 1) }
   }
   walk(ra, "", 0)
-  return ["gen": gen(a), "nodes": n, "truncated": n >= cap, "tree": lines.joined(separator: "\n")]
+  return ["gen": gen(a), "nodes": n, "truncated": n >= cap || deeper, "tree": lines.joined(separator: "\n")]
 }
 
 let backgroundActions: Set<String> = ["AXPress", "AXShowMenu", "AXIncrement", "AXDecrement", "AXConfirm",
                                       "AXCancel", "AXPick", "AXOpen"]
 func act(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: Any] {
-  try checkGen(a, r); try browserGate(a)
+  try checkGen(a, r); try browserGate(a, window: refWindow(a, (r["ref"] as? String) ?? ""))
   let name = (r["action"] as? String) ?? "AXPress"
   if !backgroundActions.contains(name) && (r["foreground"] as? Bool) != true {
     throw Fail(msg: "refused: \(name) may take focus; pass foreground to allow it") }
@@ -182,10 +203,10 @@ func act(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: Any] 
   let b = (front(), pointer())
   let err = AXUIElementPerformAction(e, name as CFString)
   if err != .success { throw Fail(msg: "\(name) failed: AXError \(err.rawValue)") }
-  return ["done": name, "label": lab].merging(evidence(b)) { x, _ in x }
+  return ["done": name, "label": String(lab.prefix(240))].merging(evidence(b)) { x, _ in x }
 }
 func setValue(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: Any] {
-  try checkGen(a, r); try browserGate(a)
+  try checkGen(a, r); try browserGate(a, window: refWindow(a, (r["ref"] as? String) ?? ""))
   let e = try resolve(a, (r["ref"] as? String) ?? "")
   let lab = try expectLabel(e, r)
   try gate(lab, r)  // a checkbox or switch set by value is a press by another name
@@ -233,9 +254,10 @@ func typeText(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: 
   guard let text = r["text"] as? String else { throw Fail(msg: "text missing") }
   try typeGate(text)
   let b = (front(), pointer())
-  for var u in text.utf16 {
+  for (i, var u) in text.utf16.enumerated() {
     for down in [true, false] {
-      guard let ev = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: down) else { continue }
+      guard let ev = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: down) else {
+        throw Fail(msg: "type stopped: no key event for UTF-16 unit \(i) of \(text.utf16.count); the text is partly typed") }
       ev.keyboardSetUnicodeString(stringLength: 1, unicodeString: &u)
       ev.postToPid(a.processIdentifier)
     }
@@ -265,6 +287,13 @@ func key(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: Any] 
 }
 
 // ── screenshots of one window, without raising it ──
+func pruneShots(_ dir: String) {  // a day of shots is kept; older ones go (review F9)
+  let fm = FileManager.default, old = Date().addingTimeInterval(-86_400)
+  for f in (try? fm.contentsOfDirectory(atPath: dir)) ?? [] where f.hasPrefix("shot-") && f.hasSuffix(".png") {
+    let p = dir + "/" + f
+    if let m = (try? fm.attributesOfItem(atPath: p))?[.modificationDate] as? Date, m < old { try? fm.removeItem(atPath: p) }
+  }
+}
 func shot(_ a: NSRunningApplication, _ r: [String: Any], _ dir: String) throws -> [String: Any] {
   let sem = DispatchSemaphore(value: 0)
   var out: Result<[String: Any], Error> = .failure(Fail(msg: "no result"))
@@ -277,6 +306,13 @@ func shot(_ a: NSRunningApplication, _ r: [String: Any], _ dir: String) throws -
       let pick = want.flatMap { t in ws.first { ($0.title ?? "").lowercased().contains(t) } }
         ?? ws.max { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }
       guard let w = pick else { throw Fail(msg: "no window to capture") }
+      if isBrowser(a) {  // the captured window's own page must pass the host gate (review F4)
+        let same = kids(root(a)).filter { str($0, kAXRoleAttribute) == "AXWindow" && (str($0, kAXTitleAttribute) ?? "") == (w.title ?? "") }
+        guard same.count == 1, ws.filter({ ($0.title ?? "") == (w.title ?? "") }).count == 1 else {
+          throw Fail(msg: "refused: the browser window's title is not unique, so its page host cannot be checked") }
+        try browserGate(a, window: same[0])
+      }
+      pruneShots(dir)
       let f = SCContentFilter(desktopIndependentWindow: w)
       let cfg = SCStreamConfiguration()
       cfg.width = Int(w.frame.width * CGFloat(f.pointPixelScale))
@@ -303,7 +339,8 @@ func shot(_ a: NSRunningApplication, _ r: [String: Any], _ dir: String) throws -
 func scriptDeny(_ src: String) throws {
   let l = src.lowercased()
   for id in hardDeny where l.contains(id.lowercased()) { throw Fail(msg: "refused: the script names \(id), on the hard deny list") }
-  for n in hardDenyNames where l.contains("\"\(n)\"") || l.contains("'\(n)'") {
+  for n in hardDenyNames where l.contains("\"\(n)\"") || l.contains("'\(n)'")
+    || l.contains("\"\(n).app") || l.contains("'\(n).app") || l.contains("/\(n).app") {
     throw Fail(msg: "refused: the script names \(n), on the hard deny list") }
 }
 func script(_ r: [String: Any]) throws -> [String: Any] {
@@ -347,10 +384,23 @@ func shortcuts(_ r: [String: Any]) throws -> [String: Any] {
 
 // ── dispatch ──
 var state = ""
-func audit(_ verb: String, _ r: [String: Any], _ ok: Bool, _ msg: String) {
-  let line = "\(ISO8601DateFormatter().string(from: Date()))\t\(verb)\t\((r["bundle"] as? String) ?? "-")\t\(ok ? "ok" : "refused")\t\(msg.prefix(160).replacingOccurrences(of: "\t", with: " ").replacingOccurrences(of: "\n", with: " "))\n"
-  if let h = FileHandle(forWritingAtPath: state + "/audit.tsv") { h.seekToEndOfFile(); h.write(line.data(using: .utf8)!); h.closeFile() }
-  else { FileManager.default.createFile(atPath: state + "/audit.tsv", contents: line.data(using: .utf8)) }
+func oneLine(_ s: String, _ n: Int) -> String {
+  String(s.prefix(n)).replacingOccurrences(of: "\t", with: " ").replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "\r", with: " ")
+}
+// What a row is about: the app, or for a script its source and for a Shortcut its name (review F8).
+func subject(_ verb: String, _ r: [String: Any]) -> String {
+  if verb == "script" { return "script:" + oneLine((r["source"] as? String) ?? "", 120) }
+  if verb == "shortcuts" { return (r["name"] as? String).map { "shortcut:" + oneLine($0, 80) } ?? "shortcuts:list" }
+  return (r["bundle"] as? String).map { oneLine($0, 120) } ?? "-"
+}
+// Appends with O_APPEND (never truncates); returns false when the row could not be written (review F21).
+func audit(_ verb: String, _ r: [String: Any], _ ok: Bool, _ msg: String) -> Bool {
+  let line = "\(ISO8601DateFormatter().string(from: Date()))\t\(verb)\t\(subject(verb, r))\t\(ok ? "ok" : "refused")\t\(oneLine(msg, 160))\n"
+  let fd = open(state + "/audit.tsv", O_WRONLY | O_APPEND | O_CREAT, 0o600)
+  if fd < 0 { return false }
+  defer { close(fd) }
+  let d = Data(line.utf8)
+  return d.withUnsafeBytes { write(fd, $0.baseAddress, d.count) } == d.count
 }
 func handle(_ r: [String: Any]) -> [String: Any] {
   let verb = (r["verb"] as? String) ?? ""
@@ -360,7 +410,7 @@ func handle(_ r: [String: Any]) -> [String: Any] {
     case "doctor":
       res = ["version": version, "pid": getpid(), "path": Bundle.main.bundlePath,
              "accessibility": AXIsProcessTrusted(), "screen_recording": CGPreflightScreenCaptureAccess(),
-             "allowed": allowed.sorted(), "words": words.count, "hosts": hosts.count, "front": front()]
+             "allowed": allowed.sorted(), "missing": missing, "words": words.count, "hosts": hosts.count, "front": front()]
     case "request-access":
       let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
       res = ["accessibility": AXIsProcessTrustedWithOptions(opts), "screen_recording": CGRequestScreenCaptureAccess()]
@@ -374,24 +424,24 @@ func handle(_ r: [String: Any]) -> [String: Any] {
       res = ["gen": gen(a), "windows": kids(root(a)).enumerated().compactMap { i, w in
         str(w, kAXRoleAttribute) == "AXWindow" ? "\(i) \"\(str(w, kAXTitleAttribute) ?? "")\"\(str(w, kAXMinimizedAttribute) == "1" ? " minimized" : "")" : nil
       }.joined(separator: "\n")]
-    case "tree": let a = try app((r["bundle"] as? String) ?? ""); try browserGate(a); res = tree(a, r)
+    case "tree": res = tree(try app((r["bundle"] as? String) ?? ""), r)
     case "action": res = try act(try app((r["bundle"] as? String) ?? ""), r)
     case "set-value": res = try setValue(try app((r["bundle"] as? String) ?? ""), r)
     case "menu": res = try menu(try app((r["bundle"] as? String) ?? ""), r)
     case "type": res = try typeText(try app((r["bundle"] as? String) ?? ""), r)
     case "key": res = try key(try app((r["bundle"] as? String) ?? ""), r)
-    case "shot": let a = try app((r["bundle"] as? String) ?? ""); try browserGate(a); res = try shot(a, r, state)
+    case "shot": res = try shot(try app((r["bundle"] as? String) ?? ""), r, state)
     case "script": res = try script(r)
     case "shortcuts": res = try shortcuts(r)
     default: throw Fail(msg: "unknown verb '\(verb)'")
     }
     if !["doctor", "apps", "windows", "tree", "shot"].contains(verb) || r["confirmed"] as? Bool == true {
-      audit(verb, r, true, (res["label"] as? String) ?? (res["path"] as? String) ?? "") }
+      if !audit(verb, r, true, (res["label"] as? String) ?? (res["path"] as? String) ?? "") { res["audit"] = "write failed: \(state)/audit.tsv" } }
     res["ok"] = true
     return res
   } catch {
     let m = (error as? Fail)?.msg ?? "\(error)"
-    if !["doctor", "apps"].contains(verb) { audit(verb, r, false, m) }
+    if !["doctor", "apps"].contains(verb) && !audit(verb, r, false, m) { return ["ok": false, "error": m, "audit": "write failed: \(state)/audit.tsv"] }
     return ["ok": false, "error": m]
   }
 }
@@ -466,6 +516,14 @@ func selftest(_ cfg: [String: String]) -> Never {
   check("a JXA script naming Keychain Access is refused", refused { try scriptDeny("Application('Keychain Access').activate()") }.contains("hard deny"))
   check("a script naming a denied bundle id is refused", refused { try scriptDeny("tell application id \"com.apple.Terminal\" to quit") }.contains("hard deny"))
   check("a script for TextEdit passes", refused { try scriptDeny("tell application \"TextEdit\" to get name of front document") } == "")
+  check("a live word past the display cut still asks", refused { try gate(labelOf([String(repeating: "x", count: 200) + " Delete"], cut: nil), [:]) }.contains("live change refused"))
+  hosts = ["example.com"]
+  check("a listed host and its subdomain pass", hostAllowed("example.com") && hostAllowed("a.example.com"))
+  check("a lookalike host is refused", !hostAllowed("badexample.com"))
+  check("a script row names its source, whatever bundle it carries", subject("script", ["source": "beep\n2", "bundle": "x"]) == "script:beep 2")
+  check("a Shortcut row names it", subject("shortcuts", ["name": "Make GIF"]) == "shortcut:Make GIF")
+  check("a bundle cannot forge a row", !subject("key", ["bundle": "a\tb\nc"]).contains(where: { $0 == "\t" || $0 == "\n" }))
+  check("a script naming Terminal.app by path is refused", refused { try scriptDeny("tell application \"/System/Applications/Utilities/Terminal.app\" to quit") }.contains("hard deny"))
   let keep = words; words = []
   check("an empty word list refuses every guarded call", refused { try gate("Seven", [:]) }.contains("missing or empty"))
   words = keep

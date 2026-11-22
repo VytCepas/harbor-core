@@ -10,8 +10,8 @@
 # Screen Recording and Automation grants to the app's signature: a copy elsewhere is a new app.
 # WHY AN IDENTITY: an ad-hoc signature is the binary's hash, so every rebuild was a new app to macOS and lost its grants
 # (measured 2026-11-21: Accessibility true → false across one rebuild). Signed with one certificate, the app keeps its
-# designated requirement (identifier + certificate) across rebuilds. The certificate is self-signed and local: it is
-# never trusted system-wide and signs nothing else.
+# designated requirement (identifier + certificate) across rebuilds. The certificate is self-signed and local and is
+# never trusted system-wide; -T lets codesign use its key without a prompt, any other tool still gets the keychain's.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 . "$here/library-log.sh"
@@ -56,12 +56,15 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 </dict></plist>
 PLIST
 if security find-identity -p codesigning 2>/dev/null | grep -q "\"$ident\""; then
-  codesign --force --sign "$ident" --identifier dev.harbor.desktop "$app" 2>/dev/null
+  codesign --force --sign "$ident" --identifier dev.harbor.desktop "$app" 2>"$work/sign.err" ||
+    { log_fail "codesign failed: $(tr '\n' ' ' < "$work/sign.err")"; log_fix "sh bin/access-desktop-build.sh --make-identity"; log_end || :; exit 1; }
   log_ok "signed with $ident: grants survive rebuilds"
 else
-  codesign --force --sign - --identifier dev.harbor.desktop "$app" 2>/dev/null
+  codesign --force --sign - --identifier dev.harbor.desktop "$app" 2>"$work/sign.err" ||
+    { log_fail "codesign failed: $(tr '\n' ' ' < "$work/sign.err")"; log_nofix "harbor#1440"; log_end || :; exit 1; }
   log_warn "no '$ident' identity: ad-hoc signed, so macOS drops the grants on every rebuild"
   log_fix "sh bin/access-desktop-build.sh --make-identity"
 fi
-if codesign --verify "$app" 2>/dev/null; then log_ok "built: $app"; else log_fail "signature does not verify: $app"; log_fix "sh bin/access-desktop-build.sh"; fi
+if codesign --verify "$app" 2>"$work/verify.err"; then log_ok "built: $app"
+else log_fail "signature does not verify: $app: $(tr '\n' ' ' < "$work/verify.err")"; log_fix "sh bin/access-desktop-build.sh"; fi
 log_end

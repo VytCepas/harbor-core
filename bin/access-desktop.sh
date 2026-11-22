@@ -40,7 +40,8 @@ ensure() {
   [ -n "$priv" ] && bundles="$bundles:$priv/desktop-bundles.txt" && hosts="$hosts:$priv/browser-hosts.txt"
   # -g: never brought forward; -j: launched hidden; LaunchServices makes the app its own responsible process.
   open -g -j -a "$app" --args serve "$sock" "bundles=$bundles" "words=$root/contracts/live-change-words.txt" \
-    "hosts=$hosts" "idle=${HARBOR_ACCESS_DESKTOP_IDLE:-900}"
+    "hosts=$hosts" "idle=${HARBOR_ACCESS_DESKTOP_IDLE:-900}" ||
+    { log_fail "LaunchServices could not open $app"; log_fix "sh bin/access-desktop-build.sh"; log_end || :; exit 3; }
   i=0; while [ $i -lt 50 ]; do alive && return 0; i=$((i + 1)); sleep 0.1; done
   log_fail "helper did not answer on $sock within 5 s"; log_nofix "harbor#1440"; log_end || :; exit 3
 }
@@ -52,7 +53,9 @@ args='{}'; confirm=false
 for a in "$@"; do case "$a" in --confirm) confirm=true ;; *) args="$a" ;; esac; done
 case "$verb" in
   ensure) ensure; ask '{"verb":"doctor"}'; exit 0 ;;
-  stop) [ -S "$sock" ] && pkill -f "HarborDesktop.app/Contents/MacOS/HarborDesktop serve $sock" || true; rm -f "$sock"; log_ok stopped; log_end; exit $? ;;
+  stop)
+    if pkill -f "HarborDesktop.app/Contents/MacOS/HarborDesktop serve $sock"; then log_ok stopped; else log_ok "not running"; fi
+    rm -f "$sock"; log_end; exit $? ;;
   doctor|request-access|reload|apps|windows|tree|shot|action|set-value|menu|type|key|script|shortcuts) ;;
   *) log_fail "unknown verb '$verb'"; log_fix "sh bin/access-desktop.sh --help"; log_end || :; exit 64 ;;
 esac

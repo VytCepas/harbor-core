@@ -80,9 +80,11 @@ EOF
 fi
 
 t_section "the helper's policy (a Mac with swiftc only)"
-if [ "$(uname)" != Darwin ] || ! command -v swiftc >/dev/null 2>&1; then
-  echo "  SKIP helper: not a Mac with swiftc"
+if [ "$(uname)" != Darwin ]; then
+  echo "  SKIP helper: not a Mac (the helper is macOS only)"
   t_pass
+elif ! command -v swiftc >/dev/null 2>&1; then
+  t_fail "swiftc is missing on a Mac, so the helper's policy went untested (xcode-select --install)"
 else
   B="$T_TMP/build"; mkdir -p "$B/mc"
   build() { swiftc -O -swift-version 5 -module-cache-path "$B/mc" -o "$B/$2" "$1" >/dev/null 2>&1; }
@@ -108,6 +110,8 @@ else
     mutant "Space ungated" 's/\["return", "enter", "space"\]/["return", "enter"]/'
     mutant "a typed line break passes" 's/if text.contains(where: {/if false \&\& text.contains(where: {/'
     mutant "a script names a denied app" 's/for n in hardDenyNames where/for n in [String]() where/'
+    mutant "the gate reads a cut label" 's/parts.map { p in cut.map { String(p.prefix($0)) } ?? p }/parts.map { p in String(p.prefix(cut ?? 120)) }/'
+    mutant "a lookalike host passes" 's/h == $0 || h.hasSuffix("." + $0)/h.hasSuffix($0)/'
   else t_fail "the helper did not compile"; fi
 fi
 t_done
