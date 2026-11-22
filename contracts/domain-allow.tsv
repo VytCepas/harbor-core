@@ -125,3 +125,4 @@ docs/reference/registers.md	bq	a generated index of harbor's own files: it lists
 skills/skill-catalog/SKILL.md	bigquery	a generated index of harbor's own files: it lists the log sink's scripts, registers and suites by name (harbor#1278, release 2 decision "Log scope")
 standards/naming/kit.tsv	bq	harbor logic: the kit rows name harbor's own log-schema registers contracts/bq-schema.tsv and bq-values.tsv
 vendor/naming/registry/kit.tsv	bq	the vendored copy of the naming kit rows that name harbor's own log sink registers (harbor#1278)
+docs/reference/citations.md	tiktok	the citation register lists every hostname a private-layer card cites (doc.urls-cited), and this hostname carries the name

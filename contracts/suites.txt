@@ -132,6 +132,7 @@ tests/drift/launchd-wall/launchd-wall.test.sh
 tests/drift/wall/wall.test.sh
 tests/admission/confinement/covered.test.sh
 tests/access/chrome/mcp.test.sh
+tests/access/desktop/desktop.test.sh
 tests/access/chrome/session.test.sh
 tests/access/chrome/hidden.test.sh
 tests/access/chrome/click-text.test.sh
@@ -139,6 +140,7 @@ tests/access/chrome/script.test.sh
 tests/access/chrome/live-change.test.sh
 tests/access/chrome/benchmark.test.sh
 tests/access/chrome/browser-runner.test.sh
+tests/access/chrome/redact.test.sh
 tests/context/injection-rule/notes.test.sh
 tests/context/injection-rule/agent-brief.test.sh
 tests/context/injection-rule/decision-question.test.sh
@@ -422,6 +424,7 @@ tests/access/cli/stored.test.sh
 tests/access/cli/lifecycle.test.sh
 tests/access/cli/names.test.sh
 tests/access/cli/status-json.test.sh
+tests/access/cli/clipboard.test.sh
 tests/lint/module/rules.test.sh
 tests/lint/module/unchecked.test.sh
 tests/lint/doc-refs/doc-refs.test.sh

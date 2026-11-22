@@ -174,9 +174,11 @@ mkdir -p "$T_TMP/rm/cfg"
 jq '.permissions.allow += ["Bash(ls *)"] | .permissions.ask += ["Bash(rm *)"]' "$T_TMP/real/settings.json" > "$T_TMP/rm/cfg/settings.json"
 _nv="$(jq '[.permissions.allow[], .permissions.ask[] | select(test("^Bash\\((git|gh|cu|gmail-read|gmail-write|gcal-read|gcal-write) "))] | length' "$T_TMP/rm/cfg/settings.json")"
 t_eq "the install wrote rules for every register" yes "$([ "$_nv" -gt 100 ] && echo yes || echo no)"
+t_eq "the install wrote harbor desktop's ask rules" yes "$([ "$(jq '[.permissions.ask[]? | select(startswith("mcp__harbor_desktop__"))] | length' "$T_TMP/rm/cfg/settings.json")" -gt 0 ] && echo yes || echo no)"
 t_has "the dry run lists a rule from each register" "$(env -u CLAUDE_CONFIG_DIR sh "$T_TMP/rm/bin/admission-remove.sh" --dir "$T_TMP/rm/cfg" 2>&1)" "verb-register rule to remove: Bash(gcal-write *)"
 t_exit "the uninstall succeeds" 0 env -u CLAUDE_CONFIG_DIR sh "$T_TMP/rm/bin/admission-remove.sh" --dir "$T_TMP/rm/cfg" --apply
 t_eq "no register rule is left" 0 "$(jq '[.permissions.allow[]?, .permissions.ask[]? | select(test("^Bash\\((git|gh|cu|gmail-read|gmail-write|gcal-read|gcal-write) "))] | length' "$T_TMP/rm/cfg/settings.json")"
+t_eq "no harbor desktop rule is left" 0 "$(jq '[.permissions.allow[]?, .permissions.ask[]? | select(startswith("mcp__harbor_desktop__"))] | length' "$T_TMP/rm/cfg/settings.json")"
 t_eq "a hand-written rule is kept" "Bash(ls *) Bash(rm *)" "$(jq -r '[.permissions.allow[]?, .permissions.ask[]?] | map(select(. == "Bash(ls *)" or . == "Bash(rm *)")) | sort | join(" ")' "$T_TMP/rm/cfg/settings.json")"
 
 t_done

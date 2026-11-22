@@ -1,6 +1,7 @@
 ---
 name: skill-catalog
 description: "The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, each with the path or exact command; most are hidden from your listing and this is the only route to them. USE WHEN you are about to wait on CI or a PR, run a suite, push, merge or do any scripted chore by hand, or do reasoning work by hand: design an eval or a pass^k study, run a red-team pass, chase a root cause, reason from first principles, get independent perspectives, write or optimise a prompt, extract a paper, generate options. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, skill-book (its old name). NOT FOR invoking a skill already in your listing."
+reach: reasoning
 ---
 
 <!-- generated-by: sh bin/skill-catalog.sh -->
@@ -150,7 +151,7 @@ checkout (`~/port/harbor`) or your worktree of it.
 | `test-suite-run.sh` | you run suites: this carries the idle and hard timeouts and the CPU governor, a suite run by hand has neither | `sh ~/port/harbor/bin/test-suite-run.sh --select [<suite-or-path>...]` |
 | `test-suite-select.sh` | you want to know which suites your changeset must run, and why | `sh ~/port/harbor/bin/test-suite-select.sh --list` |
 | `doc-fresh-verify.sh` | you want to know in seconds whether every generated file is current, and the fix for a stale one | `sh ~/port/harbor/bin/doc-fresh-verify.sh` |
-| `doc-lithuanian-rewrite.sh` | Lithuanian text is about to go to a person and must read as a colleague wrote it, with every identifier, number and apostrophe term kept | `sh ~/port/harbor/bin/doc-lithuanian-rewrite.sh [--model haiku\|sonnet] [FILE] (stdin when no FILE; prints the text to use; exit 0 rewritten, 3 original kept, 2 usage)` |
+| `doc-lithuanian-rewrite.sh` | Lithuanian text is about to go to a person and must read as a colleague wrote it, with every identifier, number and apostrophe term kept | `sh ~/port/harbor/bin/doc-lithuanian-rewrite.sh [--model haiku\|sonnet] [FILE] (stdin when no FILE; prints the text to use only on exit 0; 3 original kept and nothing printed, 2 usage)` |
 | `gate-register-derive.sh` | pre-push says the protected-paths register is stale | `sh ~/port/harbor/bin/gate-register-derive.sh --write` |
 | `gate-codeowners.sh` | pre-push says .github/CODEOWNERS is stale | `sh ~/port/harbor/bin/gate-codeowners.sh --write` |
 | `standard-vendor.sh` | pre-push says the vendored naming package differs from the registers | `sh ~/port/harbor/bin/standard-vendor.sh .` |
@@ -238,7 +239,7 @@ does not carry the path sends you back to the top.
 - `test-suite-run.sh` — you run suites: this carries the idle and hard timeouts and the CPU governor, a suite run by hand has neither — `sh ~/port/harbor/bin/test-suite-run.sh --select [<suite-or-path>...]`
 - `test-suite-select.sh` — you want to know which suites your changeset must run, and why — `sh ~/port/harbor/bin/test-suite-select.sh --list`
 - `doc-fresh-verify.sh` — you want to know in seconds whether every generated file is current, and the fix for a stale one — `sh ~/port/harbor/bin/doc-fresh-verify.sh`
-- `doc-lithuanian-rewrite.sh` — Lithuanian text is about to go to a person and must read as a colleague wrote it, with every identifier, number and apostrophe term kept — `sh ~/port/harbor/bin/doc-lithuanian-rewrite.sh [--model haiku|sonnet] [FILE] (stdin when no FILE; prints the text to use; exit 0 rewritten, 3 original kept, 2 usage)`
+- `doc-lithuanian-rewrite.sh` — Lithuanian text is about to go to a person and must read as a colleague wrote it, with every identifier, number and apostrophe term kept — `sh ~/port/harbor/bin/doc-lithuanian-rewrite.sh [--model haiku|sonnet] [FILE] (stdin when no FILE; prints the text to use only on exit 0; 3 original kept and nothing printed, 2 usage)`
 - `gate-register-derive.sh` — pre-push says the protected-paths register is stale — `sh ~/port/harbor/bin/gate-register-derive.sh --write`
 - `gate-codeowners.sh` — pre-push says .github/CODEOWNERS is stale — `sh ~/port/harbor/bin/gate-codeowners.sh --write`
 - `standard-vendor.sh` — pre-push says the vendored naming package differs from the registers — `sh ~/port/harbor/bin/standard-vendor.sh .`
