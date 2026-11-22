@@ -16,6 +16,9 @@
 #   harbor access rotate <id> [--value-stdin] [--locked]   a new value, kept only if the entry's check passes on it
 #   harbor access add|rotate … --value-clipboard   the value from the clipboard, never shown: the protocol for a key a
 #                                         page displays once (Copy on the page, then this); the clipboard is emptied after
+#   harbor access add|rotate … --value-oauth --oauth-authorize URL --oauth-token URL --oauth-client-id ID
+#                          --oauth-client-ref REF   a token from an OAuth consent in the agent Chrome; code and token never
+#                                         shown (bin/access-oauth.sh --help has the rest of the --oauth-* flags)
 #
 # A PIPED VALUE IS CHECKED BEFORE IT IS STORED (harbor#978, measured 2026-11-13: a clipboard copy put four characters and a
 # space in front of an ad platform's app secret). With --value-stdin, add and rotate trim surrounding whitespace and newlines and refuse
@@ -63,7 +66,7 @@ LINT_NAME="${ACCESS_LINT_NAME:-$SRC/lint-name.sh}"
 MEMBER_MODE=0; [ ! -f "$SRC/harbor-member-mode" ] || [ -L "$SRC/harbor-member-mode" ] || MEMBER_MODE=1   # as bin/secret reads it
 
 fail() { log_fail "$1"; log_fix "$2"; log_end || :; exit "${3:-1}"; }
-usage() { sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 # The register file: <access dir>/register.md. Empty stdout and exit 1 when there is no register directory.
 register_file() {
@@ -193,6 +196,14 @@ value_clean() {
 
 renames_fix() { printf 'fix the renames row of %s: its new name must pass lint-name.sh --check secret' "$1"; }
 
+# The compliant id of a token or app entry (harbor#1604): <service>-<purpose>-<identity>, its service and identity read
+# off the D-36 ref when there is one; the purpose stays the caller's, since a ref's purpose (ads-read) is not an entry's.
+entry_fix() { # <ref or none>
+  __p="$(sh "$LINT_NAME" --parse secret "$1" 2>/dev/null)" || __p=''
+  __svc="$(printf '%s\n' "$__p" | sed -n 's/^service=//p')"; __idn="$(printf '%s\n' "$__p" | sed -n 's/^identity=//p')"
+  printf 'name it <service>-<purpose>-<identity>: sh %s --render access-entry service=%s purpose=<use> identity=%s' "$LINT_NAME" "${__svc:-<vendor>}" "${__idn:-<account or client>}"
+}
+
 # The compliant vendor-side name for a ref's service: <ORG> API <Platform>, rendered by the grammar.
 vendor_fix() { # <ref or none>
   __svc="$(sh "$LINT_NAME" --parse secret "$1" 2>/dev/null | sed -n 's/^service=//p')" || __svc=''
@@ -293,6 +304,15 @@ cmd_check() {
     [ "$__vr" = 1 ] || continue
     log_fail "${__rf##*/} $_vi: vendor-name $(sed -n 's/^  FAIL: //p' "$__tmp/vout" | head -1)"; log_fix "rename it on the vendor, then fix vendor-name: in $__rf"; __bad=1
   done < "$__tmp/vnames"
+  # A token or app id is judged as add judges it (harbor#1604), so a hand-added entry is held to the same grammar.
+  awk -F'\t' -v vk=" $VENDOR_KINDS " '$1 == "R" && $3 == "kind" && index(vk, " " $4 " ") { print $2 }' "$__tmp/rows" > "$__tmp/eids"
+  while IFS= read -r _ei; do
+    [ -n "$_ei" ] || continue
+    [ -f "$LINT_NAME" ] || { log_warn "no $LINT_NAME: the id $_ei was not judged"; continue; }
+    __er=0; sh "$LINT_NAME" --check access-entry "$_ei" > "$__tmp/eout" 2>&1 || __er=$?
+    [ "$__er" = 1 ] || continue
+    log_fail "${__rf##*/} $_ei: id $(sed -n 's/^  FAIL: //p' "$__tmp/eout" | head -1)"; log_fix "rename the entry to <service>-<purpose>-<identity> in $__rf, with an access-entry row in <access>/renames.tsv"; __bad=1
+  done < "$__tmp/eids"
   # A value that looks like a credential. The line is reported, never the value.
   if [ -f "$PATTERNS" ]; then
     awk -F'\t' '/^[[:space:]]*(#|$)/ { next } $1 == "id" { next } NF >= 2 { print $2 }' "$PATTERNS" > "$__tmp/pats"
@@ -440,6 +460,7 @@ cmd_add() {
   else
     [ "$REFNAME" = none ] || name_gate secret "$REFNAME" secret_fix "$REFNAME"
     case " $VENDOR_KINDS " in *" $KIND "*)
+      name_gate access-entry "$ID" entry_fix "$REFNAME"
       [ -n "$VNAME" ] || fail "a $KIND entry names the credential as the vendor shows it, and --vendor-name is missing" "$(vendor_fix "$REFNAME")" 2 ;;
     esac
     [ -z "$VNAME" ] || name_gate vendor-credential "$VNAME" vendor_fix "$REFNAME"
@@ -826,6 +847,11 @@ fi
 # --value-clipboard (contracts/secret-intake.md): add and rotate take the value from the clipboard, piped into this same
 # command's --value-stdin, so it is never typed, never on a screen, never argv and never a file. The clipboard is emptied
 # after, whatever the outcome: a credential left there is one paste from a chat window.
+# --value-oauth (contracts/secret-intake.md): the value is a token from an OAuth consent; access-oauth.sh takes the code
+# on loopback, exchanges it and pipes the token back into this command's --value-stdin.
+case "$VERB" in add|rotate)
+  for _a in "$@"; do [ "$_a" != --value-oauth ] || exec sh "$SRC/access-oauth.sh" "$VERB" "$@"; done ;;
+esac
 case "$VERB" in add|rotate)
   _vc=0; _vs=0
   for _a in "$@"; do case "$_a" in --value-clipboard) _vc=1 ;; --value-stdin) _vs=1 ;; esac; done

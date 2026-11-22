@@ -45,7 +45,8 @@ case "$SECRET" in *'#'*) withheld "the SECRET list holds '#', this filter's sed 
 # Line-buffered, so a streamed log line is not held until exit (GNU -u, BSD -l).
 SEDU=''
 if sed -u q </dev/null >/dev/null 2>&1; then SEDU=-u; elif sed -l q </dev/null >/dev/null 2>&1; then SEDU=-l; fi
-URLP='access_token|id_token|refresh_token|client_secret|api_?key|apikey|password|passwd|secret|token'
+# code: an OAuth authorization code in a redirect (harbor#1597); access-oauth.sh keeps it off any page, this masks a stray one.
+URLP='access_token|id_token|refresh_token|client_secret|api_?key|apikey|password|passwd|secret|token|code|auth_code'
 # Two delimiters: the SECRET list holds no '#', the URL rule's class does, and holds no '%'.
 E1="s#$SECRET#[REDACTED]#g"
 E2="s%([?&;#](${URLP})=)[^&#[:space:]\"'<>)]+%\\1[REDACTED]%g"

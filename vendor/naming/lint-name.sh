@@ -669,6 +669,13 @@ function secret_check(subj, name,   r) {
   r = tmatch("secret", name, "")
   if (r != "") emit(SRULE["secret"], subj, shape_msg("secret", r))
 }
+# harbor#1604: a token or app entry of the access register is <service>-<purpose>-<identity>, lowercase kebab, so the
+# register lists one tuple order and an id says which vendor, what for and whose before the entry is opened.
+function entry_check(subj, name,   r) {
+  if (name !~ /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/) { emit(SRULE["access-entry"], subj, shape_msg("access-entry", "an access entry id is lowercase kebab, letters and digits, never an email: " q(name))); return }
+  r = tmatch("access-entry", name, "")
+  if (r != "") emit(SRULE["access-entry"], subj, shape_msg("access-entry", r))
+}
 # harbor#978: the name a credential carries ON the vendor (an API app, key, token, system user, service account) says whose
 # it is: <ORG> API <Platform>[ <Client>], the org in capitals, the platform as its terms.tsv pref spells it.
 function vendor_check(subj, name,   sid, r, k, pre, cl) {
@@ -755,6 +762,7 @@ function check_rec(sf, nm,   p) {
   else if (sf == "commit") commit_check("commit:" nm, nm)
   else if (sf == "branch") branch_check("branch:" nm, nm)
   else if (sf == "secret") secret_check("secret:" nm, nm)
+  else if (sf == "access-entry") entry_check("access-entry:" nm, nm)
   else if (sf == "vendor-credential") vendor_check("vendor-credential:" nm, nm)
   else if (sf == "rule-id" || sf == "check-id") id_check(sf ":" nm, nm, sf)
 }

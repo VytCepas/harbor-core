@@ -100,6 +100,7 @@ standards/naming/controls.tsv	ci-gate	the control register: each control's mode,
 bin/access-browser-agent.sh	installed	derived: called by bin/admission-egress.sh
 bin/access-browser.sh	ship	derived: called by bin/deploy-live-verify.sh
 bin/access-github-app-install.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/access-oauth.sh	operator-run	derived: called by bin/access.sh
 bin/access-redact.sh	installed	derived: called by bin/access-browser-agent.sh
 bin/access.sh	operator-run	derived: called by bin/secret
 bin/admission-api-route.sh	installed	derived: shipped by admission-install.sh
