@@ -33,15 +33,15 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | decision-record | docs/decisions/ | element | source | dated | 96 |
 | hook | hooks/ | component | source | living | 50 |
 | skill | skills/ | component | source | living | 66 |
-| fixture | fixtures/ | element | source | living | 451 |
+| fixture | fixtures/ | element | source | living | 453 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 85 |
-| test | tests/ | component | source | living | 688 |
+| test | tests/ | component | source | living | 689 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 10 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 309 |
+| script | bin/ | component | source | living | 310 |
 | agent | agents/ | component | source | living | 1 |
 | how-to | docs/how-to/ | component | source | living | 7 |
 | reference | docs/reference/ | component | generated | generated | 94 |
@@ -56,12 +56,12 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `agents/` | 1 | 1 | 1 |
-| `bin/` | 313 | 32 | 2 |
+| `bin/` | 314 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 74 | 6 | 1 |
 | `contracts/` | 133 | 15 | 2 |
 | `docs/` | 331 | 26 | 9 |
-| `fixtures/` | 451 | 12 | 1 |
+| `fixtures/` | 453 | 12 | 1 |
 | `hooks/` | 46 | 7 | 1 |
 | `launchd/` | 23 | 10 | 1 |
 | `mods/` | 7 | 1 | 2 |
@@ -74,7 +74,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 688 | 30 | 1 |
+| `tests/` | 689 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -83,7 +83,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 17 | 39 | 2 | 6 | 0 | 13 |
+| access | control-plane | 18 | 40 | 2 | 6 | 0 | 0 |
 | admission | control-plane | 28 | 91 | 0 | 6 | 0 | 179 |
 | agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
@@ -110,7 +110,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | scope | coordination | 14 | 23 | 0 | 1 | 0 | 5 |
 | session | data-plane | 14 | 5 | 0 | 8 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 17 |
-| standard | policy-function | 18 | 29 | 128 | 16 | 14 | 64 |
+| standard | policy-function | 18 | 29 | 128 | 16 | 14 | 65 |
 | status | observability | 14 | 31 | 0 | 13 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
@@ -134,6 +134,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/access-desktop.sh`
 - `bin/access-environment.sh`
 - `bin/access-github-app-install.sh`
+- `bin/access-oauth.sh`
 - `bin/access-redact.sh`
 - `bin/access.sh`
 - `context-rules/user/access-route-pointer.md`
@@ -877,7 +878,7 @@ Files whose family the registry cannot name yet (`build/catalog-findings.tsv` li
 | `context-rules/` | 60 |
 | `contracts/` | 100 |
 | `docs/` | 136 |
-| `fixtures/` | 269 |
+| `fixtures/` | 271 |
 | `hooks/` | 33 |
 | `mods/` | 7 |
 | `patches/` | 10 |

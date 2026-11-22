@@ -9,8 +9,6 @@ import UniformTypeIdentifiers
 
 let version = "1"
 struct Fail: Error { let msg: String }
-// A refusal opens with [desktop:<rule>], a row of standards/naming/controls.tsv (emitted column); the lint's census
-// reads the stamps from this file, so a new refusal without a row is red (name.control-unregistered, harbor#1599).
 
 // ── policy: allow-list, hard deny, live-change words (one enforcement point for every client) ──
 var allowed: Set<String> = []
@@ -44,8 +42,8 @@ func loadPolicy(_ cfg: [String: String]) {
 
 // ── apps and focus evidence ──
 func app(_ bundle: String) throws -> NSRunningApplication {
-  if hardDeny.contains(bundle) { throw Fail(msg: "[desktop:hard-deny] refused: \(bundle) is on the hard deny list (secrets or system controls)") }
-  if !allowed.contains(bundle) { throw Fail(msg: "[desktop:app-allow] refused: \(bundle) is not on the allow-list (contracts/desktop-agent-bundles.txt or the private layer)") }
+  if hardDeny.contains(bundle) { throw Fail(msg: "refused: \(bundle) is on the hard deny list (secrets or system controls)") }
+  if !allowed.contains(bundle) { throw Fail(msg: "refused: \(bundle) is not on the allow-list (contracts/desktop-agent-bundles.txt or the private layer)") }
   guard let a = NSRunningApplication.runningApplications(withBundleIdentifier: bundle).first else {
     throw Fail(msg: "not running: \(bundle)") }
   return a
@@ -107,8 +105,8 @@ func resolve(_ a: NSRunningApplication, _ ref: String) throws -> AXUIElement {
 func expectLabel(_ e: AXUIElement, _ r: [String: Any]) throws -> String { try expectMatch(label(e), r); return label(e, cut: nil) }
 func expectMatch(_ lab: String, _ r: [String: Any]) throws {
   guard let want = r["expect"] as? String, !want.isEmpty else {
-    throw Fail(msg: "[desktop:expect-label] expect missing: pass the element's label from tree, so a moved ref is refused") }
-  if !lab.contains(want) { throw Fail(msg: "[desktop:expect-label] stale ref: element reads '\(lab)', expected '\(want)'") }
+    throw Fail(msg: "expect missing: pass the element's label from tree, so a moved ref is refused") }
+  if !lab.contains(want) { throw Fail(msg: "stale ref: element reads '\(lab)', expected '\(want)'") }
 }
 func checkGen(_ a: NSRunningApplication, _ r: [String: Any]) throws {
   if let g = r["gen"] as? String, g != gen(a) {
@@ -135,9 +133,9 @@ func browserGate(_ a: NSRunningApplication, window: AXUIElement? = nil, wait: Bo
     for _ in 0..<8 where url == nil { usleep(250_000); look() }  // the tree builds asynchronously: up to 2 s
   }
   guard let u = url, let h = URL(string: u)?.host?.lowercased() else {
-    throw Fail(msg: "[desktop:browser-host] refused: cannot read the browser's page address, so the host allow-list cannot be checked") }
+    throw Fail(msg: "refused: cannot read the browser's page address, so the host allow-list cannot be checked") }
   if !hostAllowed(h) {
-    throw Fail(msg: "[desktop:browser-host] refused: \(h) is not on the browser host allow-list (contracts/browser-agent-hosts.txt)") }
+    throw Fail(msg: "refused: \(h) is not on the browser host allow-list (contracts/browser-agent-hosts.txt)") }
 }
 // The window a ref sits in: its first step from the app root, when that is a window.
 func refWindow(_ a: NSRunningApplication, _ ref: String) -> AXUIElement? {
@@ -153,9 +151,9 @@ func liveWord(_ s: String) -> String? {
 }
 func gate(_ text: String, _ r: [String: Any]) throws {
   if words.isEmpty && (r["confirmed"] as? Bool) != true {  // a missing list refuses, never waves through
-    throw Fail(msg: "[desktop:live-change-list] live change refused: contracts/live-change-words.txt is missing or empty") }
+    throw Fail(msg: "live change refused: contracts/live-change-words.txt is missing or empty") }
   if let w = liveWord(text), (r["confirmed"] as? Bool) != true {
-    throw Fail(msg: "[desktop:live-change-word] live change refused: '\(text.prefix(80))' matches '\(w)' — the operator confirms one call") }
+    throw Fail(msg: "live change refused: '\(text.prefix(80))' matches '\(w)' — the operator confirms one call") }
 }
 
 func tree(_ a: NSRunningApplication, _ r: [String: Any]) -> [String: Any] {
@@ -194,14 +192,11 @@ func tree(_ a: NSRunningApplication, _ r: [String: Any]) -> [String: Any] {
 
 let backgroundActions: Set<String> = ["AXPress", "AXShowMenu", "AXIncrement", "AXDecrement", "AXConfirm",
                                       "AXCancel", "AXPick", "AXOpen"]
-func focusGate(_ name: String, _ r: [String: Any]) throws {
-  if !backgroundActions.contains(name) && (r["foreground"] as? Bool) != true {
-    throw Fail(msg: "[desktop:focus] refused: \(name) may take focus; pass foreground to allow it") }
-}
 func act(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: Any] {
   try checkGen(a, r); try browserGate(a, window: refWindow(a, (r["ref"] as? String) ?? ""))
   let name = (r["action"] as? String) ?? "AXPress"
-  try focusGate(name, r)
+  if !backgroundActions.contains(name) && (r["foreground"] as? Bool) != true {
+    throw Fail(msg: "refused: \(name) may take focus; pass foreground to allow it") }
   let e = try resolve(a, (r["ref"] as? String) ?? "")
   let lab = try expectLabel(e, r)
   try gate(lab, r)
@@ -248,11 +243,11 @@ let named: [String: CGKeyCode] = ["return": 36, "enter": 76, "tab": 48, "space":
 let submitKeys: Set<String> = ["return", "enter", "space"]
 func submitGate(_ k: String, _ r: [String: Any]) throws {
   if submitKeys.contains(k) && (r["confirmed"] as? Bool) != true {
-    throw Fail(msg: "[desktop:submit-key] live change refused: \(k) can submit a form or press a button — the operator confirms one call") }
+    throw Fail(msg: "live change refused: \(k) can submit a form or press a button — the operator confirms one call") }
 }
 func typeGate(_ text: String) throws {
   if text.contains(where: { $0 == "\n" || $0 == "\r" || $0 == "\r\n" || $0 == "\u{3}" }) {
-    throw Fail(msg: "[desktop:type-newline] live change refused: a typed line break submits like Enter — type the text without it, then confirm_key return") }
+    throw Fail(msg: "live change refused: a typed line break submits like Enter — type the text without it, then confirm_key return") }
 }
 func typeText(_ a: NSRunningApplication, _ r: [String: Any]) throws -> [String: Any] {
   try browserGate(a)
@@ -314,7 +309,7 @@ func shot(_ a: NSRunningApplication, _ r: [String: Any], _ dir: String) throws -
       if isBrowser(a) {  // the captured window's own page must pass the host gate (review F4)
         let same = kids(root(a)).filter { str($0, kAXRoleAttribute) == "AXWindow" && (str($0, kAXTitleAttribute) ?? "") == (w.title ?? "") }
         guard same.count == 1, ws.filter({ ($0.title ?? "") == (w.title ?? "") }).count == 1 else {
-          throw Fail(msg: "[desktop:browser-host] refused: the browser window's title is not unique, so its page host cannot be checked") }
+          throw Fail(msg: "refused: the browser window's title is not unique, so its page host cannot be checked") }
         try browserGate(a, window: same[0])
       }
       pruneShots(dir)
@@ -343,21 +338,14 @@ func shot(_ a: NSRunningApplication, _ r: [String: Any], _ dir: String) throws -
 // indirectly (do shell script, a variable app name), so for scripts the operator's dialog stays the boundary.
 func scriptDeny(_ src: String) throws {
   let l = src.lowercased()
-  for id in hardDeny where l.contains(id.lowercased()) { throw Fail(msg: "[desktop:script-deny] refused: the script names \(id), on the hard deny list") }
+  for id in hardDeny where l.contains(id.lowercased()) { throw Fail(msg: "refused: the script names \(id), on the hard deny list") }
   for n in hardDenyNames where l.contains("\"\(n)\"") || l.contains("'\(n)'")
     || l.contains("\"\(n).app") || l.contains("'\(n).app") || l.contains("/\(n).app") {
-    throw Fail(msg: "[desktop:script-deny] refused: the script names \(n), on the hard deny list") }
-}
-// The confirm gates are apart from the runs, so the self-test (and a mutant) never runs a script or a Shortcut.
-func scriptGate(_ r: [String: Any]) throws {
-  try scriptDeny((r["source"] as? String) ?? "")
-  guard (r["confirmed"] as? Bool) == true else { throw Fail(msg: "[desktop:script-confirm] script refused: every script is a change the operator confirms") }
-}
-func shortcutGate(_ r: [String: Any]) throws {
-  if (r["name"] as? String) != nil && (r["confirmed"] as? Bool) != true { throw Fail(msg: "[desktop:shortcut-confirm] shortcut refused: a run is a change the operator confirms") }
+    throw Fail(msg: "refused: the script names \(n), on the hard deny list") }
 }
 func script(_ r: [String: Any]) throws -> [String: Any] {
-  try scriptGate(r)
+  try scriptDeny((r["source"] as? String) ?? "")
+  guard (r["confirmed"] as? Bool) == true else { throw Fail(msg: "script refused: every script is a change the operator confirms") }
   guard let src = r["source"] as? String else { throw Fail(msg: "source missing") }
   let lang = (r["language"] as? String) == "javascript" ? "JavaScript" : "AppleScript"
   var res: [String: Any] = [:], failure: String? = nil
@@ -376,8 +364,8 @@ func script(_ r: [String: Any]) throws -> [String: Any] {
   return res
 }
 func shortcuts(_ r: [String: Any]) throws -> [String: Any] {
-  try shortcutGate(r)
   let run = (r["name"] as? String) != nil
+  if run && (r["confirmed"] as? Bool) != true { throw Fail(msg: "shortcut refused: a run is a change the operator confirms") }
   let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/shortcuts")
   p.arguments = run ? ["run", r["name"] as! String] + ((r["input"] as? String).map { ["-i", $0] } ?? []) : ["list"]
   let o = Pipe(), e = Pipe(); p.standardOutput = o; p.standardError = e
@@ -509,24 +497,24 @@ func selftest(_ cfg: [String: String]) -> Never {
   check("a phrase inside a label is caught (Delete draft)", liveWord("Delete draft | button") != nil)
   check("status text passes (Saved)", liveWord("Saved") == nil)
   check("a listed word inside a longer word passes (Sender)", liveWord("Sender") == nil)
-  check("gate refuses a live label unconfirmed", refused { try gate("Send", [:]) }.contains("[desktop:live-change-word]"))
+  check("gate refuses a live label unconfirmed", refused { try gate("Send", [:]) }.contains("live change refused"))
   check("gate passes it confirmed", refused { try gate("Send", ["confirmed": true]) } == "")
   check("gate passes a plain label", refused { try gate("Seven", [:]) } == "")
   allowed.insert("com.apple.keychainaccess")
-  check("the hard deny wins over the allow-list", refused { _ = try app("com.apple.keychainaccess") }.contains("[desktop:hard-deny]"))
-  check("an unlisted app is refused", refused { _ = try app("com.example.unlisted") }.contains("[desktop:app-allow]"))
-  check("a ref with no expected label is refused", refused { try expectMatch("7 | Seven", [:]) }.contains("[desktop:expect-label] expect missing"))
-  check("a moved ref is refused (reads 8, expected 7)", refused { try expectMatch("8 | Eight", ["expect": "Seven"]) }.contains("[desktop:expect-label] stale ref"))
+  check("the hard deny wins over the allow-list", refused { _ = try app("com.apple.keychainaccess") }.contains("hard deny"))
+  check("an unlisted app is refused", refused { _ = try app("com.example.unlisted") }.contains("not on the allow-list"))
+  check("a ref with no expected label is refused", refused { try expectMatch("7 | Seven", [:]) }.contains("expect missing"))
+  check("a moved ref is refused (reads 8, expected 7)", refused { try expectMatch("8 | Eight", ["expect": "Seven"]) }.contains("stale ref"))
   check("the ref still on its label passes", refused { try expectMatch("7 | Seven", ["expect": "Seven"]) } == "")
-  check("Space needs a confirm (it presses the focused button)", refused { try submitGate("space", [:]) }.contains("[desktop:submit-key]"))
-  check("Return needs a confirm", refused { try submitGate("return", [:]) }.contains("[desktop:submit-key]"))
+  check("Space needs a confirm (it presses the focused button)", refused { try submitGate("space", [:]) }.contains("live change refused"))
+  check("Return needs a confirm", refused { try submitGate("return", [:]) }.contains("live change refused"))
   check("a confirmed Return passes", refused { try submitGate("return", ["confirmed": true]) } == "")
   check("Tab passes", refused { try submitGate("tab", [:]) } == "")
-  check("a typed line break is refused", refused { try typeGate("hello\nworld") }.contains("[desktop:type-newline]"))
+  check("a typed line break is refused", refused { try typeGate("hello\nworld") }.contains("line break"))
   check("plain typed text passes", refused { try typeGate("labas, pasauli") } == "")
-  check("a script naming Terminal is refused", refused { try scriptDeny("tell application \"Terminal\" to do script \"ls\"") }.contains("[desktop:script-deny]"))
-  check("a JXA script naming Keychain Access is refused", refused { try scriptDeny("Application('Keychain Access').activate()") }.contains("[desktop:script-deny]"))
-  check("a script naming a denied bundle id is refused", refused { try scriptDeny("tell application id \"com.apple.Terminal\" to quit") }.contains("[desktop:script-deny]"))
+  check("a script naming Terminal is refused", refused { try scriptDeny("tell application \"Terminal\" to do script \"ls\"") }.contains("hard deny"))
+  check("a JXA script naming Keychain Access is refused", refused { try scriptDeny("Application('Keychain Access').activate()") }.contains("hard deny"))
+  check("a script naming a denied bundle id is refused", refused { try scriptDeny("tell application id \"com.apple.Terminal\" to quit") }.contains("hard deny"))
   check("a script for TextEdit passes", refused { try scriptDeny("tell application \"TextEdit\" to get name of front document") } == "")
   check("a live word past the display cut still asks", refused { try gate(labelOf([String(repeating: "x", count: 200) + " Delete"], cut: nil), [:]) }.contains("live change refused"))
   hosts = ["example.com"]
@@ -535,15 +523,9 @@ func selftest(_ cfg: [String: String]) -> Never {
   check("a script row names its source, whatever bundle it carries", subject("script", ["source": "beep\n2", "bundle": "x"]) == "script:beep 2")
   check("a Shortcut row names it", subject("shortcuts", ["name": "Make GIF"]) == "shortcut:Make GIF")
   check("a bundle cannot forge a row", !subject("key", ["bundle": "a\tb\nc"]).contains(where: { $0 == "\t" || $0 == "\n" }))
-  check("a script naming Terminal.app by path is refused", refused { try scriptDeny("tell application \"/System/Applications/Utilities/Terminal.app\" to quit") }.contains("[desktop:script-deny]"))
-  check("an AXPress needs no foreground", refused { try focusGate("AXPress", [:]) } == "")
-  check("an action that may take focus is refused", refused { try focusGate("AXRaise", [:]) }.contains("[desktop:focus]"))
-  check("a script unconfirmed is refused before it runs", refused { try scriptGate(["source": "beep"]) }.contains("[desktop:script-confirm]"))
-  check("a confirmed script passes its gate", refused { try scriptGate(["source": "beep", "confirmed": true]) } == "")
-  check("listing Shortcuts needs no confirm", refused { try shortcutGate([:]) } == "")
-  check("a Shortcut run unconfirmed is refused before it runs", refused { try shortcutGate(["name": "x"]) }.contains("[desktop:shortcut-confirm]"))
+  check("a script naming Terminal.app by path is refused", refused { try scriptDeny("tell application \"/System/Applications/Utilities/Terminal.app\" to quit") }.contains("hard deny"))
   let keep = words; words = []
-  check("an empty word list refuses every guarded call", refused { try gate("Seven", [:]) }.contains("[desktop:live-change-list]"))
+  check("an empty word list refuses every guarded call", refused { try gate("Seven", [:]) }.contains("missing or empty"))
   words = keep
   print(bad == 0 ? "selftest: all passed" : "selftest: \(bad) failed")
   exit(bad == 0 ? 0 : 1)

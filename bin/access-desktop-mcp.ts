@@ -59,7 +59,7 @@ function call(name: string, input: Record<string, unknown>): { text: string; isE
   const t = TOOLS[name];
   if (!t) return { text: `unknown tool ${name}`, isError: true };
   if (t.confirm && !askRule(name)) {
-    return { text: `[desktop:ask-rule] ${name} refused: no permissions.ask rule for mcp__harbor_desktop__${name} in ~/.claude/settings.json, so no dialog would ask the operator`, isError: true };
+    return { text: `${name} refused: no permissions.ask rule for mcp__harbor_desktop__${name} in ~/.claude/settings.json, so no dialog would ask the operator`, isError: true };
   }
   const args = { ...input, ...(t.fixed ?? {}) };
   delete (args as Record<string, unknown>).confirmed;

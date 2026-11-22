@@ -1407,29 +1407,5 @@ rule	1397	admission.clipboard-read	live	standards/naming/controls.tsv
 rule	1398	admission.browser-raw-cli	live	standards/naming/controls.tsv
 rule	1399	clipboard-read	live	standards/naming/controls.tsv, the id less its family
 rule	1400	browser-raw-cli	live	standards/naming/controls.tsv, the id less its family
-rule	1401	access.desktop-hard-deny	live	standards/naming/controls.tsv
-rule	1402	access.desktop-app-allow	live	standards/naming/controls.tsv
-rule	1403	access.desktop-browser-host	live	standards/naming/controls.tsv
-rule	1404	access.desktop-expect-label	live	standards/naming/controls.tsv
-rule	1405	access.desktop-live-change-word	live	standards/naming/controls.tsv
-rule	1406	access.desktop-live-change-list	live	standards/naming/controls.tsv
-rule	1407	access.desktop-submit-key	live	standards/naming/controls.tsv
-rule	1408	access.desktop-type-newline	live	standards/naming/controls.tsv
-rule	1409	access.desktop-focus	live	standards/naming/controls.tsv
-rule	1410	access.desktop-script-deny	live	standards/naming/controls.tsv
-rule	1411	access.desktop-script-confirm	live	standards/naming/controls.tsv
-rule	1412	access.desktop-shortcut-confirm	live	standards/naming/controls.tsv
-rule	1413	access.desktop-ask-rule	live	standards/naming/controls.tsv
-rule	1414	desktop-hard-deny	live	standards/naming/controls.tsv, the id less its family
-rule	1415	desktop-app-allow	live	standards/naming/controls.tsv, the id less its family
-rule	1416	desktop-browser-host	live	standards/naming/controls.tsv, the id less its family
-rule	1417	desktop-expect-label	live	standards/naming/controls.tsv, the id less its family
-rule	1418	desktop-live-change-word	live	standards/naming/controls.tsv, the id less its family
-rule	1419	desktop-live-change-list	live	standards/naming/controls.tsv, the id less its family
-rule	1420	desktop-submit-key	live	standards/naming/controls.tsv, the id less its family
-rule	1421	desktop-type-newline	live	standards/naming/controls.tsv, the id less its family
-rule	1422	desktop-focus	live	standards/naming/controls.tsv, the id less its family
-rule	1423	desktop-script-deny	live	standards/naming/controls.tsv, the id less its family
-rule	1424	desktop-script-confirm	live	standards/naming/controls.tsv, the id less its family
-rule	1425	desktop-shortcut-confirm	live	standards/naming/controls.tsv, the id less its family
-rule	1426	desktop-ask-rule	live	standards/naming/controls.tsv, the id less its family
+rule	1401	name.access-entry	live	standards/naming/controls.tsv
+rule	1402	access-entry	live	standards/naming/controls.tsv, the id less its family

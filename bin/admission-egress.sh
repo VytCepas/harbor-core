@@ -662,6 +662,81 @@ $TARGETS_ALL"
       floor_block egress "reading the hub token into the session, which only the floor's own hooks may do" hub-token-read.argv
     fi
   fi
+  # BASH ON A MEMBER BOX (harbor#1278): the Read rows, as the Read and Grep tools are held to them. allowManagedPermissionRulesOnly drops the Read deny rows,
+  # so `cat .env`, `head ~/.aws/x` or a find that feeds a reader (-exec, -execdir, xargs) read what the Read tool may not. Argv decides, from the segment
+  # table: a reader's operands, a `<` redirect, a recursive search that walks into a row, and a find whose start folder or -name/-path filter selects one.
+  # A grep, awk or sed's first operand is its pattern or program, never a path, and cp's last is its destination. Fail-open with the table, as every argv rule here.
+  if [ "$TOOL" = "Bash" ] && floor_member_mode && [ -n "${FLOOR_SEGS:-}" ]; then
+    _mb_chk="$(printf '%s\n' "$FLOOR_SEGS" | awk '
+      function id_of(s,   p) { p = index(s, ":"); return substr(s, 1, p - 1) + 0 }
+      function val_of(s) { return substr(s, index(s, ":") + 1) }
+      function base(w) { sub(/.*\//, "", w); return tolower(w) }
+      BEGIN {
+        n = split("cat,bat,less,more,head,tail,strings,xxd,od,hexdump,base64,grep,egrep,fgrep,rg,ag,sort,cut,nl,tac,cp,awk,gawk,sed", a, ","); for (i = 1; i <= n; i++) RD[a[i]] = 1
+        n = split("sh,bash,dash,zsh,ksh,python,python3,perl,ruby,node", a, ","); for (i = 1; i <= n; i++) SH[a[i]] = 1
+      }
+      /^SEGC:/ { s = substr($0, 6); i = id_of(s); cmd[i] = base(val_of(s)); if (!(i in seen)) { seen[i] = 1; ord[++no] = i }; next }
+      /^SEGA:/ { s = substr($0, 6); i = id_of(s); arg[i, ++na[i]] = val_of(s); next }
+      /^SEGW:/ { s = substr($0, 6); if (base(val_of(s)) == "xargs") xa[id_of(s)] = 1; next }
+      /^SEGR:/ { s = substr($0, 6); r = val_of(s); op = substr(r, 1, index(r, ":") - 1); if (op ~ /^[0-9]*<$/) print "T\t" substr(r, index(r, ":") + 1); next }
+      END {
+        for (k = 1; k <= no; k++) { i = ord[k]; c = cmd[i]
+          if ((i in xa) && ((c in RD) || (c in SH))) feeds = 1
+          if (c == "find") for (j = 1; j < na[i]; j++) if (arg[i, j] ~ /^-(exec|execdir|ok|okdir)$/) { e = base(arg[i, j + 1]); if ((e in RD) || (e in SH)) feeds = 1 }
+        }
+        for (k = 1; k <= no; k++) { i = ord[k]; c = cmd[i]
+          if (c in RD) {
+            n = 0; dd = 0; pat = (c ~ /grep$/ || c == "rg" || c == "ag" || c ~ /^g?awk$/ || c == "sed"); rec = (c == "rg" || c == "ag")
+            for (j = 1; j <= na[i]; j++) { x = arg[i, j]
+              if (!dd && x == "--") { dd = 1; continue }
+              if (!dd && x ~ /^-./) {
+                if (x ~ /^(-e|-f|--regexp|--file|--expression)$/) { pat = 0; if (x ~ /^(-f|--file)$/ && j < na[i]) print "T\t" arg[i, j + 1]; j++ }
+                else if (c ~ /grep$/ && (x ~ /^-[a-zA-Z]*[rR]/ || x ~ /^--(dereference-)?recursive$/)) rec = 1
+                continue
+              }
+              o[++n] = x
+            }
+            last = (c == "cp" && n >= 2) ? n - 1 : n
+            for (j = (pat ? 2 : 1); j <= last; j++) { print "T\t" o[j]; if (rec) print "R\t" o[j] }
+            split("", o)
+          }
+          if (c == "find" && feeds) {
+            ns = 0; st0 = 0; nn = 0; np = 0; unf = 1; split("", st); split("", fn); split("", fp)
+            for (j = 1; j <= na[i]; j++) { x = arg[i, j]
+              if (!st0 && x !~ /^[-(!]/) { st[++ns] = x; continue }
+              st0 = 1
+              if (x ~ /^-(exec|execdir|ok|okdir)$/) break
+              if (x ~ /^-i?name$/ && j < na[i]) { unf = 0; fn[++nn] = arg[i, ++j]; continue }
+              if (x ~ /^-(i?path|i?wholename)$/ && j < na[i]) { unf = 0; fp[++np] = arg[i, ++j]; continue }
+            }
+            if (ns == 0) st[++ns] = "."
+            for (s = 1; s <= ns; s++) { print "T\t" st[s]; if (unf) print "R\t" st[s]
+              for (q = 1; q <= nn; q++) { g = fn[q]; print "G\t" g; gsub(/[*?]/, "k", g); print "T\t" st[s] "/" g }
+              for (q = 1; q <= np; q++) { g = fp[q]; print "G\t" g
+                if (substr(g, 1, 1) == "*") { g = substr(g, 2); gsub(/[*?]/, "k", g); print "T\t" st[s] g; print "H\t" st[s] "\t" g }
+                else { gsub(/[*?]/, "k", g); print "T\t" g } }
+            }
+          }
+        }
+      }' 2>/dev/null)" || _mb_chk=""
+    if [ -n "$_mb_chk" ]; then
+      rd_load
+      _mb_hit=0
+      while IFS="$(printf '\t')" read -r _mb_k _mb_a _mb_b; do
+        [ -n "$_mb_a" ] || continue
+        case "$_mb_k" in
+          T) rd_target "$(rd_abs "$_mb_a")" && _mb_hit=1 ;;
+          R) rd_reaches "$(rd_abs "$_mb_a")" && _mb_hit=1 ;;
+          G) rd_glob_selects "$(_rd_lc "$_mb_a")" && _mb_hit=1 ;;
+          H) rd_reaches "$(rd_abs "$_mb_a")" && rd_target "$HOME$_mb_b" && _mb_hit=1 ;;
+        esac
+        [ "$_mb_hit" = 0 ] || break
+      done <<ROWS
+$_mb_chk
+ROWS
+      [ "$_mb_hit" = 0 ] || floor_block egress "reading a credential file into the session from the shell, past the Read deny rows this box can't carry" key-material-read.argv
+    fi
+  fi
   # Outbound channels: network senders, remote copy, mailers, DNS-exfil tools, bash's /dev/tcp and /dev/udp redirects, clipboard, and publish-style CLIs with no URL of their own (gh gist/release, glab, pbcopy).
   # `ssh` carries its own boundary: the general `[^[:alnum:]_]` prefix treats the dot of `~/.ssh` as a word break, so `ls -la ~/.ssh` and `mv ~/.ssh ~/old-ssh` read as SSH commands (CRED01-FP-03); an explicit `bin/ssh` branch keeps the absolute spelling.
   # `gh` is deliberately NOT widened here (harbor#90 pass 13): `gh api|secret|variable` in this list turned six ordinary commands such as `gh api /user --jq .login && ls -la ~/.ssh` from 0 to 2, because the CREDPATH rules below are WHOLE-PAYLOAD and a channel opened by one segment arms a credential named in another. The gh bypasses are closed by the per-segment ARGV rules above.
