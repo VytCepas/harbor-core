@@ -134,6 +134,7 @@ control.check	control	check	control-plane	hub	no	engine lives in harbor; a repo 
 control.module	control	module	control-plane	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
 control.hub	control	hub	control-plane	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
 control.member	control	member	control-plane	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
+control.access	control	access	control-plane	hub	no	engine lives in harbor; a repo inherits the verdict through the fleet audit, not the engine
 tool.lint-name	tool	bin/lint-name.sh	*	core	yes	vendored into vendor/naming/ so the repo judges itself offline
 tool.lint-renderer	tool	bin/lint-renderer.sh	*	core	yes	vendored into vendor/naming/ so the repo judges itself offline
 tool.library-log	tool	bin/library-log.sh	*	core	yes	vendored into vendor/naming/ so the repo judges itself offline

@@ -1242,6 +1242,9 @@ census() {
       hook-rules)  for _f in $(printf '%s' "$_a" | tr ',' ' '); do
                      [ -f "$ROOT/$_f" ] && sed -n 's/^[[:space:]]*# control: \([^ ]*\).*$/\1/p' "$ROOT/$_f"
                    done ;;
+      stamp-rules) for _f in $(printf '%s' "$_a" | tr ',' ' '); do   # every [<arg>:<rule>] a non-shell gate prints (harbor#1599)
+                     [ -f "$ROOT/$_f" ] && awk -v g="$_arg" '{ l = $0; while (match(l, "\\[" g ":[a-z0-9-]+\\]")) { print substr(l, RSTART + 1, RLENGTH - 2); l = substr(l, RSTART + RLENGTH) } }' "$ROOT/$_f"
+                   done ;;
       guard-rules) for _f in "$ROOT"/$_a; do
                      [ -f "$_f" ] && awk '/^[ \t]*#/ { next } { l = $0; while (l ~ /\\$/ && (getline nx) > 0) { sub(/\\$/, "", l); l = l " " nx }
                        if (l ~ /floor_block[ \t]+[a-z]+[ \t]/ && l !~ /floor_block\(\)/) {
