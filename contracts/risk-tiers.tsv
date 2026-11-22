@@ -15,6 +15,8 @@ admission.project-cred-egress	very-high	fixed	Credentials leaving the machine
 admission.privileged-jwt-egress	very-high	fixed	Credentials leaving the machine
 admission.key-material-read	very-high	fixed	Reading key material
 admission.keychain-dump	very-high	fixed	Reading the keychain
+admission.clipboard-read	very-high	fixed	Reading the clipboard
+admission.browser-raw-cli	very-high	fixed	Driving a browser outside harbor chrome
 admission.hub-token-read	very-high	fixed	Reading the hub token
 admission.gh-credential-operand	very-high	fixed	Credentials leaving the machine
 admission.gh-publish-secret	very-high	fixed	Credentials leaving the machine

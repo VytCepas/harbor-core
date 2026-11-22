@@ -13,8 +13,9 @@ harbor#1507. access/ROUTING.md ranks the tiers cli > api > mcp > browser, and no
 opens a vendor UI (measured 2026-10-18..11-14: the most-opened hosts were vendor UIs whose card has a cli or api route).
 Prose in a policy file does not bind; a note at the call does (docs/reports/evals.md E6: 0/4 as prose, 4/4 injected).
 
-INFORM, NOT DENY. A refusal needs the operator's approval (constitution, "Encoding a fix is a human-gated act"); the UI is
-sometimes the task. The note says so and lets the call through. Born warn in standards/naming/controls.tsv.
+INFORM HERE; THE CHROME SERVERS DENY. The operator approved the refusal on 2026-11-20 ("api access as priority", enforced): both
+harbor_chrome servers call browser-last-tier.sh --check and refuse a mapped vendor UI unless the call carries --ui=<why>
+(contracts/browser-routing.md, "enforced for agents"). This note still speaks once per system for every other route.
 
 ONE SOURCE. The host-to-system mapping is each card's `ui-hosts:` field (contracts/access-card.md, checked by
 skills/access-ledger/bin/check-routes.sh), read from the private register at the call; core names no vendor and no client host.

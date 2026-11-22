@@ -17,10 +17,11 @@ _run() {
   HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND="cat '$T_TMP/canned'" sh "$TOOL" "$IN" > "$T_TMP/out" 2> "$T_TMP/err"; _rc=$?
   OUT="$(cat "$T_TMP/out")"; ERR="$(cat "$T_TMP/err")"
   t_eq "$1: exit" "$2" "$_rc"
+  # harbor#1591: a kept original is never printed, so `> OUT` cannot carry unreviewed text into a send.
+  if [ "$2" = 3 ]; then t_eq "$1: prints nothing" "" "$OUT"; fi
 }
 GOOD_L1="Purchase event'us perkeliu į naują tag'ą, nes „event_id“ nebuvo perduodamas."
 L2="Jei reikės, atsiųsiu 1 200 pirkimų sąrašą, žr. https://example.com/a_b?x=1 ir \`purchase_v2\`."
-ORIG="$(cat "$IN")"
 
 t_section "a rewrite that keeps every protected token is used"
 _run "good rewrite" 0 "$GOOD_L1
@@ -37,7 +38,7 @@ $L2
 _run "translated term" 3 "Purchase įvykius perkeliu į naują žymę, nes „event_id“ nebuvo perduodamas.
 $L2
 "
-t_eq "translated term: prints the original" "$ORIG" "$OUT"
+t_has "translated term: the fix line names the skill" "$ERR" "rewrite it by hand from skills/doc-lithuanian-prose/SKILL.md"
 t_has "translated term: names what was lost" "$ERR" "lost"
 
 t_section "a changed number, URL, code span, quoted identifier or line count keeps the original"
@@ -66,7 +67,7 @@ t_section "a model that fails or says nothing keeps the original"
 printf 'exit 1\n' > "$T_TMP/fail.sh"
 HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND="sh '$T_TMP/fail.sh'" sh "$TOOL" "$IN" > "$T_TMP/out" 2> "$T_TMP/err"; _rc=$?
 t_eq "model failed: exit" 3 "$_rc"
-t_eq "model failed: prints the original" "$ORIG" "$(cat "$T_TMP/out")"
+t_eq "model failed: prints nothing" "" "$(cat "$T_TMP/out")"
 _run "empty answer" 3 ""
 t_exit "unknown model" 2 sh "$TOOL" --model opus "$IN"
 
@@ -76,6 +77,8 @@ _one() {
   HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND="cat '$T_TMP/canned1'" sh "$TOOL" "$T_TMP/one" > "$T_TMP/out" 2> "$T_TMP/err"; _rc=$?
   OUT="$(cat "$T_TMP/out")"; ERR="$(cat "$T_TMP/err")"
   t_eq "$1: exit" "$2" "$_rc"
+  # harbor#1591: a kept original is never printed, so `> OUT` cannot carry unreviewed text into a send.
+  if [ "$2" = 3 ]; then t_eq "$1: prints nothing" "" "$OUT"; fi
 }
 
 t_section "each protected class holds on its own"
@@ -99,8 +102,12 @@ HARBOR_DOC_LITHUANIAN_REWRITE_TIMEOUT=1 HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND="s
 _t1="$(date +%s)"
 t_eq "hung model: exit" 3 "$_rc"
 t_has "hung model: says why" "$(cat "$T_TMP/err")" "did not answer within 1s"
-t_eq "hung model: prints the original" "$(cat "$T_TMP/one")" "$(cat "$T_TMP/out")"
+t_eq "hung model: prints nothing" "" "$(cat "$T_TMP/out")"
 [ $((_t1 - _t0)) -lt 5 ] && t_pass || t_fail "hung model: took $((_t1 - _t0))s, the watchdog did not cut it"
+# harbor#1592 review: the watchdog killed a subshell and the model ran on; the model itself must stop.
+HARBOR_DOC_LITHUANIAN_REWRITE_TIMEOUT=1 HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND="sleep 3; touch '$T_TMP/ran-on'" sh "$TOOL" "$T_TMP/one" > /dev/null 2>&1
+sleep 4
+[ ! -f "$T_TMP/ran-on" ] && t_pass || t_fail "hung model: the model kept running after the timeout"
 t_exit "a bad timeout" 2 env HARBOR_DOC_LITHUANIAN_REWRITE_TIMEOUT=soon sh "$TOOL" "$T_TMP/one"
 
 t_section "bad input is a usage error, never a model call"
@@ -124,6 +131,11 @@ t_has "first note: names the tool" "$N1" "doc-lithuanian-rewrite.sh"
 N2="$(_p s1 "$LT" | sh "$RULE")"
 t_has "second note: names the tool" "$N2" "doc-lithuanian-rewrite.sh"
 t_hasnt "second note: no rules again" "$N2" "Write the draft to these rules"
+# harbor#1592 review: the short note once sent the draft into the skill file it names.
+t_has "second note: the draft goes to a file" "$N2" "write it to a file"
+t_hasnt "second note: never into the skill" "$N2" "write it to ~/.claude/skills"
+t_has "second note: exit 3 prints nothing" "$N2" "exit 3 prints nothing"
+t_has "first note: exit 3 prints nothing" "$N1" "exits 3 and prints nothing"
 N3="$(_p s2 "$LT" | sh "$RULE")"
 t_has "another session: the rules again" "$N3" "Write the draft to these rules"
 N4="$(jq -cn --arg c "sh ~/port/harbor/bin/doc-lithuanian-rewrite.sh a.md # $LT" '{hook_event_name:"PreToolUse",session_id:"s1",tool_name:"Bash",tool_input:{command:$c}}' | sh "$RULE")"
