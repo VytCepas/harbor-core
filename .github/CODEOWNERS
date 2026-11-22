@@ -80,7 +80,6 @@
 /bin/access-browser-agent.sh @VytCepas
 /bin/access-browser.sh @VytCepas
 /bin/access-github-app-install.sh @VytCepas
-/bin/access-oauth.sh @VytCepas
 /bin/access-redact.sh @VytCepas
 /bin/access.sh @VytCepas
 /bin/admission-api-route.sh @VytCepas
