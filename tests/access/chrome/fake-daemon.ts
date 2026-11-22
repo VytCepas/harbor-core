@@ -41,6 +41,11 @@ function reply(args: any, cwd: string, raw: boolean): { isError: boolean; text: 
     if (flag('submit_fail')) return { isError: true, text: 'Error: Execution context was destroyed' };
     return { isError: false, text: JSON.stringify(val('submit_label')) };
   }
+  // The shown-secret probe (contracts/browser-script.tsv, contracts/secret-intake.md): `shown` holds what the page shows.
+  if (verb === 'eval' && (pos[0] ?? '').includes('e.type !== "password"')) {
+    fs.appendFileSync(path.join(ctl, 'calls'), `probe shown${raw ? ' [raw]' : ''}\n`);
+    return { isError: false, text: JSON.stringify(flag('shown') ? val('shown') : 'a plain page') };
+  }
   if (verb === 'eval') {
     if (flag('eval_fail')) return { isError: true, text: 'Error: Execution context was destroyed' };
     const late = flag('late_blank') && flag('late_blank_now');
