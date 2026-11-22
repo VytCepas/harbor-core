@@ -42,6 +42,9 @@ Amends harbor#1440's routing order and DE-40's "do instead": a Mac app with no b
 - One Accessibility grant reaches every app the helper can see; the allow-list and the ask rule are the boundary the
   operator relies on. The helper's policy (hard deny, allow-list, live words, Enter and Space, line breaks, host match)
   is tested with mutants; the ask rule by refusing each confirm tool that has none.
+- Every refusal opens with `[desktop:<rule>]`, the `emitted` id of an `access.desktop-*` row in
+  `standards/naming/controls.tsv`. The lint's `stamp-rules` census reads the stamps, so a refusal added without a row is
+  red. The bundle id, app name, signing identity and state folder each have a row in `standards/naming/surfaces.tsv`.
 - The helper trusts `confirmed` from any process of the operator's user that reaches its owner-only socket. The
   sandboxed shell cannot reach it, so the ask rule binds the agent; an unsandboxed process of the same user is
   already outside this boundary.
