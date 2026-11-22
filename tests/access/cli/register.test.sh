@@ -34,15 +34,15 @@ t_eq "has exits 1" 1 "$(rc AX has some-ref)"
 t_eq "check inspected nothing and exits 2" 2 "$(rc AX check)"
 t_has "...and says it is not a pass" "$(AX check 2>&1)" "NOTHING was checked and this is not a pass"
 t_eq "list prints nothing, exit 0" 0 "$(rc AX list)"
-t_eq "add refuses: exit 1" 1 "$(rc ADD some-id harbor-github-tools-some)"
-t_has "...and says there is no private layer" "$(ADD some-id harbor-github-tools-some 2>&1)" "no private layer to write one in"
+t_eq "add refuses: exit 1" 1 "$(rc ADD github-test-some-id harbor-github-tools-some)"
+t_has "...and says there is no private layer" "$(ADD github-test-some-id harbor-github-tools-some 2>&1)" "no private layer to write one in"
 t_eq "...nothing was created" gone "$([ -e "$T_TMP/no-layer" ] && echo present || echo gone)"
 HARBOR_SCOPE_PRIVATE="$PV"
 
 t_section "add records the entry and stores the value through the seam, once"
-printf '%s' "$FAKEVAL" | ADD test-token harbor-github-tools-test --value-stdin >"$T_TMP/add.out" 2>&1; _rc=$?
+printf '%s' "$FAKEVAL" | ADD github-test-test-token harbor-github-tools-test --value-stdin >"$T_TMP/add.out" 2>&1; _rc=$?
 t_eq "add exits 0" 0 "$_rc"
-t_has "...and names the entry" "$(cat "$T_TMP/add.out")" "registered 'test-token' (token)"
+t_has "...and names the entry" "$(cat "$T_TMP/add.out")" "registered 'github-test-test-token' (token)"
 t_hasnt "the register holds no value" "$(cat "$REG")" "$FAKEVAL"
 t_hasnt "add printed no value" "$(cat "$T_TMP/add.out")" "$FAKEVAL"
 t_hasnt "no store call carried the value in argv" "$(cat "$KC_STUB/argv.log")" "$FAKEVAL"
@@ -50,32 +50,32 @@ t_has "the entry carries its fields" "$(cat "$REG")" "    secret: harbor-github-
 t_has "...and the grant" "$(cat "$REG")" "    grant: the suite"
 t_eq "has says registered: 0" 0 "$(rc AX has harbor-github-tools-test)"
 t_eq "refs lists the ref" "harbor-github-tools-test" "$(AX refs)"
-t_has "list shows id, kind and ref" "$(AX list)" "test-token	token	harbor-github-tools-test	a test token"
+t_has "list shows id, kind and ref" "$(AX list)" "github-test-test-token	token	harbor-github-tools-test	a test token"
 t_eq "the value is in the store, behind secret" "$FAKEVAL" "$(SC run harbor-github-tools-test V -- sh -c 'printf %s "$V"' 2>/dev/null)"
 t_eq "check is green with the entry" 0 "$(rc AX check)"
 t_has "...and counts it" "$(AX check 2>&1)" "1 entry"
 
 t_section "add refuses what it must"
 BEFORE="$(cksum < "$REG")"
-t_eq "a repeated id: exit 1" 1 "$(rc ADD test-token harbor-github-tools-other)"
-t_eq "a ref another entry names: exit 1" 1 "$(rc ADD other-id harbor-github-tools-test)"
-t_eq "an unknown kind: exit 2" 2 "$(rc AX add x --kind wizard --what w --use-when u --reaches r --cannot c --grant g --no-secret)"
-t_eq "a missing field (no tty to ask): exit 2" 2 "$(rc AX add x --kind token --what w --use-when u --reaches r --grant g --no-secret </dev/null)"
-t_has "...and names it" "$(AX add x --kind token --what w --use-when u --reaches r --grant g --no-secret </dev/null 2>&1)" "CANNOT"
-t_eq "neither --secret nor --no-secret: exit 2" 2 "$(rc AX add x --kind token --what w --use-when u --reaches r --cannot c --grant g </dev/null)"
+t_eq "a repeated id: exit 1" 1 "$(rc ADD github-test-test-token harbor-github-tools-other)"
+t_eq "a ref another entry names: exit 1" 1 "$(rc ADD github-test-other-id harbor-github-tools-test)"
+t_eq "an unknown kind: exit 2" 2 "$(rc AX add github-test-x --kind wizard --what w --use-when u --reaches r --cannot c --grant g --no-secret)"
+t_eq "a missing field (no tty to ask): exit 2" 2 "$(rc AX add github-test-x --kind token --what w --use-when u --reaches r --grant g --no-secret </dev/null)"
+t_has "...and names it" "$(AX add github-test-x --kind token --what w --use-when u --reaches r --grant g --no-secret </dev/null 2>&1)" "CANNOT"
+t_eq "neither --secret nor --no-secret: exit 2" 2 "$(rc AX add github-test-x --kind token --what w --use-when u --reaches r --cannot c --grant g </dev/null)"
 t_eq "a bad id: exit 2" 2 "$(rc ADD Bad_Id -)"
-t_eq "a ref with a slash: exit 2" 2 "$(rc ADD x-id bad/ref)"
-t_eq "--value-stdin without a ref: exit 2" 2 "$(rc AX add x --kind token --what w --use-when u --reaches r --cannot c --grant g --no-secret --value-stdin </dev/null)"
-t_eq "a field shaped like a credential: exit 2" 2 "$(rc AX add x --kind token --what "$FAKECRED" --use-when u --reaches r --cannot c --grant g --no-secret)"
-t_hasnt "...and the value is not echoed" "$(AX add x --kind token --what "$FAKECRED" --use-when u --reaches r --cannot c --grant g --no-secret 2>&1)" "$FAKECRED"
-t_eq "a newline in a field: exit 2" 2 "$(rc AX add x --kind token --what "$(printf 'a\nb')" --use-when u --reaches r --cannot c --grant g --no-secret)"
+t_eq "a ref with a slash: exit 2" 2 "$(rc ADD github-test-x-id bad/ref)"
+t_eq "--value-stdin without a ref: exit 2" 2 "$(rc AX add github-test-x --kind token --what w --use-when u --reaches r --cannot c --grant g --no-secret --value-stdin </dev/null)"
+t_eq "a field shaped like a credential: exit 2" 2 "$(rc AX add github-test-x --kind token --what "$FAKECRED" --use-when u --reaches r --cannot c --grant g --no-secret)"
+t_hasnt "...and the value is not echoed" "$(AX add github-test-x --kind token --what "$FAKECRED" --use-when u --reaches r --cannot c --grant g --no-secret 2>&1)" "$FAKECRED"
+t_eq "a newline in a field: exit 2" 2 "$(rc AX add github-test-x --kind token --what "$(printf 'a\nb')" --use-when u --reaches r --cannot c --grant g --no-secret)"
 t_eq "none of those touched the register" "$BEFORE" "$(cksum < "$REG")"
 
 t_section "an entry with no secret names no ref; a ref with no value is recorded and says so"
-ADD mail-box - >/dev/null 2>&1
+ADD github-test-mail-box - >/dev/null 2>&1
 t_eq "--no-secret is recorded as none" 1 "$(grep -c '    secret: none' "$REG")"
 t_eq "...and none is not a ref" 1 "$(rc AX has none)"
-ADD later-ref harbor-github-tools-later </dev/null >"$T_TMP/later.out" 2>&1
+ADD github-test-later-ref harbor-github-tools-later </dev/null >"$T_TMP/later.out" 2>&1
 t_has "no tty and no --value-stdin: the entry is kept and the missing value said" "$(cat "$T_TMP/later.out")" "no value was stored"
 t_eq "...the ref is registered" 0 "$(rc AX has harbor-github-tools-later)"
 t_eq "...and the store holds nothing for it" 1 "$(rc SC run harbor-github-tools-later V -- true)"
@@ -83,20 +83,20 @@ t_eq "...and the store holds nothing for it" 1 "$(rc SC run harbor-github-tools-
 t_section "a failed store rolls the entry back"
 mkdir -p "$T_TMP/badkc"; printf '#!/bin/sh\nexit 1\n' > "$T_TMP/badkc/security"; chmod +x "$T_TMP/badkc/security"
 BEFORE="$(cksum < "$REG")"
-printf '%s' "$FAKEVAL" | PATH="$T_TMP/badkc:$PATH" ADD rolled-back harbor-github-tools-rolled --value-stdin >"$T_TMP/rb.out" 2>&1; _rc=$?
+printf '%s' "$FAKEVAL" | PATH="$T_TMP/badkc:$PATH" ADD github-test-rolled-back harbor-github-tools-rolled --value-stdin >"$T_TMP/rb.out" 2>&1; _rc=$?
 t_eq "add exits 1" 1 "$_rc"
 t_has "...and says it rolled back" "$(cat "$T_TMP/rb.out")" "rolled back"
 t_eq "the register is byte-for-byte what it was" "$BEFORE" "$(cksum < "$REG")"
 t_eq "the ref is not registered" 1 "$(rc AX has harbor-github-tools-rolled)"
 
 t_section "--probe: a passing probe is reported, a failing one exits 1 and keeps the entry"
-ADD probed-ok - --probe true >"$T_TMP/p1.out" 2>&1; _rc=$?
+ADD github-test-probed-ok - --probe true >"$T_TMP/p1.out" 2>&1; _rc=$?
 t_eq "a passing probe: exit 0" 0 "$_rc"
 t_has "...and says so" "$(cat "$T_TMP/p1.out")" "probe passed"
-ADD probed-bad - --probe false >"$T_TMP/p2.out" 2>&1; _rc=$?
+ADD github-test-probed-bad - --probe false >"$T_TMP/p2.out" 2>&1; _rc=$?
 t_eq "a failing probe: exit 1" 1 "$_rc"
 t_has "...and says so" "$(cat "$T_TMP/p2.out")" "probe failed"
-t_eq "...the entry is kept" 1 "$(grep -c '^## probed-bad$' "$REG")"
+t_eq "...the entry is kept" 1 "$(grep -c '^## github-test-probed-bad$' "$REG")"
 
 t_section "check finds a register that was edited by hand"
 good="$T_TMP/good.md"; cp "$REG" "$good"
@@ -136,7 +136,7 @@ hand_edit "a typo'd field" "unknown field use_when" '
     cannot: c
     grant: g
     secret: none'
-hand_edit "a ref named twice" "secret harbor-github-tools-test is already named by test-token" '
+hand_edit "a ref named twice" "secret harbor-github-tools-test is already named by github-test-test-token" '
 ## hand-edit
 
     kind: token
@@ -147,7 +147,7 @@ hand_edit "a ref named twice" "secret harbor-github-tools-test is already named 
     grant: g
     secret: harbor-github-tools-test'
 hand_edit "a repeated entry id" "repeats the one on line" '
-## test-token
+## github-test-test-token
 
     kind: token'
 printf '# Access register\n\n    stray: here\n' > "$REG"

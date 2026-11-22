@@ -1976,6 +1976,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/hub/release/release.test.sh</code></td><td><code>bin/hub-release.sh bin/library-fs.sh bin/library-log.sh tests/hub/release/release.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/member/setup/generate.test.sh</code></td><td><code>bin/member-setup-generate.sh bin/library-log.sh tests/member/setup/generate.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/member/connectors/connectors.test.sh</code></td><td><code>bin/member-mcp-launch.sh bin/member-connectors.sh bin/member-managed.sh bin/hub-format.sh bin/secret bin/access.sh bin/scope-roots.sh bin/library-log.sh bin/library-hub.sh contracts/roots.tsv contracts/member-rules/keys-store-* tests/hub/fixtures/policy.json tests/cli/keychain-stub.sh tests/lib/core.sh tests/member/connectors/*</code></td></tr>
+<tr><td><code>tests/access/cli/oauth.test.sh</code></td><td><code>bin/access-oauth.sh bin/access.sh bin/secret bin/lint-name.sh bin/scope.sh bin/scope-roots.sh bin/library-log.sh standards/naming/* contracts/secret-legacy-refs.txt contracts/credential-patterns.tsv tests/cli/keychain-stub.sh tests/lib/core.sh tests/access/cli/oauth.test.sh</code></td></tr>
 </tbody></table>
 </div>
 
@@ -2660,6 +2661,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/access-desktop.sh</code></td><td>access-desktop.sh — harbor desktop: general controllers for Mac apps, in the background (harbor/D-95, harbor#1440).</td></tr>
 <tr><td><code>bin/access-environment.sh</code></td><td>access-environment.sh (harbor#561) — the repo-visibility lines of the auto-mode environment block, read from</td></tr>
 <tr><td><code>bin/access-github-app-install.sh</code></td><td>access-github-app-install.sh — the in-session GitHub App scripts, COPIED from bin/access-github-app/. harbor#1225.</td></tr>
+<tr><td><code>bin/access-oauth.sh</code></td><td>access-oauth.sh (harbor#1597, contracts/secret-intake.md) - <code>harbor access add|rotate … --value-oauth</code>: a token from an</td></tr>
 <tr><td><code>bin/access-redact.sh</code></td><td>access-redact.sh (harbor#1597) — mask credentials in text an agent is about to read (contracts/secret-intake.md).</td></tr>
 <tr><td><code>bin/access.sh</code></td><td>access.sh (harbor#1205, harbor#1149) - <code>harbor access</code>: the access register, the one list of every identity an</td></tr>
 <tr><td><code>bin/admission-api-route.sh</code></td><td>guard-apiroute (harbor#545) — PostToolUse(Bash|Write|Edit|MultiEdit) and</td></tr>

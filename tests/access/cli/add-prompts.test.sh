@@ -14,10 +14,10 @@ VAL="fake-pty-value-$(printf 'q%.0s' 1 2 3 4 5 6)-0123"
 CASE="$T_TMP/add-case.sh"
 command -v script >/dev/null 2>&1 || { echo "add-prompts: script(1) is not on PATH" >&2; exit 2; }
 
-# ADD_PTY <answers> [value] — `access.sh add pty-token` under a pty. The field answers come first, then the value
+# ADD_PTY <answers> [value] — `access.sh add github-test-pty-token` under a pty. The field answers come first, then the value
 # after a pause (4 s: the two naming gates of harbor#978 run lint-name.sh before the value prompt), so the value is typed once secret put has turned echo off (a person types it that way too). The
 # input is held open a second after the last line: closing it early makes script(1) send EOF into the tty.
-printf '#!/bin/sh\nexec sh "%s" add pty-token\n' "$AX" > "$CASE"
+printf '#!/bin/sh\nexec sh "%s" add github-test-pty-token\n' "$AX" > "$CASE"
 ADD_PTY() {
   if [ "$(uname -s)" = Darwin ]; then
     { printf '%s' "$1"; [ -z "${2:-}" ] || { sleep 4; printf '%s\n' "$2"; }; sleep 1; } | script -q /dev/null sh "$CASE"
@@ -53,7 +53,7 @@ t_has "prompted for the secret reference" "$OUT" "secret reference (empty for no
 t_has "prompted for its name on the vendor, a token being a vendor object (harbor#978)" "$OUT" "its name on the vendor (<ORG> API <Platform>[ <Client>]):"
 t_has "...and wrote it" "$(cat "$REG")" "    vendor-name: EXAMPLECO API GitHub"
 t_has "then prompted for the value, not echoed" "$OUT" "value for harbor-github-tools-pty (not echoed):"
-t_has "the entry was written with the typed kind" "$(cat "$REG")" "## pty-token"
+t_has "the entry was written with the typed kind" "$(cat "$REG")" "## github-test-pty-token"
 t_has "...with the typed fields" "$(cat "$REG")" "    what: a pty test token"
 t_has "...and the grant" "$(cat "$REG")" "    grant: the suite"
 t_has "...and the ref it names" "$(cat "$REG")" "    secret: harbor-github-tools-pty"
@@ -83,6 +83,6 @@ t_eq "the store was never reached for it" 0 "$(grep -c 'cred-ref' "$KC_STUB/argv
 
 t_section "the prompt is the only way to fill a missing field: without a tty the same add is a usage error and writes nothing"
 BEFORE="$(cksum < "$REG")"
-t_eq "no tty, no flags: exit 2" 2 "$(sh "$AX" add untty-token </dev/null >/dev/null 2>&1; echo $?)"
+t_eq "no tty, no flags: exit 2" 2 "$(sh "$AX" add github-test-untty-token </dev/null >/dev/null 2>&1; echo $?)"
 t_eq "...and the register is unchanged" "$BEFORE" "$(cksum < "$REG")"
 t_done

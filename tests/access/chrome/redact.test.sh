@@ -32,6 +32,12 @@ t_has "the field keeps its label and ref" "$(o)" 'textbox "Password" [ref=e33]: 
 t_has "the URL keeps its other parameters" "$(o)" '?state=xyz&access_token=[REDACTED]&ok=1'
 t_eq "and the clean run logs nothing" "" "$(cat "$T_TMP/err")"
 
+t_section "an OAuth code in a redirect URL is masked (harbor#1597); a word ending in code is not"
+printf 'url: http://127.0.0.1:8765/callback?code=ac-0123456789abcdef&state=s1\nx: https://example.com/?postcode=LT01\ny: http://x/cb?auth_code=ac-fedcba9876543210&s=1\n' | sh "$T_ROOT/bin/access-redact.sh" > "$T_TMP/oc" 2>&1
+t_has "the code is masked, state kept" "$(cat "$T_TMP/oc")" '/callback?code=[REDACTED]&state=s1'
+t_has "postcode is not a code" "$(cat "$T_TMP/oc")" '?postcode=LT01'
+t_has "auth_code is masked too" "$(cat "$T_TMP/oc")" '/cb?auth_code=[REDACTED]&s=1'
+
 t_section "what is not a secret passes byte for byte"
 {
   printf '      - textbox "Login" [active] [ref=e26]: someone@example.com\n'
