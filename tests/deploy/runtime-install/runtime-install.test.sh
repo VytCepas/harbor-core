@@ -347,7 +347,8 @@ nj_run() { # <uname answer> <manager stub|-> -> the run's combined output with n
   [ "$2" = - ] || { printf '#!/bin/sh\nexit 0\n' > "$_p/$2"; chmod +x "$_p/$2"; }
   env -u CLAUDE_CONFIG_DIR PATH="$_p:$NJ" sh "$TOOL" --dir "$NJD/.claude" 2>&1
 }
-t_eq "control: the stripped PATH has no jq" "" "$(PATH="$NJ" command -v jq)"
+# A fresh shell: this one ran jq above, and its command hash would answer from the old PATH.
+t_eq "control: the stripped PATH has no jq" "" "$(env PATH="$NJ" sh -c 'command -v jq')"
 t_has "Linux with apt-get: the FAIL says jq is missing" "$(nj_run Linux apt-get)" "  FAIL: jq is required, and is not on PATH"
 t_has "Linux with apt-get: the fix is apt-get" "$(nj_run Linux apt-get)" "  fix: sudo apt-get install -y jq"
 t_has "Linux with dnf: the fix is dnf" "$(nj_run Linux dnf)" "  fix: sudo dnf install -y jq"

@@ -13,3 +13,22 @@
 {"id":"hub-token-other-share-glob","rule":"hub-token-read","want":"allow","cmd":"cat ~/.local/share/*.desktop","why":"harbor#1278 W7: a glob in .local/share that can't match the store"}
 {"id":"hub-token-dot-glob","rule":"hub-token-read","want":"allow","cmd":"cat ~/*/share/secret/notes.txt","why":"harbor#1278 W7: a shell glob never matches a leading dot, so this is not .local"}
 {"id":"hub-token-ls-key","rule":"hub-token-read","want":"allow","cmd":"ls -la hub-token.key","why":"harbor#1278 W7: an inert command naming the key reads nothing"}
+{"id":"bash-read-dotenv","rule":"key-material-read","want":"block","cmd":"cat .env","why":"harbor#1278: the Read tool may not open .env on a member box, so cat may not either"}
+{"id":"bash-read-kube-tail","rule":"key-material-read","want":"block","cmd":"tail -n 5 ~/.kube/config","why":"harbor#1278: a home row (~/.kube/**) read by a reader's operand"}
+{"id":"bash-read-redirect-in","rule":"key-material-read","want":"block","cmd":"read x < ~/.docker/config.json","why":"harbor#1278: the shell's own reader needs no verb"}
+{"id":"bash-read-sh-c","rule":"key-material-read","want":"block","cmd":"sh -c 'strings ~/.pypirc'","why":"harbor#1278: a wrapper does not hide the reader"}
+{"id":"bash-read-cp-out","rule":"key-material-read","want":"block","cmd":"cp ~/.npmrc {tmp}/npmrc.txt","why":"harbor#1278: a copy out is a read of the source"}
+{"id":"bash-read-grep-r-home","rule":"key-material-read","want":"block","cmd":"grep -rn password ~","why":"harbor#1278: a recursive search from home walks into the rows, as the Grep tool's rule says"}
+{"id":"bash-find-env-exec-atomic","rule":"key-material-read","want":"block","cmd":"find /home /Users /root /opt /srv /var/www /app /data /var/lib /tmp -maxdepth 6 -name \".env*\" -type f -exec sh -c 'echo \"=== $1 ===\" >> /tmp/creds.txt; cat \"$1\" >> /tmp/creds.txt' _ {} \\; 2>/dev/null","why":"harbor#1278: Atomic Red Team T1552.001 #26 (MIT), a -name filter that selects an any-depth row, fed to a shell"}
+{"id":"bash-find-path-home-row","rule":"key-material-read","want":"block","cmd":"find / -path '*/.config/gcloud/credentials.db' -type f -exec cat {} \\;","why":"harbor#1278: a -path filter that selects a home row under the start folder"}
+{"id":"bash-find-start-row","rule":"key-material-read","want":"block","cmd":"find ~/.kube -type f -exec cat {} \\;","why":"harbor#1278: the start folder is a row"}
+{"id":"bash-find-xargs","rule":"key-material-read","want":"block","cmd":"find ~ -name '*.pem' -print0 | xargs -0 cat","why":"harbor#1278: xargs is the reader"}
+{"id":"bash-find-unfiltered-home","rule":"key-material-read","want":"block","cmd":"find ~ -type f -exec grep -l token {} +","why":"harbor#1278: an unfiltered walk from home reaches the rows"}
+{"id":"bash-find-py-wc","rule":"key-material-read","want":"allow","cmd":"find . -name '*.py' -exec sh -c 'wc -l \"$1\"' _ {} \\;","why":"harbor#1278: an ordinary filtered find feeding a shell selects no row"}
+{"id":"bash-find-home-py-cat","rule":"key-material-read","want":"allow","cmd":"find ~ -name '*.py' -exec cat {} \\;","why":"harbor#1278: a filter that selects no row makes the walk from home harmless"}
+{"id":"bash-find-names-only","rule":"key-material-read","want":"allow","cmd":"find ~/.kube -name config","why":"harbor#1278: listing names reads no contents"}
+{"id":"bash-cat-readme","rule":"key-material-read","want":"allow","cmd":"cat README.md","why":"harbor#1278: an ordinary file"}
+{"id":"bash-grep-r-src","rule":"key-material-read","want":"allow","cmd":"grep -r foo src","why":"harbor#1278: a recursive search of a project folder"}
+{"id":"bash-grep-pattern-dotenv","rule":"key-material-read","want":"allow","cmd":"grep -rn .env src","why":"harbor#1278: grep's first operand is a pattern, never a path"}
+{"id":"bash-echo-cat-dotenv","rule":"key-material-read","want":"allow","cmd":"echo cat .env","why":"harbor#1278: an inert command naming a reader reads nothing"}
+{"id":"bash-sed-readme","rule":"key-material-read","want":"allow","cmd":"sed -n 1p README.md","why":"harbor#1278: sed's first operand is its program"}

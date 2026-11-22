@@ -18,19 +18,25 @@
 #   ticket   the first harbor issue its header cites; - when it cites none
 path	form	layer	purpose	ticket
 bin/access-browser-agent.sh	command	floor	`harbor chrome`: drive the operator's own Chrome through the Playwright Extension, attended and guarded (harbor#472; router row	harbor#472
+bin/access-oauth.sh	command	floor	`harbor access add|rotate … --value-oauth`: a token from an OAuth consent, code taken on loopback and exchanged off argv, stored without the agent seeing code or token	harbor#1597
 bin/access-browser-cdp.mjs	command	tool	raw Chrome DevTools Protocol against the system Chrome.	-
 bin/access-browser-flow.sh	command	floor	record a browser flow once and replay it from a file on a disposable signed-out headless browser, never the attended `harbor chrome` channel.	harbor#1445
 bin/access-browser-hosts-add.sh	command	floor	propose a host for `harbor chrome` goto/tab-new, and on --apply write it to contracts/browser-agent-hosts.txt in the file's own	harbor#900
 bin/access-browser.sh	command	floor	the estate's browser capability behind one router (harbor#457). harbor browser route print the router — which backend, and why	harbor#457
 bin/access-chrome-mcp.py	command	trio	the launcher of the harbor_chrome MCP server (`harbor chrome` as one tool per verb)	harbor#1301
 bin/access-chrome-mcp.ts	command	tool	`harbor chrome` as the MCP server `harbor_chrome`, one process per session	harbor#1421
+bin/access-desktop-build.sh	command	floor	build, bundle and sign the harbor desktop helper app, the one that holds the macOS grants (harbor/D-95)	harbor#1440
+bin/access-desktop-helper.swift	helper	floor	Swift source of the harbor desktop helper app, compiled by access-desktop-build.sh: AX, typing, capture, scripts behind the policy	harbor#1440
+bin/access-desktop-mcp.ts	command	tool	`harbor desktop` as the MCP server `harbor_desktop`, one tool per verb, confirm tools behind permissions.ask	harbor#1440
+bin/access-desktop.sh	command	floor	`harbor desktop`: general background controllers for Mac apps, relayed to the helper over a Unix socket	harbor#1440
 bin/access-environment.sh	command	floor	the repo-visibility lines of the auto-mode environment block, read from the registry of governed repos and a live `gh repo view	harbor#561
 bin/access-github-app-install.sh	command	floor	the in-session GitHub App scripts, COPIED from bin/access-github-app/. harbor#1225.	harbor#1225
 bin/access-github-app/gh	command	floor	gh shim (harbor#1018): inside a Claude Code session (CLAUDECODE=1) gh acts as the harbor-claude GitHub App, with a 1-hour token	harbor#1018
 bin/access-github-app/git-credential.sh	command	floor	git credential helper (harbor#1018): inside a Claude Code session (CLAUDECODE=1) github.com pushes and fetches authenticate as	harbor#1018
 bin/access-github-app/mint-token.sh	command	floor	a 1-hour installation token for the harbor-claude GitHub App, on stdout. Reuses the cached token while it has 10+ minutes left.	harbor#1018
+bin/access-redact.sh	command	floor	mask credentials (provider token shapes, secret-labelled field values, secret URL parameters) in text an agent is about to read; --check says whether any would be	-
 bin/access.sh	command	floor	`harbor access`: the access register, the one list of every identity an agent may use, and the only door to a secret's name.	harbor#1205
-bin/admission-ask.sh	command	floor	PreToolUse(Bash|Monitor|mcp__*) ASK gate: a permissions.ask match gets the dialog; in auto mode, a deny.	harbor#1545
+bin/admission-ask.sh	command	floor	PreToolUse(Bash|Monitor|mcp__*) ASK gate: a permissions.ask match gets the dialog; in auto mode, a deny, or one run after the operator's yes to a question quoting it (never gate-approve.sh).	harbor#1545
 bin/admission-api-route.sh	command	floor	PostToolUse(Bash|Write|Edit|MultiEdit) and SessionStart. Claude Code's own API route is not a setting anything a session runs may	harbor#545
 bin/admission-bash.sh	command	floor	PreToolUse(Bash) shell-injection / local-exec guard. Ports upstream DANGEROUS_PATTERNS @ a4e8e74 (safety-classifier.ts:44-76)	harbor#3
 bin/admission-cloud.sh	command	floor	PreToolUse(Bash) ASK-gate for destructive cloud operations.	harbor#194
@@ -171,6 +177,7 @@ bin/housekeeping-clean.sh	command	floor	the machine-decidable half of skills/hou
 bin/idea	command	floor	extends G2 (harbor#26): append one idea to MEMORY/IDEAS.md and sync it at event time, riding the same log repo, token and secret	harbor#26
 bin/library-admission.sh	library	floor	shared helpers for the Helm POSIX floor guards (workstream B, harbor#3). Sourced by bin/guard-*.sh AFTER their kill-switch line.	harbor#3
 bin/library-alert.sh	library	floor	one desktop notification helper with a fallback chain, sourced by every notifier. . bin/library-alert.sh	harbor#618
+bin/library-clipboard.sh	library	floor	read and empty the system clipboard (macOS, Wayland, X11, WSL2) for the tools that take a credential from it unseen. Never run: sourced.	-
 bin/library-fs.sh	library	floor	a file's mtime, size, mode and owner on BSD and GNU stat, one spelling. Sourced, never run: it sets no shell option, and every	harbor#618
 bin/library-gate.sh	library	floor	the approval gate's shared library. Never run: sourced after library-log.sh, it sets no shell option. Repo-agnostic: a repo opts	harbor#1018
 bin/library-hub.sh	library	floor	shared paths and the canonical call for the hub and member formats; decides nothing	harbor#1278

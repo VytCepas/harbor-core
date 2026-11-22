@@ -3,6 +3,7 @@ name: housekeeping
 description: "Reclaim a drifted box: the measured trash classes that accumulate here, the detector for each, and — the load-bearing half — the things that LOOK like trash and are live. Every class carries a safe-to-delete predicate and what breaks if you get it wrong. `bin/housekeeping-clean.sh` decides the machine-decidable part and is --dry-run until told otherwise; the rows only a person can decide (merged branches, finished worktrees, green PRs, done issues) come to the operator as ONE batch. USE WHEN the statusline shows 🧹 or SWEEP, clean up, sweep, free disk space, the box feels cluttered, tidy the fleet, obsolete worktrees or branches, stale sessions, what is safe to delete, disk is full, prune caches, retire a PR nobody will merge, merge what is waiting, garbage collect. NOT FOR deleting one file you can already name, or a repo's own build artefacts (its justfile owns those)."
 argument-hint: [--apply] [class]
 disable-model-invocation: true
+owns-content: "housekeeping-clean\.sh"
 ---
 
 # housekeeping

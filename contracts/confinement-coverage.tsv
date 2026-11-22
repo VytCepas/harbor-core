@@ -137,6 +137,21 @@ admission.gh-soft-credential-positional	judged	a remote action: the host list do
 admission.key-material-egress	judged	a remote action: the host list does not decide what a permitted host receives
 admission.key-material-read	judged	a remote action: the host list does not decide what a permitted host receives
 admission.keychain-dump	judged	a remote action: the host list does not decide what a permitted host receives
+admission.clipboard-read	judged	a local read: the transcript is the channel, and no host list sees it
+admission.browser-raw-cli	judged	a local process: the host list does not decide which tool drives the browser
+access.desktop-hard-deny	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-app-allow	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-browser-host	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-expect-label	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-live-change-word	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-live-change-list	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-submit-key	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-type-newline	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-focus	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-script-deny	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-script-confirm	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-shortcut-confirm	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
+access.desktop-ask-rule	judged	not a file write: harbor desktop refuses it in its own helper or MCP server, outside the Bash sandbox
 admission.privileged-jwt-egress	judged	a remote action: the host list does not decide what a permitted host receives
 admission.project-cred-egress	judged	a remote action: the host list does not decide what a permitted host receives
 admission.provider-secret-egress	judged	a remote action: the host list does not decide what a permitted host receives

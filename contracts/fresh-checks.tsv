@@ -21,6 +21,7 @@ docs/reference/registers.md	sh bin/doc-register-index.sh --check	sh bin/doc-regi
 docs/reference/env.md	sh bin/standard-inventory.sh page env --check	sh bin/standard-inventory.sh page env --write	
 docs/policy/enforcement.md	sh bin/policy-check.sh --gen enforcement --check	sh bin/policy-check.sh --gen enforcement	
 contracts/cli.md	sh bin/standard-inventory.sh page cli --check	sh bin/standard-inventory.sh page cli --write	
+-	access-redact.sh	--check asks whether text holds a credential, not whether a generated file is stale
 -	access-environment.sh	checks a live settings.json, not a tracked file
 -	admission-decider-set.sh	wiring-versus-table drift, not a generated file
 -	doc-graph-generate.sh	build/graph.tsv is an untracked build product, absent on a fresh checkout
