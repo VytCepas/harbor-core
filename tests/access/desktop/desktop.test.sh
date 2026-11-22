@@ -52,7 +52,7 @@ EOF
   t_eq "every tool name passes the mcp-tool surface" "" "$_bad"
   printf '{"permissions":{"ask":[]}}\n' > "$H/.claude/settings.json"
   R="$(rpc "$(callj script '{"source":"beep"}')")"
-  t_has "script without an ask rule is refused" "$(printf '%s' "$R" | jq -r '.result.content[0].text')" "no permissions.ask rule"
+  t_has "script without an ask rule is refused, stamped with its control id" "$(printf '%s' "$R" | jq -r '.result.content[0].text')" "[desktop:ask-rule] script refused: no permissions.ask rule"; t_red access.desktop-ask-rule
   t_eq "...as an error" true "$(printf '%s' "$R" | jq -r .result.isError)"
   printf '{"permissions":{"ask":["mcp__harbor_desktop__script","mcp__harbor_desktop__confirm_press"]}}\n' > "$H/.claude/settings.json"
   t_has "with the ask rule, script passes --confirm" "$(rpc "$(callj script '{"source":"beep"}')" | jq -r '.result.content[0].text')" "--confirm"
@@ -79,6 +79,18 @@ EOF
   done
 fi
 
+t_section "the helper's names render from their naming surfaces (system harbor, object desktop; harbor#1599)"
+SURF="$T_ROOT/standards/naming/surfaces.tsv"
+for _s in bundle-id app-bundle signing-identity state-dir; do
+  t_eq "the $_s surface is registered" 1 "$(awk -F'\t' -v s="$_s" '$1 == s { n++ } END { print n + 0 }' "$SURF")"
+done
+BLD="$T_ROOT/bin/access-desktop-build.sh"; CLI="$T_ROOT/bin/access-desktop.sh"
+t_eq "the bundle id is dev.<system>.<object>, in the plist and both codesign calls" "3 3" \
+  "$(grep -c 'dev\.harbor\.desktop' "$BLD") $(grep -o 'dev\.[a-z]*\.[a-z]*' "$BLD" | grep -c .)"
+t_eq "the signing identity is <System> <Object> Signing" 'ident="Harbor Desktop Signing"' "$(grep -o '^ident="[^"]*"' "$BLD")"
+t_eq "the app is <System><Object>.app under \$HOME/.local/lib/<system>/" '_app_default="$HOME/.local/lib/harbor/HarborDesktop.app"' "$(grep -o '^_app_default="[^"]*"' "$CLI")"
+t_has "the state is \$HOME/.local/state/<system>/<object>/" "$(grep '^dir=' "$CLI")" '$HOME/.local/state/harbor/desktop}'
+
 t_section "the helper's policy (a Mac with swiftc only)"
 if [ "$(uname)" != Darwin ]; then
   echo "  SKIP helper: not a Mac (the helper is macOS only)"
@@ -95,23 +107,27 @@ else
     t_has "...and ran every check" "$O" "an empty word list refuses every guarded call"
     # Mutants: each planted defect must turn the self-test red.
     sed 's/if hardDeny.contains(bundle) { throw/if false { throw/' "$T_ROOT/bin/access-desktop-helper.swift" > "$B/m1.swift"
-    build "$B/m1.swift" m1 && { "$B/m1" selftest "$W" >/dev/null 2>&1; t_eq "MUTANT: no hard deny → red" 1 "$?"; } || t_fail "mutant 1 did not compile"
+    build "$B/m1.swift" m1 && { "$B/m1" selftest "$W" >/dev/null 2>&1; t_eq "MUTANT: no hard deny → red" 1 "$?"; t_red access.desktop-hard-deny; } || t_fail "mutant 1 did not compile"
     sed 's/if let w = liveWord(text), (r\["confirmed"\]/if let w = liveWord(text), false \&\& (r["confirmed"]/' "$T_ROOT/bin/access-desktop-helper.swift" > "$B/m2.swift"
-    build "$B/m2.swift" m2 && { "$B/m2" selftest "$W" >/dev/null 2>&1; t_eq "MUTANT: gate never refuses → red" 1 "$?"; } || t_fail "mutant 2 did not compile"
+    build "$B/m2.swift" m2 && { "$B/m2" selftest "$W" >/dev/null 2>&1; t_eq "MUTANT: gate never refuses → red" 1 "$?"; t_red access.desktop-live-change-word; } || t_fail "mutant 2 did not compile"
     sed 's/if !lab.contains(want) { throw/if false { throw/' "$T_ROOT/bin/access-desktop-helper.swift" > "$B/m3.swift"
-    build "$B/m3.swift" m3 && { "$B/m3" selftest "$W" >/dev/null 2>&1; t_eq "MUTANT: a moved ref acts on its neighbour → red" 1 "$?"; } || t_fail "mutant 3 did not compile"
-    mutant() {  # $1 name, $2 sed program: the planted defect must turn the self-test red
+    build "$B/m3.swift" m3 && { "$B/m3" selftest "$W" >/dev/null 2>&1; t_eq "MUTANT: a moved ref acts on its neighbour → red" 1 "$?"; t_red access.desktop-expect-label; } || t_fail "mutant 3 did not compile"
+    mutant() {  # $1 name, $2 sed program, $3 the control it disables: the planted defect must turn the self-test red
       _n=$((${_n:-3} + 1)); sed "$2" "$T_ROOT/bin/access-desktop-helper.swift" > "$B/m$_n.swift"
       if ! cmp -s "$B/m$_n.swift" "$T_ROOT/bin/access-desktop-helper.swift" && build "$B/m$_n.swift" "m$_n"; then
-        "$B/m$_n" selftest "$W" >/dev/null 2>&1; t_eq "MUTANT: $1 → red" 1 "$?"
+        "$B/m$_n" selftest "$W" >/dev/null 2>&1; t_eq "MUTANT: $1 → red" 1 "$?" && t_red "$3"
       else t_fail "mutant $_n ($1) did not apply or compile"; fi
     }
-    mutant "no allow-list" 's/if !allowed.contains(bundle) { throw/if false { throw/'
-    mutant "Space ungated" 's/\["return", "enter", "space"\]/["return", "enter"]/'
-    mutant "a typed line break passes" 's/if text.contains(where: {/if false \&\& text.contains(where: {/'
-    mutant "a script names a denied app" 's/for n in hardDenyNames where/for n in [String]() where/'
-    mutant "the gate reads a cut label" 's/parts.map { p in cut.map { String(p.prefix($0)) } ?? p }/parts.map { p in String(p.prefix(cut ?? 120)) }/'
-    mutant "a lookalike host passes" 's/h == $0 || h.hasSuffix("." + $0)/h.hasSuffix($0)/'
+    mutant "no allow-list" 's/if !allowed.contains(bundle) { throw/if false { throw/' access.desktop-app-allow
+    mutant "Space ungated" 's/\["return", "enter", "space"\]/["return", "enter"]/' access.desktop-submit-key
+    mutant "a typed line break passes" 's/if text.contains(where: {/if false \&\& text.contains(where: {/' access.desktop-type-newline
+    mutant "a script names a denied app" 's/for n in hardDenyNames where/for n in [String]() where/' access.desktop-script-deny
+    mutant "the gate reads a cut label" 's/parts.map { p in cut.map { String(p.prefix($0)) } ?? p }/parts.map { p in String(p.prefix(cut ?? 120)) }/' access.desktop-live-change-word
+    mutant "a lookalike host passes" 's/h == $0 || h.hasSuffix("." + $0)/h.hasSuffix($0)/' access.desktop-browser-host
+    mutant "an empty word list waves calls through" 's/if words.isEmpty \&\& (r/if false \&\& (r/' access.desktop-live-change-list
+    mutant "an action may take focus unasked" 's/if !backgroundActions.contains(name) \&\& (r/if false \&\& (r/' access.desktop-focus
+    mutant "a script runs unconfirmed" 's/guard (r\["confirmed"\] as? Bool) == true else { throw Fail(msg: "\[desktop:script-confirm\]/guard true else { throw Fail(msg: "[desktop:script-confirm]/' access.desktop-script-confirm
+    mutant "a Shortcut runs unconfirmed" 's/if (r\["name"\] as? String) != nil \&\& (r/if false \&\& (r/' access.desktop-shortcut-confirm
   else t_fail "the helper did not compile"; fi
 fi
 t_done
