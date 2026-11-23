@@ -6,6 +6,10 @@
 #
 #   harbor chrome attach           the AGENT Chrome: a separate, headless Chrome on a copy of the agent profile; the
 #                                  operator's own Chrome is never touched (--show: the same in a window of its own)
+#   harbor chrome intake <ref> <add|rotate> <id> [add flags]   a key shown once, headless: clicks the page's Copy at <ref>
+#                                  and pipes THIS Chrome's own clipboard (or the field at <ref>) into harbor access
+#                                  --value-stdin, unseen. A plain click on a Copy is refused headless: its copy never
+#                                  reaches the macOS clipboard (contracts/secret-intake.md, 2026-11-23)
 #   harbor chrome signin [url] | --done   one window of the agent Chrome, for the operator to sign in once; --done closes it
 #   harbor chrome attach --operator   the operator's own Chrome, through the Playwright Extension: only when a call says so;
 #                                  the operator clicks Connect, or no click when the token is registered (playwright-extension-token)
@@ -479,6 +483,20 @@ _destructive() { # <label> — prints the first entry of $DESTRUCTIVE (a word or
   done
   IFS="$_old_ifs"; return 1
 }
+# A click that copies to the clipboard: a label naming the clipboard, a bare Copy or Copy & Close, or Copy ... key|token|secret.
+# Narrow on purpose: Copy campaign and Copy ad set duplicate a thing and copy nothing (contracts/secret-intake.md).
+_copy_click() { # <label>
+  _cl="$(printf '%s' "$1" | LC_ALL=C tr 'A-Z' 'a-z')"
+  case "$_cl" in *clipboard*) return 0 ;; esac
+  _cb="$(printf '%s' "$_cl" | sed 's/^[a-z][a-z]* "/"/; s/"//g' | tr -s ' ' | sed 's/^ //; s/ $//')"
+  case "$_cb" in copy|'copy & close'|'copy and close'|'copy to clipboard') return 0 ;; esac
+  _cw=" $(_words "$1") "; case "$_cw" in *' copy '*) ;; *) return 1 ;; esac
+  case " ${_cw#* copy }" in *' key '*|*' token '*|*' secret '*) return 0 ;; esac
+  return 1
+}
+# The agent Chrome or the headless lane with no window: a page's Copy lands in that Chrome's own clipboard, never the
+# macOS one, so --value-clipboard reads and empties the operator's (2026-11-23). attach --show writes .shown.
+_no_window() { { [ -e "$WORKDIR/.agent" ] || [ -e "$WORKDIR/.headless" ]; } && [ ! -e "$WORKDIR/.shown" ]; }
 _live_check() { # the list itself: without it no label can be judged, so nothing that commits runs
   [ -n "$DESTRUCTIVE" ] || _refuse 'no live-change words: contracts/live-change-words.txt is missing or empty, so no label can be checked' 'git checkout -- contracts/live-change-words.txt'
 }
@@ -553,6 +571,12 @@ _guard() { # <verb> <ref>
       _handoff "destructive $1 refused: '$G_LABEL' ($2) matches '$_hit' — the operator confirms one call" "HARBOR_ACCESS_BROWSER_CONFIRM=$2 harbor chrome $1 $2"
     fi
   fi
+  case "$1" in click|dblclick)
+    if _no_window && _copy_click "$G_LABEL"; then
+      _refuse "copy click refused: '$G_LABEL' ($2) would copy into the headless Chrome's own clipboard, never the macOS one, so --value-clipboard would read the operator's (2026-11-23)" \
+        "use harbor chrome intake $2 rotate <id>   # or add <id> [the add flags]: it clicks, reads this Chrome's clipboard and stores the key unseen"
+    fi ;;
+  esac
 }
 
 # --force: the pinned CLI's click has no force option (0.1.22: [button],
@@ -692,13 +716,13 @@ case "$VERB" in
       rm -rf "$_pd"
       cp -cR "$AGENT_PROFILE" "$_pd" 2>/dev/null || { rm -rf "$_pd"; cp -R "$AGENT_PROFILE" "$_pd"; } || _refuse "could not copy the agent profile into $_pd" 'df -h "$TMPDIR"'
       rm -f "$_pd"/Singleton*
-      rm -f "$WORKDIR/.headless"; : > "$WORKDIR/.agent"
+      rm -f "$WORKDIR/.headless" "$WORKDIR/.shown"; : > "$WORKDIR/.agent"; [ -z "$_show" ] || : > "$WORKDIR/.shown"
       DEBUG='pw:mcp:relay,pw:mcp:error'; export DEBUG   # never the caller's: pw:protocol logs every request's headers
-      _rc=0; _cli_run "-s=$S" open --browser=chrome "--profile=$_pd" "--idle-timeout=$IDLE_MS" ${_show:+"$_show"} || { _rc=$?; rm -f "$WORKDIR/.agent"; rm -rf "$_pd"; }
+      _rc=0; _cli_run "-s=$S" open --browser=chrome "--profile=$_pd" "--idle-timeout=$IDLE_MS" ${_show:+"$_show"} || { _rc=$?; rm -f "$WORKDIR/.agent" "$WORKDIR/.shown"; rm -rf "$_pd"; }
       [ "$_rc" -ne 0 ] || log_ok "attach: session $S runs the agent Chrome (its own profile copy${_show:+, in a window}); the operator's Chrome is untouched"
       exit "$_rc"
     fi
-    rm -f "$WORKDIR/.agent"
+    rm -f "$WORKDIR/.agent" "$WORKDIR/.shown"
     if [ "$_mode" = headless ]; then
       # The headless lane (harbor#1507): a throwaway, in-memory system Chrome with no profile, so no login and no
       # window; the same verbs and the same host allow-list (the operator's decision, 2026-11-11). `open` stays refused
@@ -851,13 +875,13 @@ OSA
   detach)
     if [ -e "$WORKDIR/.agent" ]; then   # the agent Chrome: the daemon's own browser on this session's profile copy, closed whole
       _rc=0; _cli_run "-s=$S" close || _rc=$?
-      rm -rf "$WORKDIR/profile"; rm -f "$WORKDIR/.agent" "$WORKDIR/.last-url"; exit "$_rc"
+      rm -rf "$WORKDIR/profile"; rm -f "$WORKDIR/.agent" "$WORKDIR/.shown" "$WORKDIR/.last-url"; exit "$_rc"
     fi
     if [ -e "$WORKDIR/.headless" ]; then   # the headless lane: its browser is the daemon's own, so close it whole
       _rc=0; _cli_run "-s=$S" close || _rc=$?
-      rm -f "$WORKDIR/.headless" "$WORKDIR/.last-url"; exit "$_rc"
+      rm -f "$WORKDIR/.headless" "$WORKDIR/.shown" "$WORKDIR/.last-url"; exit "$_rc"
     fi
-    rm -f "$WORKDIR/.last-url" "$WORKDIR/.background"   # a detach is deliberate: nothing re-attaches after it
+    rm -f "$WORKDIR/.last-url" "$WORKDIR/.background" "$WORKDIR/.shown"   # a detach is deliberate: nothing re-attaches after it
     # Then close what this session opened, and only that.
     _rc=0; _cli_run "-s=$S" detach || _rc=$?
     # Every tab in the window attach opened is this session's (a dropped tab's replacement, later
@@ -1067,6 +1091,48 @@ EOF
     sh "$HERE/access-browser-agent.sh" attach --operator >&2 || _refuse 'signed in, but the re-attach failed' 'harbor chrome attach --operator'
     exec sh "$HERE/access-browser-agent.sh" goto "$_u"
     ;;
+  intake)
+    # A key shown once (contracts/secret-intake.md, 2026-11-23): click the page's Copy at <ref>, read THIS Chrome's own
+    # clipboard with the fixed intake-read row (a <ref> that is itself the key's input or textarea: its value), and pipe it into
+    # harbor access <add|rotate> <id> --value-stdin. Never printed, never argv, never a file; the macOS clipboard untouched.
+    [ $# -ge 3 ] || _refuse 'intake takes <ref> <add|rotate> <access-entry-id> [the add flags...]' 'harbor chrome snapshot, then harbor chrome intake <ref> rotate <id>'
+    _iref="$1"; _iop="$2"; _iid="$3"; shift 3
+    case "$_iop" in add|rotate) ;; *) _refuse "intake takes add or rotate, not '$_iop'" "harbor chrome intake $_iref rotate <id>" ;; esac
+    case "$_iid" in ''|-*|*[!A-Za-z0-9._-]*) _refuse "intake: '$_iid' is not an access entry id" 'harbor access list' ;; esac
+    for _a in "$@"; do
+      case "$_a" in
+        --value-*) _refuse "intake supplies the value itself (--value-stdin): '$_a' is refused" "harbor chrome intake $_iref $_iop $_iid" ;;
+        *[[:cntrl:]]*) _refuse 'intake: an add flag carries a control character' ;;
+      esac
+    done
+    # Headless only: with a window (attach --show) or in the operator's Chrome, the page's Copy and readText are the macOS
+    # clipboard's, and that is --value-clipboard's route.
+    if ! _no_window; then
+      _w='the operator'"'"'s Chrome'; [ ! -e "$WORKDIR/.agent" ] || _w='the agent Chrome in a window (attach --show)'
+      _refuse "intake refused: session $S runs $_w, where the page's Copy reaches the macOS clipboard" "the page's own Copy, then: harbor access $_iop $_iid --value-clipboard"
+    fi
+    command -v jq >/dev/null 2>&1 || _refuse 'intake needs jq to read the intake-read answer' "$(pkg_hint jq)"
+    _fn="$(awk -F '\t' '$1 == "intake-read" { print substr($0, 13); exit }' "$ROOT/contracts/browser-script.tsv" 2>/dev/null)"
+    case "$_fn" in *__ARG__*) ;; *) _refuse 'no intake-read row in contracts/browser-script.tsv' 'git checkout -- contracts/browser-script.tsv' ;; esac
+    [ -z "$CONFIRM" ] || [ "$CONFIRM" = "$_iref" ] \
+      || _refuse "HARBOR_ACCESS_BROWSER_CONFIRM=$CONFIRM does not name this target ($_iref); it confirms one call on one ref"
+    _guard intake "$_iref"   # the ref and its label, as on click; the copy-click net is for click and dblclick, not this
+    # The guard's snapshot is of the open dialog, so it can hold the key itself (measured live, 2026-11-23): gone at once.
+    rm -f "$WORKDIR/harbor-guard.yml" "$WORKDIR/harbor-guard.out"
+    _fn="${_fn%%__ARG__*}\"$_iref\"${_fn#*__ARG__}"
+    # The CLI's own click (trusted input: a Copy handler may need the user activation a dispatched event lacks); its
+    # output, which may show the page, is dropped.
+    _cli_run "-s=$S" --raw click "$_iref" >/dev/null 2>&1 || _refuse "intake: the click on $_iref did not complete; nothing was stored" 'harbor chrome status, then harbor chrome snapshot'
+    # The value: the CLI's stdout, down a pipe, into access.sh's stdin. A ref that is a field holding a value is the key
+    # itself (a stale clipboard must not win over it); any other ref, the clipboard its Copy filled.
+    _irc=0
+    { _cli_run "-s=$S" --raw run-code "$_fn" 2>/dev/null || :; } \
+      | jq -rRj 'fromjson? | objects | select(.intake == 1) | (if ((.field // "") | length) > 0 then .field else (.clip // "") end)' 2>/dev/null \
+      | sh "$HERE/access.sh" "$_iop" "$_iid" "$@" --value-stdin || _irc=$?
+    [ "$_irc" -eq 0 ] || _refuse "intake: harbor access $_iop $_iid stored nothing new (exit $_irc, its reason above); an empty value means the page's Copy filled no clipboard and $_iref holds no key" \
+      "harbor chrome snapshot, then harbor chrome intake <the key's field ref> $_iop $_iid"
+    log_ok "intake: $_iop $_iid stored from this Chrome's own clipboard or the field at $_iref, unseen; the macOS clipboard untouched"
+    ;;
   status)
     _e="$(_relay_err)"
     _r=''; [ -z "$_e" ] || _r="$(/usr/bin/grep 'WebSocket closed' "$_e" | tail -1 | cut -c1-200 || :)"
@@ -1117,7 +1183,7 @@ EOF
       _rc=0; sh "$HERE/access-redact.sh" --check < "$_o" || _rc=$?
       rm -f "$_o"
       [ "$_rc" -ne 1 ] || _refuse "$VERB refused: the page shows a credential (a key or token, or a secret URL parameter), and an image cannot be redacted" \
-        "copy it with the page's own Copy button, then: harbor access add|rotate <id> --value-clipboard (contracts/secret-intake.md); close the dialog before any screenshot"
+        "store it unseen: harbor chrome intake <ref of the page's Copy button> add|rotate <id> (contracts/secret-intake.md); close the dialog before any screenshot"
       [ "$_rc" -eq 0 ] || _refuse "$VERB refused: the credential check failed (exit $_rc)" 'sh bin/access-redact.sh --check </dev/null'
       ;;
     esac

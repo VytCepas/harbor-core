@@ -60,6 +60,8 @@ VERBS = {
     'mousemove': 'move the mouse (args: [x, y])', 'mousedown': 'mouse down', 'mouseup': 'mouse up',
     'mousewheel': 'scroll (args: [dx, dy])', 'dialog-accept': 'accept the open dialog', 'dialog-dismiss': 'dismiss the open dialog',
     'upload': 'upload files (args: absolute paths) after a click opened the file chooser',
+    'intake': 'store a key shown once, unseen (args: [ref of the page\'s Copy, "add"|"rotate", access entry id, add flags...]): clicks the Copy, '
+              'reads this headless Chrome\'s own clipboard (or the field at ref) into harbor access --value-stdin; never the macOS clipboard',
     'confirm-click': "click a ref the operator approves in Claude Code's permission dialog (args as click): for a click that "
                      'changes a live system (Turn on, Apply, Publish, Delete, Pay, Generate token), which click refuses or the classifier denies',
 }
