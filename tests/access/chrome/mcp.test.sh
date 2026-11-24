@@ -33,13 +33,16 @@ t_eq "a line that is not JSON is -32700, and the server keeps serving" "-32700 {
 t_section "one tool per harbor chrome verb, and none the CLI refuses"
 TL="$(rpc "$X/access-chrome-mcp.py" '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq -r '.result.tools[].name' | sort)"
 ALLOWED="$(awk '/^_allowed\(\) \{/ { f = 1; next } f && /case "\$1" in/ { next } f && /return 0/ { sub(/\).*/, ""); gsub(/[ \t\\]/, ""); print; exit } f { gsub(/[ \t\\]/, ""); printf "%s", $0 }' "$AG" | tr '|' '\n' | sed '/^$/d')"
-SESSION_VERBS='attach signin status state timing text doctor detach tabs front wait-signin hosts intake confirm-click'
+SESSION_VERBS='attach signin verify status state timing text doctor detach tabs front wait-signin hosts intake confirm-click'
 WANT="$(printf '%s\n' $ALLOWED $SESSION_VERBS | tr '-' '_' | sort -u)"
 t_eq "CONTROL: the CLI's allowlist parses" yes "$([ "$(printf '%s\n' "$ALLOWED" | grep -c .)" -ge 20 ] && echo yes || echo no)"
 t_eq "the tools are exactly the CLI's allowed verbs and its session verbs" "$WANT" "$TL"
 t_hasnt "no tool runs code in a logged-in page" "$TL" "eval"
 _bad=""; for _n in $TL; do sh "$T_ROOT/bin/lint-name.sh" --check mcp-tool "mcp__harbor_chrome__$_n" 2>&1 | grep -q 'no finding' || _bad="$_bad $_n"; done
 t_eq "every tool name passes the mcp-tool surface (surfaces.tsv)" "" "$_bad"
+_ad="$(rpc "$X/access-chrome-mcp.py" '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq -r '.result.tools[] | select(.name == "attach") | .description')"
+t_has "attach says what plain attach and --blank are (harbor#1617)" "$_ad" "plain attach = the signed-in agent profile, already without a window; --blank = no profile, never signed in"
+t_has "...and that --headless is the old name" "$_ad" 'the old name of --blank'
 
 t_section "a call is the verb and its arguments as a list, never a shell string"
 R="$(rpc "$X/access-chrome-mcp.py" "$(callj tab_new '{"args":["https://example.com/a b; rm -rf /"]}')")"

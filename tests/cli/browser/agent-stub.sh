@@ -13,6 +13,8 @@ if [ -n "\${STUB_GONE:-}" ]; then
 fi
 for a in "\$@"; do case "\$a" in --filename=*) f="\${a#--filename=}" ;; esac; done
 case " \$* " in *" snapshot "*) [ -z "\${f:-}" ] || cp "$SNAP" "\$f" ;; esac
+# STUB_SNAPSHOT: what a bare snapshot prints (the page as the accessibility tree), for a page whose text is empty.
+case " \$* " in *" snapshot "*) [ -z "\${STUB_SNAPSHOT:-}" ] || { printf '%s\n' "\$STUB_SNAPSHOT"; exit 0; } ;; esac
 # The real CLI drains stdin; STUB_READS_STDIN makes the stub do the same.
 [ -z "\${STUB_READS_STDIN:-}" ] || cat >/dev/null
 # tab-list answers in the real CLI's shape, with STUB_URL as the current page.
@@ -39,6 +41,8 @@ case " \$* " in *" eval "*)
     printf '"%s"\n' "\${STUB_SUBMIT_LABEL:-}"; exit 0 ;;
   esac
   [ -z "\${STUB_EVAL_FAIL:-}" ] || { echo "Error: Execution context was destroyed"; exit 1; }
+  # The text verb's fixed function: STUB_TEXT is what the page shows (innerText), a JSON string as --raw prints it.
+  case "\$*" in *'() => document.body ? document.body.innerText'*) printf '"%s"\n' "\${STUB_TEXT-}"; exit 0 ;; esac
   # The shown-secret probe (contracts/browser-script.tsv, contracts/secret-intake.md): STUB_SHOWN is what the page shows.
   case "\$*" in *'e.type !== "password"'*) printf '"%s"\n' "\${STUB_SHOWN:-a plain page}"; exit 0 ;; esac
   if [ -n "\${STUB_HIDDEN:-}" ] || { [ -n "\${STUB_COVERED:-}" ] && [ -e "\$STUB_COVERED" ]; }; then printf '%s\n' '"{\"visibility\":\"hidden\",\"host\":\"business.facebook.com\",\"blank\":false}"'

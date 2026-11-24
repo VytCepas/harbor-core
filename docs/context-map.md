@@ -29,7 +29,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 3 |
 | standard | standards/ | system | source | versioned | 32 |
-| contract | contracts/ | system | source | versioned | 50 |
+| contract | contracts/ | system | source | versioned | 49 |
 | decision-record | docs/decisions/ | element | source | dated | 96 |
 | hook | hooks/ | component | source | living | 50 |
 | skill | skills/ | component | source | living | 66 |
@@ -41,7 +41,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | design | docs/design/ | component | source | living | 10 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 312 |
+| script | bin/ | component | source | living | 311 |
 | agent | agents/ | component | source | living | 1 |
 | how-to | docs/how-to/ | component | source | living | 7 |
 | reference | docs/reference/ | component | generated | generated | 96 |
@@ -56,10 +56,10 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `agents/` | 1 | 1 | 1 |
-| `bin/` | 316 | 32 | 2 |
+| `bin/` | 315 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 74 | 6 | 1 |
-| `contracts/` | 134 | 15 | 2 |
+| `contracts/` | 133 | 15 | 2 |
 | `docs/` | 333 | 26 | 9 |
 | `fixtures/` | 453 | 12 | 1 |
 | `hooks/` | 46 | 7 | 1 |
@@ -83,7 +83,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 19 | 45 | 3 | 6 | 0 | 13 |
+| access | control-plane | 18 | 45 | 2 | 6 | 0 | 13 |
 | admission | control-plane | 28 | 91 | 0 | 6 | 0 | 179 |
 | agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
@@ -133,7 +133,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/access-desktop-mcp.ts`
 - `bin/access-desktop.sh`
 - `bin/access-environment.sh`
-- `bin/access-get.sh`
 - `bin/access-github-app-install.sh`
 - `bin/access-oauth.sh`
 - `bin/access-redact.sh`
@@ -141,7 +140,6 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `context-rules/user/access-route-pointer.md`
 - `context-rules/user/access-route.sh`
 - `contracts/access-card.md`
-- `contracts/access-get.md`
 - `contracts/access-register.md`
 - `hooks/access-confinement/access-confinement.sh`
 - `hooks/access-confinement/access-confinement.test.sh`
