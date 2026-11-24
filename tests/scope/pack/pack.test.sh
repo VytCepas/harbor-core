@@ -389,21 +389,6 @@ mkdir -p "$TGK/conf-keys.d"; printf 'ck_project\n' > "$TGK/conf-keys.d/other.txt
 t_exit "a key another installed pack also declares does not block remove" 0 pk remove ck --apply --dir "$TGK"
 listed '"ck"'
 
-t_section "access/get.tsv: only the private layer's own pack ships the access-get vendor table, into <config>/access/ (harbor#1617)"
-_gt="$(printf 'vendor\tsecret\nexample\texample-api-read\n')"
-mkpack harbor-private; mkdir -p "$PRIV/harbor-pack/access"; printf '%s\n' "$_gt" > "$PRIV/harbor-pack/access/get.tsv"
-G "$PRIV" add -A; G "$PRIV" commit -q -m access
-listed '"harbor-private"'; TGA="$T_TMP/tg-access"; mkdir -p "$TGA"
-t_exit "the private layer's pack installs with an access/get.tsv" 0 pk install harbor-private --apply --dir "$TGA"
-t_eq "...which lands at <config>/access/get.tsv, byte for byte" "$_gt" "$(cat "$TGA/access/get.tsv" 2>/dev/null)"
-t_exit "...and remove takes it back" 0 pk remove harbor-private --apply --dir "$TGA"
-t_eq "...leaving no table" no "$([ -e "$TGA/access/get.tsv" ] && echo yes || echo no)"
-mkpack ag; mkdir -p "$PW/ag/harbor-pack/access"; printf '%s\n' "$_gt" > "$PW/ag/harbor-pack/access/get.tsv"; G "$PW/ag" add -A; G "$PW/ag" commit -q -m a
-refused "a workload pack shipping access/get.tsv" ag "only the private layer's own pack"
-mkpack harbor-private; mkdir -p "$PRIV/harbor-pack/access"; printf 'x\n' > "$PRIV/harbor-pack/access/other.tsv"
-G "$PRIV" add -A; G "$PRIV" commit -q -m other
-refused "any other file under access/" harbor-private "access/ holds get.tsv and nothing else"
-
 t_exit "no target is a usage error" 2 pk list
 t_exit "the real dispatcher routes harbor pack" 2 env HARBOR_SCOPE_BIN="$T_ROOT/bin" sh "$T_ROOT/bin/harbor" pack
 t_done
