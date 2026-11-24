@@ -384,6 +384,47 @@ t_eq "...that session only" 1 "$(called '-s=harbor-agent-signin close')"
 t_eq "attach --operator still takes the operator's Chrome when a call says so" "exit 0" "$(aag attach --operator)"
 t_eq "...through the extension" 1 "$(called 'attach --extension')"
 aag detach >/dev/null; rm -f "$OWN"
+
+t_section "a Copy click with no window is refused: the headless Chrome's clipboard is not the operator's (2026-11-23)"
+cat >> "$SNAP" <<'EOF'
+  - button "Copy & Close" [ref=e28] [box=8,230,80,20]
+  - button "Copy API key \"Example API\" to clipboard" [ref=e29] [box=100,230,80,20]
+  - button "Copy campaign" [ref=e30] [box=200,230,80,20]
+  - button "Copy token" [ref=e33] [box=300,230,80,20]
+  - button "Paste from clipboard" [ref=e34] [box=400,230,80,20]
+EOF
+aag attach >/dev/null; : > "$CALLS"
+t_eq "a headless attach leaves no .shown marker" no "$([ -e "$W/.shown" ] && echo yes || echo no)"
+t_eq "Copy & Close (RTB House) is refused" "exit 1" "$(aag click e28)"
+t_has "...naming the intake verb as the way" "$(out)" "use harbor chrome intake e28 rotate <id>"
+t_eq "Copy API key ... to clipboard (a partner UI, measured) is refused" "exit 1" "$(aag click e29)"
+t_eq "...on dblclick and --real too" "exit 1 exit 1" "$(aag dblclick e28) $(aag click e29 --real)"
+t_eq "...and past HARBOR_ACCESS_BROWSER_CONFIRM" "exit 1" "$(HARBOR_ACCESS_BROWSER_CONFIRM=e28; export HARBOR_ACCESS_BROWSER_CONFIRM; aag click e28)"
+t_eq "none of them reached the CLI" 0 "$(called ' e2[89]$')"
+t_eq "Copy campaign passes headless: a duplicate, not a copy" "exit 0" "$(aag click e30)"
+t_eq "Copy token, naming no clipboard, is refused" "exit 1" "$(aag click e33)"
+t_eq "Paste from clipboard passes headless: it copies nothing" "exit 0" "$(aag click e34)"
+aag attach --show >/dev/null
+t_eq "attach --show writes .shown" yes "$([ -e "$W/.shown" ] && echo yes || echo no)"
+t_eq "...and the same click passes" "exit 0 exit 0" "$(aag click e28) $(aag click e29)"
+t_eq "...both reaching the CLI" 2 "$(called ' e2[89]$')"
+aag attach >/dev/null
+t_eq "a plain attach after it removes .shown" no "$([ -e "$W/.shown" ] && echo yes || echo no)"
+aag attach --show >/dev/null; aag detach >/dev/null
+t_eq "detach removes it" no "$([ -e "$W/.shown" ] && echo yes || echo no)"
+(STUB_FAIL=1; export STUB_FAIL; aag attach --show >/dev/null)
+t_eq "a failed open removes it with .agent" "no no" "$([ -e "$W/.shown" ] && echo yes || echo no) $([ -e "$W/.agent" ] && echo yes || echo no)"
+aag attach --headless >/dev/null; : > "$CALLS"
+t_eq "the headless lane refuses it too" "exit 1" "$(aag click e28)"
+t_has "...as the copy click" "$(out)" "copy click refused"
+aag detach >/dev/null; aag attach --operator >/dev/null
+t_eq "the operator's Chrome is not refused" "exit 0" "$(aag click e28)"
+aag detach >/dev/null; rm -f "$OWN"; aag attach >/dev/null
+sed 's/^    if _no_window && _copy_click "\$G_LABEL"; then$/    if false; then/' "$AGENT" > "$LM/bin/access-browser-agent.sh"
+t_eq "the copy mutant differs from the script" yes "$(cmp -s "$AGENT" "$LM/bin/access-browser-agent.sh" || echo yes)"
+t_eq "and without the copy guard Copy & Close goes through headless" "exit 0" \
+  "$(rc env HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$LM/bin/access-browser-agent.sh" click e28)"
+aag detach >/dev/null
 # The default flipped back to the operator's Chrome, a bare attach opens an AppleScript window in it: the arms above can fail.
 sed "s/^    _mode=agent; _show=''\$/    _mode=operator; _show=''/" "$AGENT" > "$LM/bin/access-browser-agent.sh"
 t_eq "the default mutant differs from the script" yes "$(cmp -s "$AGENT" "$LM/bin/access-browser-agent.sh" || echo yes)"

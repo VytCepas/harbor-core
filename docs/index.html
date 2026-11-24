@@ -1498,6 +1498,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/status/statusline/subagent.test.sh</code></td><td><code>bin/status-fleet-glyph.sh bin/status-subagent-glyph.sh tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/usage-aggregate/usage-aggregate.test.sh</code></td><td><code>bin/* launchd/* tests/status/usage-aggregate/usage-aggregate.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/status/network/network.test.sh</code></td><td><code>bin/status-network.sh bin/event-bus.sh bin/library-log.sh tests/status/network/* tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/status/disk/disk.test.sh</code></td><td><code>bin/status-disk.sh bin/library-log.sh tests/status/disk/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/test/suite-select/suite-select.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/ci/verified/verified.test.sh</code></td><td><code>bin/ci-verified.sh tests/ci/verified/verified.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/runner/image.test.sh</code></td><td><code>runners/* contracts/suites.txt tests/ci/runner/image.test.sh tests/access/browser/browser.test.sh bin/browser* bin/access-browser* tests/lib/core.sh tests/lib/linux-sim.sh</code></td></tr>
@@ -1742,6 +1743,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/access/browser/private-hosts.test.sh</code></td><td><code>bin/admission-egress.sh bin/access-redact.sh bin/access-browser-agent.sh bin/scope-roots.sh bin/library-log.sh context-rules/user/browser-route.sh contracts/browser-agent-hosts.txt contracts/private-layer.md tests/access/browser/private-hosts.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/access/browser/token.test.sh</code></td><td><code>bin/admission-egress.sh bin/access-redact.sh bin/access-browser-agent.sh bin/secret bin/access.sh bin/scope.sh bin/scope-roots.sh bin/library-log.sh contracts/browser-agent-hosts.txt contracts/secret-legacy-refs.txt tests/access/browser/token.test.sh tests/cli/keychain-stub.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/access/browser/chrome.test.sh</code></td><td><code>bin/admission-egress.sh bin/access-redact.sh bin/access-browser-agent.sh bin/library-log.sh bin/scope-roots.sh contracts/browser-agent-hosts.txt contracts/browser-script.tsv contracts/live-change-words.txt tests/access/browser/chrome.test.sh tests/cli/browser/agent-stub.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/access/browser/intake.test.sh</code></td><td><code>bin/* contracts/* standards/naming/* tests/access/browser/intake.test.sh tests/cli/* tests/lib/core.sh</code></td></tr>
 <tr><td><code>hooks/ticket-note/private-owners.test.sh</code></td><td><code>hooks/ticket-note/ticket-note.sh bin/scope-roots.sh bin/library-log.sh contracts/private-layer.md hooks/ticket-note/private-owners.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/citations/private.test.sh</code></td><td><code>bin/lint-conventions.sh bin/scope-roots.sh bin/library-log.sh docs/reference/citations.md contracts/private-layer.md tests/checks/lint-fixture.sh tests/lint/citations/private.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/decision/citation.test.sh</code></td><td><code>bin/lint-conventions.sh docs/decisions/* contracts/decision-orphans.tsv tests/checks/lint-fixture.sh tests/lib/core.sh tests/lint/decision/citation.test.sh contracts/decision-reach.tsv standards/naming/repo-kinds.tsv bin/scope-roots.sh</code></td></tr>
@@ -1827,6 +1829,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/drift/reconcile/contract.test.sh</code></td><td><code>bin/library-log.sh bin/memory-route.sh bin/drift-reference-check.sh bin/drift-port-root.sh bin/drift-confinement.sh bin/deploy-confinement.sh bin/scope-roots.sh contracts/finding.md bin/doc-cited-paths.awk bin/library-fs.sh contracts/reconcile.md standards/naming/controls.tsv tests/drift/reconcile/contract.test.sh tests/checks/reference-check-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/drift/status/status.test.sh</code></td><td><code>bin/drift-status.sh bin/library-log.sh standards/naming/controls.tsv tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/ci/runners/scale.test.sh</code></td><td><code>bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/library-log.sh tests/ci/runners/scale.test.sh tests/ci/ci-runners-fixture.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/ci/runners/tidy.test.sh</code></td><td><code>bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/status-fleet-snapshot-refresh.sh bin/library-log.sh tests/ci/runners/tidy.test.sh tests/ci/ci-runners-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/standard/rename/window.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/standard/rename/collapse.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/standard/rename/env-window.test.sh</code></td><td><code>always</code></td></tr>
@@ -2382,7 +2385,7 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>ci-runner-switch.sh</code></td><td>ci-runner-switch.sh (harbor#865) — GitHub-hosted is the primary CI runner; the Mac is the fallback when the month's Actions minutes run short.</td></tr>
 <tr><td><code>ci-runners-fleet-lib.sh</code></td><td>ci-runners-fleet-lib.sh (harbor#1060) — the fleet view: the desired set (load_fleet), the actual set (collect, gov_row), <code>list</code>, and the mount lines.</td></tr>
 <tr><td><code>ci-runners-github-lib.sh</code></td><td>ci-runners-github-lib.sh (harbor#1060) — what the runners do on GitHub: <code>switch</code> (CI_RUNS_ON), <code>rerun-refused</code>, <code>rerun-lost</code>.</td></tr>
-<tr><td><code>ci-runners-provision-lib.sh</code></td><td>ci-runners-provision-lib.sh (harbor#1060) — container lifecycle: sync_hook, <code>up</code>, <code>refresh</code>, the governance runners, <code>down</code>.</td></tr>
+<tr><td><code>ci-runners-provision-lib.sh</code></td><td>ci-runners-provision-lib.sh (harbor#1060) — container lifecycle: sync_hook, <code>up</code>, <code>refresh</code>, the governance runners, <code>down</code>, <code>tidy</code>.</td></tr>
 <tr><td><code>ci-runners-watch-lib.sh</code></td><td>ci-runners-watch-lib.sh (harbor#1060) — watching: the alarm, the drift cache, and <code>tick</code>.</td></tr>
 <tr><td><code>ci-runners.sh</code></td><td>ci-runners.sh (harbor#1060) — one Linux runner container per fleet repo that wants local CI, owned by this box.</td></tr>
 <tr><td><code>ci-wait.sh</code></td><td>ci-wait.sh (harbor#1367) — a PR's CI verdict, woken by the event bus: one GitHub read per finished job, never a poll loop.</td></tr>
@@ -2431,6 +2434,7 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>session-title.sh</code></td><td>session-title.sh (harbor#1257) — applies the title the MODEL wrote for this session, via sessionTitle.</td></tr>
 <tr><td><code>session-verdicts.sh</code></td><td>L0-5b (harbor#59) — SessionStart standing verdicts, printed ONCE per session.</td></tr>
 <tr><td><code>standard-fleet-names-run.sh</code></td><td>standard-fleet-names-run.sh (harbor#967) — the scheduled entry of docs/reference/checks.md <code>standard.fleet-names</code>: the weekly naming check.</td></tr>
+<tr><td><code>status-disk.sh</code></td><td>status-disk.sh (harbor#1060) — check status.disk: free space on the Mac's data volume under a floor (operator decision 2026-11-23).</td></tr>
 <tr><td><code>status-fleet-glyph.sh</code></td><td>L0-5 (harbor#21, extended harbor#59, redesigned harbor#293) — Claude Code statusline.</td></tr>
 <tr><td><code>status-fleet-snapshot-refresh.sh</code></td><td>L0-5-interim (harbor#21) — write the fleet snapshot cache the statusline glyph reads.</td></tr>
 <tr><td><code>status-fleet-watch.sh</code></td><td>status-fleet-watch.sh (harbor#1437) — the hourly fleet watch pass, scheduled by harbor: check id status.fleet-watch.</td></tr>
@@ -2714,7 +2718,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/ci-runner-switch.sh</code></td><td>ci-runner-switch.sh (harbor#865) — GitHub-hosted is the primary CI runner; the Mac is the fallback when the month's Actions minutes run short.</td></tr>
 <tr><td><code>bin/ci-runners-fleet-lib.sh</code></td><td>ci-runners-fleet-lib.sh (harbor#1060) — the fleet view: the desired set (load_fleet), the actual set (collect, gov_row), <code>list</code>, and the mount lines.</td></tr>
 <tr><td><code>bin/ci-runners-github-lib.sh</code></td><td>ci-runners-github-lib.sh (harbor#1060) — what the runners do on GitHub: <code>switch</code> (CI_RUNS_ON), <code>rerun-refused</code>, <code>rerun-lost</code>.</td></tr>
-<tr><td><code>bin/ci-runners-provision-lib.sh</code></td><td>ci-runners-provision-lib.sh (harbor#1060) — container lifecycle: sync_hook, <code>up</code>, <code>refresh</code>, the governance runners, <code>down</code>.</td></tr>
+<tr><td><code>bin/ci-runners-provision-lib.sh</code></td><td>ci-runners-provision-lib.sh (harbor#1060) — container lifecycle: sync_hook, <code>up</code>, <code>refresh</code>, the governance runners, <code>down</code>, <code>tidy</code>.</td></tr>
 <tr><td><code>bin/ci-runners-watch-lib.sh</code></td><td>ci-runners-watch-lib.sh (harbor#1060) — watching: the alarm, the drift cache, and <code>tick</code>.</td></tr>
 <tr><td><code>bin/ci-runners.sh</code></td><td>ci-runners.sh (harbor#1060) — one Linux runner container per fleet repo that wants local CI, owned by this box.</td></tr>
 <tr><td><code>bin/ci-runs-on.sh</code></td><td>ci-runs-on.sh (harbor#1060) — make a checkout's workflows read vars.CI_RUNS_ON, so the repo can move to local CI.</td></tr>
@@ -2927,6 +2931,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/standard-vendor.sh</code></td><td>standard-vendor.sh (harbor#967 item 4, decision harbor#1002) — vendors the naming package into a repo.</td></tr>
 <tr><td><code>bin/status-console.sh</code></td><td>status-console.sh (harbor#738) — <code>harbor ui</code>: Harbor's live state as read-only panels on a localhost page.</td></tr>
 <tr><td><code>bin/status-dashboard-generate.sh</code></td><td>VIZ-1 (harbor#59 follow-on) — render Harbor's numbers as a local HTML page.</td></tr>
+<tr><td><code>bin/status-disk.sh</code></td><td>status-disk.sh (harbor#1060) — check status.disk: free space on the Mac's data volume under a floor (operator decision 2026-11-23).</td></tr>
 <tr><td><code>bin/status-fleet-glyph.sh</code></td><td>L0-5 (harbor#21, extended harbor#59, redesigned harbor#293) — Claude Code statusline.</td></tr>
 <tr><td><code>bin/status-fleet-snapshot-refresh.sh</code></td><td>L0-5-interim (harbor#21) — write the fleet snapshot cache the statusline glyph reads.</td></tr>
 <tr><td><code>bin/status-fleet-watch.sh</code></td><td>status-fleet-watch.sh (harbor#1437) — the hourly fleet watch pass, scheduled by harbor: check id status.fleet-watch.</td></tr>

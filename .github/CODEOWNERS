@@ -264,6 +264,7 @@
 /bin/standard-rename.sh @VytCepas
 /bin/standard-shape.sh @VytCepas
 /bin/standard-vendor.sh @VytCepas
+/bin/status-disk.sh @VytCepas
 /bin/status-fleet-snapshot-refresh.sh @VytCepas
 /bin/status-fleet-watch.sh @VytCepas
 /bin/status-generate.sh @VytCepas

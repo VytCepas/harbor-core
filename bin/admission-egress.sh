@@ -601,7 +601,7 @@ $TARGETS_ALL"
        || floor_seg_has '(.*/)?xsel' '^(-[a-zA-Z]*o[a-zA-Z]*|--output)$' \
        || floor_seg_has '(.*/)?(powershell|pwsh)(\.exe)?' '[Gg][Ee][Tt]-[Cc][Ll][Ii][Pp][Bb][Oo][Aa][Rr][Dd]' \
        || floor_seg_has '(.*/)?osascript' '[Cc][Ll][Ii][Pp][Bb][Oo][Aa][Rr][Dd]'; then
-      floor_block egress "reading the clipboard into the session — a key copied from a page would be written to the transcript; store it unseen with harbor access add|rotate <id> --value-clipboard" clipboard-read.argv
+      floor_block egress "reading the clipboard into the session — a key copied from a page would be written to the transcript; store it unseen with harbor chrome intake <ref> add|rotate <id> (a key a page shows), or harbor access add|rotate <id> --value-clipboard (one you copied)" clipboard-read.argv
     fi
     # harbor chrome is the one road to a browser (contracts/browser-routing.md): its replies pass bin/access-redact.sh and its
     # screenshots refuse a page that shows a credential. The pinned Playwright CLI run by hand has neither (2026-11-21: a vendor
