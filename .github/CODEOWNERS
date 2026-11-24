@@ -79,6 +79,7 @@
 /standards/naming/controls.tsv @VytCepas
 /bin/access-browser-agent.sh @VytCepas
 /bin/access-browser.sh @VytCepas
+/bin/access-get.sh @VytCepas
 /bin/access-github-app-install.sh @VytCepas
 /bin/access-oauth.sh @VytCepas
 /bin/access-redact.sh @VytCepas
