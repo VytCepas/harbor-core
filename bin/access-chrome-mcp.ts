@@ -58,9 +58,9 @@ const DESTRUCTIVE: string[] = (() => { try { return fs.readFileSync(path.join(RO
   .map((l) => l.replace(/#.*/, '').trim().replace(/\s+/g, ' ')).filter((l) => l !== '');
 
 // Run by the shell agent: the verbs that touch Chrome's windows or wait on the operator.
-const LONG: Record<string, number> = { attach: 900, 'wait-signin': 900 };   // seconds
+const LONG: Record<string, number> = { attach: 900, 'wait-signin': 900, verify: 300 };   // seconds
 // intake: the shell agent's, so the value goes down one pipe from the CLI into access.sh and never through this process.
-const AGENT_VERBS = new Set(['attach', 'signin', 'status', 'doctor', 'detach', 'tabs', 'front', 'wait-signin', 'hosts', 'tab-new', 'intake']);
+const AGENT_VERBS = new Set(['attach', 'signin', 'status', 'doctor', 'detach', 'tabs', 'front', 'wait-signin', 'hosts', 'tab-new', 'intake', 'verify']);
 // Run here. Default-deny: absent on purpose are run-code, eval, cookie-*, *storage-*, state-save/load, requests, route, install...
 const HOT_VERBS = new Set(['state', 'timing', 'text', 'goto', 'tab-list', 'tab-select', 'tab-close', 'snapshot', 'find', 'screenshot', 'pdf',
   'go-back', 'go-forward', 'reload', 'console', 'resize', 'click', 'dblclick', 'hover', 'fill', 'type', 'select', 'check', 'uncheck',
@@ -83,11 +83,16 @@ const TEXT_ROLES: Record<string, Set<string> | null> = { click: null, dblclick: 
 const TEXT_KEEP: Record<string, [number, number]> = { fill: [1, 1], select: [1, Infinity], check: [0, 0], uncheck: [0, 0], hover: [0, 0], text: [0, 0] };
 
 const VERBS: Record<string, string> = {
-  attach: "start this session's AGENT Chrome: a separate, headless Chrome on a copy of the agent profile the operator signed in to, so the operator's own Chrome is never touched " +
-    'and lanes run side by side (args ["--show"]: the same in a window of its own). args ["--headless"]: a throwaway Chrome with no profile. ' +
-    'args ["--operator"]: the operator\'s own Chrome through the extension, only when the operator asks for it',
+  attach: "start this session's AGENT Chrome: plain attach = the signed-in agent profile, already without a window; --blank = no profile, never signed in. " +
+    "It is a separate Chrome on a copy of the profile the operator signed in to, so the operator's own Chrome is never touched and lanes run side by side " +
+    '(args ["--show"]: the same in a window of its own; ["--blank"]: a throwaway Chrome, no profile, nothing signed in; ["--headless"] is the old name of --blank, ' +
+    'works one more release and says so). args ["--operator"]: the operator\'s own Chrome through the extension, only when the operator asks for it',
   signin: 'open ONE window of the agent Chrome for the operator to sign in once (args: [https url on an allowed host]); ' +
-    'every later attach copies that profile. args ["--done"] closes it after they say they are signed in',
+    'every later attach copies that profile. args ["--cards", "a,b,c"] opens the first card\'s browser-check url, ["--next"] closes that window and opens the next card\'s; ' +
+    'each step and ["--done"] print the cookie NAMES the host just signed in now holds and whether each is persistent (never a value). ' +
+    'args ["--done"] closes the window after they say they are signed in',
+  verify: "check a route card against this session's browser (args: [card name]): goes to each `check:`/`role-check:` url of the form `harbor chrome goto <https url>`, reads the page text " +
+    '(the accessibility snapshot when empty) and prints per check pass, FAIL missing <literal> of its `expect:`/`role-expect:`, or login-wall. Read-only: navigation and reading, never a click or a fill',
   status: "this session's browser name, pin, profile and workdir",
   state: "the page's own visibility, focus and load state",
   timing: "the page's own clock as JSON (no args): navigation timing, the latest LCP, now, and every own-origin resource as " +
@@ -102,8 +107,8 @@ const VERBS: Record<string, string> = {
   front: "make this session's tab the visible one, then give focus back",
   'wait-signin': 'wait (args: [seconds], default 300) while the operator signs in',
   hosts: 'the host allowlist goto and tab_new read: core, then the private layer',
-  goto: 'open one url (args: [url]): https on an allowed host; in a headless lane only, also a dev server at http://localhost:<port> or http://127.0.0.1:<port> (1024-65535)',
-  'tab-new': 'open a tab (args: [] or [url] on an allowed host; a dev server in a headless lane only)',
+  goto: 'open one url (args: [url]): https on an allowed host; in a blank lane only, also a dev server at http://localhost:<port> or http://127.0.0.1:<port> (1024-65535)',
+  'tab-new': 'open a tab (args: [] or [url] on an allowed host; a dev server in a blank lane only)',
   'tab-list': "this session's tabs", 'tab-select': 'select a tab (args: [index])', 'tab-close': 'close a tab (args: [index])',
   snapshot: 'the page as an accessibility tree with refs', find: 'find on the page (args: [text])',
   screenshot: 'a screenshot (args: [] or [--filename=<bare name>]); it lands in the session workdir',
@@ -263,7 +268,7 @@ function loopbackOk(url: string): boolean {
   const m = /^(?:localhost|127\.0\.0\.1):([1-9][0-9]{3,4})$/.exec(url.slice(7).split(/[/?#]/)[0]);
   return !!m && Number(m[1]) >= 1024 && Number(m[1]) <= 65535;
 }
-// Loopback is the headless lane's only (operator, 2026-11-15): in the logged-in profile an agent-written page could send credentialed
+// Loopback is the blank lane's only (operator, 2026-11-15): in the logged-in profile an agent-written page could send credentialed
 // cross-site requests and read localhost cookies. The .headless marker is a $TMPDIR file anyone can write, so the daemon's own record
 // must agree: the CLI writes attached: true for the operator's Chrome (access-browser-agent.sh _headless_lane).
 function headlessLane(S: string, wd: string): boolean {
@@ -298,21 +303,45 @@ function privateDir(): string {
 }
 const privHosts = () => (SEAMS.privHosts ?? (privateDir() ? path.join(privateDir(), 'browser-hosts.txt') : ''));
 const scopeEnv = () => ({ PATH: PATH_FIXED, HOME, ...(SEAMS.scopeEnv ?? {}) });
-function accountFor(host: string): string {   // the route card's primary account for a host, or its parent domain
-  const ad: string = SEAMS.accessDir ?? (privateDir() ? path.join(privateDir(), 'access') : '');
+const accessDir = (): string => SEAMS.accessDir ?? (privateDir() ? path.join(privateDir(), 'access') : '');
+const cardNames = (ad: string): string[] => { try { return fs.readdirSync(ad).filter((n) => /^[a-z].*\.md$/.test(n)).sort(); } catch { return []; } };
+// The text after `<field>:` on the card's first line carrying it (browser-last-tier.sh reads `ui-hosts:` the same way).
+const cardField = (text: string, field: string): string => new RegExp(`^[ \\t]*${field}:[ \\t]*(.*?)[ \\t]*$`, 'im').exec(text)?.[1] ?? '';
+// The card whose `ui-hosts:` lists the host, exactly, else a parent domain it lists (a listed host covers its subdomains).
+function cardForHost(host: string): string {
+  const ad = accessDir();
   if (!ad || !fs.existsSync(ad)) return '';
-  let h = host;
-  const cards = (() => { try { return fs.readdirSync(ad).filter((n) => /^[a-z].*\.md$/.test(n)).sort(); } catch { return []; } })();
-  for (;;) {
-    const card = cards.find((n) => readText(path.join(ad, n)).includes(h));
-    if (card) {
-      for (const line of readText(path.join(ad, card)).split('\n')) {
-        const m = /^ *account: *([^ |]*) *\| *primary *\|/.exec(line);
-        if (m && m[1]) return `${m[1]} (${card})`;
-      }
-    }
+  const cards = cardNames(ad).map((n) => [n, readText(path.join(ad, n))] as const).filter(([, t]) => /^[ \t]*identity:/im.test(t));
+  for (let h = host; ;) {
+    const hit = cards.find(([, t]) => cardField(t, 'ui-hosts').toLowerCase().split(/[,\s]+/).includes(h));
+    if (hit) return hit[0];
     if ((h.match(/\./g) ?? []).length >= 2) h = h.slice(h.indexOf('.') + 1); else return '';
   }
+}
+const primaryOf = (text: string): string => { for (const line of text.split('\n')) { const m = /^ *account: *([^ |]*) *\| *primary *\|/.exec(line); if (m && m[1]) return m[1]; } return ''; };
+// The account to sign in with: the primary `account:` of the card whose `ui-hosts:` lists the host. Only when no card lists it,
+// the old reading: the first card whose text names the host or its parent domain.
+function accountFor(host: string): string {
+  const ad = accessDir();
+  if (!ad || !fs.existsSync(ad)) return '';
+  const listed = cardForHost(host);
+  if (listed) { const a = primaryOf(readText(path.join(ad, listed))); return a ? `${a} (${listed})` : ''; }
+  let h = host;
+  const cards = cardNames(ad);
+  for (;;) {
+    const card = cards.find((n) => readText(path.join(ad, n)).includes(h));
+    if (card) { const a = primaryOf(readText(path.join(ad, card))); if (a) return `${a} (${card})`; }
+    if ((h.match(/\./g) ?? []).length >= 2) h = h.slice(h.indexOf('.') + 1); else return '';
+  }
+}
+// A card whose `session:` is show-only, opened in a headless copy of the agent profile (.agent, no .shown): that login lives in a window only.
+function sessionGuard(url: string, wd: string) {
+  if (!fs.existsSync(path.join(wd, '.agent')) || fs.existsSync(path.join(wd, '.shown'))) return;
+  const host = urlHost(url), card = cardForHost(host);
+  if (!card) return;
+  const v = cardField(readText(path.join(accessDir(), card)), 'session');
+  if (v.split(/\s/)[0] !== 'show-only') return;
+  refuse(`${host}: ${card} says the login does not survive a headless profile copy (session: ${v})`, "harbor chrome attach --show --ui='<why>'");
 }
 function relayErr(s: string): string {   // this session's daemon log (written under DEBUG=pw:mcp:relay), if any
   const caches = SEAMS.daemonDir ? [path.dirname(SEAMS.daemonDir)] : [process.env.XDG_CACHE_HOME ?? path.join(HOME, '.cache'), path.join(HOME, 'Library', 'Caches')];
@@ -593,12 +622,12 @@ function uploadGuards(args: string[]) {
   }
 }
 function hostGuard(verb: string, args: string[], headless: boolean) {
-  if (verb === 'goto' && args.length !== 1) refuse('goto takes exactly one url: https on an allowed host, or a dev server in a headless lane', "harbor chrome goto 'https://ads.reddit.com/'");
+  if (verb === 'goto' && args.length !== 1) refuse('goto takes exactly one url: https on an allowed host, or a dev server in a blank lane', "harbor chrome goto 'https://ads.reddit.com/'");
   if (verb !== 'goto' || hostOk(args[0], headless)) return;
-  if (loopbackOk(args[0])) refuse(`loopback refused: '${args[0]}' is a dev server, opened in a headless lane only (no profile, no cookies); in the operator's logged-in profile an agent-written page could send credentialed cross-site requests`,
-    'mcp__harbor_chrome__attach with lane set and args ["--headless"], then goto in that lane');
+  if (loopbackOk(args[0])) refuse(`loopback refused: '${args[0]}' is a dev server, opened in a blank lane only (no profile, no cookies); in the operator's logged-in profile an agent-written page could send credentialed cross-site requests`,
+    'mcp__harbor_chrome__attach with lane set and args ["--blank"], then goto in that lane');
   // The live-walk repo is the private layer's own (harbor.toml live_walk_repo, harbor#1273), its checkout the registry's (harbor#966).
-  const m = `host refused: '${args[0]}' is not https on a host in contracts/browser-agent-hosts.txt or the private layer's browser-hosts.txt, nor, in a headless lane, a loopback dev server (http://localhost:<port> or http://127.0.0.1:<port>, port 1024-65535); client live sites go through the live-walk repo`;
+  const m = `host refused: '${args[0]}' is not https on a host in contracts/browser-agent-hosts.txt or the private layer's browser-hosts.txt, nor, in a blank lane, a loopback dev server (http://localhost:<port> or http://127.0.0.1:<port>, port 1024-65535); client live sites go through the live-walk repo`;
   const sr = (...a: string[]) => spawnSync('sh', [path.join(HERE, 'scope-roots.sh'), ...a], { encoding: 'utf8', env: scopeEnv() });
   const lw = sr('--conf', 'live_walk_repo');
   if (lw.status === 2) handoff(m, 'harbor-private/harbor.toml did not read: sh bin/scope-roots.sh --conf live_walk_repo');
@@ -766,6 +795,7 @@ async function hot(S: string, verb: string, args: string[], tm: Timing, confirme
   let ui = '';
   if (verb === 'goto') ({ ui, args } = uiWhy(verb, args));
   hostGuard(verb, args, headlessLane(S, wd));
+  if (verb === 'goto') sessionGuard(args[0], wd);
   if (verb === 'goto') apiFirst(verb, args[0], ui, wd);
   const c = await connectOrGone(S);
   await submitGuard(c, S, wd, verb, args);
