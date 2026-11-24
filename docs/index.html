@@ -886,7 +886,7 @@ scripts here are deliberately reachable only by name.</p>
 <tr><td><code>harbor ui</code></td><td><code>status-console.sh</code></td><td>no</td><td>a localhost console of the live state as read-only panels: 127.0.0.1, one-use link, stops when idle</td></tr>
 <tr><td><code>harbor scope</code></td><td><code>scope.sh</code></td><td>no</td><td>scope install: create the PORT_ROOT skeleton and an empty private layer (--dry-run, --seed-from-projects); never overwrites</td></tr>
 <tr><td><code>harbor repo</code></td><td><code>scope-repo.sh</code></td><td>no</td><td>create or adopt a repo in one run, list where each is known, audit one, rename one: new, adopt, list, audit, rename (harbor#1430, #966)</td></tr>
-<tr><td><code>harbor access</code></td><td><code>access.sh</code></td><td>yes</td><td>the access register: add, list, has, refs, check, stored, status, rotate, revoke, renamed, move, get (one read-only vendor GET); a ref the register does not name is refused by bin/secret</td></tr>
+<tr><td><code>harbor access</code></td><td><code>access.sh</code></td><td>yes</td><td>the access register: add, list, has, refs, check, stored, status, rotate, revoke, renamed, move; a ref the register does not name is refused by bin/secret</td></tr>
 <tr><td><code>harbor pack</code></td><td><code>pack.sh</code></td><td>no</td><td>install a workload repo's harbor-pack/ box-wide and remove it exactly: list, install, remove (--dir or --live; dry run unless --apply)</td></tr>
 <tr><td><code>harbor hub</code></td><td><code>hub.sh</code></td><td>no</td><td>the company hub: init, sync, status, sign, check, pin-check, leave, project register (harbor#1278)</td></tr>
 <tr><td><code>harbor logs</code></td><td><code>bq-logs.sh</code></td><td>no</td><td>harbor's BigQuery logs from this Mac: push (a dry run unless --apply), id (harbor#1278)</td></tr>
@@ -1251,7 +1251,6 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <div class="scroll">
 <table class="grid"><thead><tr><th>Contract</th><th>Freezes</th></tr></thead><tbody>
 <tr><td><code>contracts/access-card.md</code></td><td>The access card - the format of the access register</td></tr>
-<tr><td><code>contracts/access-get.md</code></td><td>access-get — one read-only GET to a vendor API</td></tr>
 <tr><td><code>contracts/access-register.md</code></td><td>The access register - one list of every identity an agent may use</td></tr>
 <tr><td><code>contracts/box-profile.md</code></td><td>Box-profile seam (L0 Helm → L3 Yard) — FROZEN v1 (the plan's ONLY up-pointing read)</td></tr>
 <tr><td><code>contracts/browser-routing.md</code></td><td>Which browser — the router (harbor#458)</td></tr>
@@ -1983,7 +1982,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/member/setup/generate.test.sh</code></td><td><code>bin/member-setup-generate.sh bin/library-log.sh tests/member/setup/generate.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/member/connectors/connectors.test.sh</code></td><td><code>bin/member-mcp-launch.sh bin/member-connectors.sh bin/member-managed.sh bin/hub-format.sh bin/secret bin/access.sh bin/scope-roots.sh bin/library-log.sh bin/library-hub.sh contracts/roots.tsv contracts/member-rules/keys-store-* tests/hub/fixtures/policy.json tests/cli/keychain-stub.sh tests/lib/core.sh tests/member/connectors/*</code></td></tr>
 <tr><td><code>tests/access/cli/oauth.test.sh</code></td><td><code>bin/access-oauth.sh bin/access.sh bin/secret bin/lint-name.sh bin/scope.sh bin/scope-roots.sh bin/library-log.sh standards/naming/* contracts/secret-legacy-refs.txt contracts/credential-patterns.tsv tests/cli/keychain-stub.sh tests/lib/core.sh tests/access/cli/oauth.test.sh</code></td></tr>
-<tr><td><code>tests/access/get/get.test.sh</code></td><td><code>bin/access-get.sh bin/access.sh bin/access-oauth.sh bin/access-redact.sh bin/admission-egress.sh bin/secret bin/scope-roots.sh bin/library-log.sh contracts/roots.tsv contracts/secret-legacy-refs.txt standards/naming/* tests/cli/keychain-stub.sh tests/lib/core.sh tests/access/get/*</code></td></tr>
 </tbody></table>
 </div>
 
@@ -2668,7 +2666,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/access-desktop-build.sh</code></td><td>access-desktop-build.sh — build harbor desktop's helper app (harbor/D-95, harbor#1440).</td></tr>
 <tr><td><code>bin/access-desktop.sh</code></td><td>access-desktop.sh — harbor desktop: general controllers for Mac apps, in the background (harbor/D-95, harbor#1440).</td></tr>
 <tr><td><code>bin/access-environment.sh</code></td><td>access-environment.sh (harbor#561) — the repo-visibility lines of the auto-mode environment block, read from</td></tr>
-<tr><td><code>bin/access-get.sh</code></td><td>access-get.sh (harbor#1617) - <code>harbor access get</code>: one read-only HTTPS GET to a vendor API, with the one credential and</td></tr>
 <tr><td><code>bin/access-github-app-install.sh</code></td><td>access-github-app-install.sh — the in-session GitHub App scripts, COPIED from bin/access-github-app/. harbor#1225.</td></tr>
 <tr><td><code>bin/access-oauth.sh</code></td><td>access-oauth.sh (harbor#1597, contracts/secret-intake.md) - <code>harbor access add|rotate … --value-oauth</code>: a token from an</td></tr>
 <tr><td><code>bin/access-redact.sh</code></td><td>access-redact.sh (harbor#1597) — mask credentials in text an agent is about to read (contracts/secret-intake.md).</td></tr>
