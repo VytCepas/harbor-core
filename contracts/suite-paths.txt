@@ -118,6 +118,7 @@ tests/status/statusline/statusline.test.sh bin/status-fleet-glyph.sh tests/hooks
 tests/status/statusline/fleet.test.sh bin/* tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh
 tests/status/statusline/machine.test.sh bin/status-fleet-glyph.sh tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh
 tests/status/network/network.test.sh bin/status-network.sh bin/event-bus.sh bin/library-log.sh tests/status/network/* tests/lib/core.sh
+tests/status/disk/disk.test.sh bin/status-disk.sh bin/library-log.sh tests/status/disk/* tests/lib/core.sh
 tests/status/statusline/row2.test.sh bin/access.sh bin/ci-github-plan.sh bin/ci-governor-hook.sh bin/ci-governor.sh bin/ci-runner-switch.sh bin/ci-runners-fleet-lib.sh bin/ci-runners-github-lib.sh bin/ci-runners-provision-lib.sh bin/ci-runners-watch-lib.sh bin/ci-runners.sh bin/event-bus.sh bin/library-hub.sh bin/library-log.sh bin/scope-roots.sh bin/secret bin/status-fleet-glyph.sh tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh
 tests/status/statusline/subagent.test.sh bin/status-fleet-glyph.sh bin/status-subagent-glyph.sh tests/hooks/statusline* tests/status/statusline/* tests/lib/core.sh
 tests/worktree/worktree/worktree.test.sh bin/* tests/worktree/worktree/worktree.test.sh tests/lib/core.sh
@@ -419,6 +420,7 @@ tests/ci/runner/wedge.test.sh bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/libr
 tests/drift/reconcile/contract.test.sh bin/library-log.sh bin/memory-route.sh bin/drift-reference-check.sh bin/drift-port-root.sh bin/drift-confinement.sh bin/deploy-confinement.sh bin/scope-roots.sh contracts/finding.md bin/doc-cited-paths.awk bin/library-fs.sh contracts/reconcile.md standards/naming/controls.tsv tests/drift/reconcile/contract.test.sh tests/checks/reference-check-fixture.sh tests/lib/core.sh
 tests/drift/status/status.test.sh bin/drift-status.sh bin/library-log.sh standards/naming/controls.tsv tests/lib/core.sh
 tests/ci/runners/scale.test.sh bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/library-log.sh tests/ci/runners/scale.test.sh tests/ci/ci-runners-fixture.sh tests/lib/core.sh
+tests/ci/runners/tidy.test.sh bin/ci-runners.sh bin/ci-runners-*-lib.sh bin/status-fleet-snapshot-refresh.sh bin/library-log.sh tests/ci/runners/tidy.test.sh tests/ci/ci-runners-fixture.sh tests/lib/core.sh
 tests/standard/rename/window.test.sh always
 tests/standard/rename/collapse.test.sh always
 tests/standard/rename/env-window.test.sh always
