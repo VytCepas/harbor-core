@@ -57,6 +57,7 @@ register_dir() {
 }
 want_dir() { [ -n "${1:-}" ] || register_dir; }   # <the optional [dir] argument>
 STALE_DAYS=${ROUTE_STALE_DAYS:-30}
+WARN_DAYS=${ROUTE_WARN_DAYS:-25}   # a card this old is still green but says so
 
 REQUIRED_FIELDS='identity
 account
@@ -76,8 +77,14 @@ verified'
 # OPTIONAL: `ui-hosts:` — the hosts of the system's vendor UI (harbor#1507), so a session that opens one in the browser is
 # told the tier its card ranks above it. Bare lowercase hostnames, comma or space separated; a listed host also covers its
 # subdomains. Not in REQUIRED_FIELDS: most cards have no UI to name, and a card never has to list one.
+# The rest of this list is what a card may carry beyond the contract (harbor#1617): `vendor` (the vendor's own id for the
+# system), `state` (`unknown <date> - <what was not probed>`) and `session` (`persistent | show-only`, see check_session).
+# `check2`/`expect2` are not here: nothing runs them, so a second check on a card is prose, not a check.
 # Lint doc.urls-cited reads both lists, so an optional field's hosts are addresses, not citations (harbor#1507).
-OPTIONAL_FIELDS='ui-hosts'
+OPTIONAL_FIELDS='ui-hosts
+vendor
+state
+session'
 UI_HOST_RE='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$'
 
 # `account:` IS REPEATED, ONE LINE PER ACCOUNT, FOUR `|`-SEPARATED FIELDS:
@@ -244,6 +251,153 @@ top_tier() {
   printf '%s' "$_tt" | tr -d '[:blank:]'
 }
 
+# One awk pass over the field block (the indented lines under the H1, up to the first prose line; rules 7, 8, 10 read only
+# it). Prints `F <name> <value>` per field line (indent <= 4), `D <newest ISO date>` and `R` when it names an operator
+# browser or an authuser slot. A date later than today (a renewal or an expiry) is not one the card was edited on.
+card_scan() {
+  awk -v today="$TODAY" '
+    function mx(line,   d) {
+      while (match(line, /20[0-9][0-9]-[01][0-9]-[0-3][0-9]/)) {
+        d = substr(line, RSTART, RLENGTH); if (d <= today && d > max) max = d; line = substr(line, RSTART + RLENGTH)
+      }
+    }
+    !on && /^[ \t]+[a-z][a-z0-9-]*:([ \t]|$)/ { on = 1 }
+    on && /^[^ \t]/ { exit }
+    !on { next }
+    { mx($0); low = tolower($0)
+      if (low ~ /operator[^a-z0-9]+s[ \t]+(own[ \t]+)?(chrome|browser)/ || low ~ /authuser=[0-9]/) r = 1 }
+    /^[ \t][ \t]?[ \t]?[ \t]?[a-z][a-z0-9-]*:([ \t]|$)/ {
+      l = $0; sub(/^[ \t]+/, "", l); n = l; sub(/:.*/, "", n); v = l; sub(/^[^:]*:[ \t]*/, "", v); sub(/[ \t]+$/, "", v)
+      print "F " n " " v }
+    END { if (max != "") print "D " max; if (r) print "R" }' "$1"
+}
+
+# The ONE browser-check form: `harbor chrome goto <https url>`. `--run` never executes it; an agent with an attached browser does.
+BROWSER_CHECK='^[[:blank:]]*harbor[[:blank:]]+chrome[[:blank:]]+goto[[:blank:]]+https://[^[:blank:];&|<>$`]+[[:blank:]]*$'
+
+# Is a check line something that can run: the browser form, `none - <why>`, or one whose first word is an env assignment,
+# a builtin, a command on PATH or an executable path? A prose line (`GET http://... with the cookie jar`) is not.
+check_runnable() { # <line> -> 0 | 1
+  _cr=$1
+  case "$_cr" in
+    [Nn][Oo][Nn][Ee]*) printf '%s' "$_cr" | /usr/bin/grep -qiE '^none[[:blank:]]*(-|:|—)[[:blank:]]*[^[:blank:]]' && return 0 ;;
+    harbor[[:blank:]]*chrome[[:blank:]]*goto*) printf '%s' "$_cr" | /usr/bin/grep -qE "$BROWSER_CHECK"; return ;;
+  esac
+  while :; do
+    _crw=${_cr%%[[:blank:]]*}
+    case "$_crw" in
+      [A-Za-z_]*=*)
+        # a value that quotes or substitutes may span words; take it as run
+        case "$_crw" in *'$('*|*'"'*|*"'"*|*'`'*) return 0 ;; esac
+        _cr=${_cr#"$_crw"}; _cr=${_cr#"${_cr%%[![:blank:]]*}"}
+        [ -n "$_cr" ] || return 0 ;;
+      *) break ;;
+    esac
+  done
+  _crw=${_crw#\(}; _crw=${_crw#\{}
+  case "$_crw" in GET|POST|PUT|PATCH|DELETE|HEAD) return 1 ;; esac
+  case "$_crw" in
+    '~'/*) _crw="$HOME/${_crw#\~/}" ;;
+    '$HOME'/*) _crw="$HOME/${_crw#\$HOME/}" ;;
+    '"$HOME'/*) _crw="$HOME/${_crw#\"\$HOME/}" ;;
+  esac
+  case "$_crw" in
+    */*) [ -x "$_crw" ] ;;
+    *) command -v "$_crw" >/dev/null 2>&1 ;;
+  esac
+}
+
+# `session:` — whether a sign-in in the agent Chrome survives into a headless profile copy.
+# persistent: it does. show-only: it does not (a session-only cookie, or a challenge headless cannot pass), so the
+# browser must be `harbor chrome attach --show`.
+check_session() { # <value> — appends to _rbad
+  printf '%s' "$1" | /usr/bin/grep -qE '^(persistent|show-only)([[:blank:]]+-[[:blank:]]+[^[:blank:]].*)?$' && return 0
+  _rbad="${_rbad}${_rbad:+
+}       \`session: $1\` — must be \`persistent\` or \`show-only\`, optionally followed by \` - <why>\`"
+}
+
+check_line() { # <field> <value> — appends to _rbad: a check that cannot run
+  case "$2" in
+    open|open[[:blank:]]*)
+      _rbad="${_rbad}${_rbad:+
+}       \`$1:\` uses \`open\`, which launches the operator's own Chrome — write \`harbor chrome goto <https url>\`" ;;
+    *) check_runnable "$2" || _rbad="${_rbad}${_rbad:+
+}       \`$1:\` starts with \"${2%%[[:blank:]]*}\", which is not a command on PATH, a builtin, \`harbor chrome goto <https url>\` or \`none - <why>\` — a prose line cannot be run" ;;
+  esac
+}
+
+# Rules 2 and 7-12, the standard a card is held to beyond having its fields. Appends to _rbad; _rwarn gets the non-fatal ones.
+check_standard() { # <card>
+  _csnames=' '; _csv=''; _csn=''; _csr=''; _csst=''; _csrc=''; _csre=''; _csvia=''; _csuh=''; _csss=''; _cschk=''
+  while read -r _csk _csa _csb; do
+    case "$_csk" in
+      D) _csn=$_csa ;;
+      R) _csr=1 ;;
+      F) case "$_csnames" in *" $_csa "*) continue ;; esac   # the first line of a field wins, as field_of reads it
+         _csnames="$_csnames$_csa "
+         case "$_csa" in
+           verified) _csv=$_csb ;; state) _csst=$_csb ;; role-check) _csrc=$_csb ;; role-expect) _csre=$_csb ;;
+           via) _csvia=$_csb ;; ui-hosts) _csuh=$_csb ;; session) _csss=$_csb ;; check) _cschk=$_csb ;;
+         esac ;;
+    esac
+  done <<EOF
+$(card_scan "$1")
+EOF
+  # 7. a card never sends an agent into the operator's own browser, or to a Chrome slot by number
+  if [ -n "$_csr" ]; then
+    _rbad="${_rbad}${_rbad:+
+}       the field block names the operator's own Chrome or an \`authuser=<n>\` slot — agents use the agent Chrome (harbor chrome), signed in as the card's account"
+  fi
+  # 8. both only warn: a block date newer than verified: (a note is not a re-check), and a verified: over WARN_DAYS old
+  case "$_csv" in
+    20[0-9][0-9]-[01][0-9]-[0-3][0-9])
+      _csvn=$(printf '%s' "$_csv" | tr -d -)
+      if [ -n "$_csn" ] && [ "$_csvn" -lt "$(printf '%s' "$_csn" | tr -d -)" ]; then
+        _rwarn="block cites $_csn, newer than verified: $_csv - re-run the check before moving verified:"
+      fi
+      if [ "$_csvn" -lt "$(printf '%s' "$CUTOFF_WARN" | tr -d -)" ]; then
+        _rwarn="${_rwarn}${_rwarn:+; }verified: $_csv is more than $WARN_DAYS days old; red at $STALE_DAYS"
+      fi ;;
+  esac
+  # 10. only the fields the contract names
+  for _csf in $_csnames; do
+    case "
+$REQUIRED_FIELDS
+$OPTIONAL_FIELDS
+" in
+      *"
+$_csf
+"*) ;;
+      *) _rbad="${_rbad}${_rbad:+
+}       \`$_csf:\` is not a card field — the contract's fields and ui-hosts, vendor, state, session only; move it into the prose" ;;
+    esac
+  done
+  case "$_csnames" in
+    *" state "*)
+      printf '%s' "$_csst" | /usr/bin/grep -qE '^unknown 20[0-9]{2}-[01][0-9]-[0-3][0-9]([[:blank:]]+-[[:blank:]]+.+)?$' || _rbad="${_rbad}${_rbad:+
+}       \`state: $_csst\` — the only state is \`unknown YYYY-MM-DD - <what was not probed>\`; a measured negative is an \`account:\` with use \`none\`" ;;
+  esac
+  case "$_csrc" in
+    [Nn][Oo][Nn][Ee]|[Nn][Oo][Nn][Ee][[:blank:]]*)
+      [ "$_csre" = none ] || _rbad="${_rbad}${_rbad:+
+}       \`role-check: none\` needs \`role-expect: none\` exactly — a role-expect with a literal on a role nothing reads is a claim with no reader" ;;
+  esac
+  # 11. a card ranking a non-browser tier ahead of browser names the UI hosts, or the tier gate never fires on them
+  case "$_csvia" in
+    *browser*)
+      case "${_csvia%%browser*}" in
+        *cli*|*api*|*mcp*)
+          [ -n "$_csuh" ] || _rbad="${_rbad}${_rbad:+
+}       \`via:\` ranks a tier ahead of browser but the card has no \`ui-hosts:\` — name the vendor UI hosts so the browser-last note can fire" ;;
+      esac ;;
+  esac
+  # 12. session is validated when present
+  case "$_csnames" in *" session "*) check_session "$_csss" ;; esac
+  # 2. a check line that cannot run
+  [ -z "$_cschk" ] || check_line check "$_cschk"
+  [ -z "$_csrc" ] || check_line role-check "$_csrc"
+}
+
 check_accounts() { # <card> — appends to _rbad
   _aseen=' '; _aprim=0
   _alines=$(accounts_of "$1")
@@ -262,7 +416,12 @@ check_accounts() { # <card> — appends to _rbad
 }       \`account: $_al\` names \"$_aa\" — a role label or a placeholder, not the account that authorises"
     fi
     case "$_au" in
-      primary) _aprim=$((_aprim + 1)) ;;
+      primary) _aprim=$((_aprim + 1))
+        case "$_ar" in
+          [Nn][Oo][Nn][Ee]*|[Nn][Oo][[:blank:]][Aa][Cc][Cc][Ee][Ss][Ss]*)
+            _rbad="${_rbad}${_rbad:+
+}       \`account: $_aa\` is \`primary\` but its role is \"$_ar\" — an account that holds nothing is use \`none\`" ;;
+        esac ;;
       fallback|avoid|none|never) ;;
       *) _rbad="${_rbad}${_rbad:+
 }       \`account: $_aa\` has use \"$_au\" — must be one of: $ACCOUNT_USES" ;;
@@ -302,6 +461,7 @@ check_card() {
   _rf=$1
   _rname=$(basename "$_rf" .md)
   _rbad=''
+  _rwarn=''
 
   for _fld in $REQUIRED_FIELDS; do
     _val=$(field_of "$_rf" "$_fld")
@@ -439,11 +599,14 @@ check_card() {
     fi
   fi
 
+  check_standard "$_rf"
+
   if [ -n "$_rbad" ]; then
     printf 'FAIL %s\n%s\n' "$_rname" "$_rbad"
     rc=1
   else
     printf 'ok   %s\n' "$_rname"
+    [ -z "$_rwarn" ] || printf '       WARN %s\n' "$_rwarn"
   fi
 }
 
@@ -475,9 +638,9 @@ ui_hosts_dup() {
   fi
 }
 
-cutoff_date() {
+cutoff_date() { # [days] — the date that many days back, default STALE_DAYS
   # BSD -v, else GNU -d: the old today-fallback made every card stale on Linux (harbor#865).
-  date -v-"${STALE_DAYS}"d +%Y-%m-%d 2>/dev/null || date -d "-${STALE_DAYS} days" +%Y-%m-%d 2>/dev/null ||
+  date -v-"${1:-$STALE_DAYS}"d +%Y-%m-%d 2>/dev/null || date -d "-${1:-$STALE_DAYS} days" +%Y-%m-%d 2>/dev/null ||
     date +%Y-%m-%d
 }
 
@@ -747,13 +910,8 @@ WRITE_VERBS='(^|[;&|[:blank:]])(rm|rmdir|mv|cp|dd|kill|shutdown|reboot|tee|touch
 # never as a pass.
 MANUAL_VERBS='(^|[;&|[:blank:]])(open|say|osascript|ssh)[[:blank:]]'
 
-# Except a URL to look at, which is not a person's job. `open <https URL>` is run
-# by an AGENT through Claude in Chrome: navigate, compare the page with `expect:`,
-# date the card on a match. So it is reported as that agent's work item, with the
-# expectation printed beside it, and never as a pass. A login wall is the finding;
-# signing in stays the operator's, because an agent never types a password.
-# Measured 2026-09-24: all 7 browser-only cards were checked this way in one pass.
-BROWSER_CHECK='^[[:blank:]]*open[[:blank:]]+https?://'
+# A BROWSER_CHECK URL is an AGENT's work item (goto, compare with `expect:`, date the card on a match): never executed,
+# never a pass. `open <url>` launches the operator's own Chrome, so it is MANUAL here and refused by the structure gate.
 
 # What the output must contain is every BACKTICKED span of `expect:`. That keeps
 # `expect:` readable prose for a human and machine-comparable at the same time,
@@ -795,26 +953,72 @@ $2
 EOF
 }
 
-run_probe() { # <label> <cmd> <expect>
-  _plbl=$1; _pcmd=$2; _pexp=$3
+# An INSTRUMENT failure is the tool's, not the access's: the command was not found or not executable (126/127), it
+# hung, or it printed one of these. Kept in ONE place, a fixed string per line. Not counted toward exit 1.
+INSTRUMENT_SIGS='no Chrome is connected
+curl: (28)
+curl: (7)
+Resource not accessible by integration'
+
+instrument_sig() { # <output> -> prints the first signature the output carries; 1 when none
+  while IFS= read -r _is; do
+    [ -n "$_is" ] || continue
+    if printf '%s' "$1" | /usr/bin/grep -qF -- "$_is"; then printf '%s' "$_is"; return 0; fi
+  done <<EOF
+$INSTRUMENT_SIGS
+EOF
+  return 1
+}
+
+# Run one shell string under a watchdog, stdin closed, and PRINT NOTHING: sets _pout (its output), _prc (its exit
+# status) and _pto (1 when it was killed). No `timeout` on macOS, so the probe runs in the background and is killed (its
+# direct children first) after PROBE_TIMEOUT seconds, default 30. Used by run_probe and probe_one alike.
+run_watched() { # <cmd>
+  _wd=$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")
+  _wp=''; _pto=0
+  # An interrupt ends the probe too, rather than leaving it running past a caller that has given up.
+  # Every call `|| :`: under set -e a pkill that matches no child would end the trap before the kill and the exit.
+  trap '[ -z "$_wp" ] || { pkill -TERM -P "$_wp" 2>/dev/null || :; kill -TERM "$_wp" 2>/dev/null || :; }; rm -rf "$_wd"; exit 130' INT TERM HUP
+  sh -c "$1" > "$_wd/out" 2>&1 < /dev/null &
+  _wp=$!; _wt=0; _wlim=$(( ${PROBE_TIMEOUT:-30} * 10 ))   # tenths of a second
+  while kill -0 "$_wp" 2>/dev/null; do
+    if [ "$_wt" -ge "$_wlim" ]; then
+      pkill -TERM -P "$_wp" 2>/dev/null || :
+      kill -TERM "$_wp" 2>/dev/null || :
+      _pto=1; break
+    fi
+    if sleep 0.1 2>/dev/null; then _wt=$((_wt + 1)); else sleep 1; _wt=$((_wt + 10)); fi
+  done
+  if wait "$_wp" 2>/dev/null; then _prc=0; else _prc=$?; fi
+  _pout=$(cat "$_wd/out"); rm -rf "$_wd"
+  trap - INT TERM HUP
+}
+
+run_probe() { # <label> <cmd> <expect> <card> — sets _pv: pass|fail|instrument|refused|browser|manual|uncheckable
+  _plbl=$1; _pcmd=$2; _pexp=$3; _pcard=$4
   printf '   %s$ %s\n' "$_plbl" "$_pcmd"
   _pk=$(probe_class "$_pcmd" "$_pexp")
   _plits=$(probe_lits "$_pexp")
   case "$_pk" in
     refused) printf '   %sREFUSED      not a read — a route card documents reach, not a change\n' "$_plbl"; _pv=refused; return 0 ;;
-    browser) printf '   %sBROWSER      for an agent in Chrome; the page must show: %s\n' "$_plbl" "$_pexp"; _pv=browser; return 0 ;;
+    browser) printf '   %sBROWSER      card=%s url=%s expect: %s\n' "$_plbl" "$_pcard" "${_pcmd##*[[:blank:]]}" "$_pexp"; _pv=browser; return 0 ;;
     manual) printf '   %sMANUAL       needs a human eye; run it yourself, then date the card\n' "$_plbl"; _pv=manual; return 0 ;;
     uncheckable) printf '   %sUNCHECKABLE  `expect:` carries no backticked literal to match on\n' "$_plbl"; _pv=uncheckable; return 0 ;;
   esac
-  _pout=$(sh -c "$_pcmd" 2>&1 || true)
+  run_watched "$_pcmd"
   _pmiss=$(probe_missing "$_pout" "$_plits")
-  [ -z "$_pmiss" ] || _pmiss="$_pmiss
-"
-  if [ -n "$_pmiss" ]; then
+  _pwhy=''
+  if [ "$_pto" -eq 1 ]; then _pwhy="timed out after ${PROBE_TIMEOUT:-30}s"
+  elif [ "$_prc" -eq 126 ] || [ "$_prc" -eq 127 ]; then _pwhy="exit $_prc (not found or not executable)"
+  elif [ -n "$_pmiss" ] && _pw=$(instrument_sig "$_pout"); then _pwhy="output carries \"$_pw\""
+  fi
+  if [ -n "$_pwhy" ]; then
+    printf '   %sINSTRUMENT   %s — the tool failed, not the access\n' "$_plbl" "$_pwhy"
+    _pv=instrument
+  elif [ -n "$_pmiss" ]; then
+    # Never the command's output: a failing CLI can echo its own credential.
     printf '   %sFAIL         output does not contain:\n' "$_plbl"
-    printf '%s' "$_pmiss" | sed 's/^/                  /'
-    printf '   ── first 4 lines of what it did print ──\n'
-    printf '%s\n' "$_pout" | head -4 | sed 's/^/                  /'
+    printf '%s\n' "$_pmiss" | sed 's/^/                  /'
     _pv=fail
   else
     printf '   %spass\n' "$_plbl"
@@ -823,8 +1027,7 @@ run_probe() { # <label> <cmd> <expect>
 }
 
 # One probe for `harbor access status|rotate`: prints ONE verdict word and never the probe's output, which a
-# failing CLI can fill with its own credential. No `timeout` on macOS, so a watchdog: the probe runs in the
-# background and is killed (its direct children first) after PROBE_TIMEOUT seconds, default 30.
+# failing CLI can fill with its own credential.
 # Exit 0 pass, 1 fail|timeout|refused, 3 browser|manual|uncheckable (not machine-decidable).
 probe_one() { # <cmd> <expect>
   _ok=$(probe_class "$1" "$2")
@@ -832,34 +1035,31 @@ probe_one() { # <cmd> <expect>
     refused) echo refused; return 1 ;;
     browser|manual|uncheckable) echo "$_ok"; return 3 ;;
   esac
-  _olits=$(probe_lits "$2")
-  _od=$(mktemp -d "${TMPDIR:-/tmp}/harbor.XXXXXX")
-  _op=''
-  trap 'rm -rf "$_od"' EXIT
-  # An interrupt ends the probe too, rather than leaving it running past a caller that has given up.
-  # Every call `|| :`: under set -e a pkill that matches no child would end the trap before the kill and the exit.
-  trap '[ -z "$_op" ] || { pkill -TERM -P "$_op" 2>/dev/null || :; kill -TERM "$_op" 2>/dev/null || :; }; rm -rf "$_od"; exit 130' INT TERM HUP
-  sh -c "$1" > "$_od/out" 2>&1 < /dev/null &
-  _op=$!; _ot=0; _olim=${PROBE_TIMEOUT:-30}
-  while kill -0 "$_op" 2>/dev/null; do
-    if [ "$_ot" -ge "$_olim" ]; then
-      pkill -TERM -P "$_op" 2>/dev/null || :
-      kill -TERM "$_op" 2>/dev/null || :
-      wait "$_op" 2>/dev/null || :
-      echo timeout; return 1
-    fi
-    sleep 1; _ot=$((_ot + 1))
-  done
-  wait "$_op" 2>/dev/null || :
-  if [ -z "$(probe_missing "$(cat "$_od/out")" "$_olits")" ]; then echo pass; return 0; fi
+  run_watched "$1"
+  if [ "$_pto" -eq 1 ]; then echo timeout; return 1; fi
+  if [ -z "$(probe_missing "$_pout" "$(probe_lits "$2")")" ]; then echo pass; return 0; fi
   echo fail; return 1
+}
+
+# Tally one verdict into the six buckets of a summary line: <prefix>_p pass, _f access-FAIL, _i instrument, _b browser,
+# _r refused, _s skipped (manual, uncheckable, no check, not read, or not run because the reach did not pass).
+# FAIL and refused fail the run; an instrument failure does not.
+tally() { # <prefix> <verdict>
+  case "$2" in
+    pass) eval "$1_p=\$(($1_p + 1))" ;;
+    fail) eval "$1_f=\$(($1_f + 1))"; rc=1 ;;
+    instrument) eval "$1_i=\$(($1_i + 1))" ;;
+    browser) eval "$1_b=\$(($1_b + 1))" ;;
+    refused) eval "$1_r=\$(($1_r + 1))"; rc=1 ;;
+    *) eval "$1_s=\$(($1_s + 1))" ;;
+  esac
 }
 
 run_dir() {
   _xdir=$1
   [ -d "$_xdir" ] || { printf 'FAIL %s does not exist\n' "$_xdir"; exit 1; }
-  _xn=0; _xp=0; _xf=0; _xs=0; _xb=0
-  _yn=0; _yp=0; _yf=0; _yh=0; _yb=0
+  rt_p=0; rt_f=0; rt_i=0; rt_b=0; rt_r=0; rt_s=0   # route checks
+  ro_p=0; ro_f=0; ro_i=0; ro_b=0; ro_r=0; ro_s=0   # role checks
   printf 'running every route check in %s\n' "$_xdir"
   printf 'read-only, each command shown before it runs, writes refused unrun\n\n'
   for _xfile in "$_xdir"/*.md; do
@@ -869,40 +1069,36 @@ run_dir() {
     _xcmd=$(field_of "$_xfile" check)
     if [ -z "$_xcmd" ]; then
       printf 'skip %-11s no `check:` line — the default gate names this already\n' "$_xname"
-      _xs=$((_xs + 1)); continue
+      rt_s=$((rt_s + 1)); continue
     fi
     printf '── %s\n' "$_xname"
-    run_probe '' "$_xcmd" "$(field_of "$_xfile" expect)"
-    case "$_pv" in
-      pass) _xn=$((_xn + 1)); _xp=$((_xp + 1)) ;;
-      fail) _xn=$((_xn + 1)); _xf=$((_xf + 1)); rc=1 ;;
-      refused) _xf=$((_xf + 1)); rc=1 ;;
-      browser) _xb=$((_xb + 1)) ;;
-      *) _xs=$((_xs + 1)) ;;
+    case "$_xcmd" in
+      [Nn][Oo][Nn][Ee]*) printf '   not run — %s\n' "$_xcmd"; _pv=skipped ;;
+      *) run_probe '' "$_xcmd" "$(field_of "$_xfile" expect)" "$_xname" ;;
     esac
+    tally rt "$_pv"
+    _xreach=$_pv
     # THE ROLE, read separately from the reach. A door that opens says nothing
     # about who is standing in it; this is the half that would have caught the
-    # Flow viewer-to-admin change the day it happened.
+    # Flow viewer-to-admin change the day it happened. It is not read when the
+    # door did not open: a role probe behind a dead route only repeats the failure.
     _ycmd=$(field_of "$_xfile" role-check)
     case "$_ycmd" in
       '') ;;
-      [Nn][Oo][Nn][Ee]*) printf '   role: not read — %s\n' "$_ycmd"; _yh=$((_yh + 1)) ;;
+      [Nn][Oo][Nn][Ee]*) printf '   role: not read — %s\n' "$_ycmd"; ro_s=$((ro_s + 1)) ;;
       *)
-        run_probe 'role: ' "$_ycmd" "$(field_of "$_xfile" role-expect)"
-        case "$_pv" in
-          pass) _yn=$((_yn + 1)); _yp=$((_yp + 1)) ;;
-          fail) _yn=$((_yn + 1)); _yf=$((_yf + 1)); rc=1 ;;
-          refused) _yf=$((_yf + 1)); rc=1 ;;
-          browser) _yb=$((_yb + 1)) ;;
-          *) _yh=$((_yh + 1)) ;;
+        case "$_xreach" in
+          fail|instrument|refused) printf '   role: skipped — the route check above did not pass\n'; ro_s=$((ro_s + 1)) ;;
+          *) run_probe 'role: ' "$_ycmd" "$(field_of "$_xfile" role-expect)" "$_xname"; tally ro "$_pv" ;;
         esac ;;
     esac
     printf '\n'
   done
-  printf 'route checks: %s run, %s passed, %s failed, %s for an agent in the browser, %s not machine-checkable\n' \
-    "$_xn" "$_xp" "$_xf" "$_xb" "$_xs"
-  printf 'role checks:  %s run, %s passed, %s failed, %s for an agent in the browser, %s not read (the card says why)\n' \
-    "$_yn" "$_yp" "$_yf" "$_yb" "$_yh"
+  printf 'route checks: %s pass, %s access-FAIL, %s instrument, %s browser, %s refused, %s skipped\n' \
+    "$rt_p" "$rt_f" "$rt_i" "$rt_b" "$rt_r" "$rt_s"
+  printf 'role checks:  %s pass, %s access-FAIL, %s instrument, %s browser, %s refused, %s skipped\n' \
+    "$ro_p" "$ro_f" "$ro_i" "$ro_b" "$ro_r" "$ro_s"
+  printf '(instrument = the tool failed, not the access, and does not fail the run; skipped = not machine-checkable, not read, or the reach did not pass)\n'
 }
 
 # ---------------------------------------------------------------- self-test
@@ -939,7 +1135,7 @@ BLOCKED_CARD='# adplatform — developer portal
     via:      none
     upgrade:  api: approval of the submitted trial application
     use:      nothing — the trial application must be approved first
-    check:    open https://developers.example.invalid/apps/1
+    check:    harbor chrome goto https://developers.example.invalid/apps/1
     expect:   app status; currently "Trial pending"
     role-check: none - no token exists to read a role with
     role-expect: none
@@ -962,9 +1158,9 @@ BROWSER_ONLY_CARD='# shopify — three production stores
     via:      browser
     upgrade:  api: a Dev Dashboard app on the client org, which a collaborator cannot create
     use:      https://admin.shopify.com/store/<handle> in a tools@ session
-    check:    open https://admin.shopify.com/
+    check:    harbor chrome goto https://admin.shopify.com/
     expect:   the store picker, not a login wall
-    role-check: open https://admin.shopify.com/store/fixture/settings/account
+    role-check: harbor chrome goto https://admin.shopify.com/store/fixture/settings/account
     role-expect: the Users table shows `External Marketer`
     grant:    External Marketer collaborator
     owner:    client
@@ -1059,7 +1255,7 @@ RUN_rolefail_CARD='# a — the door opens, the role is not the one on the card
 # never MANUAL (a person's), and never a pass. Reach and role both.
 RUN_browser_CARD='# a — a browser-only route
     identity: tools@example.invalid
-    check:    open https://example.invalid/
+    check:    harbor chrome goto https://example.invalid/
     expect:   the dashboard, not `a login wall`
     verified: @TODAY@
 '
@@ -1067,8 +1263,60 @@ RUN_rolebrowser_CARD='# a — the role is read off a settings page
     identity: tools@example.invalid
     check:    printf "account=tools@example.invalid\n"
     expect:   discloses `account=tools@example.invalid`
-    role-check: open https://example.invalid/settings/users
+    role-check: harbor chrome goto https://example.invalid/settings/users
     role-expect: shows `Admin`
+    verified: @TODAY@
+'
+
+# The INSTRUMENT verdict (harbor#1617): the tool failed, not the access. None of these may fail the run.
+RUN_open_CARD='# a — `open` is never executed, it launches the operator'"'"'s own Chrome
+    identity: tools@example.invalid
+    check:    open https://example.invalid/
+    expect:   the dashboard, not `a login wall`
+    verified: @TODAY@
+'
+RUN_notfound_CARD='# a — the check names a command that is not installed
+    identity: tools@example.invalid
+    check:    no-such-tool-xyz --me
+    expect:   discloses `account=tools@example.invalid`
+    verified: @TODAY@
+'
+RUN_exit126_CARD='# a — the check is not executable
+    identity: tools@example.invalid
+    check:    exit 126
+    expect:   discloses `account=tools@example.invalid`
+    verified: @TODAY@
+'
+RUN_signature_CARD='# a — the output carries an instrument signature and not the literal
+    identity: tools@example.invalid
+    check:    printf "curl: (28) Connection timed out\n"
+    expect:   prints `http=200`
+    verified: @TODAY@
+'
+RUN_sigpass_CARD='# a — the signature is in the output AND the literal is, so it passed
+    identity: tools@example.invalid
+    check:    printf "curl: (28) retried, then http=200\n"
+    expect:   prints `http=200`
+    verified: @TODAY@
+'
+RUN_timeout_CARD='# a — a check that hangs
+    identity: tools@example.invalid
+    check:    sleep 20
+    expect:   prints `done`
+    verified: @TODAY@
+'
+RUN_leak_CARD='# a — a failing check whose output carries a credential
+    identity: tools@example.invalid
+    check:    printf "Authorization: Bearer SECRETVALUE123\n"
+    expect:   prints `account=nobody`
+    verified: @TODAY@
+'
+RUN_roleskip_CARD='# a — the reach fails, so the role is skipped and not counted failed
+    identity: tools@example.invalid
+    check:    printf "account=tools@example.invalid\n"
+    expect:   discloses `account=nobody`
+    role-check: printf "role=viewer\n"
+    role-expect: prints `role=admin`
     verified: @TODAY@
 '
 
@@ -1141,7 +1389,7 @@ ui-hosts is empty|s#^ *ui-hosts:.*#    ui-hosts:#'
   printf '%s' "$VALID_CARD" | sed "s/@TODAY@/$_today/" > "$_st/meta.md"
   printf '%s' "$VALID_CARD" | sed "s/@TODAY@/$_today/" | sed 's/^# meta/# twin/' > "$_st/twin.md"
   if sh "$0" "$_st" >/dev/null 2>&1; then _fail=$((_fail+1)); printf '  NOT CAUGHT: a host on two cards\n'; else _pass=$((_pass+1)); printf '  caught: a host on two cards\n'; fi
-  sed -i.bak '/^ *ui-hosts:/d' "$_st/twin.md"; rm -f "$_st/twin.md.bak"
+  sed -i.bak -e '/^ *ui-hosts:/d' -e 's|^ *via:.*|    via:      api|' "$_st/twin.md"; rm -f "$_st/twin.md.bak"
   if sh "$0" "$_st" >/dev/null 2>&1; then _pass=$((_pass+1)); else _fail=$((_fail+1)); printf '  FAILED: a card without ui-hosts was rejected\n'; fi
   rm -f "$_st/twin.md"
   if [ "$(sh "$0" --ui-hosts "$_st" 2>/dev/null | tr '\t' ' ' | head -1)" = "business.example.invalid meta" ]; then
@@ -1167,6 +1415,82 @@ ui-hosts is empty|s#^ *ui-hosts:.*#    ui-hosts:#'
   printf '%s' "$BROWSER_ONLY_CARD" | sed "s/@TODAY@/$_today/" > "$_st/shopify.md"
   if sh "$0" "$_st" >/dev/null 2>&1; then _pass=$((_pass+1)); else _fail=$((_fail+1)); printf '  FAILED: a legitimate bottom-tier route was rejected\n'; fi
   rm -f "$_st/shopify.md"
+
+  # The standard a card is held to beyond having its fields (harbor#1617). One change to a good card, red or green.
+  # $1 red|green, $2 what it proves, $3 a sed program over the card or -, $4 a line to add above `verified:` (optional).
+  _fx() {
+    printf '%s' "$VALID_CARD" | sed "s/@TODAY@/$_today/" > "$_st/meta.md"
+    if [ "$3" != - ]; then sed "$3" "$_st/meta.md" > "$_st/m.tmp"; mv "$_st/m.tmp" "$_st/meta.md"; fi
+    if [ -n "${4:-}" ]; then
+      awk -v l="$4" '/^ *verified:/ { print l } { print }' "$_st/meta.md" > "$_st/m.tmp"; mv "$_st/m.tmp" "$_st/meta.md"
+    fi
+    if sh "$0" "$_st" > "$_st/fx.out" 2>&1; then _got=green; else _got=red; fi
+    if [ "$_got" = "$1" ]; then
+      _pass=$((_pass + 1)); printf '  caught: %s\n' "$2"
+    else
+      _fail=$((_fail + 1)); printf '  NOT CAUGHT: %s (wanted %s, got %s)\n' "$2" "$1" "$_got"
+    fi
+  }
+  _q="'"; _d5=$(cutoff_date 5); _d10=$(cutoff_date 10); _d26=$(cutoff_date 26)
+  printf 'self-test: rule 1, one browser form: `harbor chrome goto <https url>`; `open` is refused\n'
+  _fx red 'check: open <url> launches the operator Chrome' 's|^ *check:.*|    check:    open https://x.example.invalid/|'
+  _fx red 'role-check: open <url>' 's|^ *role-check:.*|    role-check: open https://x.example.invalid/|'
+  _fx green 'CONTROL check: harbor chrome goto <https url>' 's|^ *check:.*|    check:    harbor chrome goto https://x.example.invalid/|'
+  printf 'self-test: rule 2, a check line must start with something that can run\n'
+  _fx red 'check: a prose line (GET ... with the cookie jar)' 's|^ *check:.*|    check:    GET http://x.example.invalid/me with the cookie jar|'
+  _fx red 'check: first word is not a command' 's|^ *check:.*|    check:    no-such-tool-xyz --me|'
+  _fx red 'role-check: first word is not a command' 's|^ *role-check:.*|    role-check: no-such-tool-xyz --me|'
+  _fx green 'CONTROL check: an env assignment, then a builtin' 's|^ *check:.*|    check:    T=$(printf x); [ -n "$T" ] \&\& printf a|'
+  _fx green 'CONTROL check: none - <why>' 's|^ *check:.*|    check:    none - the vendor has no read endpoint|'
+  _fx green 'CONTROL check: a path to an executable' 's|^ *check:.*|    check:    /bin/sh -c true|'
+  printf 'self-test: rule 7, no operator Chrome and no authuser slot in the field block\n'
+  _fx red 'a curly-apostrophe operator’s Chrome' 's|^ *reaches:.*|    reaches:  reads, in the operator’s Chrome|'
+  _fx red "the operator's own Chrome" "s|^ *reaches:.*|    reaches:  reads, in the operator${_q}s own Chrome|"
+  _fx red "the operator's browser" "s|^ *reaches:.*|    reaches:  reads, in the operator${_q}s browser|"
+  _fx red 'an authuser=<digit> slot' 's|^ *reaches:.*|    reaches:  reads, UI at /home?authuser=3|'
+  _fx green 'CONTROL the same words in the prose below the block' 's|^Prose below.*|Prose: in the operator’s Chrome, ?authuser=3, is history.|'
+  printf 'self-test: rule 8, a block date newer than verified: warns and never fails; a future date is ignored; 25 days warns\n'
+  _fx green 'a block date newer than verified: is green' "s|^ *reaches:.*|    reaches:  reads, re-measured $_today|;s|^ *verified:.*|    verified: $_d5|"
+  if /usr/bin/grep -q "block cites $_today, newer than verified: $_d5 - re-run the check" "$_st/fx.out"; then _pass=$((_pass + 1)); printf '  caught: ...and warns, naming both dates\n'
+  else _fail=$((_fail + 1)); printf '  NOT CAUGHT: a block date newer than verified: did not warn\n'; fi
+  _fx green 'CONTROL a block date equal to verified: is silent' "s|^ *reaches:.*|    reaches:  reads, re-measured $_today|"
+  if /usr/bin/grep -q 'WARN' "$_st/fx.out"; then _fail=$((_fail + 1)); printf '  NOT CAUGHT: an equal date warned\n'
+  else _pass=$((_pass + 1)); printf '  caught: ...and an equal date does not warn\n'; fi
+  _fx green 'a date later than today is ignored' "s|^ *reaches:.*|    reaches:  domain expires 2099-12-31|;s|^ *verified:.*|    verified: $_d5|"
+  if /usr/bin/grep -q 'WARN' "$_st/fx.out"; then _fail=$((_fail + 1)); printf '  NOT CAUGHT: a future date warned\n'
+  else _pass=$((_pass + 1)); printf '  caught: ...and does not warn\n'; fi
+  _fx green 'CONTROL the same block date again' "s|^ *reaches:.*|    reaches:  reads, re-measured $_today|;s|^ *verified:.*|    verified: $_d5|"
+  ROUTE_TODAY=$_d10 sh "$0" "$_st" > "$_st/fx.out" 2>&1 || :
+  if /usr/bin/grep -q 'newer than verified' "$_st/fx.out"; then _fail=$((_fail + 1)); printf '  NOT CAUGHT: ROUTE_TODAY did not move "today"\n'
+  else _pass=$((_pass + 1)); printf '  caught: ROUTE_TODAY pins today, so that date is then in the future\n'; fi
+  _fx green 'verified 26 days old is still green' "s|^ *verified:.*|    verified: $_d26|"
+  if /usr/bin/grep -q 'WARN' "$_st/fx.out"; then _pass=$((_pass + 1)); printf '  caught: ...and warns\n'
+  else _fail=$((_fail + 1)); printf '  NOT CAUGHT: a 26 day old verified did not warn\n'; fi
+  _fx green 'verified 10 days old' "s|^ *verified:.*|    verified: $_d10|"
+  if /usr/bin/grep -q 'WARN' "$_st/fx.out"; then _fail=$((_fail + 1)); printf '  NOT CAUGHT: a 10 day old verified warned\n'
+  else _pass=$((_pass + 1)); printf '  caught: ...and a 10 day old one is silent\n'; fi
+  printf 'self-test: rule 9, a primary account holds something\n'
+  _fx red 'primary account whose role is none' 's#| ads_read on business 1234567 |#| none - nothing assigned |#'
+  _fx red 'primary account whose role is no access' 's#| ads_read on business 1234567 |#| no access |#'
+  printf 'self-test: rule 10, only the contract fields; state and role-expect have one shape\n'
+  _fx red 'a field outside the allowlist (check2)' - '    check2:   cd /tmp && printf x'
+  _fx red 'a field outside the allowlist (expect2)' - '    expect2:  prints `x`'
+  _fx green 'CONTROL vendor, state and session are allowed' - "    vendor:   example\n    state:    unknown $_today - nothing probed\n    session:  persistent"
+  _fx red 'state that is not "unknown <date>"' - '    state:    no access 2026-10-29'
+  _fx red 'state with no date' - '    state:    unknown'
+  _fx red 'role-check none with a role-expect that is not none' 's|^ *role-check:.*|    role-check: none - nothing reads it|'
+  _fx green 'CONTROL role-check none with role-expect none' 's|^ *role-check:.*|    role-check: none - nothing reads it|;s|^ *role-expect:.*|    role-expect: none|'
+  printf 'self-test: rule 11, ui-hosts when a non-browser tier ranks ahead of browser\n'
+  _fx red 'via api > browser and no ui-hosts' '/^ *ui-hosts:/d'
+  _fx green 'CONTROL via api alone needs no ui-hosts' '/^ *ui-hosts:/d;s|^ *via:.*|    via:      api|'
+  printf 'self-test: rule 12, session is persistent or show-only\n'
+  _fx red 'session outside the enum' - '    session:  forever'
+  _fx red 'session empty' - '    session:'
+  _fx red 'session with a dash and no reason' - '    session:  persistent -'
+  _fx green 'CONTROL session: persistent' - '    session:  persistent'
+  _fx green 'CONTROL session: show-only - <why>' - '    session:  show-only - a session-only cookie'
+
+  printf '%s' "$VALID_CARD" | sed "s/@TODAY@/$_today/" > "$_st/meta.md"; rm -f "$_st/m.tmp" "$_st/fx.out"
 
   printf 'self-test: --dispatch must rank a cli route above a browser-only one\n'
   printf '%s' "$BROWSER_ONLY_CARD" | sed "s/@TODAY@/$_today/" > "$_st/shopify.md"
@@ -1259,14 +1583,16 @@ ui-hosts is empty|s#^ *ui-hosts:.*#    ui-hosts:#'
   # --run has to be proved separately: it is the only mode that executes, and a
   # mode that reported `pass` on everything would be worse than not having it.
   printf 'self-test: --run must execute, and discriminate on the output\n'
-  for _rcase in pass fail refused uncheckable hygiene rolepass rolefail browser rolebrowser; do
+  for _rcase in pass fail refused uncheckable hygiene rolepass rolefail browser rolebrowser \
+                open notfound exit126 signature sigpass timeout leak roleskip; do
     _rd="$_st/run-$_rcase"; mkdir -p "$_rd"
     eval "_rcard=\$RUN_${_rcase}_CARD" 2>/dev/null || _rcard=''
     printf '%s' "$_rcard" | sed "s/@TODAY@/$_today/" > "$_rd/a.md"
     # `_x=$(cmd)` where cmd exits non-zero ABORTS under set -e, and three of the
     # four fixtures below are meant to exit 1. As the condition of an `if` the
     # assignment is exempt, which is the only portable way to keep both.
-    if _rout=$(sh "$0" --run "$_rd" 2>&1); then _rrc=0; else _rrc=$?; fi
+    # PROBE_TIMEOUT=1 bounds the hanging fixture.
+    if _rout=$(PROBE_TIMEOUT=1 sh "$0" --run "$_rd" 2>&1); then _rrc=0; else _rrc=$?; fi
     case "$_rcase" in
       pass)        _rwant='   pass';        _rwantrc=0 ;;
       fail)        _rwant='FAIL';           _rwantrc=1 ;;
@@ -1275,8 +1601,16 @@ ui-hosts is empty|s#^ *ui-hosts:.*#    ui-hosts:#'
       hygiene)     _rwant='   pass';        _rwantrc=0 ;;
       rolepass)    _rwant='   role: pass';  _rwantrc=0 ;;
       rolefail)    _rwant='   role: FAIL';  _rwantrc=1 ;;
-      browser)     _rwant='   BROWSER      for an agent in Chrome; the page must show: the dashboard'; _rwantrc=0 ;;
-      rolebrowser) _rwant='   role: BROWSER '; _rwantrc=0 ;;
+      browser)     _rwant='   BROWSER      card=a url=https://example.invalid/ expect: the dashboard'; _rwantrc=0 ;;
+      rolebrowser) _rwant='   role: BROWSER      card=a url=https://example.invalid/settings/users expect: shows `Admin`'; _rwantrc=0 ;;
+      open)        _rwant='   MANUAL';       _rwantrc=0 ;;
+      notfound)    _rwant='   INSTRUMENT   exit 127'; _rwantrc=0 ;;
+      exit126)     _rwant='   INSTRUMENT   exit 126'; _rwantrc=0 ;;
+      signature)   _rwant='   INSTRUMENT   output carries "curl: (28)"'; _rwantrc=0 ;;
+      sigpass)     _rwant='   pass';        _rwantrc=0 ;;
+      timeout)     _rwant='   INSTRUMENT   timed out after 1s'; _rwantrc=0 ;;
+      leak)        _rwant='FAIL';           _rwantrc=1 ;;
+      roleskip)    _rwant='   role: skipped'; _rwantrc=1 ;;
     esac
     if printf '%s' "$_rout" | /usr/bin/grep -qF "$_rwant" && [ "$_rrc" -eq "$_rwantrc" ]; then
       printf '  caught: --run %s\n' "$_rcase"; _pass=$((_pass+1))
@@ -1284,14 +1618,56 @@ ui-hosts is empty|s#^ *ui-hosts:.*#    ui-hosts:#'
       printf '  NOT CAUGHT: --run %s (wanted %s + exit %s, got exit %s)\n' \
         "$_rcase" "$_rwant" "$_rwantrc" "$_rrc"; _fail=$((_fail+1))
     fi
+    # A FAIL prints the verdict and the missing literal, never what the command printed (it can echo a credential).
+    if [ "$_rcase" = leak ]; then
+      if printf '%s' "$_rout" | /usr/bin/grep -F 'SECRETVALUE123' | /usr/bin/grep -qv '^   \$ '; then
+        _fail=$((_fail+1)); printf '  NOT CAUGHT: --run FAIL printed the command output\n'
+      else
+        _pass=$((_pass+1)); printf '  caught: --run FAIL never prints the command output\n'
+      fi
+    fi
+    # The role is skipped, so it is neither a pass nor an access-FAIL, and the role summary says skipped.
+    if [ "$_rcase" = roleskip ]; then
+      if printf '%s' "$_rout" | /usr/bin/grep -qF 'role checks:  0 pass, 0 access-FAIL, 0 instrument, 0 browser, 0 refused, 1 skipped'; then
+        _pass=$((_pass+1)); printf '  caught: --run a role behind a failed reach is skipped, not failed\n'
+      else
+        _fail=$((_fail+1)); printf '  NOT CAUGHT: --run counted a skipped role as run\n'
+      fi
+    fi
   done
+
+  # The two summary lines split the six verdicts, and refused is counted once, as refused.
+  printf 'self-test: --run summary splits pass / access-FAIL / instrument / browser / refused / skipped\n'
+  _rd="$_st/run-summary"; mkdir -p "$_rd"
+  for _rcase in pass fail notfound browser refused uncheckable; do
+    eval "_rcard=\$RUN_${_rcase}_CARD"; printf '%s' "$_rcard" | sed "s/@TODAY@/$_today/" > "$_rd/$_rcase.md"
+  done
+  if _rout=$(PROBE_TIMEOUT=1 sh "$0" --run "$_rd" 2>&1); then _rrc=0; else _rrc=$?; fi
+  if printf '%s' "$_rout" | /usr/bin/grep -qF 'route checks: 1 pass, 1 access-FAIL, 1 instrument, 1 browser, 1 refused, 1 skipped' && [ "$_rrc" -eq 1 ]; then
+    _pass=$((_pass+1)); printf '  caught: --run summary route line\n'
+  else
+    _fail=$((_fail+1)); printf '  NOT CAUGHT: --run summary route line (exit %s)\n' "$_rrc"
+  fi
+  # An instrument failure alone is exit 0.
+  rm -f "$_rd"/*.md
+  for _rcase in pass notfound signature; do
+    eval "_rcard=\$RUN_${_rcase}_CARD"; printf '%s' "$_rcard" | sed "s/@TODAY@/$_today/" > "$_rd/$_rcase.md"
+  done
+  if _rout=$(PROBE_TIMEOUT=1 sh "$0" --run "$_rd" 2>&1); then _rrc=0; else _rrc=$?; fi
+  if printf '%s' "$_rout" | /usr/bin/grep -qF 'route checks: 1 pass, 0 access-FAIL, 2 instrument' && [ "$_rrc" -eq 0 ]; then
+    _pass=$((_pass+1)); printf '  caught: --run instrument failures do not fail the run\n'
+  else
+    _fail=$((_fail+1)); printf '  NOT CAUGHT: --run instrument failures changed the exit (%s)\n' "$_rrc"
+  fi
 
   rm -rf "$_st"
   printf '\nself-test: %s passed, %s failed\n' "$_pass" "$_fail"
   [ "$_fail" -eq 0 ] || exit 1
 }
 
+TODAY=${ROUTE_TODAY:-$(date +%Y-%m-%d)}   # the self-test and a dated replay may pin it
 CUTOFF=$(cutoff_date)
+CUTOFF_WARN=$(cutoff_date "$WARN_DAYS")
 rc=0
 
 [ $# -ge 1 ] || { register_dir; gate_dir "$ACCESS_DIR_DEFAULT"; exit "$rc"; }

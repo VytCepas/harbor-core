@@ -100,6 +100,7 @@ tests/status/statusline/row2.test.sh
 tests/status/statusline/subagent.test.sh
 tests/status/usage-aggregate/usage-aggregate.test.sh
 tests/status/network/network.test.sh
+tests/status/disk/disk.test.sh
 tests/test/suite-select/suite-select.test.sh
 tests/ci/verified/verified.test.sh
 tests/ci/runner/image.test.sh
@@ -350,6 +351,7 @@ tests/check/registry/readers.test.sh
 tests/access/browser/private-hosts.test.sh
 tests/access/browser/token.test.sh
 tests/access/browser/chrome.test.sh
+tests/access/browser/intake.test.sh
 hooks/ticket-note/private-owners.test.sh
 tests/lint/citations/private.test.sh
 tests/lint/decision/citation.test.sh
@@ -435,6 +437,7 @@ tests/ci/runner/wedge.test.sh
 tests/drift/reconcile/contract.test.sh
 tests/drift/status/status.test.sh
 tests/ci/runners/scale.test.sh
+tests/ci/runners/tidy.test.sh
 tests/standard/rename/window.test.sh
 tests/standard/rename/collapse.test.sh
 tests/standard/rename/env-window.test.sh
