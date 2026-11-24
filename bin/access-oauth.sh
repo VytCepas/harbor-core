@@ -21,7 +21,6 @@
 # code passed in a config on stdin (never argv), and the chosen field is piped into `harbor access <verb> <id> …
 # --value-stdin`, which checks and stores it. A SIGKILL skips the cleanup and leaves that temp dir: a single-use code.
 # Exit: 0 stored; 1 the consent, exchange or store failed; 2 usage. Nothing of the code or token is printed on any path.
-set +xv   # first: under `sh -x` or SHELLOPTS=xtrace the exchange below would print the client secret
 set -eu
 LC_ALL=C; export LC_ALL
 
@@ -34,47 +33,27 @@ fail() { log_fail "$1"; log_fix "$2"; log_end || :; exit "${3:-1}"; }
 PY=/usr/bin/python3; [ -x "$PY" ] || PY=python3
 
 # --exchange: internal, re-entered under `secret run <client-ref> HARBOR_ACCESS_OAUTH_CS`, so the client secret reaches this
-# process by environment only, and leaves it at once: no child (sed, curl) inherits it. OA_GRANT=refresh_token trades a
-# refresh token instead of a code. OA_RESP=- (harbor#1617: `harbor access get`) is the no-file mode: the client secret and
-# the refresh token come in as two lines on stdin, and the response goes out on stdout, then a line with the HTTP code.
+# process by environment only. printf is a builtin: the secret is never in an exec'd argv.
 if [ "${1:-}" = --exchange ]; then
-  _cs="${HARBOR_ACCESS_OAUTH_CS:-}"; unset HARBOR_ACCESS_OAUTH_CS; _rt=''
-  # read is a builtin: a value read from stdin reaches no argv, no environment and no file.
-  if [ "${OA_RESP:-}" = - ]; then IFS= read -r _cs || :; IFS= read -r _rt || :; fi
   _esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
   # A line break in any value would start a new curl config directive; the parent checked its own inputs, the secret is checked here.
   _lf='
 '; _cr="$(printf '\r')"
-  case "$_cs" in ''|*"$_lf"*|*"$_cr"*) printf 'badsecret'; exit 0 ;; esac
-  _grant="${OA_GRANT:-authorization_code}"
-  case "$_grant" in
-    authorization_code) ;;
-    refresh_token) case "$_rt" in ''|*"$_lf"*|*"$_cr"*) printf 'badsecret'; exit 0 ;; esac ;;
-    *) printf 'badgrant'; exit 0 ;;
-  esac
-  # -q first and env -i: no ~/.curlrc or CURL_HOME (a `libcurl =` line there wrote the secret to a file), no proxy, no CA
-  # or key-log override from the caller. PATH is the caller's: access-get.sh fixes its own before it calls here.
+  case "$HARBOR_ACCESS_OAUTH_CS" in ''|*"$_lf"*|*"$_cr"*) printf 'badsecret'; exit 0 ;; esac
   {
     printf 'url = "%s"\n' "$(_esc "$OA_TOKEN_URL")"
     printf 'user-agent = "harbor-access/1 (oauth intake)"\n'
     printf 'header = "Accept: application/json"\n'
     if [ "$OA_AUTH" = basic ]; then
-      printf 'user = "%s:%s"\n' "$(_esc "$OA_CID")" "$(_esc "$_cs")"
+      printf 'user = "%s:%s"\n' "$(_esc "$OA_CID")" "$(_esc "$HARBOR_ACCESS_OAUTH_CS")"
     else
       printf 'data-urlencode = "client_id=%s"\n' "$(_esc "$OA_CID")"
-      printf 'data-urlencode = "client_secret=%s"\n' "$(_esc "$_cs")"
+      printf 'data-urlencode = "client_secret=%s"\n' "$(_esc "$HARBOR_ACCESS_OAUTH_CS")"
     fi
-    if [ "$_grant" = refresh_token ]; then
-      printf 'data-urlencode = "grant_type=refresh_token"\n'
-      printf 'data-urlencode = "refresh_token=%s"\n' "$(_esc "$_rt")"
-    else
-      printf 'data-urlencode = "grant_type=authorization_code"\n'
-      printf 'data-urlencode = "code@%s"\n' "$(_esc "$OA_CODEFILE")"
-      printf 'data-urlencode = "redirect_uri=%s"\n' "$(_esc "$OA_REDIRECT")"
-    fi
-  } | if [ "$OA_RESP" = - ]; then env -i PATH="$PATH" HOME=/ LC_ALL=C curl -q -sS --noproxy '*' --max-time 30 -w '\n%{http_code}' -K - || :
-      else env -i PATH="$PATH" HOME="${OA_RESP%/*}" LC_ALL=C curl -q -sS --noproxy '*' --max-time 30 -o "$OA_RESP" -w '%{http_code}' -K - 2>"$OA_RESP.err"; fi
-  _cs=''; _rt=''
+    printf 'data-urlencode = "grant_type=authorization_code"\n'
+    printf 'data-urlencode = "code@%s"\n' "$(_esc "$OA_CODEFILE")"
+    printf 'data-urlencode = "redirect_uri=%s"\n' "$(_esc "$OA_REDIRECT")"
+  } | curl -sS --max-time 30 -o "$OA_RESP" -w '%{http_code}' -K - 2>"$OA_RESP.err"
   exit 0
 fi
 

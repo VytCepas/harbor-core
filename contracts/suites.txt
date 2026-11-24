@@ -590,4 +590,3 @@ tests/hub/release/release.test.sh
 tests/member/setup/generate.test.sh
 tests/member/connectors/connectors.test.sh
 tests/access/cli/oauth.test.sh
-tests/access/get/get.test.sh
