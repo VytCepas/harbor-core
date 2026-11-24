@@ -105,6 +105,10 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_CI_GOVERNOR_TRIGGER` | path | `$HOME/runners/harbor-linux/events/trigger` | File the CI governor touches to trigger the Linux runner's event handling (default under ~/runners/harbor-linux/events/trigger) | ci |  | tests only |
 | `HARBOR_CI_HEAD` | value | `HEAD` | git ref used as the head of the diff when selecting test suites (default HEAD) | ci |  | tests only |
 | `HARBOR_CI_IMAGE` | value | `computed` | Docker image the CI runners use, overriding the config file's image line; default port-linux-runner:local | ci |  | tests only |
+| `HARBOR_CI_LOG_SIZE` | value | `20m` | json-file log size (N[kmg]) at which a container ci-runners.sh creates rotates, overriding the config file logsize line; default 20m | ci |  | tests only |
+| `HARBOR_CI_LOG_FILES` | value | `2` | json-file log files (1-99) a container ci-runners.sh creates keeps, overriding the config file logfiles line; default 2 | ci |  | tests only |
+| `HARBOR_CI_COLIMA` | path | `colima` | colima command ci-runners.sh tidy reaches the VM through (fstrim, the json-log size and truncate); tests swap in a fake | ci |  | tests only |
+| `HARBOR_CI_DATADISK` | path | `$HOME/.colima/_lima/_disks/colima/datadisk` | Colima data disk file whose size ci-runners.sh tidy measures before and after the trim, to report the MB the Mac gained | ci |  | tests only |
 | `HARBOR_CI_LABELS` | value | `self-hosted,Linux,ARM64` | Comma-separated runner labels ci-runners.sh uses for the self-hosted runners (default self-hosted,Linux,ARM64) | ci |  | tests only |
 | `HARBOR_CI_LEVEL` | value | `full` | CI depth for the governance workflow; quick runs only the quick suite list, anything else (default full) runs everything | ci |  | tests only |
 | `HARBOR_CI_LOST_READS` | tuning | `20` | Maximum failed or cancelled runs per tick that ci-runners examines for lost jobs over the last 48 hours (default 20) | ci |  | tests only |
@@ -306,6 +310,9 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_STATUS_WINDOW` | tuning | `3000000` | number of trailing bytes of the transcript the session-state hook scans for recent events (default 3000000) | status |  | tests only |
 | `HARBOR_STATUS_WORKFLOW` | path | `$ROOT/.github/workflows/governance.yml` | Workflow file status-generate reads for shard information, default .github/workflows/governance.yml | status |  | tests only |
 | `HARBOR_STATUS_NETWORK_LIMIT` | tuning | `200` | KB/s a process may pull on a metered network before status-network.sh reports it (default 200) | status |  | tests only |
+| `HARBOR_STATUS_DISK_MIN_GB` | kill-switch | `30` | GB of free space on the data volume under which status-disk.sh reports LOW (decimals allowed); 0 turns the check off | status | check.status.disk | tests only |
+| `HARBOR_STATUS_DISK_PATH` | path | `/System/Volumes/Data` | Volume status-disk.sh reads free space of; $HOME where that path does not exist | status |  | tests only |
+| `HARBOR_STATUS_DISK_DF` | test-only | `df` | df command status-disk.sh runs (called with -Pk <volume>); a suite stub | status |  | tests only |
 | `HARBOR_TEST_CHANGED` | value | none | Newline-separated list of changed file paths that test-suite-select uses instead of the git diff; pre-push sets it | test |  | tests only |
 | `HARBOR_TEST_CPU_MAX` | path | `/sys/fs/cgroup/cpu.max` | Path of the cgroup cpu.max file test-suite-run reads to size its job pool (default /sys/fs/cgroup/cpu.max) | test |  | tests only |
 | `HARBOR_TEST_CURL` | test-only | `curl` | curl command used in place of curl by ci-verified and access-browser-hosts-add; tests swap in a fake (default curl) | test |  | tests only |

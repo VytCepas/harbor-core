@@ -19,7 +19,7 @@ t_eq "a list for a tool name, a list for params, no method; then a ping" "-32602
   "$(printf '%s\n' "$OUT" | jq -rc '.error.code // .result' | tr '\n' ' ' | sed 's/ $//')"
 TL="$(rpc '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq -r '.result.tools[].name' | sort)"
 ALLOWED="$(awk '/^_allowed\(\) \{/ { f = 1; next } f && /case "\$1" in/ { next } f && /return 0/ { sub(/\).*/, ""); gsub(/[ \t\\]/, ""); print; exit } f { gsub(/[ \t\\]/, ""); printf "%s", $0 }' "$AG" | tr '|' '\n' | sed '/^$/d')"
-WANT="$(printf '%s\n' $ALLOWED attach signin status state timing text steps doctor detach tabs front wait-signin hosts intake confirm-click | tr '-' '_' | sort -u)"
+WANT="$(printf '%s\n' $ALLOWED attach signin status state timing text steps doctor detach tabs front wait-signin hosts confirm-click | tr '-' '_' | sort -u)"
 t_eq "CONTROL: the shell agent's allowlist parses" yes "$([ "$(printf '%s\n' "$ALLOWED" | grep -c .)" -ge 20 ] && echo yes || echo no)"
 t_eq "the tools are exactly the shell agent's allowed verbs and its session verbs" "$WANT" "$TL"
 t_hasnt "no tool runs code in a logged-in page" "$TL" "eval"

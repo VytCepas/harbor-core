@@ -19,8 +19,6 @@ case " \$* " in *" snapshot "*) [ -z "\${f:-}" ] || cp "$SNAP" "\$f" ;; esac
 case " \$* " in *" tab-list "*) [ -z "\${STUB_URL:-}" ] || { printf -- '- 0: (current) [Page](%s)\n' "\$STUB_URL"; exit 0; } ;; esac
 # STUB_LATE_BLANK: the tab goes blank 0.3 s after a fill, as the real detach did.
 case " \$* " in *" fill "*) [ -z "\${STUB_LATE_BLANK:-}" ] || ( sleep 0.3; : > "\$STUB_LATE_BLANK" ) & ;; esac
-# run-code answers the fixed intake-read row (contracts/browser-script.tsv): STUB_INTAKE is its one-line JSON answer.
-case " \$* " in *" run-code "*) printf '%s\n' "\${STUB_INTAKE:-}"; exit 0 ;; esac
 # eval answers the state probe in the real --raw shape: a JSON string, quotes escaped.
 # STUB_COVERED: a file; the page reads hidden until a raise removes it, as an occluded window does.
 case " \$* " in *" eval "*)

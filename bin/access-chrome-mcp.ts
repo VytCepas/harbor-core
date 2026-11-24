@@ -59,8 +59,7 @@ const DESTRUCTIVE: string[] = (() => { try { return fs.readFileSync(path.join(RO
 
 // Run by the shell agent: the verbs that touch Chrome's windows or wait on the operator.
 const LONG: Record<string, number> = { attach: 900, 'wait-signin': 900 };   // seconds
-// intake: the shell agent's, so the value goes down one pipe from the CLI into access.sh and never through this process.
-const AGENT_VERBS = new Set(['attach', 'signin', 'status', 'doctor', 'detach', 'tabs', 'front', 'wait-signin', 'hosts', 'tab-new', 'intake']);
+const AGENT_VERBS = new Set(['attach', 'signin', 'status', 'doctor', 'detach', 'tabs', 'front', 'wait-signin', 'hosts', 'tab-new']);
 // Run here. Default-deny: absent on purpose are run-code, eval, cookie-*, *storage-*, state-save/load, requests, route, install...
 const HOT_VERBS = new Set(['state', 'timing', 'text', 'goto', 'tab-list', 'tab-select', 'tab-close', 'snapshot', 'find', 'screenshot', 'pdf',
   'go-back', 'go-forward', 'reload', 'console', 'resize', 'click', 'dblclick', 'hover', 'fill', 'type', 'select', 'check', 'uncheck',
@@ -125,8 +124,6 @@ const VERBS: Record<string, string> = {
   mousemove: 'move the mouse (args: [x, y])', mousedown: 'mouse down', mouseup: 'mouse up',
   mousewheel: 'scroll (args: [dx, dy])', 'dialog-accept': 'accept the open dialog', 'dialog-dismiss': 'dismiss the open dialog',
   upload: 'upload files (args: absolute paths) after a click opened the file chooser',
-  intake: 'store a key shown once, unseen (args: [ref of the page\'s Copy, "add"|"rotate", access entry id, add flags...]): clicks the Copy, ' +
-    "reads this headless Chrome's own clipboard (or the field at ref) into harbor access --value-stdin; never the macOS clipboard",
   'confirm-click': "click a ref the operator approves in Claude Code's permission dialog (args as click): for a click that " +
     'changes a live system (Turn on, Apply, Publish, Delete, Pay, Generate token), which click refuses or the classifier denies',
 };
@@ -331,17 +328,6 @@ function words(t: string): string {   // lower-cased, ASCII non-letters to one s
     .replace(/ +/g, ' ');
 }
 const destructive = (label: string): string => { const w = words(label); return DESTRUCTIVE.find((d) => w.includes(` ${d} `)) ?? ''; };
-// A click that copies to the clipboard (access-browser-agent.sh _copy_click): narrow, so Copy campaign and Copy ad set pass.
-function copyClick(label: string): boolean {
-  const l = asciiLower(label);
-  if (l.includes('clipboard')) return true;
-  const b = l.replace(/^[a-z]+ "/, '"').replace(/"/g, '').replace(/ +/g, ' ').trim();
-  if (['copy', 'copy & close', 'copy and close', 'copy to clipboard'].includes(b)) return true;
-  return / copy (.* )?(key|token|secret) /.test(words(label));
-}
-// The agent Chrome or the headless lane with no window: a page's Copy lands in that Chrome's own clipboard, never the
-// macOS one, so --value-clipboard reads and empties the operator's (2026-11-23). attach --show writes .shown.
-const noWindow = (wd: string) => (fs.existsSync(path.join(wd, '.agent')) || fs.existsSync(path.join(wd, '.headless'))) && !fs.existsSync(path.join(wd, '.shown'));
 function guardLive() {   // the list itself: without it no label can be judged, so nothing that commits runs
   if (!DESTRUCTIVE.length) refuse('no live-change words: contracts/live-change-words.txt is missing or empty, so no label can be checked', 'git checkout -- contracts/live-change-words.txt');
 }
@@ -385,8 +371,6 @@ async function guardSnapshot(c: Conn, S: string, wd: string, verb: string, ref: 
   const lab = label.replace(/[ \t]+/g, ' ').replace(/^ *- /, '').replace(/ $/, '');
   const hit = destructive(lab);
   if (hit && !confirmed) handoff(`destructive ${verb} refused: '${lab}' (${ref}) matches '${hit}' — the operator confirms one call`, `${verb === 'click' ? `mcp__harbor_chrome__confirm_click with args ["${ref}"] (the operator approves it in the dialog; in auto mode, first AskUserQuestion quoting ${ref} and ${lab}, and their "Yes" lets one call through); or ` : ''}HARBOR_ACCESS_BROWSER_CONFIRM=${ref} harbor chrome ${verb} ${ref}`);
-  if ((verb === 'click' || verb === 'dblclick') && noWindow(wd) && copyClick(lab)) refuse(`copy click refused: '${lab}' (${ref}) would copy into the headless Chrome's own clipboard, never the macOS one, so --value-clipboard would read the operator's (2026-11-23)`,
-    `use harbor chrome intake ${ref} rotate <id>: mcp__harbor_chrome__intake with args ["${ref}", "rotate", "<id>"] (or "add", "<id>", the add flags); it clicks, reads this Chrome's clipboard and stores the key unseen`);
   if (confirmed) { try { fs.appendFileSync(path.join(wd, '.confirmed.tsv'), `${new Date().toISOString()}\t${ref}\t${hit || '-'}\t${lab}\n`); } catch { /* the dialog is the record */ } }
   return { root, frame: '-' + tf, box, label: lab, file: g };
 }
@@ -689,7 +673,7 @@ async function shownSecretGuard(c: Conn, S: string, wd: string, verb: string): P
   if (r.isError) refuse(`${verb} refused: the page could not be checked for a shown credential`, 'harbor chrome snapshot, then try again');
   const k = spawnSync('/bin/sh', [REDACT, '--check'], { input: r.text ?? '', encoding: 'utf8', maxBuffer: 16 * OUT_MAX, timeout: 15000, env: { PATH: PATH_FIXED, LC_ALL: 'C' } });
   if (k.status === 1) refuse(`${verb} refused: the page shows a credential (a key or token, or a secret URL parameter), and an image cannot be redacted`,
-    "store it unseen: harbor chrome intake <ref of the page's Copy button> add|rotate <id> (contracts/secret-intake.md); close the dialog before any screenshot");
+    "copy it with the page's own Copy button, then: harbor access add|rotate <id> --value-clipboard (contracts/secret-intake.md); close the dialog before any screenshot");
   if (k.status !== 0) refuse(`${verb} refused: the credential check failed (exit ${k.status ?? k.signal ?? 'none'})`, 'sh bin/access-redact.sh --check </dev/null');
 }
 async function hot(S: string, verb: string, args: string[], tm: Timing, confirmed = false, shown = false): Promise<Res> {

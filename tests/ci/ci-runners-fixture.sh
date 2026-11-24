@@ -80,8 +80,13 @@ case "$1 $2" in
   "inspect --format") case "$3" in '{{.Image}}') cat "$FX/cid.$4" 2>/dev/null || echo sha256:cur ;;
       '{{.HostConfig.Memory}}') cat "$FX/memory.$4" 2>/dev/null || echo 0 ;;
       '{{.State.Status}}') awk -v n="$4" '$1 == n { print $3; exit }' "$C" ;;   # running, exited: the state in the containers file
+      '{{.LogPath}}') cat "$FX/logpath.$4" 2>/dev/null; true ;;                  # logpath.<c>: where the VM keeps its json log
       *gov-events*) cat "$FX/events.$4" 2>/dev/null; true ;;
       *) cat "$FX/mounts.$4" 2>/dev/null; true ;; esac ;;
+  "exec -i") c="$3"; shift 3   # the tidy script, fed on stdin and run for real against $FX/home.<c> with a ps that reads busy.<c> (busyafter.<c> as for top)
+    [ "$1 $2" = "sh -s" ] || { echo "UNEXPECTED docker call: exec -i $c $*" >> "$FX/unexpected.log"; exit 1; }
+    [ ! -f "$FX/exec.fail.$c" ] || exit 1
+    shift 3; FX="$FX" TIDY_C="$c" RUNNER_HOME="$FX/home.$c" PATH="$FX/psbin:$PATH" sh -s -- "$@" ;;
   "exec "*) c="$2"; shift 2   # wedge.<c>: the cgroup/worker read; ps.<c>: its processes; stubborn.<c>: pids TERM does not end
     case "$1" in
       ps) cat "$FX/ps.$c" 2>/dev/null; true ;;
@@ -124,6 +129,16 @@ case "$1 $2" in
 esac
 STUB
 chmod +x "$GH" "$DOCKER"
+# the ps the tidy script finds in a container: Runner.Worker while busy.<c> exists (busyafter.<c>: idle for N looks, then busy)
+mkdir -p "$FX/psbin"
+cat > "$FX/psbin/ps" <<'STUB'
+#!/bin/sh
+echo "$*" >> "$FX/ps.calls"
+if [ -f "$FX/busyafter.$TIDY_C" ]; then n="$(cat "$FX/busyafter.$TIDY_C")"
+  if [ "$n" -gt 0 ]; then echo $((n - 1)) > "$FX/busyafter.$TIDY_C"; else : > "$FX/busy.$TIDY_C"; fi; fi
+echo Runner.Listener; [ ! -f "$FX/busy.$TIDY_C" ] || echo Runner.Worker; true
+STUB
+chmod +x "$FX/psbin/ps"
 
 NOW=1790000000
 NOWISO="$(date -u -r "$NOW" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$NOW" +%Y-%m-%dT%H:%M:%SZ)"
