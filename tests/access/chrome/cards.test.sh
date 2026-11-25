@@ -126,6 +126,23 @@ t_eq "...while the same goto without a reason is held" "exit 1" "$(ACCESS_DIR="$
 t_has "...by api first" "$(out)" "api first"
 t_eq "with no Chrome connected verify says so" "exit 1" "$(STUB_GONE=1; export STUB_GONE; aag verify ok)"
 t_has "...naming the attach" "$(out)" "harbor chrome attach"
+t_has "...from the CLI's stderr answer, not an empty reason" "$(out)" "no Chrome is connected"
+STUB_TEXT='Welcome Example Admin. Reports Owner'
+t_eq "a page that renders after load is read again until its literals show" "exit 0" "$(: > "$T_TMP/late"; STUB_TEXT_LATE="$T_TMP/late"; export STUB_TEXT_LATE; aag verify ok)"
+t_has "...and passes" "$(out)" "role-check: pass"
+t_eq "...within its tries: one try sees only the loading page" "exit 1" "$(: > "$T_TMP/late"; STUB_TEXT_LATE="$T_TMP/late"; HARBOR_ACCESS_VERIFY_TRIES=1; export STUB_TEXT_LATE HARBOR_ACCESS_VERIFY_TRIES; aag verify ok)"
+t_has "...naming what was missing" "$(out)" "check: FAIL missing Example Admin"
+rm -f "$T_TMP/late"
+t_eq "a goto that fails with no FAIL line of its own fails verify" "exit 1" "$(STUB_GOTO_FAIL='Error: net::ERR_NAME_NOT_RESOLVED'; export STUB_GOTO_FAIL; aag verify nowall)"
+t_has "...giving the CLI's line as the reason" "$(out)" "check: FAIL Error: net::ERR_NAME_NOT_RESOLVED"
+t_eq "a CLI warning on stderr reaches the caller" 1 "$(STUB_STDERR='warning: a stub warning'; export STUB_STDERR; aag tab-list >/dev/null; grep -c 'warning: a stub warning' "$T_TMP/out")"
+_tx0="$(called '() => document.body ? document.body.innerText')"
+t_eq "a page that cannot be read fails verify" "exit 1" "$(STUB_EVAL_FAIL=1 STUB_SNAPSHOT_FAIL=1; export STUB_EVAL_FAIL STUB_SNAPSHOT_FAIL; aag verify nowall)"
+t_has "...as unreadable" "$(out)" "check: FAIL page could not be read"
+t_eq "...read once, not waited on for every try" "$((_tx0 + 1))" "$(called '() => document.body ? document.body.innerText')"
+t_eq "detach on a gone session says why, not silently" "exit 1" "$(STUB_GONE=1; export STUB_GONE; aag detach)"
+t_has "...in harbor's words" "$(out)" "no Chrome is connected to session"
+t_hasnt "...never the CLI's open advice" "$(out)" "playwright-cli -s="
 aag detach >/dev/null; unset STUB_TEXT
 
 t_section "signin over several cards, and the cookie names each sign-in left (harbor#1617)"
