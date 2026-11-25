@@ -126,6 +126,13 @@ t_eq "...while the same goto without a reason is held" "exit 1" "$(ACCESS_DIR="$
 t_has "...by api first" "$(out)" "api first"
 t_eq "with no Chrome connected verify says so" "exit 1" "$(STUB_GONE=1; export STUB_GONE; aag verify ok)"
 t_has "...naming the attach" "$(out)" "harbor chrome attach"
+t_has "...from the CLI's stderr answer, not an empty reason" "$(out)" "no Chrome is connected"
+STUB_TEXT='Welcome Example Admin. Reports Owner'
+t_eq "a page that renders after load is read again until its literals show" "exit 0" "$(: > "$T_TMP/late"; STUB_TEXT_LATE="$T_TMP/late"; export STUB_TEXT_LATE; aag verify ok)"
+t_has "...and passes" "$(out)" "role-check: pass"
+t_eq "...within its tries: one try sees only the loading page" "exit 1" "$(: > "$T_TMP/late"; STUB_TEXT_LATE="$T_TMP/late"; HARBOR_ACCESS_VERIFY_TRIES=1; export STUB_TEXT_LATE HARBOR_ACCESS_VERIFY_TRIES; aag verify ok)"
+t_has "...naming what was missing" "$(out)" "check: FAIL missing Example Admin"
+rm -f "$T_TMP/late"
 aag detach >/dev/null; unset STUB_TEXT
 
 t_section "signin over several cards, and the cookie names each sign-in left (harbor#1617)"

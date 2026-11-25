@@ -9,7 +9,8 @@ cat > "$STUB" <<EOF
 #!/bin/sh
 printf '%s\n' "\$*" >> "$CALLS"
 if [ -n "\${STUB_GONE:-}" ]; then
-  printf "The browser '%s' is not open, please run open first\n\n  playwright-cli %s open [params]\n" "\${1#-s=}" "\$1"; exit 1
+  # on stderr, as the real CLI answers (0.1.24, measured 2026-11-25: callers that hold only stdout never saw it)
+  printf "Browser '%s' is not open. Run\n\n  playwright-cli %s open\n" "\${1#-s=}" "\$1" >&2; exit 1
 fi
 for a in "\$@"; do case "\$a" in --filename=*) f="\${a#--filename=}" ;; esac; done
 case " \$* " in *" snapshot "*) [ -z "\${f:-}" ] || cp "$SNAP" "\$f" ;; esac
@@ -42,7 +43,10 @@ case " \$* " in *" eval "*)
   esac
   [ -z "\${STUB_EVAL_FAIL:-}" ] || { echo "Error: Execution context was destroyed"; exit 1; }
   # The text verb's fixed function: STUB_TEXT is what the page shows (innerText), a JSON string as --raw prints it.
-  case "\$*" in *'() => document.body ? document.body.innerText'*) printf '"%s"\n' "\${STUB_TEXT-}"; exit 0 ;; esac
+  # STUB_TEXT_LATE: a file; while it exists the first read shows "Loading" and removes it, as a list that renders after load.
+  case "\$*" in *'() => document.body ? document.body.innerText'*)
+    if [ -n "\${STUB_TEXT_LATE:-}" ] && [ -e "\$STUB_TEXT_LATE" ]; then rm -f "\$STUB_TEXT_LATE"; printf '"Loading"\n'; exit 0; fi
+    printf '"%s"\n' "\${STUB_TEXT-}"; exit 0 ;; esac
   # The shown-secret probe (contracts/browser-script.tsv, contracts/secret-intake.md): STUB_SHOWN is what the page shows.
   case "\$*" in *'e.type !== "password"'*) printf '"%s"\n' "\${STUB_SHOWN:-a plain page}"; exit 0 ;; esac
   if [ -n "\${STUB_HIDDEN:-}" ] || { [ -n "\${STUB_COVERED:-}" ] && [ -e "\$STUB_COVERED" ]; }; then printf '%s\n' '"{\"visibility\":\"hidden\",\"host\":\"business.facebook.com\",\"blank\":false}"'
