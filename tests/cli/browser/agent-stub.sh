@@ -9,10 +9,17 @@ cat > "$STUB" <<EOF
 #!/bin/sh
 printf '%s\n' "\$*" >> "$CALLS"
 if [ -n "\${STUB_GONE:-}" ]; then
-  printf "The browser '%s' is not open, please run open first\n\n  playwright-cli %s open [params]\n" "\${1#-s=}" "\$1"; exit 1
+  # on stderr, as the real CLI answers (0.1.24, measured 2026-11-25: callers that hold only stdout never saw it)
+  printf "Browser '%s' is not open. Run\n\n  playwright-cli %s open\n" "\${1#-s=}" "\$1" >&2; exit 1
 fi
+# STUB_STDERR: a line the CLI writes on stderr that is not a gone session (a warning); it still answers.
+[ -z "\${STUB_STDERR:-}" ] || printf '%s\n' "\$STUB_STDERR" >&2
+# STUB_GOTO_FAIL: a goto that fails with the CLI's own error and no harbor FAIL line.
+case " \$* " in *" goto "*) [ -z "\${STUB_GOTO_FAIL:-}" ] || { printf '%s\n' "\$STUB_GOTO_FAIL"; exit 3; } ;; esac
 for a in "\$@"; do case "\$a" in --filename=*) f="\${a#--filename=}" ;; esac; done
 case " \$* " in *" snapshot "*) [ -z "\${f:-}" ] || cp "$SNAP" "\$f" ;; esac
+# STUB_SNAPSHOT_FAIL: a bare snapshot fails, as on a session that dropped.
+case " \$* " in *" snapshot "*) [ -z "\${STUB_SNAPSHOT_FAIL:-}" ] || [ -n "\${f:-}" ] || exit 1 ;; esac
 # STUB_SNAPSHOT: what a bare snapshot prints (the page as the accessibility tree), for a page whose text is empty.
 case " \$* " in *" snapshot "*) [ -z "\${STUB_SNAPSHOT:-}" ] || { printf '%s\n' "\$STUB_SNAPSHOT"; exit 0; } ;; esac
 # The real CLI drains stdin; STUB_READS_STDIN makes the stub do the same.
@@ -42,7 +49,10 @@ case " \$* " in *" eval "*)
   esac
   [ -z "\${STUB_EVAL_FAIL:-}" ] || { echo "Error: Execution context was destroyed"; exit 1; }
   # The text verb's fixed function: STUB_TEXT is what the page shows (innerText), a JSON string as --raw prints it.
-  case "\$*" in *'() => document.body ? document.body.innerText'*) printf '"%s"\n' "\${STUB_TEXT-}"; exit 0 ;; esac
+  # STUB_TEXT_LATE: a file; while it exists the first read shows "Loading" and removes it, as a list that renders after load.
+  case "\$*" in *'() => document.body ? document.body.innerText'*)
+    if [ -n "\${STUB_TEXT_LATE:-}" ] && [ -e "\$STUB_TEXT_LATE" ]; then rm -f "\$STUB_TEXT_LATE"; printf '"Loading"\n'; exit 0; fi
+    printf '"%s"\n' "\${STUB_TEXT-}"; exit 0 ;; esac
   # The shown-secret probe (contracts/browser-script.tsv, contracts/secret-intake.md): STUB_SHOWN is what the page shows.
   case "\$*" in *'e.type !== "password"'*) printf '"%s"\n' "\${STUB_SHOWN:-a plain page}"; exit 0 ;; esac
   if [ -n "\${STUB_HIDDEN:-}" ] || { [ -n "\${STUB_COVERED:-}" ] && [ -e "\$STUB_COVERED" ]; }; then printf '%s\n' '"{\"visibility\":\"hidden\",\"host\":\"business.facebook.com\",\"blank\":false}"'

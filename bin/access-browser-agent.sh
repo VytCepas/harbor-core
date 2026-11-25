@@ -325,7 +325,17 @@ _cli() {
   # No verb reads stdin; inherited, the CLI drained a caller's `while read` loop (2026-10-14).
   exec "$@" </dev/null
 }
-_cli_run() { ( _cli "$@" ); }   # the same CLI, returning here instead of exec'ing
+# The same CLI, returning here instead of exec'ing. Its stderr is kept in .cli.err and replayed, because the
+# gone-session answer arrives there and callers hold only stdout (harbor#1617).
+# A gone-session answer stays in the file for _gone_check and is told in harbor's words, so the CLI's fresh-browser advice is never passed on.
+_cli_run() {
+  mkdir -p "$WORKDIR"; _cr=0; ( _cli "$@" ) 2> "$WORKDIR/.cli.err" || _cr=$?
+  if /usr/bin/grep -qE "^(The b|B)rowser '[^']*' is not open" "$WORKDIR/.cli.err" 2>/dev/null; then
+    case "${1-}" in -s=*) _cs="${1#-s=}" ;; *) _cs="$S" ;; esac   # the session this call named (signin uses its own)
+    log_note "no Chrome is connected to session $_cs" >&2   # a caller without _gone_check still says why
+  else cat "$WORKDIR/.cli.err" >&2; rm -f "$WORKDIR/.cli.err"; fi
+  return "$_cr"
+}
 
 # Chrome itself, through AppleScript: tabs, which one is showing, which window is in front.
 # A tab Chrome is not showing reports `hidden` and input verbs time out on it; a second session
@@ -475,8 +485,8 @@ _relay_err() {
 # browser and not the operator's Chrome (harbor#920). Its exact wording only: a page's "Dialog
 # is not open" is a page error, not a gone session.
 _gone_check() {
-  /usr/bin/grep -qE "^(The b|B)rowser '[^']*' is not open" "$1" 2>/dev/null || return 0
-  rm -f "$1"; _e="$(_relay_err)"
+  /usr/bin/grep -qE "^(The b|B)rowser '[^']*' is not open" "$1" "$WORKDIR/.cli.err" 2>/dev/null || return 0
+  rm -f "$1" "$WORKDIR/.cli.err"; _e="$(_relay_err)"
   _why=''; [ -z "$_e" ] || _why="$(/usr/bin/grep -o 'ws closed> .*' "$_e" | tail -1 | cut -c12-200 || :)"
   _handoff "no Chrome is connected to session $S${_why:+ — the relay last closed with $_why}" \
     'harbor chrome attach   # then Connect in Chrome; for an app with a login, sign in first and Connect that tab'
@@ -1244,15 +1254,24 @@ EOF
         if /usr/bin/grep -q 'signed out:' "$_vo"; then printf '%s: login-wall\n' "$_vk"
         elif /usr/bin/grep -q 'no Chrome is connected' "$_vo"; then _refuse "verify: no Chrome is connected to session $S" 'harbor chrome attach'
         else
-          printf '%s: FAIL %s\n' "$_vk" "$(sed -n 's/^  FAIL: //p' "$_vo" | head -1 | cut -c1-240)"
+          _vr="$(sed -n 's/^  FAIL: //p' "$_vo" | head -1)"; [ -n "$_vr" ] || _vr="$(_scrub < "$_vo" | awk 'NF { print; exit }')"
+          printf '%s: FAIL %s\n' "$_vk" "$(printf '%s' "${_vr:-goto exited $_vrc with no output}" | cut -c1-240)"
           sed -n '/^  fix: /p' "$_vo" | head -1
         fi
         _vbad=$((_vbad + 1)); continue
       fi
-      _vrc=0; sh "$HERE/access-browser-agent.sh" text > "$_vo.txt" 2>/dev/null || _vrc=$?
-      if [ "$_vrc" -ne 0 ] || [ -z "$(tr -d ' \t\r\n' < "$_vo.txt")" ]; then
-        _vrc=0; sh "$HERE/access-browser-agent.sh" snapshot > "$_vo.txt" 2>/dev/null || _vrc=$?
-      fi
+      # A page that renders after load (an app's member list) is read again until every literal is on it, or the tries run out.
+      _vt=0
+      while :; do
+        _vrc=0; sh "$HERE/access-browser-agent.sh" text > "$_vo.txt" 2>/dev/null || _vrc=$?
+        if [ "$_vrc" -ne 0 ] || [ -z "$(tr -d ' \t\r\n' < "$_vo.txt")" ]; then
+          _vrc=0; sh "$HERE/access-browser-agent.sh" snapshot > "$_vo.txt" 2>/dev/null || _vrc=$?
+        fi
+        [ "$_vrc" -eq 0 ] || break   # a page that cannot be read is not waited on
+        _vt=$((_vt + 1)); [ "$_vt" -lt "${HARBOR_ACCESS_VERIFY_TRIES:-6}" ] || break
+        if [ "$_vrc" -eq 0 ] && printf '%s\n' "$_vl" | { _va=1; while IFS= read -r _vlit; do /usr/bin/grep -qF -- "$_vlit" "$_vo.txt" || _va=0; done; [ "$_va" -eq 1 ]; }; then break; fi
+        sleep "${HARBOR_ACCESS_BROWSER_SETTLE:-1}"
+      done
       if [ "$_vrc" -ne 0 ]; then printf '%s: FAIL page could not be read\n' "$_vk"; _vbad=$((_vbad + 1)); continue; fi
       _vm=0
       while IFS= read -r _vlit; do
