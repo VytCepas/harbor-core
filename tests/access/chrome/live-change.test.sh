@@ -64,6 +64,51 @@ _old="$SRV"; SRV="$T_TMP/lmut/bin/access-chrome-mcp.ts"; printf 'Publish' > "$CT
 t_eq "without the submit guard, Enter on Publish goes through" "exit 0" "$(mcp press Enter)"
 SRV="$_old"; clean
 
+t_section "server: a Copy click with no window is refused: that Chrome's clipboard is not the operator's (2026-11-23)"
+cat >> "$SNAP" <<'EOF'
+  - button "Copy & Close" [ref=e28] [box=8,230,80,20]
+  - button "Copy API key \"Example API\" to clipboard" [ref=e29] [box=100,230,80,20]
+  - button "Copy campaign" [ref=e30] [box=200,230,80,20]
+  - button "Copy token" [ref=e33] [box=300,230,80,20]
+  - button "Paste from clipboard" [ref=e34] [box=400,230,80,20]
+EOF
+mkdir -p "$WD"; rm -f "$WD/.shown"; : > "$WD/.agent"; : > "$CALLS"
+t_eq "Copy & Close (RTB House) is refused in the headless agent Chrome" "exit 1" "$(mcp click e28)"
+t_has "...naming the label" "$(txt)" "copy click refused: 'button \"Copy & Close\"' (e28)"
+t_has "...and the intake verb as the way" "$(txt)" "use harbor chrome intake e28 rotate <id>"
+t_eq "Copy API key ... to clipboard (a partner UI, measured) is refused" "exit 1" "$(mcp click e29)"
+t_eq "...by name too" "exit 1" "$(mcp click '--text=Copy & Close')"
+t_eq "...and past confirm_click: a confirm reaches no clipboard" "exit 1" "$(mcp confirm_click e28)"
+t_eq "none of them reached the daemon" 0 "$(n 'click e2[89]')"
+t_eq "Copy campaign passes headless: a duplicate, not a copy" "exit 0" "$(mcp click e30)"
+t_eq "Copy token, naming no clipboard, is refused" "exit 1" "$(mcp click e33)"
+t_eq "Paste from clipboard passes headless: it copies nothing" "exit 0" "$(mcp click e34)"
+cp "$CTL/submit_label" "$T_TMP/sl0" 2>/dev/null || rm -f "$T_TMP/sl0"; printf 'Copy & Close' > "$CTL/submit_label"; : > "$CALLS"
+t_eq "Enter on a focused Copy & Close is refused headless" "exit 1" "$(mcp press Enter)"
+t_has "...as a copy key" "$(txt)" "copy key refused"
+t_eq "...and never reached the daemon" 0 "$(n 'press Enter')"
+if [ -e "$T_TMP/sl0" ]; then mv "$T_TMP/sl0" "$CTL/submit_label"; else rm -f "$CTL/submit_label"; fi
+rm -f "$WD/.agent"; : > "$WD/.headless"
+t_eq "the headless lane refuses it too" "exit 1" "$(mcp click e28)"
+t_has "...as the copy click" "$(txt)" "copy click refused"
+rm -f "$WD/.headless"; : > "$CALLS"
+t_eq "the operator's Chrome is not refused" "exit 0" "$(mcp click e28)"
+t_eq "...the click reached the daemon" 1 "$(n '^script click e28')"
+: > "$WD/.agent"; : > "$WD/.shown"; : > "$CALLS"
+t_eq "after attach --show (.shown) the same click passes" "exit 0" "$(mcp click e28)"
+t_eq "...and the clipboard one" "exit 0" "$(mcp click e29)"
+t_eq "...both reaching the daemon" 2 "$(n '^script click e2[89]')"
+rm -f "$WD/.shown"; : > "$CALLS"
+t_eq "intake is the shell agent's: the value never passes through this server" "exit 0" "$(mcp intake e28 rotate rtbhouse-api-analytics)"
+t_has "...its args reach the agent as a list" "$(txt)" "$(printf 'arg=intake\narg=e28\narg=rotate\narg=rtbhouse-api-analytics')"
+t_has "...as an agent's call" "$(txt)" "enforce=1"
+t_eq "...and the server sent the daemon nothing" 0 "$(grep -c . "$CALLS")"
+sed 's/ \&\& noWindow(wd) \&\& copyClick(lab)) refuse(/ \&\& false) refuse(/' "$SRV" > "$T_TMP/lmut/bin/access-chrome-mcp.ts"
+t_eq "CONTROL: the copy mutant differs from the server" yes "$(cmp -s "$SRV" "$T_TMP/lmut/bin/access-chrome-mcp.ts" || echo yes)"
+_old="$SRV"; SRV="$T_TMP/lmut/bin/access-chrome-mcp.ts"; : > "$CALLS"
+t_eq "without the copy guard, Copy & Close goes through headless" "exit 0" "$(mcp click e28)"
+SRV="$_old"; rm -f "$WD/.agent"; clean
+
 t_section "shell agent: the same list and the same probe"
 AGENT="$T_ROOT/bin/access-browser-agent.sh"; CALLS="$T_TMP/calls"; : > "$CALLS"
 t_eq "Save changes is refused" "exit 1" "$(ag click e24)"

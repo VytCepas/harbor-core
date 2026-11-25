@@ -110,7 +110,7 @@ harbor chrome click <ref>
 harbor chrome detach        # when done; idle-timeout releases it anyway after 30 min
 harbor chrome text [ref]    # the visible text, cheaper than snapshot or screenshot for reading
 harbor chrome timing        # the page's own clock as JSON (navigation, LCP, own-origin resources): prod-vs-rebuild parity
-harbor chrome attach --headless   # in a lane: throwaway headless Chrome, no login, same allow-list
+harbor chrome attach --blank      # in a lane: throwaway Chrome, no profile, never signed in, same allow-list (--headless is its old name)
 ```
 
 As MCP tools, `mcp__harbor_chrome__steps` runs a known sequence in one call (harbor#1507); the playbook says when.
@@ -131,8 +131,8 @@ As MCP tools, `mcp__harbor_chrome__steps` runs a known sequence in one call (har
   publishes or invites is a write in his account; ask in chat first.
 - **Work UIs only.** `goto`/`tab-new` refuse any host not in
   `contracts/browser-agent-hosts.txt`, except a local dev server at exactly
-  `http://localhost:<port>` or `http://127.0.0.1:<port>` (1024-65535), and that in a headless lane only
-  (`attach --headless`): in his profile an agent-written page could send credentialed cross-site requests. A client's live site goes through the tag debugger,
+  `http://localhost:<port>` or `http://127.0.0.1:<port>` (1024-65535), and that in a blank lane only
+  (`attach --blank`): in his profile an agent-written page could send credentialed cross-site requests. A client's live site goes through the tag debugger,
   never this verb — his logged-in cookies would land in the client's analytics.
 - **A credential is stored, never read** (contracts/secret-intake.md). A key a page shows once: click the
   page's own Copy, run `harbor access add|rotate <id> --value-clipboard`, close the dialog. Never `snapshot`,

@@ -11,6 +11,7 @@ cat > "$CARD" <<CARDEOF
     identity: person@example.invalid via a named human profile
     account:  person@example.invalid | primary | reader on the fixture | a named human profile in the browser
     via:      api > browser
+    ui-hosts: api.example.invalid
     upgrade:  none - the grant is all-or-nothing
     use:      curl -sS https://api.example.invalid/me
     check:    curl -sS https://api.example.invalid/me
@@ -61,8 +62,8 @@ unset ACCESS_DIR
 
 t_section "the generated files do not depend on the caller's locale"
 LR="$T_TMP/locale"; mkdir -p "$LR"; cp "$CARD" "$LR/thing.md"
-sed 's/person@example.invalid/Zed Bot/g; s/^# thing/# other/' "$CARD" > "$LR/other.md"
-sed 's/person@example.invalid/alpha@example.invalid/g; s/^# thing/# third/' "$CARD" > "$LR/third.md"
+sed -e 's/person@example.invalid/Zed Bot/g; s/^# thing/# other/' -e '/^    ui-hosts:/d' -e 's/^    via:.*/    via:      api/' "$CARD" > "$LR/other.md"
+sed -e 's/person@example.invalid/alpha@example.invalid/g; s/^# thing/# third/' -e '/^    ui-hosts:/d' -e 's/^    via:.*/    via:      api/' "$CARD" > "$LR/third.md"
 LC_ALL=C sh "$ROUTES" --accounts "$LR" > "$LR/ACCOUNTS.md"; LC_ALL=C sh "$ROUTES" --dispatch "$LR" > "$LR/DISPATCH.md"
 t_exit "written under C, it is current under en_US.UTF-8" 0 env LC_ALL=en_US.UTF-8 ACCESS_DIR="$LR" sh "$ROUTES"
 t_exit "...and under C" 0 env LC_ALL=C ACCESS_DIR="$LR" sh "$ROUTES"
@@ -73,4 +74,29 @@ t_exit "no cards found is exit 1" 1 sh "$ROUTES"
 t_has "...and says so" "$(GATE)" "no route cards found"
 rmdir "$PV/access"
 t_exit "a layer with no access/ at all is exit 2" 2 sh "$ROUTES"
+t_section "the standard a card is held to, end to end (harbor#1617)"
+mkreg "$T_TMP/std"
+t_exit "CONTROL the fixture card passes the standard" 0 sh "$ROUTES" "$T_TMP/std"
+sed 's#^    check:.*#    check:    open https://api.example.invalid/me#' "$CARD" > "$T_TMP/std/thing.md"
+t_exit "check: open <url> is red" 1 sh "$ROUTES" "$T_TMP/std"
+t_has "...and names harbor chrome goto as the form" "$(GATE "$T_TMP/std")" "harbor chrome goto"
+sed 's#^    check:.*#    check:    GET https://api.example.invalid/me with the cookie jar#' "$CARD" > "$T_TMP/std/thing.md"
+t_exit "a prose check line is red" 1 sh "$ROUTES" "$T_TMP/std"
+sed '/^    ui-hosts:/d' "$CARD" > "$T_TMP/std/thing.md"
+t_exit "api > browser with no ui-hosts is red" 1 sh "$ROUTES" "$T_TMP/std"
+awk '/^    verified:/ { print "    session:  forever" } { print }' "$CARD" > "$T_TMP/std/thing.md"
+t_exit "a session outside persistent|show-only is red" 1 sh "$ROUTES" "$T_TMP/std"
+cp "$CARD" "$T_TMP/std/thing.md"
+
+t_section "--run: an instrument failure is not an access failure (harbor#1617)"
+mkdir -p "$T_TMP/run"
+sed -e 's#^    check:.*#    check:    no-such-tool-xyz --me#' -e 's#^    expect:.*#    expect:   prints `account=nobody`#' "$CARD" > "$T_TMP/run/thing.md"
+t_exit "a check whose command does not exist exits 0" 0 sh "$ROUTES" --run "$T_TMP/run"
+_o="$(GATE --run "$T_TMP/run")"
+t_has "...and says INSTRUMENT" "$_o" "INSTRUMENT"
+t_has "...counted apart from access-FAIL" "$_o" "0 pass, 0 access-FAIL, 1 instrument"
+sed -e 's#^    check:.*#    check:    printf "token=SECRETVALUE123\\n"#' -e 's#^    expect:.*#    expect:   prints `account=nobody`#' "$CARD" > "$T_TMP/run/thing.md"
+t_exit "a check that prints the wrong thing is exit 1" 1 sh "$ROUTES" --run "$T_TMP/run"
+t_has "...as an access-FAIL" "$(GATE --run "$T_TMP/run")" "1 access-FAIL"
+t_hasnt "...and never echoes what the command printed" "$(GATE --run "$T_TMP/run" | grep -v '^   \$ ')" "SECRETVALUE123"
 t_done

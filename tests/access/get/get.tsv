@@ -1,0 +1,4 @@
+# The fixture vendor table for tests/access/get/get.test.sh (contracts/access-get.md). example.com hosts only.
+vendor	secret	base	auth	allow	deny	redact	token_url	client_id	client_ref
+tok	example-tok-read	https://api.example.com/v1/	header:Access-Token	user/,report/	user/token*,*/secret*	email|phone	-	-	-
+bear	example-bear-refresh	https://bearer.example.com/v5/	bearer	user_account,ad_accounts	-	username	https://auth.example.com/oauth/token	client-1	example-bear-client

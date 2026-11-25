@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# ci-runners-provision-lib.sh (harbor#1060) — container lifecycle: sync_hook, `up`, `refresh`, the governance runners, `down`.
-# Sourced by ci-runners.sh, never run: it sets no shell option and reads the entry point's variables ($T, $CONF, $GH, $DOCKER, ...).
+# ci-runners-provision-lib.sh (harbor#1060) — container lifecycle: sync_hook, `up`, `refresh`, the governance runners, `down`, `tidy`.
+# One file on purpose (lint-module-shape --seam: the container helpers up, refresh, down and tidy share are private to it). Sourced by ci-runners.sh, never run: it sets no shell option and reads the entry point's variables ($T, $CONF, $GH, $DOCKER, ...).
 . "$(dirname -- "$0")/library-log.sh"   # a second source keeps the run's counts (library-log.sh)
 
 # Every container runs the job hook from the shared events mount, so this copy is the one they run: kept equal to
@@ -35,6 +35,7 @@ create() { # <slug> <name>
   # GOV_MEM/GOV_CPUS/GOV_EVENTS: harbor-linux's own values (harbor#1083); a fleet container takes the config's (LIMITS)
   _cpu="${GOV_CPUS:-$(cpus_for "$_c")}"; _mem="${GOV_MEM:-$(mem_for "$_c")}"
   if "$DOCKER" run -d --name "$_c" --restart unless-stopped --cpus "$_cpu" --memory "$_mem" --env-file "$T/env" \
+       --log-opt "max-size=$LOGSIZE" --log-opt "max-file=$LOGFILES" \
        -v "${GOV_EVENTS:-$EVENTS}:/gov-events" "$@" \
        -e ACTIONS_RUNNER_HOOK_JOB_STARTED=/gov-events/ci-governor-hook.sh \
        -e ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/gov-events/ci-governor-hook.sh \
@@ -229,3 +230,127 @@ do_down() {
   logline "$c removed ($slug)"; log_ok "$c removed"
 }
 
+
+# ── tidy: what a runner container leaves behind, weekly (check ci.runner-tidy, harbor#1060, operator decision 2026-11-23) ──
+# Measured that day: the VM's data disk held 99 GB, a trim returned 74. Always safe: staging, old versions, old diag logs, an over-cap json log;
+# only an idle runner (read inside it, before each directory) loses caches, never on a metered network. Why and what: docs/reference/check-rows/ci-runner-tidy.txt
+COLIMA="${HARBOR_CI_COLIMA:-colima}"
+DATADISK="${HARBOR_CI_DATADISK:-$HOME/.colima/_lima/_disks/colima/datadisk}"
+TIDY_STAMP="$CACHE_DIR/ci-runner-tidy.stamp"
+NET_MODE="${HARBOR_STATUS_DIR:-$HOME/.local/state/harbor}/net/mode"   # status-network.sh's file: `epoch metered|unmetered why`
+tidyline() { printf '[check:ci.runner-tidy] %s %s\n' "$(iso "$NOW")" "$1" >> "$LOG" 2>/dev/null || :; }   # one line a run, under its own id
+dfmt() { date -r "$2" "+$1" 2>/dev/null || date -d "@$2" "+$1"; }    # BSD, then GNU
+# tidy_due — NOW is past the latest Sunday 04:00 (local) and no completed run is as new as that. With no stamp at all (a first
+# install, or a box that never ran it) the stamp is seeded with NOW and the answer is no: the first run is the next Sunday's, never a surprise on a weekday.
+tidy_due() {
+  [ -r "$TIDY_STAMP" ] || { printf '%s\n' "$NOW" > "$TIDY_STAMP"; return 1; }
+  _dw="$(dfmt %u "$NOW")"; _h="$(dfmt %H "$NOW")"; _m="$(dfmt %M "$NOW")"; _s="$(dfmt %S "$NOW")"
+  _want=$(( NOW - (_dw % 7) * 86400 - (${_h#0} * 3600 + ${_m#0} * 60 + ${_s#0}) + 4 * 3600 ))
+  [ "$_want" -le "$NOW" ] || _want=$((_want - 7 * 86400))
+  _st=0; [ ! -r "$TIDY_STAMP" ] || read -r _st < "$TIDY_STAMP" 2>/dev/null || :
+  case "$_st" in ''|*[!0-9]*) _st=0 ;; esac
+  [ "$_st" -lt "$_want" ]
+}
+# the script that runs INSIDE one container (docker exec -i <c> sh -s -- apply|dry caches|nocaches); RUNNER_HOME is for tests
+tidy_script() {
+  cat > "$T/tidy-inner.sh" <<'INNER'
+R="${RUNNER_HOME:-/home/${RUNNER_USER:-runner}}"; DRY=0; [ "${1:-}" != dry ] || DRY=1; CACHES=0; [ "${2:-}" != caches ] || CACHES=1
+[ -d "$R" ] || { echo "tidy none no-home"; exit 0; }
+act() { [ "$DRY" = 1 ] || rm -rf "$@"; }
+busy() { ps -eo comm= | grep -qx Runner.Worker; }
+b="$(readlink -f "$R/bin" 2>/dev/null)"; e="$(readlink -f "$R/externals" 2>/dev/null)"; b="${b##*/}"; e="${e##*/}"
+case "$b:$e" in bin.*:externals.*) ;; *) echo "tidy none no-live-symlinks"; exit 0 ;; esac
+v=0
+for d in "$R"/bin.* "$R"/externals.*; do
+  [ -d "$d" ] || continue
+  [ "${d##*/}" != "$b" ] && [ "${d##*/}" != "$e" ] || continue
+  act "$d"; v=$((v + 1))
+done
+u=0
+for p in "$R/_work/_update" "$R/_work/_update.sh"; do
+  [ -e "$p" ] || continue
+  # staging touched in the last 10 minutes may be a self-update in flight
+  if [ -n "$(find "$p" -mmin -10 2>/dev/null | head -n 1)" ]; then continue; fi
+  act "$p"; u=$((u + 1))
+done
+t="${TMPDIR:-/tmp}/tidy.$$"; f=0
+find "$R/_diag" -type f -name '*.log' -mmin +4320 > "$t" 2>/dev/null
+while IFS= read -r l; do act "$l"; f=$((f + 1)); done < "$t"
+rm -f "$t"
+c=off
+if [ "$CACHES" = 1 ]; then
+  c=0
+  for d in "$R/.cache" "$R/.npm" "$R/_work/_tool" "$R/.bun/install/cache"; do
+    [ -e "$d" ] || continue
+    if busy; then c=busy; break; fi
+    act "$d"; c=$((c + 1))
+  done
+fi
+echo "tidy update=$u versions=$v diag=$f caches=$c"
+INNER
+}
+# tidy_log <container> — its json log, in the VM, truncated when over the cap it is created with
+tidy_log() {
+  _lp="$("$DOCKER" inspect --format '{{.LogPath}}' "$1" 2>/dev/null | tr -d '\r\n')" || _lp=""
+  case "$_lp" in
+    *[!A-Za-z0-9/._-]*|*..*) _lp="" ;;
+    /var/lib/docker/containers/*/*-json.log) ;;
+    *) _lp="" ;;
+  esac
+  [ -n "$_lp" ] || { log_note "$1: no json log path to read"; return 0; }
+  _sz="$("$COLIMA" ssh -- sudo stat -c %s "$_lp" 2>/dev/null </dev/null | tr -d ' \r\n')" || _sz=""
+  case "$_sz" in ''|*[!0-9]*) log_warn "$1: its json log size could not be read through $COLIMA"; return 0 ;; esac
+  _cap="$(bytes "$LOGSIZE")"
+  [ "$_sz" -gt "$_cap" ] || return 0
+  if [ "$APPLY" != 1 ]; then log_note "would truncate $1's json log: $((_sz / 1048576)) MB over the $LOGSIZE cap"; return 0; fi
+  if "$COLIMA" ssh -- sudo truncate -s 0 "$_lp" >/dev/null 2>&1 </dev/null; then
+    LOGFREED=$((LOGFREED + _sz / 1048576)); log_ok "$1: json log truncated, $((_sz / 1048576)) MB"
+  else log_fail "$1: its json log would not be truncated"; log_fix "$COLIMA ssh -- sudo truncate -s 0 $_lp"; return 1; fi
+}
+tidy_one() { # <container>
+  _mode=apply; [ "$APPLY" = 1 ] || _mode=dry
+  _out="$(DEXEC_SEC=600 dexec -i "$1" sh -s -- "$_mode" "$TIDY_CACHES" < "$T/tidy-inner.sh" 2>/dev/null)" \
+    || { log_fail "$1: the tidy script did not run in it"; log_fix "docker exec $1 ls $RUNNER_HOME"; return 1; }
+  _res="$(printf '%s\n' "$_out" | awk '$1 == "tidy" { l = $0 } END { print l }')"
+  [ -n "$_res" ] || { log_fail "$1: the tidy script answered nothing"; log_fix "docker exec $1 ls $RUNNER_HOME"; return 1; }
+  case "$_res" in *busy*) log_skip "$1 is running a job: ${_res#tidy }" ;; *) log_ok "$1: $([ "$APPLY" = 1 ] || printf 'would remove, ')${_res#tidy }" ;; esac
+  tidy_log "$1"
+}
+do_tidy() {
+  FAILED=0; LOGFREED=0
+  if [ "$IFDUE" = 1 ] && ! tidy_due; then return 0; fi
+  "$DOCKER" ps -a --format '{{.Names}} {{.Image}} {{.State}}' > "$T/ps.txt" 2>/dev/null || { log_fail "docker did not answer"; log_fix "colima status"; return 1; }
+  if [ "$APPLY" = 1 ]; then   # one run at a time: a hand-typed tidy beside the tick's
+    _lk="$CACHE_DIR/ci-runner-tidy.lock"
+    if ! ( set -C; echo $$ > "$_lk" ) 2>/dev/null; then
+      _hp="$(head -c 32 "$_lk" 2>/dev/null || :)"; case "$_hp" in ''|*[!0-9]*) _hp="" ;; esac
+      if [ -n "$_hp" ] && kill -0 "$_hp" 2>/dev/null; then log_skip "another tidy is running (pid $_hp)"; return 0; fi
+      rm -f "$_lk"; ( set -C; echo $$ > "$_lk" ) 2>/dev/null || return 0
+    fi
+    trap 'rm -f "$_lk"; rm -rf "$T"' EXIT INT TERM
+  fi
+  TIDY_CACHES=caches
+  _nm=""; [ ! -r "$NET_MODE" ] || read -r _ne _nm _nw < "$NET_MODE" 2>/dev/null || :
+  if [ "$_nm" = metered ]; then TIDY_CACHES=nocaches; log_skip "the network is metered: caches are left, a cache removed is a download again"; fi
+  tidy_script
+  _b="$(du -sk "$DATADISK" 2>/dev/null | awk '{ print $1 }')" || _b=""
+  N=0
+  while read -r c _i st; do
+    case "$c" in *-linux|*-linux-[0-9]|harbor-gate|harbor-gate-[0-9]) ;; *) continue ;; esac
+    [ "$st" = running ] || { log_skip "$c is $st"; continue; }
+    N=$((N + 1)); tidy_one "$c" || FAILED=1
+  done < "$T/ps.txt"
+  [ "$N" != 0 ] || log_note "no runner container is running"
+  if [ "$APPLY" != 1 ]; then log_note "dry run: pass --apply to do it (it ends with fstrim in the VM)"; return "$FAILED"; fi
+  if _ft="$("$COLIMA" ssh -- sudo fstrim -v /var/lib/docker 2>&1 </dev/null)"; then log_ok "VM trimmed: ${_ft:-done}"
+  else log_fail "fstrim in the VM failed, so the Mac keeps what was deleted: ${_ft:-no output}"; log_fix "$COLIMA ssh -- sudo fstrim -v /var/lib/docker"; FAILED=1; fi
+  _a="$(du -sk "$DATADISK" 2>/dev/null | awk '{ print $1 }')" || _a=""
+  case "$_b:$_a" in
+    *[!0-9:]*|:*|*:) _m="unmeasured (no datadisk at $DATADISK)" ;;
+    *) _m="$(( (_b - _a) / 1024 )) MB freed on the Mac (datadisk $((_b / 1024)) -> $((_a / 1024)) MB)" ;;
+  esac
+  tidyline "$N runners, $LOGFREED MB of json logs truncated, $_m$([ "$TIDY_CACHES" = caches ] || echo ', caches left (metered)')"
+  log_ok "$_m"
+  printf '%s\n' "$NOW" > "$TIDY_STAMP"
+  return "$FAILED"
+}
