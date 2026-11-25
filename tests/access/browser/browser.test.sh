@@ -393,7 +393,7 @@ t_hasnt "...until detach" "$(ag status >/dev/null; out)" "background"
 HL="$T_TMP/harbor-browser/claude-abc123def456-web"
 hag() { HARBOR_ACCESS_BROWSER_LANE=web; export HARBOR_ACCESS_BROWSER_LANE; ag "$@"; _x=$?; unset HARBOR_ACCESS_BROWSER_LANE; return $_x; }
 _w0="$(osa window)"
-t_eq "attach --headless passes" "exit 0" "$(hag attach --headless)"
+t_eq "attach --blank passes" "exit 0" "$(hag attach --blank)"
 t_has "...opening an in-memory system Chrome, not the extension" "$(out)" "args=-s=claude-abc123def456-web open --browser=chrome --idle-timeout=14400000"
 t_hasnt "...with no profile name and no background flag" "$(out)" "profile=Default"
 t_eq "...and no Chrome window of the operator's" "$_w0" "$(osa window)"

@@ -269,7 +269,7 @@ rm -f "$OWN"
 
 
 
-t_section "agent: loopback dev servers, headless lane only (harbor#1507, operator 2026-11-15)"
+t_section "agent: loopback dev servers, blank lane only (harbor#1507, operator 2026-11-15)"
 DL="$T_TMP/harbor-browser/claude-abc123def456-dev"; DSF="$HOME/Library/Caches/ms-playwright/daemon/0123/claude-abc123def456-dev.session"
 lag() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN HARBOR_ACCESS_BROWSER_LANE=dev HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "${LAG_AGENT:-$AGENT}" "$@"; }
 mkdir -p "$DL" "${DSF%/*}"; : > "$DL/.headless"; printf '{"name":"claude-abc123def456-dev","attached":null}\n' > "$DSF"
@@ -278,7 +278,7 @@ for u in http://localhost:3000/app/overview http://127.0.0.1:1024/ 'http://local
   t_eq "headless lane: goto $u passes" "exit 0" "$(lag goto "$u")"
   t_eq "profile: goto $u is refused" "exit 1" "$(ag goto "$u")"
 done
-t_has "the refusal names the headless lane as the way in" "$(out)" "HARBOR_ACCESS_BROWSER_LANE=dev harbor chrome attach --headless"
+t_has "the refusal names the blank lane as the way in" "$(out)" "HARBOR_ACCESS_BROWSER_LANE=dev harbor chrome attach --blank"
 t_eq "headless lane: tab-new on a dev server passes" "exit 0" "$(lag tab-new http://127.0.0.1:5173/)"
 t_eq "profile: tab-new on a dev server is refused" "exit 1" "$(ag tab-new http://127.0.0.1:5173/)"
 t_eq "the lane's five reached the CLI" 5 "$(called '=claude-abc123def456-dev goto http://\|=claude-abc123def456-dev tab-new http://')"
@@ -300,9 +300,9 @@ for u in 'http://localhost:3000@evil.example/' 'http://evil.example@localhost:30
   t_eq "profile refuses: $u" "exit 1" "$(ag goto "$u")"
 done
 t_eq "headless lane: tab-new to a userinfo-smuggled host is refused" "exit 1" "$(lag tab-new 'http://localhost:3000@evil.example/')"
-t_has "naming the loopback rule" "$(out)" "nor, in a headless lane, a loopback dev server"
+t_has "naming the loopback rule" "$(out)" "nor, in a blank lane, a loopback dev server"
 t_eq "none of those reached the CLI" 0 "$(grep -c . "$CALLS")"
-t_has "hosts names the rule and the lane" "$(ag hosts >/dev/null; out)" "headless lane only: http://localhost:<port>"
+t_has "hosts names the rule and the lane" "$(ag hosts >/dev/null; out)" "blank lane only: http://localhost:<port>"
 # Mutants: the authority line removed, or the lane check made always true: the refusals above can fail.
 LM="$T_TMP/lmutant"; mkdir -p "$LM/bin" "$LM/contracts"; cp "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/access-redact.sh" "$T_ROOT/bin/admission-egress.sh" "$LM/bin/"; cp "$T_ROOT/contracts/browser-agent-hosts.txt" "$T_ROOT/contracts/browser-script.tsv" "$T_ROOT/contracts/live-change-words.txt" "$LM/contracts/"
 sed '/^  case "\$_a" in localhost:\*|127.0.0.1:\*) ;; \*) return 1 ;; esac$/d' "$AGENT" > "$LM/bin/access-browser-agent.sh"
@@ -384,6 +384,47 @@ t_eq "...that session only" 1 "$(called '-s=harbor-agent-signin close')"
 t_eq "attach --operator still takes the operator's Chrome when a call says so" "exit 0" "$(aag attach --operator)"
 t_eq "...through the extension" 1 "$(called 'attach --extension')"
 aag detach >/dev/null; rm -f "$OWN"
+
+t_section "a Copy click with no window is refused: the headless Chrome's clipboard is not the operator's (2026-11-23)"
+cat >> "$SNAP" <<'EOF'
+  - button "Copy & Close" [ref=e28] [box=8,230,80,20]
+  - button "Copy API key \"Example API\" to clipboard" [ref=e29] [box=100,230,80,20]
+  - button "Copy campaign" [ref=e30] [box=200,230,80,20]
+  - button "Copy token" [ref=e33] [box=300,230,80,20]
+  - button "Paste from clipboard" [ref=e34] [box=400,230,80,20]
+EOF
+aag attach >/dev/null; : > "$CALLS"
+t_eq "a headless attach leaves no .shown marker" no "$([ -e "$W/.shown" ] && echo yes || echo no)"
+t_eq "Copy & Close (RTB House) is refused" "exit 1" "$(aag click e28)"
+t_has "...naming the intake verb as the way" "$(out)" "use harbor chrome intake e28 rotate <id>"
+t_eq "Copy API key ... to clipboard (a partner UI, measured) is refused" "exit 1" "$(aag click e29)"
+t_eq "...on dblclick and --real too" "exit 1 exit 1" "$(aag dblclick e28) $(aag click e29 --real)"
+t_eq "...and past HARBOR_ACCESS_BROWSER_CONFIRM" "exit 1" "$(HARBOR_ACCESS_BROWSER_CONFIRM=e28; export HARBOR_ACCESS_BROWSER_CONFIRM; aag click e28)"
+t_eq "none of them reached the CLI" 0 "$(called ' e2[89]$')"
+t_eq "Copy campaign passes headless: a duplicate, not a copy" "exit 0" "$(aag click e30)"
+t_eq "Copy token, naming no clipboard, is refused" "exit 1" "$(aag click e33)"
+t_eq "Paste from clipboard passes headless: it copies nothing" "exit 0" "$(aag click e34)"
+aag attach --show >/dev/null
+t_eq "attach --show writes .shown" yes "$([ -e "$W/.shown" ] && echo yes || echo no)"
+t_eq "...and the same click passes" "exit 0 exit 0" "$(aag click e28) $(aag click e29)"
+t_eq "...both reaching the CLI" 2 "$(called ' e2[89]$')"
+aag attach >/dev/null
+t_eq "a plain attach after it removes .shown" no "$([ -e "$W/.shown" ] && echo yes || echo no)"
+aag attach --show >/dev/null; aag detach >/dev/null
+t_eq "detach removes it" no "$([ -e "$W/.shown" ] && echo yes || echo no)"
+(STUB_FAIL=1; export STUB_FAIL; aag attach --show >/dev/null)
+t_eq "a failed open removes it with .agent" "no no" "$([ -e "$W/.shown" ] && echo yes || echo no) $([ -e "$W/.agent" ] && echo yes || echo no)"
+aag attach --headless >/dev/null; : > "$CALLS"
+t_eq "the headless lane refuses it too" "exit 1" "$(aag click e28)"
+t_has "...as the copy click" "$(out)" "copy click refused"
+aag detach >/dev/null; aag attach --operator >/dev/null
+t_eq "the operator's Chrome is not refused" "exit 0" "$(aag click e28)"
+aag detach >/dev/null; rm -f "$OWN"; aag attach >/dev/null
+sed 's/^    if _no_window && _copy_click "\$G_LABEL"; then$/    if false; then/' "$AGENT" > "$LM/bin/access-browser-agent.sh"
+t_eq "the copy mutant differs from the script" yes "$(cmp -s "$AGENT" "$LM/bin/access-browser-agent.sh" || echo yes)"
+t_eq "and without the copy guard Copy & Close goes through headless" "exit 0" \
+  "$(rc env HARBOR_ACCESS_PLAYWRIGHT_CLI="$STUB" HARBOR_ACCESS_BROWSER_PRIVATE_HOSTS="$PH" CLAUDE_CODE_SESSION_ID=abc-123-def-456-789 TMPDIR="$T_TMP" sh "$LM/bin/access-browser-agent.sh" click e28)"
+aag detach >/dev/null
 # The default flipped back to the operator's Chrome, a bare attach opens an AppleScript window in it: the arms above can fail.
 sed "s/^    _mode=agent; _show=''\$/    _mode=operator; _show=''/" "$AGENT" > "$LM/bin/access-browser-agent.sh"
 t_eq "the default mutant differs from the script" yes "$(cmp -s "$AGENT" "$LM/bin/access-browser-agent.sh" || echo yes)"
