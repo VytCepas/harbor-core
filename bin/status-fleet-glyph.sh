@@ -205,7 +205,7 @@ sev() { # <text> [red|yel]: a given level wins over the word lookup
   case "${2:-}" in red) _sv="$RED"; return ;; yel) _sv="$YEL"; return ;; esac
   case "$1" in
     "MAIN RED"*|"PIN "*|"STALE "*|"CI STALL"*|"CI EMERG"*|"DOCKER DOWN"*|\
-    "RUNNER "*|"CI NO RUNNER"*|"SHARED TREE"*|"WATCH "*|"PLAN "*|"GATE "*) _sv="$RED" ;;
+    "RUNNER "*|"CI NO RUNNER"*|"SHARED TREE"*|"WATCH "*|"PLAN "*|"GATE "*|"DISK LOW"*) _sv="$RED" ;;
     *) _sv="$YEL" ;;
   esac
 }
@@ -606,6 +606,15 @@ for _ac in gh-plan ci-runner-alarm; do
 $_ao
 ALARMS
 done
+
+# ── DISK LOW 24G (bin/status-disk.sh, check status.disk): free space on the data volume under its floor, read from the cache it writes
+# every tick, never probed here. `disk?`: that cache is over 900s old, so the number is not today's.
+if [ -f "$CACHE_DIR/disk-free.json" ] && command -v jq >/dev/null 2>&1; then
+  _dk="$(jq -r --argjson now "$NOW_EPOCH" '
+      if (($now - ((.at // 0) | tonumber)) > 900) then "?disk?"
+      elif .low == true then "DISK LOW \(.free_gb | floor)G" else empty end' "$CACHE_DIR/disk-free.json" 2>/dev/null || true)"
+  case "$_dk" in '?'*) ci_ambient "${_dk#?}" ;; ?*) ci_alarm "$_dk" ;; esac
+fi
 
 
 # ── the alarm zone ────────────────────────────────────────────────────────────

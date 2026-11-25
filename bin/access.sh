@@ -19,6 +19,7 @@
 #   harbor access add|rotate … --value-oauth --oauth-authorize URL --oauth-token URL --oauth-client-id ID
 #                          --oauth-client-ref REF   a token from an OAuth consent in the agent Chrome; code and token never
 #                                         shown (bin/access-oauth.sh --help has the rest of the --oauth-* flags)
+#   harbor access get <vendor> <path> [--query k=v ...]   one read-only GET to a vendor API the private table lists (access-get.sh)
 #
 # A PIPED VALUE IS CHECKED BEFORE IT IS STORED (harbor#978, measured 2026-11-13: a clipboard copy put four characters and a
 # space in front of an ad platform's app secret). With --value-stdin, add and rotate trim surrounding whitespace and newlines and refuse
@@ -42,6 +43,7 @@
 # With no private layer the register is empty: every ref is unregistered, add refuses, list prints nothing.
 # status, rotate and revoke make the register the one controller of a credential's life (contracts/access-register.md,
 # "Lifecycle"): the entry's check:/expect: is run by check-routes.sh --probe, the classifier the cards use.
+set +xv   # first: `sh -x` or SHELLOPTS=xtrace would trace a --value-stdin value and every argument passed through
 set -eu
 LC_ALL=C; export LC_ALL   # [a-z] below means ASCII lower case, whatever the caller's locale
 
@@ -66,7 +68,7 @@ LINT_NAME="${ACCESS_LINT_NAME:-$SRC/lint-name.sh}"
 MEMBER_MODE=0; [ ! -f "$SRC/harbor-member-mode" ] || [ -L "$SRC/harbor-member-mode" ] || MEMBER_MODE=1   # as bin/secret reads it
 
 fail() { log_fail "$1"; log_fix "$2"; log_end || :; exit "${3:-1}"; }
-usage() { sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 # The register file: <access dir>/register.md. Empty stdout and exit 1 when there is no register directory.
 register_file() {
@@ -878,6 +880,8 @@ case "$VERB" in
   revoke) cmd_revoke "$@" ;;
   renamed) cmd_renamed "$@" ;;
   move) cmd_move "$@" ;;
+  # By absolute path, with a fixed PATH and no SHELLOPTS/PS4/ENV/BASH_ENV: the caller's PATH must not pick the shell (#1620).
+  get) exec /usr/bin/env -u SHELLOPTS -u PS4 -u ENV -u BASH_ENV PATH=/usr/bin:/bin /bin/sh "$SRC/access-get.sh" "$@" ;;
   -h|--help|help|'') usage ;;
   *) fail "unknown verb '$VERB'" "harbor access --help" 2 ;;
 esac

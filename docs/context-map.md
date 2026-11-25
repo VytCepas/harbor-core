@@ -29,22 +29,22 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 |---|---|---|---|---|---|
 | policy | policy/ | system | source | living | 3 |
 | standard | standards/ | system | source | versioned | 32 |
-| contract | contracts/ | system | source | versioned | 49 |
+| contract | contracts/ | system | source | versioned | 50 |
 | decision-record | docs/decisions/ | element | source | dated | 96 |
 | hook | hooks/ | component | source | living | 50 |
 | skill | skills/ | component | source | living | 66 |
 | fixture | fixtures/ | element | source | living | 453 |
 | template | templates/ | component | source | living | 16 |
 | registry | registries/ | component | source | versioned | 85 |
-| test | tests/ | component | source | living | 689 |
+| test | tests/ | component | source | living | 700 |
 | report | docs/reports/ | element | report | dated | 2 |
 | design | docs/design/ | component | source | living | 10 |
 | context-map | docs/context-map.md | system | generated | generated | 1 |
 | generated-doc | docs/generated/ | component | generated | generated | 2 |
-| script | bin/ | component | source | living | 310 |
+| script | bin/ | component | source | living | 312 |
 | agent | agents/ | component | source | living | 1 |
 | how-to | docs/how-to/ | component | source | living | 7 |
-| reference | docs/reference/ | component | generated | generated | 94 |
+| reference | docs/reference/ | component | generated | generated | 96 |
 | explanation | docs/explanation/ | component | source | living | 106 |
 | (no kind) | - | - | - | - | 295 |
 
@@ -56,11 +56,11 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `.agents/` | 4 | 1 | 1 |
 | `.github/` | 4 | 2 | 1 |
 | `agents/` | 1 | 1 | 1 |
-| `bin/` | 314 | 32 | 2 |
+| `bin/` | 316 | 32 | 2 |
 | `commands/` | 5 | 4 | 1 |
 | `context-rules/` | 74 | 6 | 1 |
-| `contracts/` | 133 | 15 | 2 |
-| `docs/` | 331 | 26 | 9 |
+| `contracts/` | 134 | 15 | 2 |
+| `docs/` | 333 | 26 | 9 |
 | `fixtures/` | 453 | 12 | 1 |
 | `hooks/` | 46 | 7 | 1 |
 | `launchd/` | 23 | 10 | 1 |
@@ -74,7 +74,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | `standards/` | 32 | 1 | 1 |
 | `systemd/` | 15 | 1 | 1 |
 | `templates/` | 16 | 3 | 1 |
-| `tests/` | 689 | 30 | 1 |
+| `tests/` | 700 | 30 | 1 |
 | `tools/` | 10 | 2 | 1 |
 | `vendor/` | 104 | 1 | 1 |
 | `worklog/` | 1 | 1 | 1 |
@@ -83,14 +83,14 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 
 | Family | Subsystem | Scripts | Tests | Docs | Other files | Checks | Controls |
 |---|---|---|---|---|---|---|---|
-| access | control-plane | 18 | 40 | 2 | 6 | 0 | 13 |
+| access | control-plane | 19 | 49 | 3 | 6 | 0 | 13 |
 | admission | control-plane | 28 | 91 | 0 | 6 | 0 | 179 |
 | agent | control-plane | 1 | 2 | 0 | 12 | 0 | 0 |
 | alert | observability | 2 | 3 | 0 | 3 | 0 | 0 |
 | audit | control-plane | 9 | 15 | 0 | 27 | 0 | 2 |
 | bq | observability | 3 | 6 | 0 | 2 | 0 | 0 |
-| check | observability | 2 | 5 | 0 | 1 | 62 | 0 |
-| ci | coordination | 17 | 46 | 2 | 22 | 1 | 7 |
+| check | observability | 2 | 5 | 0 | 1 | 64 | 0 |
+| ci | coordination | 17 | 47 | 2 | 23 | 1 | 7 |
 | context | control-plane | 6 | 17 | 1 | 4 | 1 | 54 |
 | deploy | control-plane | 16 | 32 | 1 | 4 | 0 | 7 |
 | doc | control-plane | 17 | 14 | 0 | 48 | 0 | 22 |
@@ -111,7 +111,7 @@ System `harbor` sits in domain `platform`. A file's subsystem is read from its f
 | session | data-plane | 14 | 5 | 0 | 8 | 0 | 0 |
 | skill | catalog | 5 | 18 | 0 | 8 | 0 | 17 |
 | standard | policy-function | 18 | 29 | 128 | 16 | 14 | 65 |
-| status | observability | 14 | 31 | 0 | 13 | 0 | 0 |
+| status | observability | 15 | 32 | 0 | 14 | 0 | 0 |
 | test | control-plane | 4 | 5 | 2 | 8 | 0 | 15 |
 | worktree | coordination | 1 | 2 | 0 | 0 | 0 | 0 |
 
@@ -133,6 +133,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/access-desktop-mcp.ts`
 - `bin/access-desktop.sh`
 - `bin/access-environment.sh`
+- `bin/access-get.sh`
 - `bin/access-github-app-install.sh`
 - `bin/access-oauth.sh`
 - `bin/access-redact.sh`
@@ -140,6 +141,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `context-rules/user/access-route-pointer.md`
 - `context-rules/user/access-route.sh`
 - `contracts/access-card.md`
+- `contracts/access-get.md`
 - `contracts/access-register.md`
 - `hooks/access-confinement/access-confinement.sh`
 - `hooks/access-confinement/access-confinement.test.sh`
@@ -281,6 +283,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `docs/reference/check-rows/ci-runner-alarm.txt`
 - `docs/reference/check-rows/ci-runner-switch-org.txt`
 - `docs/reference/check-rows/ci-runner-switch.txt`
+- `docs/reference/check-rows/ci-runner-tidy.txt`
 - `docs/reference/check-rows/ci-runners.txt`
 - `docs/reference/check-rows/ci-scaffolder-nightly.txt`
 - `docs/reference/check-rows/ci-scaffolder-third-party-updates.txt`
@@ -824,6 +827,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 
 - `bin/status-console.sh`
 - `bin/status-dashboard-generate.sh`
+- `bin/status-disk.sh`
 - `bin/status-fleet-glyph.sh`
 - `bin/status-fleet-snapshot-refresh.sh`
 - `bin/status-fleet-watch.sh`
@@ -836,6 +840,7 @@ Scripts, hooks, docs and other files by path; tests, fixtures and eval data are 
 - `bin/status-suggest.sh`
 - `bin/status-telemetry-report.sh`
 - `bin/status-usage-aggregate.sh`
+- `docs/reference/check-rows/status-disk.txt`
 - `docs/reference/check-rows/status-fleet-snapshot.txt`
 - `docs/reference/check-rows/status-fleet-watch.txt`
 - `docs/reference/check-rows/status-network.txt`
