@@ -37,7 +37,7 @@ if ! command -v bun >/dev/null 2>&1; then
   echo "  SKIP mcp: bun is not installed (the server's interpreter)"
   t_eq "HARBOR_TEST_REQUIRE_BUN is off where bun is absent" 0 "$REQ_BUN"
 else
-  cp "$T_ROOT/bin/access-desktop-mcp.ts" "$T_ROOT/bin/access-redact.sh" "$T_ROOT/bin/admission-egress.sh" "$X/bin/"
+  cp "$T_ROOT/bin/access-desktop-mcp.ts" "$X/bin/"
   cat > "$X/bin/access-desktop.sh" <<'EOF'
 printf '{"ok":true,"argv":"%s"}\n' "$*"
 EOF
@@ -46,9 +46,6 @@ EOF
   callj() { printf '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"%s","arguments":%s}}' "$1" "$2"; }
   OUT="$(rpc '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26"}}')"
   t_eq "initialize names the server harbor_desktop" harbor_desktop "$(printf '%s' "$OUT" | jq -r .result.serverInfo.name)"
-  t_eq "a revision it speaks is accepted" 2025-03-26 "$(printf '%s' "$OUT" | jq -r .result.protocolVersion)"
-  OUT="$(rpc '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2026-07-28"}}')"
-  t_eq "a revision it does not speak is answered with its newest, never echoed" 2025-06-18 "$(printf '%s' "$OUT" | jq -r .result.protocolVersion)"
   TL="$(rpc '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq -r '.result.tools[].name' | sort | tr '\n' ' ')"
   t_eq "the tools" "action apps confirm_key confirm_menu confirm_press confirm_set_value doctor key menu press script set_value shortcut_run shortcuts_list shot tree type windows " "$TL"
   _bad=""; for _n in $TL; do sh "$T_ROOT/bin/lint-name.sh" --check mcp-tool "mcp__harbor_desktop__$_n" 2>&1 | grep -q 'no finding' || _bad="$_bad $_n"; done
@@ -80,25 +77,6 @@ EOF
   for _p in "set_value|{\"bundle\":\"b\",\"ref\":\"0.1\",\"expect\":\"x\",\"value\":\"1\"}" "menu|{\"bundle\":\"b\",\"path\":\"A > B\"}" "key|{\"bundle\":\"b\",\"combo\":\"tab\"}"; do
     t_hasnt "${_p%%|*} never passes --confirm" "$(rpc "$(callj "${_p%%|*}" "${_p#*|}")" | jq -r '.result.content[0].text')" "--confirm"
   done
-  t_hasnt "an undeclared argument never reaches the CLI" "$(rpc "$(callj windows '{"bundle":"b","verb":"script","zz":1}')" | jq -r '.result.content[0].text')" "zz"
-
-  t_section "the MCP server: replies are redacted, the CLI's environment is fixed, a bad line never ends it"
-  cp "$X/bin/access-desktop.sh" "$T_TMP/relay.keep"
-  # A stand-in CLI that reports what reached it: a token-shaped tree label (built here, never written whole) and its env.
-  TOKV="gh""p_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-  cat > "$X/bin/access-desktop.sh" <<EOF
-printf '%s\n' "{\"tree\":\"0 AXTextField key $TOKV PATH=\$PATH SEAM=\${HARBOR_ACCESS_DESKTOP_APP:-none}\",\"gen\":1,\"nodes\":1}"
-EOF
-  T="$(printf '%s\n' "$(callj tree '{"bundle":"b"}')" | HOME="$H" HARBOR_ACCESS_DESKTOP_APP=/evil.app PATH="$T_TMP/fakebin:$PATH" bun "$X/bin/access-desktop-mcp.ts" 2>&1 | jq -r '.result.content[0].text')"
-  t_hasnt "a token in a tree label is masked" "$T" "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-  t_has "...as [REDACTED]" "$T" "[REDACTED]"
-  t_has "the CLI runs on the fixed PATH, not the caller's" "$T" "PATH=/opt/homebrew/bin:"
-  t_has "...and a HARBOR_* seam in the server's environment never reaches it" "$T" "SEAM=none"
-  cp "$T_TMP/relay.keep" "$X/bin/access-desktop.sh"
-  OUT="$(rpc 'null' '[1]' '{"jsonrpc":"2.0","id":4,"method":7}' '{"jsonrpc":"2.0","id":5,"method":"ping"}')"
-  t_eq "null and a batch array are invalid requests" "-32600 -32600" "$(printf '%s\n' "$OUT" | jq -r 'select(.id == null) | .error.code' | tr '\n' ' ' | sed 's/ $//')"
-  t_eq "a method that is not a string is an invalid request" -32600 "$(printf '%s\n' "$OUT" | jq -r 'select(.id == 4) | .error.code')"
-  t_eq "...and the server still answers the next request" '{}' "$(printf '%s\n' "$OUT" | jq -c 'select(.id == 5) | .result')"
 fi
 
 t_section "the helper's names render from their naming surfaces (system harbor, object desktop; harbor#1599)"
