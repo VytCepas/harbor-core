@@ -98,11 +98,13 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_CI_CORE_SLUG` | value | `VytCepas/harbor-core` | owner/name of the public harbor-core repository that ci-mirror.sh pushes to (default VytCepas/harbor-core) | ci |  | tests only |
 | `HARBOR_CI_DOCKER` | path | `docker` | Docker command used by the CI queue and runner scripts; defaults to docker, tests swap in a fake | ci |  | tests only |
 | `HARBOR_CI_EVENTS_DIR` | path | `$HOME/runners/harbor-linux/events` | Directory holding the CI runner event files that ci-runners.sh reads (default ~/runners/harbor-linux/events) | ci |  | tests only |
+| `HARBOR_CI_GOVERNOR_ADMITTED` | handoff | none | Set by ci-governor admit on the job it lets run, so a poller that re-execs itself through admit runs once instead of asking again | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_DIR` | path | `$CACHE_DIR/ci-governor` | Directory holding the CI governor's state and slots; with none present, ci-governor run is a plain exec | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_DOCKERENV` | test-only | `/.dockerenv` | path of the file whose presence marks a CI container for the governor hook; tests point it elsewhere (default /.dockerenv) | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_EVENTS` | path | `/gov-events` | Directory where the CI governor hook writes its events inside the runner container, default /gov-events | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_POLL` | tuning | `3` | Seconds the CI governor sleeps between polls while waiting for a runner slot (default 3) | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_SLOT` | handoff | none | Set by the CI governor to its pid when it holds a slot, so nested governed runs execute plainly instead of queueing again | ci |  | tests only |
+| `HARBOR_CI_GOVERNOR_SYNC` | test-only | none | When set, the jobs an idle tick starts (vm resize, prune) run inline instead of detached, so a suite can read what they did | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_TEMPORARY_ROOT` | test-only | `/tmp` | Temp directory root the CI governor hook cleans (default /tmp); tests point it at a fixture directory | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_TRIGGER` | path | `$HOME/runners/harbor-linux/events/trigger` | File the CI governor touches to trigger the Linux runner's event handling (default under ~/runners/harbor-linux/events/trigger) | ci |  | tests only |
 | `HARBOR_CI_HEAD` | value | `HEAD` | git ref used as the head of the diff when selecting test suites (default HEAD) | ci |  | tests only |

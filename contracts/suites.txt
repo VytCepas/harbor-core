@@ -267,6 +267,7 @@ hooks/reply-shape/reply-shape.test.sh
 tests/session/subagent/check.test.sh
 tests/session/agents/registry.test.sh
 tests/ci/governor/priority.test.sh
+tests/ci/governor/box.test.sh
 tests/event/bus/emit.test.sh
 tests/event/bus/concurrency.test.sh
 tests/event/bus/wait.test.sh
