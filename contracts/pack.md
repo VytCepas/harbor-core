@@ -108,6 +108,7 @@ The one exception is the move below: a core skill core no longer ships, unchange
 | `checks.md` | `checks.d/<repo-id>.md`, one file per pack |
 | `controls.tsv` | `checks.d/<repo-id>.controls.tsv` |
 | `name-create.tsv` | `name-create.d/<repo-id>.tsv` |
+| `access/get.tsv` | `access/get.tsv`: the `harbor access get` vendor table ([access-get.md](./access-get.md)). Only the private layer's own pack (`harbor-private`) may ship it; any other pack, and any other file under `access/`, is refused |
 
 ## Adding packs to a core skill
 

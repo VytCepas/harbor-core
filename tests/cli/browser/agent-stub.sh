@@ -9,16 +9,30 @@ cat > "$STUB" <<EOF
 #!/bin/sh
 printf '%s\n' "\$*" >> "$CALLS"
 if [ -n "\${STUB_GONE:-}" ]; then
-  printf "The browser '%s' is not open, please run open first\n\n  playwright-cli %s open [params]\n" "\${1#-s=}" "\$1"; exit 1
+  # on stderr, as the real CLI answers (0.1.24, measured 2026-11-25: callers that hold only stdout never saw it)
+  printf "Browser '%s' is not open. Run\n\n  playwright-cli %s open\n" "\${1#-s=}" "\$1" >&2; exit 1
 fi
+# STUB_STDERR: a line the CLI writes on stderr that is not a gone session (a warning); it still answers.
+[ -z "\${STUB_STDERR:-}" ] || printf '%s\n' "\$STUB_STDERR" >&2
+# STUB_GOTO_FAIL: a goto that fails with the CLI's own error and no harbor FAIL line.
+case " \$* " in *" goto "*) [ -z "\${STUB_GOTO_FAIL:-}" ] || { printf '%s\n' "\$STUB_GOTO_FAIL"; exit 3; } ;; esac
 for a in "\$@"; do case "\$a" in --filename=*) f="\${a#--filename=}" ;; esac; done
 case " \$* " in *" snapshot "*) [ -z "\${f:-}" ] || cp "$SNAP" "\$f" ;; esac
+# STUB_SNAPSHOT_FAIL: a bare snapshot fails, as on a session that dropped.
+case " \$* " in *" snapshot "*) [ -z "\${STUB_SNAPSHOT_FAIL:-}" ] || [ -n "\${f:-}" ] || exit 1 ;; esac
+# STUB_SNAPSHOT: what a bare snapshot prints (the page as the accessibility tree), for a page whose text is empty.
+case " \$* " in *" snapshot "*) [ -z "\${STUB_SNAPSHOT:-}" ] || { printf '%s\n' "\$STUB_SNAPSHOT"; exit 0; } ;; esac
 # The real CLI drains stdin; STUB_READS_STDIN makes the stub do the same.
 [ -z "\${STUB_READS_STDIN:-}" ] || cat >/dev/null
 # tab-list answers in the real CLI's shape, with STUB_URL as the current page.
 case " \$* " in *" tab-list "*) [ -z "\${STUB_URL:-}" ] || { printf -- '- 0: (current) [Page](%s)\n' "\$STUB_URL"; exit 0; } ;; esac
 # STUB_LATE_BLANK: the tab goes blank 0.3 s after a fill, as the real detach did.
 case " \$* " in *" fill "*) [ -z "\${STUB_LATE_BLANK:-}" ] || ( sleep 0.3; : > "\$STUB_LATE_BLANK" ) & ;; esac
+# run-code answers the fixed intake-read row (contracts/browser-script.tsv): STUB_INTAKE is its one-line JSON answer.
+# The intake-clear row answers STUB_CLEAR (default: emptied); set it empty to make the clear fail.
+case " \$* " in *" run-code "*cleared*) _clr='{"intake":1,"cleared":1}'; printf '%s\n' "\${STUB_CLEAR-\$_clr}"; exit 0 ;; esac
+# STUB_INTAKE_FAIL: the read itself fails, as a dropped session does.
+case " \$* " in *" run-code "*) [ -z "\${STUB_INTAKE_FAIL:-}" ] || exit 3; printf '%s\n' "\${STUB_INTAKE:-}"; exit 0 ;; esac
 # eval answers the state probe in the real --raw shape: a JSON string, quotes escaped.
 # STUB_COVERED: a file; the page reads hidden until a raise removes it, as an occluded window does.
 case " \$* " in *" eval "*)
@@ -34,6 +48,11 @@ case " \$* " in *" eval "*)
     printf '"%s"\n' "\${STUB_SUBMIT_LABEL:-}"; exit 0 ;;
   esac
   [ -z "\${STUB_EVAL_FAIL:-}" ] || { echo "Error: Execution context was destroyed"; exit 1; }
+  # The text verb's fixed function: STUB_TEXT is what the page shows (innerText), a JSON string as --raw prints it.
+  # STUB_TEXT_LATE: a file; while it exists the first read shows "Loading" and removes it, as a list that renders after load.
+  case "\$*" in *'() => document.body ? document.body.innerText'*)
+    if [ -n "\${STUB_TEXT_LATE:-}" ] && [ -e "\$STUB_TEXT_LATE" ]; then rm -f "\$STUB_TEXT_LATE"; printf '"Loading"\n'; exit 0; fi
+    printf '"%s"\n' "\${STUB_TEXT-}"; exit 0 ;; esac
   # The shown-secret probe (contracts/browser-script.tsv, contracts/secret-intake.md): STUB_SHOWN is what the page shows.
   case "\$*" in *'e.type !== "password"'*) printf '"%s"\n' "\${STUB_SHOWN:-a plain page}"; exit 0 ;; esac
   if [ -n "\${STUB_HIDDEN:-}" ] || { [ -n "\${STUB_COVERED:-}" ] && [ -e "\$STUB_COVERED" ]; }; then printf '%s\n' '"{\"visibility\":\"hidden\",\"host\":\"business.facebook.com\",\"blank\":false}"'
