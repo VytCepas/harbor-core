@@ -1,18 +1,16 @@
 #!/bin/sh
 # mint-token.sh (harbor#1018) — a 1-hour installation token for the harbor-claude GitHub App, on stdout.
-# Reuses the cached token while it has <min-left> seconds left (default 600). The key and the cache stay 0600 here.
-#   sh mint-token.sh [<account> [<min-left>]]     default account: VytCepas
+# Reuses the cached token while it has 10+ minutes left. The key and the cache stay 0600 in this directory.
+#   sh mint-token.sh [<account>]     default account: VytCepas
 set -eu
 D="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 ACCT="${1:-VytCepas}"
 case "$ACCT" in *[!A-Za-z0-9-]*|'') echo "mint-token: bad account '$ACCT'" >&2; exit 2 ;; esac
-LEFT="${2:-600}"
-case "$LEFT" in *[!0-9]*|'') echo "mint-token: bad min-left '$LEFT'" >&2; exit 2 ;; esac
 CACHE="$D/token-$ACCT"; umask 077
 now="$(date +%s)"
 if [ -s "$CACHE" ]; then
   exp="$(sed -n 1p "$CACHE")"
-  case "$exp" in ''|*[!0-9]*) ;; *) [ "$exp" -gt $((now + LEFT)) ] && { sed -n 2p "$CACHE"; exit 0; } ;; esac
+  case "$exp" in ''|*[!0-9]*) ;; *) [ "$exp" -gt $((now + 600)) ] && { sed -n 2p "$CACHE"; exit 0; } ;; esac
 fi
 b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
 hdr="$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)"

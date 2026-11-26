@@ -21,17 +21,11 @@ _acct=
 for _tf in "$HOME/.config/harbor-app/orgs.tsv" "$_C/orgs.tsv"; do
   _a="$(awk -F'\t' -v o="$_o" 'tolower($1) == tolower(o) { print $2; exit }' "$_tf" 2>/dev/null)" && { _acct="$_a"; break; }
 done
-# git asks once, before the pre-push hook, and uploads after it, so the token must outlive the hook (azimuth's gate
-# ran up to ~40 min and then took HTTP 401). A token with 50 min left, else a fresh mint where the key opens; a
-# confined session cannot mint, so there the hook's token while it has a minute left.
-_t= _s= _now=$(date +%s)
+# The hook-minted token while it has a minute left, else a mint (which works only outside the confinement).
+_t=
 if { read -r _e && read -r _k; } < "$_C/gh-${_acct:-VytCepas}" 2>/dev/null; then
-  case "$_e" in ''|*[!0-9]*) ;; *) [ "$_e" -le $((_now + 3000)) ] || _t="$_k"; [ "$_e" -le $((_now + 60)) ] || _s="$_k" ;; esac
+  case "$_e" in ''|*[!0-9]*) ;; *) [ "$_e" -le $(($(date +%s) + 60)) ] || _t="$_k" ;; esac
 fi
-if [ -z "$_t" ] && { : < "$HOME/.config/harbor-app/app.pem"; } 2>/dev/null; then
-  _t="$(sh "$HOME/.config/harbor-app/mint-token.sh" "$_acct" 3000)" || _t=
-fi
-[ -n "$_t" ] || _t="$_s"
 [ -n "$_t" ] || _t="$(sh "$HOME/.config/harbor-app/mint-token.sh" $_acct)" || _t=
 if [ -n "$_t" ]; then
   printf 'username=x-access-token\npassword=%s\n' "$_t"
