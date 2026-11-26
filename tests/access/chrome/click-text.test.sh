@@ -62,7 +62,7 @@ t_has "...refused for no match, not for its length" "$(txt)" "no element on the 
 t_eq "a 201-character name is refused" "exit 1" "$(mcp click "--text=x$_n200")"
 t_has "...for its length" "$(txt)" "1..200 characters"
 # The single-match line removed, a unique name must stop clicking: the arms above can fail.
-mkdir -p "$T_TMP/mut3/bin" "$T_TMP/mut3/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/library-log.sh" "$X/bin/admission-egress.sh" "$T_TMP/mut3/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/mut3/contracts/"
+mkdir -p "$T_TMP/mut3/bin" "$T_TMP/mut3/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/admission-egress.sh" "$T_TMP/mut3/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/mut3/contracts/"
 _old="$SRV"; SRV="$T_TMP/mut3/bin/access-chrome-mcp.ts"; cp "$_old" "$SRV"
 # The control: the unchanged server in the mutant's directory clicks, so the red below is the mutation's (it once lacked
 # live-change-words.txt, and every click there was refused whatever the mutant did).
@@ -121,7 +121,7 @@ _steps="$(rpc "$(jq -cn '{jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"s
 t_eq "one steps call opens a page, fills it and submits it with no snapshot call" false "$(printf '%s' "$_steps" | jq -r '.result.isError')"
 t_eq "...every step reached the page" "1 1 1 1" "$(n '^goto ') $(n '^fill e31') $(n '^script check e33') $(n '^script click e38')"
 # The role filter removed, the heading named Email is a candidate again: the first arm above can fail.
-mkdir -p "$T_TMP/mut4/bin" "$T_TMP/mut4/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/library-log.sh" "$X/bin/admission-egress.sh" "$T_TMP/mut4/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/mut4/contracts/"
+mkdir -p "$T_TMP/mut4/bin" "$T_TMP/mut4/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$T_TMP/mut4/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/mut4/contracts/"
 _old="$SRV"; SRV="$T_TMP/mut4/bin/access-chrome-mcp.ts"; cp "$_old" "$SRV"
 t_eq "the unchanged server in the mutant's directory fills the Email field" "exit 0" "$(mcp fill --text=Email x)"
 sed 's/if (!m || (roles \&\& !roles.has(m\[1\]))) continue;/if (!m) continue;/' "$_old" > "$SRV"
@@ -154,7 +154,7 @@ mcp status >/dev/null
 t_has "an agent verb tells the shell agent the call is an agent's" "$(txt)" "enforce=1"
 # The match ignored, the vendor UI opens unasked: the first arm can fail.
 mkdir -p "$T_TMP/mut5/bin" "$T_TMP/mut5/contracts" "$T_TMP/mut5/context-rules/user"
-cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/library-log.sh" "$X/bin/access-redact.sh" "$X/bin/admission-egress.sh" "$T_TMP/mut5/bin/"; cp "$X/contracts/"* "$T_TMP/mut5/contracts/"
+cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/library-log.sh" "$T_TMP/mut5/bin/"; cp "$X/contracts/"* "$T_TMP/mut5/contracts/"
 cp "$X/context-rules/user/browser-last-tier.sh" "$T_TMP/mut5/context-rules/user/"
 _old="$SRV"; SRV="$T_TMP/mut5/bin/access-chrome-mcp.ts"; cp "$_old" "$SRV"
 t_eq "the unchanged server in the mutant's directory refuses the vendor UI" "exit 1" "$(mcp goto https://ads.reddit.com/x)"

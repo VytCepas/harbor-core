@@ -57,7 +57,7 @@ printf 'Search' > "$CTL/submit_label"
 t_eq "Enter is refused with no list" "exit 1" "$(mcp press Enter)"
 t_eq "nothing reached the daemon" 0 "$(n '^script click\|^press')"
 mv "$T_TMP/lcw.keep" "$X/contracts/live-change-words.txt"; clean
-mkdir -p "$T_TMP/lmut/bin" "$T_TMP/lmut/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/library-log.sh" "$X/bin/admission-egress.sh" "$T_TMP/lmut/bin/"; cp "$X/contracts/"* "$T_TMP/lmut/contracts/"
+mkdir -p "$T_TMP/lmut/bin" "$T_TMP/lmut/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/admission-egress.sh" "$T_TMP/lmut/bin/"; cp "$X/contracts/"* "$T_TMP/lmut/contracts/"
 sed 's/^  await submitGuard(c, S, wd, verb, args);$/  \/\/ removed/' "$SRV" > "$T_TMP/lmut/bin/access-chrome-mcp.ts"
 t_eq "CONTROL: the mutant differs from the server" yes "$(cmp -s "$SRV" "$T_TMP/lmut/bin/access-chrome-mcp.ts" || echo yes)"
 _old="$SRV"; SRV="$T_TMP/lmut/bin/access-chrome-mcp.ts"; printf 'Publish' > "$CTL/submit_label"; : > "$CALLS"
