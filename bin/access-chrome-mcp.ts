@@ -33,14 +33,16 @@ const HOSTS_FILE = path.join(ROOT, 'contracts', 'browser-agent-hosts.txt');
 const ROUTER = 'contracts/browser-routing.md, row 4';
 const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const OUT_MAX = 100000;
+const PRE_MAX = 8 * OUT_MAX;   // cut far past what is shown, redact, then cut to OUT_MAX: a key split at the cut cannot leak its head
 const REDACT = path.join(HERE, 'access-redact.sh');
+const WITHHELD = '[harbor chrome: output withheld,';
 // Every reply passes bin/access-redact.sh (contracts/secret-intake.md): a page shows autofilled passwords and keys
 // that are displayed once, and a reply is what the agent reads. Fail closed: a redactor that cannot run withholds it.
 function redacted(text: string): string {
   const r = spawnSync('/bin/sh', [REDACT], { input: text, encoding: 'utf8', maxBuffer: 16 * OUT_MAX, timeout: 15000, env: { PATH: PATH_FIXED, LC_ALL: 'C' } });
   if (r.status === 0 && typeof r.stdout === 'string') return text.endsWith('\n') ? r.stdout : r.stdout.replace(/\n$/, '');
   const why = typeof r.stdout === 'string' && r.stdout.startsWith('[harbor') ? r.stdout.trim() : `exit ${r.status ?? r.signal ?? 'none'}`;
-  return `[harbor chrome: output withheld, the credential redactor failed: ${why}]`;
+  return `${WITHHELD} the credential redactor failed: ${why}]`;
 }
 const SETTLE_MS: number = SEAMS.settleMs ?? 500;   // the extension detached a tab ~300 ms after an input (2026-10-14); the shell waited 1 s
 const PATH_FIXED = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin';
@@ -908,7 +910,7 @@ function viaAgent(S: string, verb: string, args: string[], lane: string): Promis
       // The agent logs to stderr (LOG_FD=2): dropped on success, every front and attach came back blank (75 fronts, 2026-11-10..12).
       if (code !== 0) text = (text + (text ? '\n' : '') + err).trim() || `exit ${code}`;
       else if (err.trim()) text = (text + (text ? '\n' : '') + err).trim();
-      fin({ text: text.slice(0, OUT_MAX), isError: code !== 0 });
+      fin({ text: text.slice(0, PRE_MAX), isError: code !== 0 });
     });
   });
 }
@@ -1027,7 +1029,7 @@ async function call(name: string, argsIn: unknown): Promise<Res> {
         let r: Res;
         tm.inner = true;   // each step has its own line; a second for the whole would count it twice
         r = await steps(S, list);   // a gone session is the hand-off, naming the goto that re-attaches
-        return { text: r.text.slice(0, OUT_MAX), isError: r.isError };
+        return { text: r.text.slice(0, PRE_MAX), isError: r.isError };
       }
       if (verb === 'confirm-click') askRuleGuard();
       const hv = verb === 'confirm-click' ? 'click' : verb;
@@ -1037,11 +1039,11 @@ async function call(name: string, argsIn: unknown): Promise<Res> {
         if (!ra) throw e;
         r = ra;
       }
-      return { text: r.text.slice(0, OUT_MAX), isError: r.isError };
+      return { text: r.text.slice(0, PRE_MAX), isError: r.isError };
     } catch (e) {
       if (!(e instanceof Refusal)) return { text: `harbor chrome ${verb} failed: ${(e as Error).message}`, isError: true };
       const pre = e instanceof PrefixedRefusal ? e.prefix : '';
-      return { text: ((pre ? pre + '\n' : '') + refusalText(e)).slice(0, OUT_MAX), isError: true };
+      return { text: ((pre ? pre + '\n' : '') + refusalText(e)).slice(0, PRE_MAX), isError: true };
     }
   }
 }
@@ -1061,7 +1063,8 @@ async function handle(msg: any): Promise<any | null> {
   else if (method === 'tools/call') {
     if (typeof params.name !== 'string') return err(-32602, 'name must be a string');
     const r = await call(params.name, params.arguments ?? {});
-    result = { content: [{ type: 'text', text: redacted(r.text) }], isError: r.isError };
+    const text = redacted(r.text);   // a withheld reply is an error: the agent must not read it as the page
+    result = { content: [{ type: 'text', text: text.slice(0, OUT_MAX) }], isError: r.isError || text.startsWith(WITHHELD) };
   } else return err(-32601, `method not found: ${method}`);
   return { jsonrpc: '2.0', id: mid, result };
 }
