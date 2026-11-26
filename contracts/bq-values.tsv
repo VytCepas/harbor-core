@@ -1435,3 +1435,7 @@ rule	1425	desktop-script-deny	live	standards/naming/controls.tsv, the id less it
 rule	1426	desktop-script-confirm	live	standards/naming/controls.tsv, the id less its family
 rule	1427	desktop-shortcut-confirm	live	standards/naming/controls.tsv, the id less its family
 rule	1428	desktop-ask-rule	live	standards/naming/controls.tsv, the id less its family
+rule	1429	check.status.disk	live	standards/naming/controls.tsv
+rule	1430	check.ci-runner-tidy	live	standards/naming/controls.tsv
+rule	1431	status.disk	live	standards/naming/controls.tsv, the id less its family
+rule	1432	ci-runner-tidy	live	standards/naming/controls.tsv, the id less its family

@@ -13,7 +13,7 @@
 #   3. a URL parameter that carries one (access_token=, client_secret=, password= …).
 # Fail closed: a missing guard file or a failing filter prints one withheld line and exits 3, never the raw text.
 # Not a boundary: a secret with no known shape, shown as plain page text under no secret label, passes. The protocol
-# (contracts/secret-intake.md) is what keeps a minted key off the page: Copy, then `harbor access … --value-clipboard`.
+# (contracts/secret-intake.md) is what keeps a minted key off the page: `harbor chrome intake <ref of its Copy> …`.
 set -u
 # Bytes, not characters: BSD sed under a UTF-8 locale fails on an invalid byte, which would withhold every such page.
 LC_ALL=C; export LC_ALL

@@ -244,6 +244,13 @@ plan_one() { # <id> - validate everything, write nothing; leaves $WORK/plan (src
       context-rules/user/*) refuse "$_r is not a .md pack" || return 1 ;;
       inject.d/*) refuse "$_r: inject.d/ is retired; a pack's rules are context-rules/user/<f>.md" || return 1 ;;
       context-rules/*) refuse "$_r: a pack's rules are context-rules/user/<f>.md; a repo scope is that repo's own" || return 1 ;;
+      # The `harbor access get` vendor table (harbor#1617): which host each credential may reach. It lands in the config dir,
+      # which no confined command can write, and only the private layer's own pack may ship it.
+      access/get.tsv)
+        [ "$ID" = harbor-private ] && [ "$HUB" -eq 0 ] ||
+          refuse "access/get.tsv binds credentials to hosts; only the private layer's own pack (harbor-private) ships it" || return 1
+        printf '%s\t%s\n' "$_p" "access/get.tsv" >> "$WORK/plan" ;;
+      access/*) refuse "$_r: access/ holds get.tsv and nothing else" || return 1 ;;
       *) log_warn "$ID: $_r is not a pack entry and is not installed" ;;
     esac
   done < "$WORK/files"
