@@ -59,7 +59,7 @@ direction (rule 1 of the header).
 - `tests/context/peers/peers.test.sh` — context-peers.sh plus the same library-admission set; 35 / 35
 - `tests/scope/marker/marker.test.sh` — scope-roots.sh, library-admission.sh set, access.sh, secret, library-hub.sh; 54 / 54
 - `tests/memory/memory/memory.test.sh` — memory.sh, memory-lint.sh, library-admission.sh set, scope-roots.sh, access.sh, secret; 86 / 86
-- `tests/audit/telemetry/e2e.test.sh` — admission-observe.sh, audit-collector(-check).sh, audit-otlp-receiver.py, audit-stream-export.py, audit-stream-lib.sh, status-telemetry-report.sh, library-admission.sh set; 28 / 28
+- `tests/audit/telemetry/e2e.test.sh` — admission-observe.sh, audit-collector(-check).sh, audit-otlp-receiver.py, audit-stream-export.py, audit-stream-lib.sh, library-admission.sh set; 28 / 28
 
 ## Not narrowed, and why
 
