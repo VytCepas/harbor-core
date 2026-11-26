@@ -131,6 +131,7 @@
 /bin/ci-verified.sh @VytCepas
 /bin/ci-wait.sh @VytCepas
 /bin/context-budget.sh @VytCepas
+/bin/context-compaction-digest.sh @VytCepas
 /bin/context-injection-install.sh @VytCepas
 /bin/context-peers.sh @VytCepas
 /bin/deploy-doctor.sh @VytCepas
@@ -226,6 +227,7 @@
 /bin/memory-lint.sh @VytCepas
 /bin/memory-log-token-save.sh @VytCepas
 /bin/memory-route.sh @VytCepas
+/bin/memory-secret-scan.sh @VytCepas
 /bin/memory-store-check.sh @VytCepas
 /bin/memory.sh @VytCepas
 /bin/name-check @VytCepas

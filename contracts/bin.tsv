@@ -128,7 +128,6 @@ bin/doc-refs.sh	command	floor	every path an entry doc cites resolves, and the do
 bin/doc-register-index.sh	command	floor	the two indexes over the registers and the contracts, generated and never hand-written.	harbor#1424
 bin/doc-report-verify.sh	command	floor	does a generated artefact meet contracts/reports.md? Ticket: harbor#411 (the first production run that shipped green and	harbor#411
 bin/doc-shape.sh	command	floor	every doc carries one front matter shape, every generated file one header.	harbor#1434
-bin/doc-vale.sh	command	floor	prose against the registry: legacy aliases, UK spelling, banned words, via Vale.	harbor#978
 bin/doc-visual-check.mjs	command	tool	the browser half. Renders a generated page at every theme/viewport combination and asserts two things a stylesheet cannot	harbor#392
 bin/doc-visual-check.sh	command	floor	renders every generated HTML surface and routes it to the verifiers that can judge it.	harbor#392
 bin/drift-confinement.sh	command	floor	the check drift.confinement: the installed `sandbox` block of the root-owned managed-settings.json against what	harbor#1299
@@ -214,6 +213,7 @@ bin/lint-suggest-table.sh	command	floor	hold every row of a suggest-tool table t
 bin/memory-lint.sh	command	floor	the deterministic anti-rot gate over a memory store. No LLM, no Bun, no network: every finding is a fact about the files	harbor#6
 bin/memory-log-token-save.sh	command	floor	put the work-log token in the store as worklog-token without ever showing it, and without leaving it on the clipboard.	harbor#431
 bin/memory-route.sh	command	floor	does a session started IN a governed repo load the memory store, or does it start blind?	harbor#1031
+bin/memory-secret-scan.sh	command	floor	the work-log's whole-history gitleaks scan, nightly; while it is loaded the pre-push scans only a push's range (124ey1kjcu0 P3).	harbor#25
 bin/memory-store-check.sh	command	floor	bound the memory store. SIZE and AGE, which is the half nothing measured.	harbor#150
 bin/memory.sh	command	floor	the L0 memory front door. One door, two rungs. `memory <query>` runs the Bun engine when Bun is present	harbor#6
 bin/name-check	command	floor	does a string conform to its surface's allowlist validator? A PATH command (no extension, so no family needed, harbor/D-11), installed as	harbor#1259
@@ -282,7 +282,6 @@ bin/status-plan-generate.sh	command	floor	which plan tickets are DONE, derived a
 bin/status-suggest.sh	command	floor	the suggestions stop tool and its state: stop, start, off, on, shown, tick, scan-used, and status --json for the panel; installed to the config bin directory for the rule's hooks.	harbor#1485
 bin/status-subagent-glyph.sh	command	floor	Claude Code SUBAGENT statusline: one row per live agent. settings.json: "subagentStatusLine": { "type": "command"	harbor#293
 bin/status-suggest-scan.sh	command	floor	repeated work in recent sessions, reduced to closed-vocabulary shapes: at most 3 candidates a skill, hook or job could take over. Read-only.	harbor#1485
-bin/status-telemetry-report.sh	command	floor	the signals Harbor captures, turned into answers. TSV on stdout. status-telemetry-report.sh approvals [--bus DIR] each approval	harbor#1181
 bin/status-usage-aggregate.sh	command	floor	durable per-day token usage, attributed.	harbor#44
 bin/status-network.sh	command	floor	the check status.network: on a metered network pause the jobs that pull megabytes, report other heavy processes, resume them off it.	harbor#1582
 bin/status-disk.sh	command	floor	the check status.disk: free space on the Mac's data volume under a floor (30 GB), one checks.log line on a change and the statusline's DISK LOW.	harbor#1060

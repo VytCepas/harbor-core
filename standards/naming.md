@@ -203,8 +203,6 @@ the tool that forces it.**
    - `--gen issue-taxonomy` renders `label-axes.tsv` (every label as `<axis>:<value>`, the legacy label it replaces,
      each axis's cardinality) into the connector's taxonomy format and a legacy-to-new map. Nothing is renamed on
      GitHub by it: label writes are an operator's, and the connector reads `contracts/issue-taxonomy.tsv` until then.
-   - `sh bin/doc-vale.sh <file.md>` generates the Vale config and runs it. Without Vale it prints "verified NOTHING"
-     and exits 3, never 0.
 7. **Header and comment rules on added lines** (harbor#978): `bin/lint-comment.sh` judges only what a branch adds. A
    new script opens `# <name> (<repo>#N) — <purpose>` on line 1, or line 2 under a shebang (`lint.file-header`), and
    more than 3 added comment lines in a row are flagged outside a new file's header (`lint.comment-added`). Both
