@@ -181,7 +181,7 @@ t_eq "a nameless button's whole subtree is read, not 40 lines" "exit 1" "$(mcp c
 t_eq "a click the daemon could not run is refused" "exit 1" "$(: > "$CTL/fail"; : > "$CTL/fail_script"; mcp click e3)"
 clean
 # The guard line removed, the same Delete click must go through: the arms above can fail.
-mkdir -p "$T_TMP/mutant/bin" "$T_TMP/mutant/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/library-log.sh" "$X/bin/admission-egress.sh" "$T_TMP/mutant/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/mutant/contracts/"
+mkdir -p "$T_TMP/mutant/bin" "$T_TMP/mutant/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/admission-egress.sh" "$T_TMP/mutant/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/mutant/contracts/"
 sed 's/^  if (hit \&\& !confirmed) handoff(`destructive .*/  if (false) handoff("");/' "$SRV" > "$T_TMP/mutant/bin/access-chrome-mcp.ts"
 t_eq "the mutant differs from the server" yes "$(cmp -s "$SRV" "$T_TMP/mutant/bin/access-chrome-mcp.ts" || echo yes)"
 _old="$SRV"; SRV="$T_TMP/mutant/bin/access-chrome-mcp.ts"
@@ -387,7 +387,7 @@ t_eq "...through the fixed timing row of browser-script.tsv, raw" 1 "$(awk -v w=
 t_eq "timing with a script is refused" "exit 1" "$(mcp timing 'document.cookie')"
 t_has "...as fixed" "$(txt)" "timing takes no arguments"
 t_eq "...and never reached the daemon" 0 "$(grep -c . "$CALLS")"
-mkdir -p "$T_TMP/tmut/bin" "$T_TMP/tmut/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/library-log.sh" "$X/bin/admission-egress.sh" "$T_TMP/tmut/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/tmut/contracts/"
+mkdir -p "$T_TMP/tmut/bin" "$T_TMP/tmut/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/admission-egress.sh" "$T_TMP/tmut/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/tmut/contracts/"
 sed -e "/^    if (args.length) refuse('timing takes no arguments/d" -e 's/(?:localhost|127\\.0\\.0\\.1)/[a-z.]*/' -e 's/^  if (loopbackOk(url)) return headless;$/  if (loopbackOk(url)) return true;/' "$SRV" > "$T_TMP/tmut/bin/access-chrome-mcp.ts"
 t_eq "the mutant (no argument check, no loopback host check, no lane check) differs from the server in three lines" 3 "$(diff "$SRV" "$T_TMP/tmut/bin/access-chrome-mcp.ts" | grep -c '^<')"
 _old="$SRV"; SRV="$T_TMP/tmut/bin/access-chrome-mcp.ts"
