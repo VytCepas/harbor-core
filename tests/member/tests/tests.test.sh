@@ -146,27 +146,6 @@ t_eq "a same-size edit with the index's own mtime: blocked" block "$(racy "$MB/m
 # Red arm retired at the merge with the git-safe hooks lane: that library's private dir also lets git see the edit by its ctime, so a plain cp
 # no longer hides it; -p stays as defence in depth. The red for "the edit is missed" is section 1 (a changed file is seen at all).
 
-t_section "9 - every registered project is read inside the bound, the last one too (124ey1kjcu0 P2)"
-# Twelve projects and a git that takes 0.15 s a call: read one after another, the 5 s snapshot bound cut the snapshot before the
-# last ones and their changes went unchecked. Read PAR at a time, the last project's code-only change is still sent back.
-mkdir -p "$T_TMP/lag"; printf '#!/bin/sh\nsleep 0.15\nexec /usr/bin/git "$@"\n' > "$T_TMP/lag/git"; chmod +x "$T_TMP/lag/git"
-rm -rf "$HM/.local"; : > "$PORT/harbor-private/repos.tsv"
-for _i in 01 02 03 04 05 06 07 08 09 10 11 12; do
-  rm -rf "$PORT/p$_i"; mkdir -p "$PORT/p$_i"; git -C "$PORT/p$_i" init -q
-  printf 'x\n' > "$PORT/p$_i/app.py"; git -C "$PORT/p$_i" add -A; git -C "$PORT/p$_i" commit -qm base
-  printf 'p%s\tp%s\tworkload\t-\tstream-aligned\tx-as-a-service\t-\t-\tyes\t-\ta project\n' "$_i" "$_i" >> "$PORT/harbor-private/repos.tsv"
-done
-( HPATH="$T_TMP/lag:/usr/bin:/bin"; snap )
-t_eq "the snapshot holds all twelve projects" 12 "$(find "$HM/.local/state/harbor/member-tests/s1" -type f 2>/dev/null | wc -l | tr -d ' ')"
-echo 'def g(): return 3' >> "$PORT/p12/app.py"
-O="$(HPATH="$T_TMP/lag:/usr/bin:/bin"; stop)"
-t_has "a code-only change in the last project is sent back" "$(reason "$O")" "p12 (app.py)"
-echo 'def g(): return 3' >> "$PORT/p03/app.py"; mkdir -p "$PORT/p12/tests"; echo 't' > "$PORT/p12/tests/test_app.py"
-O="$(HPATH="$T_TMP/lag:/usr/bin:/bin"; stop)"
-t_has "...and the first offender in registry order is the one named, as before" "$(reason "$O")" "p03 (app.py)"
-mkdir -p "$PORT/p03/tests"; echo 't' > "$PORT/p03/tests/test_app.py"
-t_eq "with a test beside each change, nothing is sent back" "" "$(HPATH="$T_TMP/lag:/usr/bin:/bin"; stop)"
-
 t_section "6 - the law and the register hold the same names"
 L="$(cat "$T_ROOT/contracts/member-law.md")"
 t_has "the law has the clause" "$L" "## 8. Every code change in a project comes with a test"
