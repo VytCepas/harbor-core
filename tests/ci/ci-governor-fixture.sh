@@ -35,7 +35,6 @@ case "$*" in
   "-n vm.loadavg") printf '{ %s 1.00 1.00 }\n' "$(cat "$FX/load")" ;;
   "-n hw.ncpu") echo 10 ;;
   "-n kern.memorystatus_vm_pressure_level") cat "$FX/mem" ;;
-  "-n kern.memorystatus_level") [ -f "$FX/avail" ] || exit 1; cat "$FX/avail" ;;
   *) exit 1 ;;
 esac
 EOF
@@ -62,7 +61,6 @@ case "$1" in
   update) [ -f "$FX/update.fail" ] && exit 1
           echo "$3" >> "$FX/updates"; echo "$4 $3" >> "$FX/updates.log"
           awk -v c="$3" 'BEGIN { printf "%d\n", c * 1000000000 }' > "$(f "$4" nano)" ;;
-  builder|image) [ ! -f "$FX/prune.fail" ] || exit 1 ;;
   *) exit 1 ;;
 esac
 EOF
@@ -95,24 +93,6 @@ case "$1" in
       wait ;;
   *) exit 1 ;;
 esac
-EOF
-# colima: `list --json` answers $FX/colima.cpus and .mem (GiB); start --cpu C --memory M sets them; every call is a line of
-# $FX/colima.calls; $FX/colima.startfail fails a sized start. uv: records each call.
-cat > "$T_BIN/colima" <<'EOF'
-#!/bin/sh
-echo "$*" >> "$FX/colima.calls"
-case "$1" in
-  list) [ -f "$FX/colima.cpus" ] || exit 1
-        printf '{"name":"default","status":"Running","cpus":%s,"memory":%s,"runtime":"docker"}\n' "$(cat "$FX/colima.cpus")" "$(( $(cat "$FX/colima.mem") * 1073741824 ))" ;;
-  stop) ;;
-  start) [ $# -gt 1 ] || exit 0; [ ! -f "$FX/colima.startfail" ] || exit 1
-         while [ $# -gt 0 ]; do case "$1" in --cpu) echo "$2" > "$FX/colima.cpus"; shift ;; --memory) echo "$2" > "$FX/colima.mem"; shift ;; esac; shift; done ;;
-  *) exit 1 ;;
-esac
-EOF
-cat > "$T_BIN/uv" <<'EOF'
-#!/bin/sh
-echo "$*" >> "$FX/uv.calls"
 EOF
 cat > "$T_BIN/taskpolicy" <<'EOF'
 #!/bin/sh

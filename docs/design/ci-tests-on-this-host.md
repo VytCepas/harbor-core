@@ -17,9 +17,6 @@ Local suites and CI jobs share one Mac. `bin/ci-governor.sh` budgets cores for b
   deadline it runs anyway and says so. `sh bin/ci-governor.sh status` shows the budget, the runners and the slots.
 - The Linux runners are Colima containers named `*-linux` (or `*-linux-<N>`), throttled live with `docker update --cpus`.
   Which classes yield to the rest is the `low_priority` list in the governor's header.
-- It is the box's one budget owner, not only the cores' (harbor#1630): background pollers go through `ci-governor.sh admit`,
-  memory pressure narrows `run` to one slot, the Colima VM's size is held in its config (`vm`), and `prune` clears docker and
-  uv caches. A second scheduler for any of these is a second owner; extend this one instead.
 - **Never kill another session's run.** An unscoped `pkill` by one session has killed another's suite runs before (exit 144,
   `xargs: Terminated`). Scope any kill to a pid you started.
 

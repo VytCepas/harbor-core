@@ -27,10 +27,6 @@ mkdir -p "$CACHE_DIR"
 # inline runs averaging 344 s, 7.3 h of dispatcher time, which held every other rule up to 95 min behind its events (a
 # PR's CI watch started 90 min late). The child gets its own process group from the dispatcher's bounded(), so it outlives
 # the handler. launchd keeps the inline run: it kills the job's group on exit, and its tick is the schedule this serves.
-# The box's budget owner decides first (harbor#1630): under load or memory pressure this run is skipped, and a run deferred
-# ci-governor's admit_max_defer runs anyway. A box without the governor beside this copy just runs.
-_gov="$(dirname -- "$0")/ci-governor.sh"
-[ -n "${HARBOR_CI_GOVERNOR_ADMITTED:-}" ] || [ ! -f "$_gov" ] || exec sh "$_gov" admit status.fleet-snapshot -- sh "$0" "$@"
 if [ -n "${HARBOR_EVENT_JSON:-}" ]; then
   ( env -u HARBOR_EVENT_JSON sh "$0" ) </dev/null >/dev/null 2>&1 &
   exit 0

@@ -276,7 +276,7 @@ t_eq "on the host (no /.dockerenv) it clears nothing" 4 "$(ls "$TR" | wc -l | tr
 full_box() {
   reset; gov tick >/dev/null; printf 'slots=1\nat=%s\n' "$(date +%s)" >> "$SD/state"
   sleep 30 & HOLDER=$!
-  printf '%s\n%s\nholder\n' "$HOLDER" "$(LC_ALL=C ps -o lstart= -p "$HOLDER" | tr -s ' ')" > "$SD/slots/$HOLDER"
+  printf '%s\n%s\nholder\n' "$HOLDER" "$(ps -o lstart= -p "$HOLDER" | tr -s ' ')" > "$SD/slots/$HOLDER"
   printf 'run_deadline=1\n' >> "$CLAUDE_CONFIG_DIR/.harbor-ci-governor"
 }
 FR="$T_TMP/fr"

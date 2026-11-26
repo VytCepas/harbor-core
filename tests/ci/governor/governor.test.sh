@@ -192,7 +192,7 @@ t_section "run: a full box waits, says so, and runs at the deadline"
 reset; gov tick >/dev/null
 printf 'slots=1\n' >> "$SD/state"   # the last line wins
 sleep 30 & HOLDER=$!
-printf '%s\n%s\nholder\n' "$HOLDER" "$(LC_ALL=C ps -o lstart= -p "$HOLDER" | tr -s ' ')" > "$SD/slots/$HOLDER"
+printf '%s\n%s\nholder\n' "$HOLDER" "$(ps -o lstart= -p "$HOLDER" | tr -s ' ')" > "$SD/slots/$HOLDER"
 printf 'run_deadline=1\n' >> "$CLAUDE_CONFIG_DIR/.harbor-ci-governor"
 O="$(runc -- echo ran 2>&1)"
 t_has "a live holder of the only slot makes it wait, visibly" "$O" "waiting for a CPU slot: 1 of 1 in use"
@@ -216,7 +216,7 @@ t_eq "a live pid with another start time (a recycled pid) is reclaimed too" ran 
 t_section "run: a stale state is decided at acquire, never trusted (no timer keeps it fresh)"
 reset; gov tick >/dev/null; printf 'slots=1\n' >> "$SD/state"
 sleep 30 & H1=$!
-printf '%s\n%s\nh\n' "$H1" "$(LC_ALL=C ps -o lstart= -p "$H1" | tr -s ' ')" > "$SD/slots/$H1"
+printf '%s\n%s\nh\n' "$H1" "$(ps -o lstart= -p "$H1" | tr -s ' ')" > "$SD/slots/$H1"
 printf 'run_deadline=1\n' >> "$CLAUDE_CONFIG_DIR/.harbor-ci-governor"
 O="$(runc -- echo ran 2>&1)"
 t_has "control: a fresh state's 1 slot, held, makes it wait" "$O" "waiting for a CPU slot: 1 of 1 in use"
