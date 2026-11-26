@@ -10,6 +10,9 @@
 #   sh ci-governor.sh status                 the signals, the budget, the runners and the local slots
 #   sh ci-governor.sh run [--out F] -- <cmd> run <cmd> once a local CPU slot is free, waiting with a message and
 #                                            a deadline; --out sends <cmd>'s output to F, the waits stay on stderr
+#   sh ci-governor.sh admit <name> -- <cmd>  a background job: run <cmd> now, or skip it while the box is loaded
+#   sh ci-governor.sh vm [resize]            the Colima VM against its held size; resize restarts it, only while idle
+#   sh ci-governor.sh prune [--dry-run]      docker build cache over 7 days, dangling images, the uv cache
 #
 # platform: macOS-only — it budgets a Mac's cores through launchd, `pmset -g therm` and `notifyutil` events; the *-linux runner containers it throttles are reached through docker, not run on Linux (harbor#618).
 #
@@ -79,6 +82,20 @@
 # (a paused runner sends GitHub no heartbeat, and how long GitHub waits is unmeasured). Recovery needs
 # clear_secs (60) with no hot sample, then the slow raise above. A sample over 60s old counts as clear.
 #
+# THE BOX BEYOND CORES (harbor#1630). This is the one budget owner on the box; what else it holds:
+#   BACKGROUND JOBS. An interval poller re-execs itself through `admit <name> -- <cmd>`: it is skipped while the 1-min
+#   load is over load_ceiling, memory pressure is at mem_warn (2) or over, available memory (kern.memorystatus_level)
+#   is at or under mem_avail_min (15) %, or an emergency is on; a job skipped admit_max_defer (1800) s runs anyway, so a
+#   loaded box still refreshes. One log line when a streak starts and one when it ends. Wired: status.fleet-snapshot
+#   (measured 2026-11-26: 187 spawns in 25 s, its run outlasting its 300 s interval). Not wired on purpose: status.network
+#   and alert.probe protect (a metered link, an alarm), the root audit collector is not this user's, and the calendar
+#   jobs run once a day, where a skip loses the day.
+#   MEMORY. The same two memory signals make `run` give out one local slot at a time.
+#   THE VM. colima_cpus and colima_memory (GiB) hold the Colima VM's size; `vm resize` restarts it to that size only
+#   when every runner is idle, no slot is taken and no emergency is on. colima_auto=1 lets an idle tick do it, at most
+#   once a vm_retry (3600) s. Off by default: a restart cuts a job that starts in the seconds between check and stop.
+#   THE DISK. prune_every (seconds, 0 = off) lets an idle tick run `prune`. On, it is a recurring job: the operator's yes.
+#
 # OUTPUT. One `[check:ci.governor]` line in cache/checks.log per change of budget or runner state, never per
 # tick; cache/ci-governor.json for the statusline. POSIX sh; docker, gh, ioreg, sysctl, pgrep, iostat, pmset,
 # notifyutil, taskpolicy from PATH.
@@ -91,6 +108,52 @@ if [ "${1:-}" = run ] && { [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${HARBOR_CI_GOV
   [ "${1:-}" != -- ] || shift
   if [ $# -gt 0 ]; then if [ -n "$_o" ]; then exec "$@" > "$_o" 2>&1; else exec "$@"; fi; fi
   set -- run
+fi
+# `admit` sits on the interval pollers' path, so it is decided here from three sysctls and ONE config read, before the
+# policy block below (about 40 forks). See BACKGROUND JOBS above. Exit: <cmd>'s own, 0 when skipped, 2 usage.
+if [ "${1:-}" = admit ]; then
+  shift; _an="${1:-}"; [ $# -eq 0 ] || shift; [ "${1:-}" != -- ] || shift
+  case "$_an" in ''|-*|*[!A-Za-z0-9._-]*) echo "ci-governor: usage: admit <name> -- <cmd…>" >&2; exit 2 ;; esac
+  [ $# -gt 0 ] || { echo "ci-governor: admit $_an needs a command after --" >&2; exit 2; }
+  _ad="${HARBOR_CI_GOVERNOR_DIR:-${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}/ci-governor}"
+  HARBOR_CI_GOVERNOR_ADMITTED=1; export HARBOR_CI_GOVERNOR_ADMITTED
+  { [ -z "${GITHUB_ACTIONS:-}" ] && [ -d "$_ad" ]; } || exec "$@"   # nothing governs here: just run
+  _an_c="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.harbor-ci-governor"
+  _an_k="$(awk -F= '{ gsub(/[ \t]/, "") } $2 ~ /^[0-9]+(\.[0-9]+)?$/ { v[$1] = $2 }
+    END { printf "%s %s %s %s", ("load_ceiling" in v) ? v["load_ceiling"] : 8, ("mem_warn" in v) ? v["mem_warn"] : 2,
+        ("mem_avail_min" in v) ? v["mem_avail_min"] : 15, ("admit_max_defer" in v) ? v["admit_max_defer"] : 1800 }' "$_an_c" 2>/dev/null || echo "8 2 15 1800")"
+  case "${HARBOR_TEST_NOW:-}" in ''|*[!0-9]*) _an_now="$(date +%s)" ;; *) _an_now="$HARBOR_TEST_NOW" ;; esac
+  _an_why="$(awk -v k="$_an_k" \
+      -v load="$(sysctl -n vm.loadavg 2>/dev/null | awk '{ gsub(/[{}]/, ""); print $1 }')" \
+      -v mem="$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null)" \
+      -v avail="$(sysctl -n kern.memorystatus_level 2>/dev/null)" 'BEGIN {
+    split(k, c, " "); w = ""
+    if (load ~ /^[0-9.]+$/ && load + 0 > c[1] + 0) w = "load " load " over " c[1]
+    if (mem ~ /^[0-9]+$/ && mem + 0 >= c[2] + 0) w = w (w == "" ? "" : ", ") "memory pressure level " mem
+    if (avail ~ /^[0-9]+$/ && avail + 0 <= c[3] + 0) w = w (w == "" ? "" : ", ") "memory available " avail "%"
+    print w }')"
+  # An emergency the sampler holds (a sample under 60s old) is a reason too.
+  _an_em="$(awk -F= -v now="$_an_now" '$1 == "on" { on = $2 } $1 == "sampled_at" { at = $2 } $1 == "why" { w = $2 }
+    END { if (on == 1 && now - at <= 60) print "emergency" (w == "" ? "" : ": " w) }' "$_ad/emergency" 2>/dev/null || :)"
+  [ -z "$_an_em" ] || _an_why="${_an_why:+$_an_why, }$_an_em"
+  _an_f="$_ad/admit/$_an"; mkdir -p "$_ad/admit" 2>/dev/null || :
+  _an_since="$(awk -F= '$1 == "since" { print $2 }' "$_an_f" 2>/dev/null || :)"; case "$_an_since" in ''|*[!0-9]*) _an_since="" ;; esac
+  _an_n="$(awk -F= '$1 == "skips" { print $2 }' "$_an_f" 2>/dev/null || :)"; case "$_an_n" in ''|*[!0-9]*) _an_n=0 ;; esac
+  _an_max="${_an_k##* }"; _an_max="${_an_max%%.*}"
+  _an_log() { printf '[check:ci.governor] %s %s\n' "$(date -u -r "$_an_now" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" \
+    >> "${HARBOR_SCOPE_CACHE_DIR:-$HOME/.claude/cache}/checks.log" 2>/dev/null || :; }
+  if [ -n "$_an_why" ] && { [ -z "$_an_since" ] || [ $(( _an_now - _an_since )) -lt "$_an_max" ]; }; then
+    [ -n "$_an_since" ] || { _an_since="$_an_now"; _an_log "admit $_an: skipped ($_an_why)"; }
+    printf 'since=%s\nskips=%s\nwhy=%s\n' "$_an_since" "$(( _an_n + 1 ))" "$(printf '%s' "$_an_why" | tr '\n=' '  ')" > "$_an_f.tmp.$$" 2>/dev/null \
+      && mv -f "$_an_f.tmp.$$" "$_an_f" 2>/dev/null || :
+    exit 0
+  fi
+  if [ -n "$_an_since" ]; then
+    if [ -n "$_an_why" ]; then _an_log "admit $_an: runs after $_an_n skip(s), deferred the maximum ${_an_max}s ($_an_why)"
+    else _an_log "admit $_an: runs after $_an_n skip(s)"; fi
+    rm -f "$_an_f"
+  fi
+  exec "$@"
 fi
 HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 . "$HERE/library-log.sh"
@@ -165,6 +228,14 @@ TICK_INTERVAL="$(int "$(cfg tick_interval 30)")"
 CPU_EMERGENCY="$(cfg cpu_emergency 95)"
 SPIKE_SAMPLES="$(int "$(cfg spike_samples 2)")"
 MEM_EMERGENCY="$(int "$(cfg mem_emergency 4)")"
+MEM_WARN="$(int "$(cfg mem_warn 2)")"
+MEM_AVAIL_MIN="$(int "$(cfg mem_avail_min 15)")"
+COLIMA_CPUS="$(int "$(cfg colima_cpus 0)")"       # 0 = not held (harbor#1630)
+COLIMA_MEMORY="$(int "$(cfg colima_memory 0)")"   # GiB; 0 = not held
+COLIMA_AUTO="$(int "$(cfg colima_auto 0)")"       # 1 = an idle tick may restart the VM to that size
+VM_RETRY="$(int "$(cfg vm_retry 3600)")"
+PRUNE_EVERY="$(int "$(cfg prune_every 0)")"       # seconds; 0 = never (turning it on is a recurring job: the operator's yes)
+COLIMA="${HARBOR_CI_COLIMA:-colima}"
 THERMAL_SPEED_MIN="$(cfg thermal_speed_min 90)"
 CLEAR_SECS="$(int "$(cfg clear_secs 60)")"
 LINUX_EMERG_CPUS="$(awk -v x="$(cfg linux_emergency_cpus 0.5)" 'BEGIN { printf "%g", x }')"
@@ -213,6 +284,17 @@ fast_signals() {
       /[Ww]arning level/ && !/No / { for (i = 1; i <= NF; i++) { v = $i; sub(/\.$/, "", v)
           if (v ~ /^[0-9]+$/ && v + 0 > 0) { w = ($0 ~ /[Pp]erformance/) ? "performance" : "thermal"; print w " warning level " v; exit } } }
       /CPU_Speed_Limit/ { v = $NF; if (v ~ /^[0-9]+$/ && v + 0 < lim + 0) { print "CPU speed limited to " v "%"; exit } }' || true)"
+}
+
+# mem_signals → MEM_LEVEL_W, MEM_AVAIL, MEM_WHY: pressure at mem_warn (2) or above, or available memory at or under
+# mem_avail_min (15) %. Measured 2026-11-26: the level read 1 (normal) with swap at 3.9 of 5 GB, so the level alone sees little.
+mem_signals() {
+  MEM_LEVEL_W="$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null || true)"; case "$MEM_LEVEL_W" in ''|*[!0-9]*) MEM_LEVEL_W="" ;; esac
+  MEM_AVAIL="$(sysctl -n kern.memorystatus_level 2>/dev/null || true)"; case "$MEM_AVAIL" in ''|*[!0-9]*) MEM_AVAIL="" ;; esac
+  MEM_WHY=""
+  if [ -n "$MEM_LEVEL_W" ] && [ "$MEM_LEVEL_W" -ge "$MEM_WARN" ]; then MEM_WHY="memory pressure level $MEM_LEVEL_W"; fi
+  if [ -n "$MEM_AVAIL" ] && [ "$MEM_AVAIL" -le "$MEM_AVAIL_MIN" ]; then MEM_WHY="${MEM_WHY:+$MEM_WHY, }memory available $MEM_AVAIL%"; fi
+  return 0
 }
 
 # The emergency state: in this process when `watch`/`sample` already holds it, else from the sampler's file,
@@ -667,6 +749,7 @@ cmd_tick() {
   [ -z "$_msg" ] || logline "$_msg"
   write_out
   tick_unlock
+  box_jobs
 }
 
 cmd_status() {
@@ -701,6 +784,20 @@ cmd_status() {
     printf '          the budget would give a Linux runner %s cpus; the VM has %s (resize while it is idle: colima start --cpu %s)\n' \
       "$WANT_VM" "$VM_CPUS" "$IDLE_BUDGET"
   fi
+  mem_signals
+  printf 'memory    pressure level %s (warn at %s), available %s%% (min %s)%s\n' "${MEM_LEVEL_W:-?}" "$MEM_WARN" "${MEM_AVAIL:-?}" \
+    "$MEM_AVAIL_MIN" "${MEM_WHY:+: local slots one at a time}"
+  if [ "$COLIMA_CPUS" != 0 ] || [ "$COLIMA_MEMORY" != 0 ]; then
+    vm_have
+    printf 'vm        colima %s cpus / %s GiB, held at %s / %s GiB; resize %s\n' "${HAVE_CPUS:-?}" "${HAVE_MEM:-?}" "$COLIMA_CPUS" "$COLIMA_MEMORY" \
+      "$([ "$COLIMA_AUTO" = 1 ] && echo "by an idle tick (colima_auto=1)" || echo "by hand: sh $0 vm resize")"
+  else printf 'vm        size not held (colima_cpus, colima_memory unset)\n'; fi
+  if [ "$PRUNE_EVERY" -gt 0 ]; then printf 'prune     every %ss while idle; last at %s\n' "$PRUNE_EVERY" "$(cat "$STATE_DIR/prune_at" 2>/dev/null || echo never)"
+  else printf 'prune     off (prune_every=0)\n'; fi
+  for _af in "$STATE_DIR"/admit/*; do
+    [ -f "$_af" ] || continue
+    printf 'admit     %s skipped %s time(s) over %ss (%s)\n' "${_af##*/}" "$(kv "$_af" skips)" "$(( NOW - $(num_or "$(kv "$_af" since)" "$NOW") ))" "$(kv "$_af" why)"
+  done
   _used=0; [ -d "$STATE_DIR/slots" ] && _used="$(find "$STATE_DIR/slots" -type f | wc -l | tr -d ' ')"
   _sl="$(st slots)"; _sc="$(st ci_cores)"
   printf 'slots     %s in use of %s (CI holds %s cores at the last tick)\n' "$_used" "${_sl:-none yet}" "${_sc:-?}"
@@ -708,8 +805,96 @@ cmd_status() {
   return 0
 }
 
+# ── the box beyond cores: the Colima VM's size and the disk (harbor#1630) ───────────────────────
+# A running vz VM cannot be resized and does not give memory back (lima#2789, #4220): the only lever is a restart, and a
+# restart kills every running job in it, so it happens only on a VM holding nothing.
+bg() { if [ -n "${HARBOR_CI_GOVERNOR_SYNC:-}" ]; then "$@" >/dev/null 2>&1 || :; else nohup "$@" >/dev/null 2>&1 & fi; }
+# vm_have → HAVE_CPUS, HAVE_MEM (GiB, rounded): the default profile's size from `colima list --json`; empty when unread.
+vm_have() {
+  HAVE_CPUS=""; HAVE_MEM=""
+  _vj="$("$COLIMA" list --json 2>/dev/null | jq -rs 'map(select(.name == "default"))[0] // empty | "\(.cpus) \((.memory / 1073741824) | round)"' 2>/dev/null || true)"
+  case "$_vj" in [0-9]*' '[0-9]*) HAVE_CPUS="${_vj% *}"; HAVE_MEM="${_vj#* }" ;; esac
+  return 0
+}
+# vm_busy → VM_BUSY: why the VM may not restart now (empty: it may). A runner not read as idle, docker unread, or a local
+# slot taken (a suite may be using docker) each keeps it up.
+vm_busy() {
+  VM_BUSY=""; DRY=1; NO_GH=1; FAILS=""
+  signals; probe
+  [ -z "$FAILS" ] || VM_BUSY="$FAILS"
+  _bz="$(printf '%s' "$LINUX" | awk 'NF && $2 != "idle" && $2 != "stopped" { printf "%s%s %s", n++ ? ", " : "", $1, $2 }')"
+  [ -z "$_bz" ] || VM_BUSY="${VM_BUSY:+$VM_BUSY; }runner(s) not idle: $_bz"
+  _sn="$(find "$STATE_DIR/slots" -type f 2>/dev/null | wc -l | tr -d ' ')"
+  [ "${_sn:-0}" = 0 ] || VM_BUSY="${VM_BUSY:+$VM_BUSY; }$_sn local slot(s) taken"
+  emergency_state; [ "$EM_ON" != 1 ] || VM_BUSY="${VM_BUSY:+$VM_BUSY; }an emergency is on"
+  return 0
+}
+cmd_vm() {
+  RESIZE=0
+  case "${1:-}" in resize) RESIZE=1 ;; '') ;; *) log_fail "unknown argument $1"; log_fix "sh $0 --help"; log_end || :; exit 2 ;; esac
+  mkdir -p "$STATE_DIR/slots" "$CACHE_DIR"; NOW="$(now)"
+  if [ "$COLIMA_CPUS" = 0 ] && [ "$COLIMA_MEMORY" = 0 ]; then
+    printf 'vm: no size held (set colima_cpus and colima_memory, in GiB, in %s)\n' "$CONF"; return 0
+  fi
+  vm_have
+  [ -n "$HAVE_CPUS" ] || { printf 'vm: %s list read nothing: is the VM up?\n' "$COLIMA"; return 1; }
+  _wc="$COLIMA_CPUS"; [ "$_wc" != 0 ] || _wc="$HAVE_CPUS"
+  _wm="$COLIMA_MEMORY"; [ "$_wm" != 0 ] || _wm="$HAVE_MEM"
+  printf 'vm: %s cpus / %s GiB, held at %s / %s\n' "$HAVE_CPUS" "$HAVE_MEM" "$_wc" "$_wm"
+  if [ "$HAVE_CPUS" = "$_wc" ] && [ "$HAVE_MEM" = "$_wm" ]; then printf 'vm: at its size\n'; return 0; fi
+  vm_busy
+  if [ -n "$VM_BUSY" ]; then printf 'vm: not restarted now: %s\n' "$VM_BUSY"; [ "$RESIZE" = 0 ] || return 1; return 0; fi
+  if [ "$RESIZE" = 0 ]; then
+    printf 'vm: would restart it to %s / %s GiB (sh %s vm resize): every runner in it restarts, none is busy now\n' "$_wc" "$_wm" "$0"; return 0
+  fi
+  logline "vm: restarting Colima $HAVE_CPUS cpus/${HAVE_MEM}GiB -> $_wc/${_wm}GiB (every runner idle)"
+  if "$COLIMA" stop >/dev/null 2>&1 && "$COLIMA" start --cpu "$_wc" --memory "$_wm" >/dev/null 2>&1; then
+    vm_have
+    if [ "$HAVE_CPUS" = "$_wc" ] && [ "$HAVE_MEM" = "$_wm" ]; then logline "vm: Colima up at $_wc cpus/${_wm}GiB"; printf 'vm: up at %s / %s GiB\n' "$_wc" "$_wm"
+    else logline "WARN vm: Colima up at ${HAVE_CPUS:-?} cpus/${HAVE_MEM:-?}GiB, not $_wc/${_wm}GiB"; printf 'vm: up, but at %s / %s GiB\n' "${HAVE_CPUS:-?}" "${HAVE_MEM:-?}"; post; return 1; fi
+  else
+    # The stop may have worked and the start not: bring it back at whatever size it had, so the runners are not left down.
+    "$COLIMA" start >/dev/null 2>&1 || :
+    logline "WARN vm: the Colima restart to $_wc/${_wm}GiB failed; started again as it was"
+    printf 'vm: restart failed (%s start --cpu %s --memory %s); started again as it was\n' "$COLIMA" "$_wc" "$_wm"; post; return 1
+  fi
+  post
+}
+cmd_prune() {
+  DRY=0
+  case "${1:-}" in --dry-run) DRY=1 ;; '') ;; *) log_fail "unknown option $1"; log_fix "sh $0 --help"; log_end || :; exit 2 ;; esac
+  NOW="$(now)"; CHANGES=""; FAILS=""
+  _uv="$(command -v uv 2>/dev/null || :)"
+  [ -n "$_uv" ] || for _d in "$HOME/.local/bin" /opt/homebrew/bin; do [ ! -x "$_d/uv" ] || { _uv="$_d/uv"; break; }; done
+  _before="$(df -k "$HOME" 2>/dev/null | awk 'NR == 2 { print $4 }')"
+  act "docker build cache older than 7 days pruned" docker builder prune -f --filter until=168h || :
+  act "dangling docker images pruned" docker image prune -f || :
+  if [ -n "$_uv" ]; then act "uv cache pruned" "$_uv" cache prune || :; else fail "uv not found: its cache not pruned"; fi
+  [ "$DRY" = 0 ] || return 0
+  _after="$(df -k "$HOME" 2>/dev/null | awk 'NR == 2 { print $4 }')"
+  _fr=""; case "$_before$_after" in *[!0-9]*|'') ;; *) _fr="; disk free $(( (_after - _before) / 1024 )) MB more" ;; esac
+  _m="prune: ${CHANGES:-nothing pruned}${FAILS:+; WARN $FAILS}$_fr"
+  logline "$_m"; printf '%s\n' "$_m"
+}
+# After a tick, its lock given back: the VM resize (colima_auto=1) and the prune (prune_every > 0), each only while the box
+# holds nothing, each detached so no decision waits on it, each at most once per its own interval.
+box_jobs() {
+  [ "$HELD" = 0 ] && [ "${EMERG_APPLIED:-0}" = 0 ] || return 0
+  if [ "$COLIMA_AUTO" = 1 ] && { [ "$COLIMA_CPUS" != 0 ] || [ "$COLIMA_MEMORY" != 0 ]; }; then
+    _vt="$(num_or "$(cat "$STATE_DIR/vm_tried_at" 2>/dev/null || :)" 0)"
+    if [ $(( NOW - _vt )) -ge "$VM_RETRY" ]; then printf '%s\n' "$NOW" > "$STATE_DIR/vm_tried_at"; bg sh "$0" vm resize; fi
+  fi
+  if [ "$PRUNE_EVERY" -gt 0 ] && [ "$MODE" = idle ]; then
+    _pa="$(num_or "$(cat "$STATE_DIR/prune_at" 2>/dev/null || :)" 0)"
+    if [ $(( NOW - _pa )) -ge "$PRUNE_EVERY" ]; then printf '%s\n' "$NOW" > "$STATE_DIR/prune_at"; bg sh "$0" prune; fi
+  fi
+  return 0
+}
+
 # ── run: one local slot per command ─────────────────────────────────────────────────────────────
-lstart() { ps -o lstart= -p "$1" 2>/dev/null | tr -s ' ' || true; }
+# Under LC_ALL=C: lstart follows the locale, and launchd (C) and a session (en_NZ: `Fri 20 Nov`, not `Fri Nov 20`) must
+# write and read one spelling, or every pid check across them fails (harbor#1630: status said the listener was not running).
+lstart() { LC_ALL=C ps -o lstart= -p "$1" 2>/dev/null | tr -s ' ' || true; }
 reclaim() {
   for _f in "$STATE_DIR"/slots/*; do
     [ -f "$_f" ] || continue
@@ -734,6 +919,9 @@ limit() {
   _s="$(num_or "$(st slots)" "")"
   if [ -n "$_s" ] && [ $(( NOW - _a )) -le "$STALE_AFTER" ]; then LIMIT="$_s"; LIMIT_WHY="budget $(st budget), CI holds $(st ci_cores) cores"
   else LIMIT=$(( ACTIVE_BUDGET / 2 )); [ "$LIMIT" -ge 1 ] || LIMIT=1; LIMIT_WHY="no fresh tick, so a fallback of $LIMIT"; fi
+  # Memory (harbor#1630): a slot is cores, but on this box memory ran out first; under pressure, one suite at a time.
+  mem_signals
+  if [ -n "$MEM_WHY" ] && [ "$LIMIT" -gt 1 ]; then LIMIT=1; LIMIT_WHY="$MEM_WHY, so one at a time"; fi
 }
 
 cmd_run() {
@@ -875,6 +1063,8 @@ case "${1:-}" in
   tick) shift; cmd_tick "$@" ;;
   status) cmd_status ;;
   run) shift; cmd_run "$@" ;;
+  vm) shift; cmd_vm "$@" ;;
+  prune) shift; cmd_prune "$@" ;;
   -h|--help|'') usage; exit 0 ;;
   *) log_fail "unknown command $1"; log_fix "sh $0 --help"; log_end || :; exit 2 ;;
 esac
