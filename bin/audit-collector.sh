@@ -54,13 +54,28 @@ ingest() {
     else event missing "$_s" "source gone: moved, deleted, or never created"; _unread=$((_unread + 1)); fi
   done; IFS="$_ifs"
   LC_ALL=C sort -u -o "$STORE/state/list" "$STORE/state/list"
-  while IFS= read -r f; do
+  # One stat for every file and one join against the state, so an unchanged file costs no process: ~20 per file took
+  # a 9,862-file pass past its 300 s interval, the box's top spawner (harbor#1633). Each row: ino size mtime, then the
+  # state's bytes, hash and mtime (`-` for none, as read collapses empty tab fields), then the path.
+  if stat -c %i / >/dev/null 2>&1; then _st() { xargs -0 stat --printf '%i\t%s\t%Y\t%n\n'; }
+  else _st() { xargs -0 stat -f '%i%t%z%t%m%t%N'; }; fi
+  tr '\n' '\000' < "$STORE/state/list" | _st > "$STORE/state/meta" 2>/dev/null || :
+  awk -F'\t' 'function d(v) { return v == "" ? "-" : v }
+    FILENAME == ARGV[1] { if (!($1 in b)) { b[$1] = d($2); h[$1] = d($3); m[$1] = d($5) }; next }
+    FILENAME == ARGV[2] { p = $0; sub(/^[^\t]*\t[^\t]*\t[^\t]*\t/, "", p); r[p] = $1 "\t" $2 "\t" $3; next }
+    { s = "-\t-\t-"; p = "-\t-\t-"
+      if ($0 in r) { s = r[$0]; split(s, x, "\t"); if (x[1] in b) p = b[x[1]] "\t" h[x[1]] "\t" m[x[1]] }
+      print s "\t" p "\t" $0 }' "$STATE" "$STORE/state/meta" "$STORE/state/list" > "$STORE/state/rows"
+  _tab="$(printf '\t')"
+  while IFS="$_tab" read -r ino size mt done_b done_h done_m f; do
     rel="$f"
     [ -r "$f" ] || { event unreadable "$rel" "file not readable"; _unread=$((_unread + 1)); continue; }
-    ino="$(ls -di "$f" | awk '{print $1}')"; size="$(wc -c < "$f" | tr -d ' ')"
-    prev="$(awk -F'\t' -v i="$ino" '$1 == i { print; exit }' "$STATE")"
-    done_b=0; done_h=""; done_m=""; mt="$(fs_mtime "$f" 2>/dev/null || echo 0)"
-    if [ -n "$prev" ]; then done_b="$(printf '%s' "$prev" | cut -f2)"; done_h="$(printf '%s' "$prev" | cut -f3)"; done_m="$(printf '%s' "$prev" | cut -f5)"; fi
+    if [ "$ino" = - ] || [ -L "$f" ]; then   # not in the batch (it raced the stat) or a link: read it one by one
+      ino="$(ls -di "$f" | awk '{print $1}')"; size="$(wc -c < "$f" | tr -d ' ')"; mt="$(fs_mtime "$f" 2>/dev/null || echo 0)"
+      prev="$(awk -F'\t' -v i="$ino" '$1 == i { print; exit }' "$STATE")"; done_b=-; done_h=-; done_m=-
+      if [ -n "$prev" ]; then done_b="$(printf '%s' "$prev" | cut -f2)"; done_h="$(printf '%s' "$prev" | cut -f3)"; done_m="$(printf '%s' "$prev" | cut -f5)"; fi
+    fi
+    [ "$done_b" != - ] || done_b=0; [ "$done_h" != - ] || done_h=""; [ "$done_m" != - ] || done_m=""
     # The fast path: a CLOSED file (idle over an hour: archives, rotated generations) with unchanged size and mtime skips
     # the re-hash (5 s per 200 MB measured); anything recent is always re-hashed, so mtime's one-second grain hides
     # nothing. An edit to a closed file that restores size and mtime is caught by the daily --checkpoint full pass.
@@ -82,7 +97,7 @@ ingest() {
     fi
     printf '%s\t%s\t%s\t%s\t%s\n' "$ino" "$size" "$(head -c "$size" "$f" | sha)" "$rel" "$mt" >> "$_new"
     _files=$((_files + 1))
-  done < "$STORE/state/list"
+  done < "$STORE/state/rows"
   # a file that vanished keeps its row: its copied bytes are still in data/, and the row says where they came from
   awk -F'\t' 'NR == FNR { seen[$1] = 1; next } !($1 in seen)' "$_new" "$STATE" >> "$_new"
   mv -f "$_new" "$STATE"

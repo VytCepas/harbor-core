@@ -11,6 +11,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
+const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];   // the same set as access-chrome-mcp.ts; newest first
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const CLI = path.join(HERE, 'access-desktop.sh');
 const S = (d: string) => ({ type: 'string', description: d });
@@ -61,14 +62,37 @@ function call(name: string, input: Record<string, unknown>): { text: string; isE
   if (t.confirm && !askRule(name)) {
     return { text: `[desktop:ask-rule] ${name} refused: no permissions.ask rule for mcp__harbor_desktop__${name} in ~/.claude/settings.json, so no dialog would ask the operator`, isError: true };
   }
-  const args = { ...input, ...(t.fixed ?? {}) };
+  // Only the declared properties travel: the schema says additionalProperties:false, so the relay enforces it.
+  const args = { ...Object.fromEntries(Object.entries(input).filter(([k]) => Object.hasOwn(t.props, k))), ...(t.fixed ?? {}) };
   delete (args as Record<string, unknown>).confirmed;
   const argv = [CLI, t.verb, JSON.stringify(args)].concat(t.confirm ? ['--confirm'] : []);
-  const r = spawnSync('sh', argv, { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] });
+  const r = spawnSync('/bin/sh', argv, { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'], env: cliEnv() });
   const out = (r.stdout || '').trim(), err = (r.stderr || '').trim();
   let text = out || err || `exit ${r.status}`;
   try { const j = JSON.parse(out); text = j.tree ? `${j.tree}\n\ngen=${j.gen} nodes=${j.nodes}${j.truncated ? ' TRUNCATED' : ''}` : JSON.stringify(j, null, 1); } catch { /* not JSON: pass through */ }
-  return { text, isError: r.status !== 0 };
+  const shown = redacted(text.slice(0, 8 * OUT_MAX));   // a withheld reply is an error, not an empty success
+  return { text: shown.slice(0, OUT_MAX), isError: r.status !== 0 || shown.startsWith(WITHHELD) };
+}
+
+// The CLI's environment is fixed, as harbor_chrome's is: an inherited PATH or HARBOR_* seam (a fake nc, another
+// helper app or allow-list) would otherwise reach the relay and could forge the confirm flag.
+const PATH_FIXED = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin';
+const KEEP = ['HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TERM', 'CLAUDE_CODE_SESSION_ID'];
+function cliEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { PATH: PATH_FIXED };
+  for (const k of KEEP) if (process.env[k]) env[k] = process.env[k];
+  return env;
+}
+
+// A tree of Chrome or any app shows field values, so every reply passes bin/access-redact.sh as harbor_chrome's does
+// (contracts/secret-intake.md). Fail closed: a redactor that cannot run withholds the reply.
+const OUT_MAX = 100000;
+const REDACT = path.join(HERE, 'access-redact.sh');
+const WITHHELD = '[harbor desktop: output withheld,';
+function redacted(text: string): string {
+  const r = spawnSync('/bin/sh', [REDACT], { input: text, encoding: 'utf8', maxBuffer: 16 * OUT_MAX, timeout: 15000, env: { PATH: PATH_FIXED, LC_ALL: 'C' } });
+  if (r.status === 0 && typeof r.stdout === 'string') return r.stdout.replace(/\n$/, '');
+  return `${WITHHELD} the credential redactor failed: exit ${r.status ?? r.signal ?? 'none'}]`;
 }
 
 function reply(id: unknown, result: unknown) { process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, result }) + '\n'); }
@@ -83,11 +107,23 @@ process.stdin.on('data', (chunk: string) => {
     const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
     if (!line) continue;
     let m: any; try { m = JSON.parse(line); } catch { fail(null, -32700, 'parse error'); continue; }
-    if (m.id === undefined) continue;  // notifications
-    if (m.method === 'initialize') reply(m.id, { protocolVersion: m.params?.protocolVersion ?? '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'harbor_desktop', version: '1' } });
-    else if (m.method === 'tools/list') reply(m.id, { tools: Object.entries(TOOLS).map(([name, t]) => ({ name, description: t.d, inputSchema: { type: 'object', properties: t.props, required: t.req, additionalProperties: false } })) });
-    else if (m.method === 'tools/call') { const r = call(m.params?.name, m.params?.arguments ?? {}); reply(m.id, { content: [{ type: 'text', text: r.text }], isError: r.isError }); }
-    else if (m.method === 'ping') reply(m.id, {});
-    else fail(m.id, -32601, `method not found: ${m.method}`);
+    // A line that is not one request object (null, a number, a batch array) is refused; it must not end the server.
+    if (typeof m !== 'object' || m === null || Array.isArray(m)) { fail(null, -32600, 'invalid request'); continue; }
+    if (m.id === undefined || m.id === null) continue;  // notifications
+    if (typeof m.method !== 'string') { fail(m.id, -32600, 'invalid request'); continue; }
+    const p = m.params ?? {};
+    if (typeof p !== 'object' || Array.isArray(p)) { fail(m.id, -32602, 'params must be an object'); continue; }
+    try {
+      // Answer only a revision this loop speaks, never an echo: echoing 2026-07-28 claimed a stateless spec it lacks.
+      if (m.method === 'initialize') reply(m.id, { protocolVersion: PROTOCOLS.includes(p.protocolVersion) ? p.protocolVersion : PROTOCOLS[0], capabilities: { tools: {} }, serverInfo: { name: 'harbor_desktop', version: '1' } });
+      else if (m.method === 'tools/list') reply(m.id, { tools: Object.entries(TOOLS).map(([name, t]) => ({ name, description: t.d, inputSchema: { type: 'object', properties: t.props, required: t.req, additionalProperties: false } })) });
+      else if (m.method === 'tools/call') {
+        const a = p.arguments ?? {};
+        if (typeof p.name !== 'string' || typeof a !== 'object' || a === null || Array.isArray(a)) { fail(m.id, -32602, 'name must be a string and arguments an object'); continue; }
+        const r = call(p.name, a); reply(m.id, { content: [{ type: 'text', text: r.text }], isError: r.isError });
+      }
+      else if (m.method === 'ping') reply(m.id, {});
+      else fail(m.id, -32601, `method not found: ${m.method}`);
+    } catch (e) { fail(m.id, -32603, `internal error: ${(e as Error).name}`); }   // one bad request must not end the tools
   }
 });

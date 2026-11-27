@@ -26,11 +26,15 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 AGENT = os.path.join(HERE, 'access-browser-agent.sh')
 PROTOCOLS = ('2025-06-18', '2025-03-26', '2024-11-05')
 OUT_MAX = 100000
-LONG = {'attach': 900, 'wait-signin': 900}   # both wait on the operator: a click in Chrome, a sign-in
+LONG = {'attach': 900, 'wait-signin': 900, 'verify': 300}   # both wait on the operator: a click in Chrome, a sign-in
 VERBS = {
-    'attach': 'start the AGENT Chrome: a separate headless Chrome on a copy of the agent profile, never the operator\'s own Chrome '
-              '(args ["--show"] in a window, ["--headless"] no profile, ["--operator"] their own Chrome, only when they ask)',
-    'signin': 'open one window of the agent Chrome for the operator to sign in once (args: [url] or ["--done"])',
+    'attach': 'start the AGENT Chrome: plain attach = the signed-in agent profile, already without a window; --blank = no profile, never signed in. '
+              'A separate Chrome on a copy of the agent profile, never the operator\'s own Chrome '
+              '(args ["--show"] in a window, ["--blank"] no profile, ["--headless"] the old name of --blank, ["--operator"] their own Chrome, only when they ask)',
+    'signin': 'open one window of the agent Chrome for the operator to sign in once (args: [url], ["--cards", "a,b,c"], ["--next"] or ["--done"]); '
+              'each step prints the cookie names the host holds and whether each is persistent',
+    'verify': 'check a route card against this session\'s browser (args: [card]): each `check:`/`role-check:` goto url, its `expect:` literals: '
+              'pass, FAIL missing <literal> or login-wall; read-only',
     'status': 'this session\'s browser name, pin, profile and workdir',
     'state': 'the page\'s own visibility, focus and load state',
     'timing': 'the page\'s own clock as JSON (no args): navigation timing, the latest LCP, now, and every own-origin resource '
@@ -42,8 +46,8 @@ VERBS = {
     'front': 'make this session\'s tab the visible one, then give focus back',
     'wait-signin': 'wait (args: [seconds], default 300) while the operator signs in',
     'hosts': 'the host allowlist goto and tab_new read: core, then the private layer',
-    'goto': 'open one url (args: [url]): https on an allowed host; in a headless lane only, also a dev server at http://localhost:<port> or http://127.0.0.1:<port> (1024-65535)',
-    'tab-new': 'open a tab (args: [] or [url] on an allowed host; a dev server in a headless lane only)',
+    'goto': 'open one url (args: [url]): https on an allowed host; in a blank lane only, also a dev server at http://localhost:<port> or http://127.0.0.1:<port> (1024-65535)',
+    'tab-new': 'open a tab (args: [] or [url] on an allowed host; a dev server in a blank lane only)',
     'tab-list': 'this session\'s tabs', 'tab-select': 'select a tab (args: [index])', 'tab-close': 'close a tab (args: [index])',
     'snapshot': 'the page as an accessibility tree with refs', 'find': 'find on the page (args: [text])',
     'screenshot': 'a screenshot (args: [] or [--filename=<bare name>]); it lands in the session workdir',
@@ -60,6 +64,8 @@ VERBS = {
     'mousemove': 'move the mouse (args: [x, y])', 'mousedown': 'mouse down', 'mouseup': 'mouse up',
     'mousewheel': 'scroll (args: [dx, dy])', 'dialog-accept': 'accept the open dialog', 'dialog-dismiss': 'dismiss the open dialog',
     'upload': 'upload files (args: absolute paths) after a click opened the file chooser',
+    'intake': 'store a key shown once, unseen (args: [ref of the page\'s Copy, "add"|"rotate", access entry id, add flags...]): clicks the Copy, '
+              'reads this headless Chrome\'s own clipboard (or the field at ref) into harbor access --value-stdin; never the macOS clipboard',
     'confirm-click': "click a ref the operator approves in Claude Code's permission dialog (args as click): for a click that "
                      'changes a live system (Turn on, Apply, Publish, Delete, Pay, Generate token), which click refuses or the classifier denies',
 }

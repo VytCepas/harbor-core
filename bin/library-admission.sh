@@ -1054,10 +1054,28 @@ _floor_seg_ids() { # <cmd-ERE> [ci]
   _fsci=""; [ "${2:-}" = ci ] && _fsci="-i"
   # The anchors come off by parameter expansion, not $(printf | sed): two fewer processes per call (harbor#264).
   _fsre="${1#^}"; _fsre="${_fsre%\$}"
-  "$FLOOR_GREP" $_fsci -E "^SEGC:[0-9]+:$_fsre\$" 2>/dev/null <<HARBOR_ADMISSION_SEG_EOF \
-    | sed -n 's/^SEGC:\([0-9][0-9]*\):.*/\1/p' | sort -un | tr '\n' ' '
+  # The ids come off by parameter expansion, not `| sed | sort -un | tr`: three processes per call, 21 calls per Bash call (harbor#1633).
+  # Output stays sorted-unique: seg_emit, the cd fold and _suwadd all write ascending ids today, so `sort -un` runs only if a table ever repeats or reorders them.
+  # `|| :` keeps the old pipeline's status: a grep that fails for any reason (no match, bad pattern) yields no ids, as before.
+  _fsm="$("$FLOOR_GREP" $_fsci -E "^SEGC:[0-9]+:$_fsre\$" 2>/dev/null <<HARBOR_ADMISSION_SEG_EOF
 ${FLOOR_SEGS:-}
 HARBOR_ADMISSION_SEG_EOF
+)" || :
+  _fsout=''; _fsprev=-1; _fssort=0
+  while IFS= read -r _fsl; do
+    _fsl="${_fsl#SEGC:}"; _fsl="${_fsl%%:*}"
+    case "$_fsl" in ''|*[!0-9]*) continue ;; esac
+    [ "$_fsl" -gt "$_fsprev" ] || _fssort=1
+    _fsprev="$_fsl"; _fsout="$_fsout$_fsl "
+  done <<HARBOR_ADMISSION_SEG_EOF
+$_fsm
+HARBOR_ADMISSION_SEG_EOF
+  if [ "$_fssort" = 1 ]; then
+    # shellcheck disable=SC2086 # word-splitting the id list is the point
+    printf '%s\n' $_fsout | sort -un | tr '\n' ' '
+  else
+    printf '%s' "$_fsout"
+  fi
 }
 
 # _floor_seg_argtab — every segment's arguments and redirect targets, one per line, raw then in
@@ -2655,6 +2673,82 @@ floor_instr_manifest() { # <config-dir>
     done
     [ "$_mdn" -eq 0 ] || { eval "floor_instr_dirs $_mdr"; _mdn=0; _mdr=''; }
   done | floor_instr_unloaded_filter "$_imunl" | LC_ALL=C sort -k2
+}
+
+# floor_instr_probe <config-dir> — the B8 cache key (124ey1kjcu0 P4): the walk's own operands and prunes, each entry's lstat (ctime too,
+# so a backdated mtime still moves it), each link's target and the stat through it; a directory by its entries, not its times.
+# A superset of what the manifest reads, by batched stat: extra coverage costs a miss, never a stale hit. Nothing printed: walk.
+floor_instr_probe() { # <config-dir>
+  _floor_instr_probe_raw "$1" | awk -F'|' -v OFS='|' '$2 ~ /^[Dd]irectory$/ { $4 = ""; $5 = ""; $6 = "" } { print }'
+}
+_floor_instr_probe_raw() { # <config-dir>
+  _ipc="${1%/}"
+  if stat -c %s "$_ipc" >/dev/null 2>&1; then _ipf=-c; _ipe='E|%F|%i|%s|%.9Y|%.9Z|%N'; _ipt='T|%F|%i|%s|%.9Y|%.9Z|%n'
+  elif stat -f %z "$_ipc" >/dev/null 2>&1; then _ipf=-f; _ipe='E|%HT|%i|%z|%Fm|%Fc|%Y|%N'; _ipt='T|%HT|%i|%z|%Fm|%Fc||%N'
+  else return 0; fi
+  # settings.json and settings.local.json decide which plugins load (floor_plugins_unloaded), so they are read too.
+  stat "$_ipf" "$_ipe" "$_ipc/settings.json" "$_ipc/settings.local.json" 2>/dev/null
+  _ipm=''; _ipy=''
+  for _g in $FLOOR_INSTR_SURFACES; do
+    case "$_g" in plugins) ;; 'projects/*/memory') _ipy=1 ;; *) _ipm="$_ipm \"\$_ipc\"/$_g" ;; esac
+  done
+  [ -z "$_ipm" ] || eval "find $_ipm" '\( -name .git -o -name .in_use \) -prune -o \( -type l -o \( ! -name .last_inuse_sweep ! -name .gcs-sha \) \) -exec stat "$_ipf" "$_ipe" {} + -type l -exec stat -L "$_ipf" "$_ipt" {} +' 2>/dev/null
+  # The memory stores, unquoted glob as in the walk. A link to <cfg>/projects/<one>/memory (the shape floor_instr_shared_memory
+  # exempts) needs no stat through it: its target is an operand of this same find. That skips ~2,200 worktree links.
+  if [ -n "$_ipy" ]; then
+    _ipx="$_ipc/projects/*/memory"; case "$_ipc" in *[][*?]*) _ipx="$_ipc/.no-such-shape/." ;; esac
+    find "$_ipc"/projects/*/memory \( -name .git -o -name .in_use \) -prune -o \
+         \( -type l -o \( ! -name .last_inuse_sweep ! -name .gcs-sha \) \) -exec stat "$_ipf" "$_ipe" {} + \
+         -type l ! \( -lname "$_ipx" ! -lname "$_ipc/projects/*/*/memory" ! -lname '*..*' ! -lname '*//*' \) \
+         -exec stat -L "$_ipf" "$_ipt" {} + 2>/dev/null
+  fi
+  case " $FLOOR_INSTR_SURFACES " in *" plugins "*) ;; *) return 0 ;; esac
+  [ -e "$_ipc/plugins" ] || [ -L "$_ipc/plugins" ] || return 0
+  find "$_ipc/plugins" \( -name .git -o -name .in_use \) -prune -o \
+       \( -type l -o \( ! -name .last_inuse_sweep ! -name .gcs-sha ! -name .last-complete-round ! -name .orphaned_at \) \) \
+       -exec stat "$_ipf" "$_ipe" {} + -type l -exec stat -L "$_ipf" "$_ipt" {} + 2>/dev/null
+  # Each loaded plugin's dir, as floor_instr_tree walks it (-H, its own prunes), wherever its installPath points.
+  if [ -f "$_ipc/plugins/installed_plugins.json" ] && command -v jq >/dev/null 2>&1; then
+    floor_plugins_loaded "$_ipc/plugins/installed_plugins.json" | while IFS="$(printf '\t')" read -r _ipk _ips _ipp _ipl; do
+      [ -n "$_ipl" ] && [ "$_ipl" != - ] || continue
+      printf 'P|%s\n' "$_ipl"
+      find -H "$_ipl" \( -name .git -o -name .in_use \) -prune -o \
+           \( -type l -o \( ! -name .orphaned_at ! -name .last-complete-round ! -name .gcs-sha \) \) \
+           -exec stat "$_ipf" "$_ipe" {} + -type l -exec stat -L "$_ipf" "$_ipt" {} + 2>/dev/null
+    done
+  fi
+  return 0
+}
+# floor_instr_probe_settled <now-epoch> — exit 0 when no listed file, link or link target (directories aside) changed
+# in the 2 s before <now>. A probe line is a cache key only then: a later write gets a later ctime even on a coarse
+# clock (ext4 ticks in ms), so it cannot leave the line it changes looking the same.
+floor_instr_probe_settled() { # <now-epoch>, the probe on stdin
+  awk -F'|' -v now="$1" 'NF >= 7 && ($1 == "E" || $1 == "T") && $2 !~ /^[Dd]irectory$/ {
+      c = $6; sub(/\..*/, "", c); if (c !~ /^[0-9]+$/ || c + 2 > now) { bad = 1; exit } }
+    END { exit bad }'
+}
+# floor_instr_manifest_cached <cfg> <cache-file> <library> — floor_instr_manifest, reused while the probe key (with this library's bytes)
+# holds; only the B8 gate uses it, the pinner and floor-verify always walk. The cache sits in .helm-context, which a session cannot write.
+floor_instr_manifest_cached() { # <config-dir> <cache-file> <library-path>
+  _imc_now="$(date +%s 2>/dev/null)" || _imc_now=0
+  _imc_p="$(floor_instr_probe "$1")"
+  _imc_k=''
+  if [ -n "$_imc_p" ]; then
+    _imc_k="$({ printf '%s\n%s\n' "$1" "$FLOOR_INSTR_SURFACES"; floor_sha < "$3"; printf '%s\n' "$_imc_p"; } | floor_sha)" || _imc_k=''
+  fi
+  case "$_imc_k" in *[!0123456789abcdef]*|'') _imc_k='' ;; esac
+  if [ -n "$_imc_k" ] && [ -f "$2" ] && [ ! -L "$2" ]; then
+    _imc_h=''; { IFS= read -r _imc_h < "$2"; } 2>/dev/null || _imc_h=''
+    if [ "$_imc_h" = "key $_imc_k" ]; then sed 1d "$2"; return 0; fi
+  fi
+  _imc_m="$(floor_instr_manifest "$1")"
+  [ -n "$_imc_m" ] || return 0
+  printf '%s\n' "$_imc_m"
+  [ -n "$_imc_k" ] || return 0
+  printf '%s\n' "$_imc_p" | floor_instr_probe_settled "$_imc_now" || { rm -f "$2" 2>/dev/null; return 0; }
+  _imc_d="${2%/*}"; [ -d "$_imc_d" ] || mkdir -p "$_imc_d" 2>/dev/null || return 0
+  { printf 'key %s\n%s\n' "$_imc_k" "$_imc_m" > "$2.$$" && mv -f "$2.$$" "$2"; } 2>/dev/null || rm -f "$2.$$" 2>/dev/null
+  return 0
 }
 
 # The work-log record writer (G2 + harbor#6). ONE implementation for two callers: worklog-push.sh writes a record when a session STOPS, memory-harvest.sh when it finds a session that stopped without reaching that hook. Two open-coded writers of one format drift invisibly.
