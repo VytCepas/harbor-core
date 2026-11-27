@@ -57,20 +57,11 @@ bare() { # <dir> -> the *.sh files whose code holds `stat -f`
 # status-fleet-glyph.sh stays self-contained (the statusline sources nothing) and is
 # proved below. freshness, skill-usage and wf-progress keep a correct local copy: touching them trips lint LOG1's
 # ratchet until they move onto log-lib. lint-conventions.sh is copied alone into the lint suites' fixtures, so it cannot source a sibling. A new name here is a decision.
-t_eq "the bare stat -f files are exactly the named ones" "audit-collector.sh doc-freshness.sh library-admission.sh library-fs.sh lint-conventions.sh session-workflow-progress.sh skill-usage.sh status-fleet-glyph.sh" "$(bare "$T_ROOT/bin" | tr '\n' ' ' | sed 's/ $//')"
+t_eq "the bare stat -f files are exactly the named ones" "doc-freshness.sh library-fs.sh lint-conventions.sh session-workflow-progress.sh skill-usage.sh status-fleet-glyph.sh" "$(bare "$T_ROOT/bin" | tr '\n' ' ' | sed 's/ $//')"
 mkdir -p "$T_TMP/plant"
 printf '#!/usr/bin/env sh\nm="$(stat -f %%m "$1")"\n' > "$T_TMP/plant/new-tool.sh"
 printf '#!/usr/bin/env sh\n# stat -f in a comment is not a call\n' > "$T_TMP/plant/prose.sh"
 t_eq "red-proof: a planted bare call is found, a comment is not" "new-tool.sh" "$(bare "$T_TMP/plant")"
-# library-admission.sh is the B6-pinned floor library, which sources nothing outside the floor, and its B8 probe batches a
-# many-field format through find -exec stat {} +, which the helper's one field per call cannot; it asks `stat -c` first.
-ia_fn="$(awk '/^_floor_instr_probe_raw\(\) \{/ {p=1} p {print} p && /^\}/ {exit}' "$T_ROOT/bin/library-admission.sh")"
-t_eq "library-admission.sh's probe asks GNU stat -c before stat -f, as the helper does" "-c -f" \
-  "$(printf '%s\n' "$ia_fn" | grep -oE '(if|elif) stat -[cf]' | awk '{print $3}' | tr '\n' ' ' | sed 's/ $//')"
-# audit-collector.sh batches every file into one stat (harbor#1633), the same many-field case; it asks `stat -c` first too.
-ac_fn="$(grep -E "^[[:space:]]*(if|else) .*stat -[cf]" "$T_ROOT/bin/audit-collector.sh")"
-t_eq "audit-collector.sh asks GNU stat -c before stat -f" "-c -f" \
-  "$(printf "%s\n" "$ac_fn" | grep -oE "stat -[cf]" | awk "{print \$2}" | tr "\n" " " | sed "s/ $//")"
 
 t_section "the five scripts that keep their own stat answer correctly on both userlands"
 # Their own code, lifted from the source: a rewrite that no longer matches fails here, loudly.

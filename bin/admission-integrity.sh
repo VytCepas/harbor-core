@@ -198,11 +198,7 @@ done
 # CLAUDE.md, agents/, skills/, commands/, output-styles/ load into every session, so a write there is an instruction followed from the NEXT session on. They stay writable by owner decision; this makes the change visible at the session where it first takes effect.
 # ADVISORY, not blocking: these are edited as ordinary work, and fail-closed would turn "I added a skill" into a lockout (undone once already for plugins, red-team pass 3). Reported is not ignored: the message names the changed paths and the model sees it too.
 if [ -f "$CFG/.helm-instructions.sha256" ]; then
-  # Cached while nothing it covers has changed (P4, 124ey1kjcu0): the full walk cost p50 5.9 s, max 34 s at SessionStart.
-  # Only the config dir's own copy writes it: floor-verify fires B6 through a temp link and must write nothing (harbor#735).
-  if [ "$(_phys "${DIR%/*}")" = "$(_phys "$CFG")" ]; then
-    _now="$(floor_instr_manifest_cached "$CFG" "$CFG/.helm-context/instr-manifest.cache" "$DIR/library-admission.sh" 2>/dev/null || true)"
-  else _now="$(floor_instr_manifest "$CFG" 2>/dev/null || true)"; fi
+  _now="$(floor_instr_manifest "$CFG" 2>/dev/null || true)"
   if [ ! -r "$CFG/.helm-instructions.sha256" ]; then
     # A pin that cannot be read used to fall through to the diff and print the content-free "(0 path(s): )" (red-team B8-07).
     ADVISORY="${ADVISORY:+$ADVISORY; }the instruction pin exists but cannot be read — the instruction surfaces are NOT being checked"

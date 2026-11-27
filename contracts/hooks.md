@@ -499,7 +499,7 @@ can reach:
 
 1. **Where does the harbor plugin live** — extend `project-init-workflow`, or a
    new harbor-owned plugin, or just this repo's `.claude/settings.json`?
-   `host-profile.md` makes the box profile the **only** up-pointing edge and names
+   `box-profile.md` makes the box profile the **only** up-pointing edge and names
    **D7** (*a repo works with no upstream platform*) as what a second one breaks, so a harbor
    plugin depending on yard needs a ruling. `bin/govern-hook.sh` sources
    no `library-admission.sh` precisely so that every one of the three stays available.
