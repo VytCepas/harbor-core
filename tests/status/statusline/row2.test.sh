@@ -336,6 +336,22 @@ t_has "GitHub not answering says runners?" "$(row3at)" "runners?"
 rm -f "$CFG/cache/ci-runner-alarm.json"
 t_eq "an absent cache renders nothing: no row 3" 2 "$(rowsat)"
 
+t_section "row 3: DISK LOW (bin/status-disk.sh, check status.disk, operator decision 2026-11-23)"
+dkc() { printf '%s\n' "$1" > "$CFG/cache/disk-free.json"; }
+dkc '{"at":'"$NOW"',"path":"/System/Volumes/Data","free_gb":24.3,"min_gb":30,"low":true}'
+O="$(row3at)"
+t_has "free space under the floor is an alarm, whole GB, rounded down" "$O" "DISK LOW 24G"
+t_hasnt "...and not on row 2" "$(row2at)" "DISK"
+t_has "...in red, like the other outages" "$(runat "{$WS}" | grep 'DISK LOW')" "$(printf '\033[31m')DISK LOW"
+dkc '{"at":'"$NOW"',"path":"/System/Volumes/Data","free_gb":103.0,"min_gb":30,"low":false}'
+t_eq "control: free space over the floor renders nothing: no row 3" 2 "$(rowsat)"
+dkc '{"at":'"$((NOW - 1000))"',"path":"/System/Volumes/Data","free_gb":24.3,"min_gb":30,"low":true}'
+O="$(row3at)"
+t_hasnt "a reading over 900s old is not claimed" "$O" "DISK LOW"
+t_has "...it says disk? instead" "$(runat "{$WS}" | plain)" "disk?"
+rm -f "$CFG/cache/disk-free.json"
+t_eq "an absent cache renders nothing: no row 3" 2 "$(rowsat)"
+
 t_section "CI: inventory on BOX in grey, alarms on YOU by severity, none on PLACE"
 # All four caches at once (harbor#1032, operator request 2026-10-05); the machine row is off in this suite.
 ciq '{"at":'"$NOW"',"repos":[{"repo":"o/r","runners":4,"left":3,"eta":'"$((NOW + 800))"'}]}'

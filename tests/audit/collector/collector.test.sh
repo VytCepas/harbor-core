@@ -56,6 +56,11 @@ t_eq "a second source dir is copied" yes "$(copied | grep -qx e1 && echo yes || 
 t_eq "a single-file source is copied" yes "$(copied | grep -qxF "[check:x] t m" && echo yes || echo no)"
 t_eq "a source that does not exist is reported once" 1 "$(multi; ev missing)"
 
+t_section "a linked single-file source is read one by one, outside the batched stat (harbor#1633)"
+printf 'ln1\n' > "$T_TMP/linked.log"; ln -s "$T_TMP/linked.log" "$T_TMP/link.log"
+HARBOR_AUDIT_COLLECTOR_SOURCES="$T_TMP/link.log" HARBOR_AUDIT_COLLECTOR_STORE="$ST" sh "$C" >/dev/null 2>&1
+t_eq "a source that is a link is copied" yes "$(copied | grep -qx ln1 && echo yes || echo no)"
+
 t_section "the fast path, and its daily backstop"
 printf 'q1\nq2\n' > "$S/h/quiet.jsonl"; touch -t 202001010000 "$S/h/quiet.jsonl"; run >/dev/null   # a closed file: idle for years
 _e0="$(ev edited)"

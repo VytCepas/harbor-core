@@ -426,7 +426,6 @@
 1	tests/doc/freshness/output-contract.test.sh
 1	tests/doc/index-generate/index-generate.test.sh
 1	tests/doc/isa-index/isa-index.test.sh
-1	tests/doc/vale/vale.test.sh
 1	tests/doc/visual-check/output-contract.test.sh
 1	tests/drift/port-root/port-root.test.sh
 1	tests/eval/hook-replay/output-contract.test.sh
@@ -477,7 +476,6 @@
 1	tests/status/generate/output-contract.test.sh
 1	tests/status/plan-generate/plan-generate.test.sh
 1	tests/status/statusline/subagent.test.sh
-1	tests/status/telemetry-report/telemetry-report.test.sh
 1	tests/status/usage-aggregate/output-contract.test.sh
 1	tests/worktree/post-checkout/post-checkout.test.sh
 0	hooks/failure-observe/output-contract.test.sh

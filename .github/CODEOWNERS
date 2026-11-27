@@ -79,6 +79,7 @@
 /standards/naming/controls.tsv @VytCepas
 /bin/access-browser-agent.sh @VytCepas
 /bin/access-browser.sh @VytCepas
+/bin/access-get.sh @VytCepas
 /bin/access-github-app-install.sh @VytCepas
 /bin/access-oauth.sh @VytCepas
 /bin/access-redact.sh @VytCepas
@@ -130,6 +131,7 @@
 /bin/ci-verified.sh @VytCepas
 /bin/ci-wait.sh @VytCepas
 /bin/context-budget.sh @VytCepas
+/bin/context-compaction-digest.sh @VytCepas
 /bin/context-injection-install.sh @VytCepas
 /bin/context-peers.sh @VytCepas
 /bin/deploy-doctor.sh @VytCepas
@@ -225,6 +227,7 @@
 /bin/memory-lint.sh @VytCepas
 /bin/memory-log-token-save.sh @VytCepas
 /bin/memory-route.sh @VytCepas
+/bin/memory-secret-scan.sh @VytCepas
 /bin/memory-store-check.sh @VytCepas
 /bin/memory.sh @VytCepas
 /bin/name-check @VytCepas
@@ -264,6 +267,7 @@
 /bin/standard-rename.sh @VytCepas
 /bin/standard-shape.sh @VytCepas
 /bin/standard-vendor.sh @VytCepas
+/bin/status-disk.sh @VytCepas
 /bin/status-fleet-snapshot-refresh.sh @VytCepas
 /bin/status-fleet-watch.sh @VytCepas
 /bin/status-generate.sh @VytCepas

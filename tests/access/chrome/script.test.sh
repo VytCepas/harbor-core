@@ -59,7 +59,7 @@ t_eq "a script click that lands on sign-in is refused as signed out" "exit 1" "$
 t_has "naming the sign-in" "$(txt)" "signed out"
 clean
 # The scripted dispatch removed, a click must reach the daemon's own verb: the arms above can fail.
-mkdir -p "$T_TMP/mut2/bin" "$T_TMP/mut2/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/admission-egress.sh" "$T_TMP/mut2/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/mut2/contracts/"
+mkdir -p "$T_TMP/mut2/bin" "$T_TMP/mut2/contracts"; cp "$X/bin/access-chrome-mcp.seams.json" "$X/bin/access-browser-agent.sh" "$X/bin/scope-roots.sh" "$X/bin/access-redact.sh" "$X/bin/library-log.sh" "$X/bin/admission-egress.sh" "$T_TMP/mut2/bin/"; cp "$X/contracts/browser-agent-hosts.txt" "$X/contracts/browser-script.tsv" "$X/contracts/live-change-words.txt" "$T_TMP/mut2/contracts/"
 sed 's/^  if (SCRIPTED.has(verb) \&\& !real .*/  if (false) return null as never;/' "$SRV" > "$T_TMP/mut2/bin/access-chrome-mcp.ts"
 t_eq "the mutant differs from the server" yes "$(cmp -s "$SRV" "$T_TMP/mut2/bin/access-chrome-mcp.ts" || echo yes)"
 _old="$SRV"; SRV="$T_TMP/mut2/bin/access-chrome-mcp.ts"; : > "$CALLS"; mcp click e3 >/dev/null

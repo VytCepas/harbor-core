@@ -28,8 +28,8 @@ WEDGE_READ='cat /sys/fs/cgroup/memory.events /sys/fs/cgroup/cpu.stat 2>/dev/null
 echo "jobs $(ls "$HOME"/_diag/Worker_*.log 2>/dev/null | wc -l)"
 ps -eo pid=,etimes=,comm= 2>/dev/null | while read -r p e c; do
   [ "$c" = Runner.Worker ] || continue; set -- $(cat "/proc/$p/stat" 2>/dev/null); echo "worker $p $e ${22:-0}"; done; :'
-# an exec into a memory-starved container can hang: 20s, then it is unread (perl's alarm, as session-state.sh does)
-dexec() { if command -v perl >/dev/null 2>&1; then perl -e 'alarm shift; exec @ARGV' 20 "$DOCKER" exec "$@"; else "$DOCKER" exec "$@"; fi; }
+# an exec into a memory-starved container can hang: DEXEC_SEC (20s; tidy gives itself 600), then it is unread (perl's alarm, as session-state.sh does)
+dexec() { if command -v perl >/dev/null 2>&1; then perl -e 'alarm shift; exec @ARGV' "${DEXEC_SEC:-20}" "$DOCKER" exec "$@"; else "$DOCKER" exec "$@"; fi; }
 # wedge_one <container> — one JSON line: the cgroup's counters, jobs run so far and the job (Runner.Worker pid.start, age), or fails
 wedge_one() {
   dexec "$1" sh -c "$WEDGE_READ" > "$T/wr" 2>/dev/null || return 1

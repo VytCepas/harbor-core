@@ -94,8 +94,8 @@ on members too; `hub-token`, the one ref the floor's guards name, is a `tool-req
 **Value hygiene:** with `--value-stdin`, `add` and `rotate` trim whitespace around the value and refuse one with
 whitespace inside it, printing its length and never the value; `add --verbatim` (field `value-shape: verbatim`) stores
 a key file or JSON byte for byte instead. `--value-clipboard` (on `add` and `rotate`) takes the value from the clipboard
-into that same stdin path, never shown, and empties the clipboard after: the route for a key a page shows once
-(contracts/secret-intake.md). `--value-oauth` (on `add` and `rotate`) takes a token from an OAuth consent in harbor
+into that same stdin path, never shown, and empties the clipboard after: the route for a value the operator copied;
+a key a page shows once goes through `harbor chrome intake` instead (contracts/secret-intake.md). `--value-oauth` (on `add` and `rotate`) takes a token from an OAuth consent in harbor
 chrome into that same path, the code and the token never shown (`bin/access-oauth.sh`).
 
 ## A renamed ref: one credential, two names, until remove_by
