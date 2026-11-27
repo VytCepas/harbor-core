@@ -71,7 +71,8 @@
 # and costs nothing.
 #
 # EMERGENCY (a spike the load average would show 30-90s late). The sampler samples every sample_interval (2) s
-# plus iostat's 1s: CPU busy over that second at or above cpu_emergency (95) % on spike_samples (2) samples
+# plus iostat's 1s, and the slow reads (the user's idle time, the thermal state) every slow_every (5) samples (harbor#1633):
+# CPU busy over that second at or above cpu_emergency (95) % on spike_samples (2) samples
 # in a row while the user is active (idle, CI is meant to fill the box), memory pressure at or above
 # mem_emergency (4, critical; kern.memorystatus_vm_pressure_level), or a recorded thermal or performance warning
 # level or a CPU speed limit under thermal_speed_min (90) % (`pmset -g therm`), the last two on one sample. The
@@ -224,6 +225,7 @@ LOW_PRIORITY="$(cfgs low_priority "$_LP_DEF" | tr ',' ' ')"
 REPO="$(cfgs repo '')"; [ -n "$REPO" ] || REPO="$(repo_slug "$HERE")"   # the config's `repo`, else harbor's own (harbor#1149)
 MAC_LABELS="$(cfgs mac_labels self-hosted,macOS,ARM64)"
 SAMPLE_INTERVAL="$(cfg sample_interval 2)"
+SLOW_EVERY="$(int "$(cfg slow_every 5)")"; [ "$SLOW_EVERY" -ge 1 ] || SLOW_EVERY=1
 TICK_INTERVAL="$(int "$(cfg tick_interval 30)")"
 CPU_EMERGENCY="$(cfg cpu_emergency 95)"
 SPIKE_SAMPLES="$(int "$(cfg spike_samples 2)")"
@@ -248,6 +250,14 @@ TRIGGER="${HARBOR_CI_GOVERNOR_TRIGGER:-$HOME/runners/harbor-linux/events/trigger
 # st <key> — one value from the state file (key=value lines; read, never sourced).
 kv() { [ -f "$1" ] && awk -F= -v k="$2" '$1 == k { sub(/^[^=]*=/, ""); v = $0 } END { print v }' "$1" 2>/dev/null || true; }
 st() { kv "$STATE" "$1"; }
+# held_now → HELD_NOW: the state's held, read without a process; the sampler loop reads it every sample (harbor#1633).
+held_now() {
+  HELD_NOW=""; [ -f "$STATE" ] || return 0
+  while IFS= read -r _hl || [ -n "$_hl" ]; do case "$_hl" in held=*) HELD_NOW="${_hl#held=}" ;; esac; done < "$STATE"
+}
+# flat <text> → FLAT: one line with no `=`, for a key=value file; a process only when there is something to replace.
+flat() { case "$1" in *"
+"*|*=*) FLAT="$(printf '%s' "$1" | tr '\n=' '  ')" ;; *) FLAT="$1" ;; esac; }
 ek() { kv "$EMERG" "$1"; }
 kv_pid() { [ -f "$1" ] && awk 'NR == 1 { print $1 }' "$1" 2>/dev/null || true; }
 # alive <pidfile> — its pid runs and still has the start time recorded beside it (a recycled pid is not it).
@@ -275,11 +285,18 @@ signals() {
 }
 
 # Fast signals, each measured cheap (2026-10-04, this box): iostat's 1s sample costs ~0 CPU and 1s wall;
-# sysctl and pmset well under 10ms.
+# sysctl and pmset well under 10ms. Every sample: CPU busy and memory pressure, one process each; iostat's last line
+# is the 1s sample, parsed in the shell (harbor#1633: the sampler ran ~19 processes a sample).
 fast_signals() {
-  CPU_BUSY="$(iostat -n0 -c 2 -w 1 2>/dev/null | awk '$1 ~ /^[0-9]+$/ && $3 ~ /^[0-9]+$/ { id = $3 } END { if (id != "") print 100 - id }' || true)"
+  _io="$(iostat -n0 -c 2 -w 1 2>/dev/null || true)"; CPU_BUSY=""
+  set -f; set -- ${_io##*"
+"}; set +f
+  case "${1:-x}${3:-x}" in *[!0-9]*) ;; *) CPU_BUSY=$(( 100 - $3 )) ;; esac
   MEM_LEVEL="$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null || true)"
   case "$MEM_LEVEL" in ''|*[!0-9]*) MEM_LEVEL="" ;; esac
+}
+# The thermal state: pmset and an awk, so the sampler loop reads it every slow_every samples.
+slow_signals() {
   THERM="$(pmset -g therm 2>/dev/null | awk -v lim="$THERMAL_SPEED_MIN" '
       /[Ww]arning level/ && !/No / { for (i = 1; i <= NF; i++) { v = $i; sub(/\.$/, "", v)
           if (v ~ /^[0-9]+$/ && v + 0 > 0) { w = ($0 ~ /[Pp]erformance/) ? "performance" : "thermal"; print w " warning level " v; exit } } }
@@ -311,15 +328,23 @@ emergency_state() {
 cmd_sample() {
   DRY=0
   case "${1:-}" in --dry-run) DRY=1 ;; '') ;; *) log_fail "unknown option $1"; log_fix "sh $0 --help"; log_end || :; exit 2 ;; esac
-  [ "$DRY" = 1 ] || mkdir -p "$STATE_DIR/slots" "$CACHE_DIR"
+  [ "$DRY" = 1 ] || [ -n "${IN_SAMPLER:-}" ] || mkdir -p "$STATE_DIR/slots" "$CACHE_DIR"
   NOW="$(now)"
   if [ -z "${EM_LOADED:-}" ]; then
     EM_ON="$(num_or "$(ek on)" 0)"; EM_HOT="$(num_or "$(ek hot)" 0)"; EM_SINCE="$(num_or "$(ek since)" 0)"
     EM_CLEAR="$(num_or "$(ek clear_since)" "")"; EM_WHY="$(ek why)"; EM_LOADED=1
   fi
-  signals; fast_signals
+  # One `sample`, and the sampler's first: every signal. Then the slow ones every slow_every samples, between which
+  # MODE is the last read's (or the last tick's).
+  if [ "${SAMPLE_N:-0}" = 0 ]; then signals; slow_signals; fi
+  fast_signals
   _cpu=""; _hard=""
-  if [ "$MODE" = active ] && [ -n "$CPU_BUSY" ] && ! lt "$CPU_BUSY" "$CPU_EMERGENCY"; then _cpu="cpu ${CPU_BUSY}% busy"; fi
+  if [ "$MODE" = active ] && [ -n "$CPU_BUSY" ]; then
+    case "$CPU_EMERGENCY" in
+      *[!0-9]*) lt "$CPU_BUSY" "$CPU_EMERGENCY" || _cpu="cpu ${CPU_BUSY}% busy" ;;
+      *) [ "$CPU_BUSY" -lt "$CPU_EMERGENCY" ] || _cpu="cpu ${CPU_BUSY}% busy" ;;
+    esac
+  fi
   if [ -n "$MEM_LEVEL" ] && [ "$MEM_LEVEL" -ge "$MEM_EMERGENCY" ]; then _hard="memory pressure level $MEM_LEVEL"; fi
   [ -z "$THERM" ] || _hard="${_hard:+$_hard, }$THERM"
   if [ -n "$_cpu" ]; then EM_HOT=$(( EM_HOT + 1 )); else EM_HOT=0; fi
@@ -338,9 +363,10 @@ cmd_sample() {
     printf '%s sample: cpu %s%% busy (%s), memory pressure %s, thermal %s; emergency %s%s\n' "$(date +%H:%M:%S)" \
       "${CPU_BUSY:-?}" "$MODE" "${MEM_LEVEL:-?}" "${THERM:-none}" "$EM_ON" "${EM_WHY:+ ($EM_WHY)}"
   else
+    flat "$EM_WHY"; _fw="$FLAT"; flat "$THERM"
     printf 'sampled_at=%s\non=%s\nhot=%s\nsince=%s\nclear_since=%s\nwhy=%s\ncpu=%s\nmem=%s\ntherm=%s\n' \
-      "$NOW" "$EM_ON" "$EM_HOT" "$EM_SINCE" "$EM_CLEAR" "$(printf '%s' "$EM_WHY" | tr '\n=' '  ')" "$CPU_BUSY" "$MEM_LEVEL" \
-      "$(printf '%s' "$THERM" | tr '\n=' '  ')" > "$EMERG.tmp.$$" && mv -f "$EMERG.tmp.$$" "$EMERG"
+      "$NOW" "$EM_ON" "$EM_HOT" "$EM_SINCE" "$EM_CLEAR" "$_fw" "$CPU_BUSY" "$MEM_LEVEL" \
+      "$FLAT" > "$EMERG.tmp.$$" && mv -f "$EMERG.tmp.$$" "$EMERG"
   fi
   TICKED=0
   if [ "$EM_ON" != "$_was" ]; then
@@ -1006,12 +1032,12 @@ cmd_sampler() {
   alive "$SAMPLER" && exit 0
   pidfile "$SAMPLER"
   trap 'DRY=0; CHANGES=""; resume_all "the sampler stopped"; [ -z "$CHANGES" ] || logline "$CHANGES"; rm -f "$SAMPLER"; exit 0' TERM INT HUP
-  LAST_TICK="$(num_or "$(st at)" 0)"
+  LAST_TICK="$(num_or "$(st at)" 0)"; IN_SAMPLER=1; SAMPLE_N=0
   while :; do
-    cmd_sample
-    NOW="$(now)"
+    cmd_sample   # sets NOW, at the sample's start
     if [ $(( NOW - LAST_TICK )) -ge "$TICK_INTERVAL" ]; then cmd_tick; LAST_TICK="$NOW"; fi
-    [ "$(st held)" = 1 ] || [ "$EM_ON" = 1 ] || break
+    held_now; [ "$HELD_NOW" = 1 ] || [ "$EM_ON" = 1 ] || break
+    SAMPLE_N=$(( (SAMPLE_N + 1) % SLOW_EVERY ))
     sleep "$SAMPLE_INTERVAL"
   done
   rm -f "$SAMPLER"

@@ -291,6 +291,22 @@ printf 'tests/x/x-test.sh\n' > "$FR/contracts/suites.txt"
 git init -q -b main "$FR" >/dev/null 2>&1
 ( cd "$FR" && git add -A && git -c user.email=t@t.invalid -c user.name=t commit -q -m base ) >/dev/null 2>&1
 
+t_section "the sampler: CPU and memory every sample, the slow reads every slow_every (harbor#1633)"
+ncalls() { if [ -f "$FX/$1.calls" ]; then wc -l < "$FX/$1.calls" | tr -d ' '; else echo 0; fi; }
+reset; gov tick >/dev/null; slot_up; gov tick >/dev/null
+printf 'sample_interval=0.2\nslow_every=3\n' >> "$CLAUDE_CONFIG_DIR/.harbor-ci-governor"
+I0="$(niostat)"; P0="$(ncalls pmset)"; R0="$(ncalls ioreg)"
+HARBOR_TEST_NOW="$AT" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_RUNNERS_DIR="$RUNNERS" sh "$GOV" sampler >/dev/null 2>&1 & W=$!
+_i=0; while [ $(( $(niostat) - I0 )) -lt 7 ] && [ "$_i" -lt 50 ]; do sleep 0.2; _i=$((_i + 1)); done
+printf 'Thermal warning level set to 2.\n' > "$FX/therm"
+t_eq "a thermal warning that starts mid-run is still seen" 1 "$(until_eq 1 ek on)"
+kill -TERM "$W"; wait "$W" 2>/dev/null
+NI=$(( $(niostat) - I0 )); NP=$(( $(ncalls pmset) - P0 )); NR=$(( $(ncalls ioreg) - R0 ))
+t_eq "(setup) the sampler ran at least 7 samples" yes "$([ "$NI" -ge 7 ] && echo yes || echo "no: $NI")"
+t_eq "pmset is read on about one sample in 3, and more than once" yes "$([ "$NP" -ge 2 ] && [ $(( NP * 2 )) -le "$NI" ] && echo yes || echo "no: $NP of $NI")"
+t_eq "...and ioreg too" yes "$([ "$NR" -ge 2 ] && [ $(( NR * 2 )) -le "$NI" ] && echo yes || echo "no: $NR of $NI")"
+rm -f "$FX/therm"; slot_down
+
 t_section "wiring: hooks/pre-push takes a slot per check"
 full_box
 O="$(cd "$FR" && printf '' | HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CI_GOVERNOR_POLL=0.2 sh hooks/pre-push 2>&1)"; RC=$?
