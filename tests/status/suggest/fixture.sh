@@ -7,7 +7,7 @@ ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)"
 TREE="$W/tree"; CFG="$W/cfg"; ST="$W/state"
 mkdir -p "$TREE/bin" "$TREE/context-rules/user" "$CFG/projects/-fx" "$ST" "$W/home"
 cp "$ROOT/bin/status-suggest.sh" "$ROOT/bin/library-log.sh" "$ROOT/bin/library-fs.sh" "$TREE/bin/"
-cp "$ROOT/fixtures/injection-rule/suggest-tool.tsv" "$TREE/context-rules/user/suggest-tool.tsv"
+cp "$ROOT/fixtures/suggest/rows.tsv" "$TREE/context-rules/user/suggest-rows.tsv"
 # The dates are the tool's clock; one fixed date keeps the fixture the same on any day.
 fixdate() { sed "s/$(date +%Y-%m-%d)/2026-11-06/g"; }
 real() { HOME="$W/home" HARBOR_STATUS_SUGGEST_DIR="$ST" sh "$TREE/bin/status-suggest.sh" "$@" 2>/dev/null; }
