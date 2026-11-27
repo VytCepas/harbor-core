@@ -34,6 +34,35 @@ t_has "a repo pack fires alongside the box packs" "$(fire "$(bash_ev PreToolUse 
 t_has "the envelope names the event it answered" "$(fire "$(bash_ev PreToolUse 'gh pr merge 173')")" '"hookEventName":"PreToolUse"'
 t_eq "a tool the rule does not name says nothing" "" "$(fire "$(tool_ev PreToolUse Write file_path /tmp/x)")"
 
+t_section "1 · frontmatter ends at its closing ---: a key-shaped body line is body (harbor#1633)"
+pack "$CFG/context-rules/user" 12-body-key.md <<'PACK'
+---
+id: body-key
+event: PreToolUse
+when: always
+once: never
+---
+BODY-KEY-NOTE
+tool: Write
+PACK
+t_has "a body line shaped like tool: does not narrow the pack" "$(fire "$(bash_ev PreToolUse 'ls')")" BODY-KEY-NOTE
+rm -f "$CFG/context-rules/user/12-body-key.md"
+printf -- '---\nid: body-key-sp\nevent: PreToolUse\nwhen: always\nonce: never\n---  \nBODY-SP-NOTE\ntool: Write\n' > "$CFG/context-rules/user/12-body-sp.md"
+t_has "a closing --- with trailing blanks still ends it" "$(fire "$(bash_ev PreToolUse 'ls')")" BODY-SP-NOTE
+rm -f "$CFG/context-rules/user/12-body-sp.md"
+pack "$CFG/context-rules/user" 12-two-sp.md <<'PACK'
+---
+id: two-sp
+event: PreToolUse
+when: always
+once: never
+---
+TWOSP-A  TWOSP-B
+PACK
+_m="$(fire "$(bash_ev PreToolUse 'ls')")"
+t_has "a one-line note's double blank is squeezed" "$_m" 'TWOSP-A TWOSP-B'
+rm -f "$CFG/context-rules/user/12-two-sp.md"
+
 t_section "1 · a tier that is the same directory twice is loaded once"
 pack "$T/same/context-rules/repo" 10-once.md <<'PACK'
 ---
@@ -299,6 +328,11 @@ printf -- '---\nid: escaper\nevent: PreToolUse\ntool: Bash\nwhen: cmd-prefix mak
 gone "run: with .. is refused" "$(fire "$(bash_ev PreToolUse 'make ship')")" ESCAPE-RAN
 sed 's|^run: ../../escape.sh$|run: inside.sh|' "$REPO/context-rules/repo/61-escape.md" > "$T/e.md" && mv "$T/e.md" "$REPO/context-rules/repo/61-escape.md"
 t_has "the same script beside its pack does run (the needle can appear)" "$(fire "$(bash_ev PreToolUse 'make ship')")" ESCAPE-RAN
+# No closing --- and no final newline: the last line is still frontmatter (harbor#1633).
+printf '#!/bin/sh\necho OPEN-NOTE\n' > "$REPO/context-rules/repo/open.sh"
+printf -- '---\nid: openrule\nevent: PreToolUse\ntool: Bash\nwhen: cmd-prefix make ship\nonce: never\nrun: open.sh' > "$REPO/context-rules/repo/62-open.md"
+t_has "an unclosed pack's last line, with no newline, is still read" "$(fire "$(bash_ev PreToolUse 'make ship')")" OPEN-NOTE
+rm -f "$REPO/context-rules/repo/62-open.md" "$REPO/context-rules/repo/open.sh"
 rm -f "$REPO/context-rules/repo/61-escape.md" "$REPO/context-rules/repo/inside.sh" "$REPO/escape.sh" "$REPO/context-rules/repo/60-run.md" "$REPO/context-rules/repo/dyn.sh" "$REPO/MARKER"
 
 t_section "7 · provenance"
@@ -442,6 +476,18 @@ t_has "shadow: the note was recorded, as d=shadow" "$(cat "$MS")" '"d":"shadow"'
 t_eq "shadow: one record per rule that would have spoken" 2 "$(grep -c '"d":"shadow"' "$MS")"
 _m="$(modefire warn block)"
 t_has "block: the deny is a real PreToolUse decision" "$_m" '"permissionDecision":"deny"'
+regfire() { # <emitted id> <mode>... -> the engine's stdout, the register holding exactly those rows (harbor#1633)
+  _sid="r-$$-$1-$2-$#"
+  { printf 'id\tmode\ttype\tengine\tsurfaces\tmoment\tfunction\tstability\tsuccessor\towner\tred_proof\temitted\ttitle\n'
+    while [ $# -ge 2 ]; do
+      printf 'context.%s\t%s\tinjection\thooks/injection-rule/injection-rule.sh\t-\truntime\tpreventive\texperimental\t-\tcontext\t-\t%s\tx\n' "$1" "$2" "$1"; shift 2
+    done; } > "$ML/bin/controls.tsv"
+  printf '%s' "$(bash_ev PreToolUse 'modeprobe now' "$_sid")" \
+    | CLAUDE_CONFIG_DIR="$ML" CLAUDE_PROJECT_DIR="$REPO" sh "$ML/bin/injection-rule.sh" 2>/dev/null
+}
+t_hasnt "two rows for one id: the first one rules, as the per-pack awk did" "$(regfire mode-note shadow mode-note warn mode-deny warn)" MODE-NOTE-BODY
+t_has "...and the other order speaks, so the silence above is the row, not the engine" "$(regfire mode-note warn mode-note shadow mode-deny warn)" MODE-NOTE-BODY
+t_has "a row whose id only ends with the pack's id is not the pack's row" "$(regfire x-mode-note shadow mode-deny warn)" MODE-NOTE-BODY
 rm -f "$ML/bin/controls.tsv"
 _m="$(printf '%s' "$(bash_ev PreToolUse 'modeprobe now' "m-nore-$$")" | CLAUDE_CONFIG_DIR="$ML" CLAUDE_PROJECT_DIR="$REPO" sh "$ML/bin/injection-rule.sh" 2>/dev/null)"
 t_has "no register at all: a deny is still honoured, as before" "$_m" '"permissionDecision":"deny"'
