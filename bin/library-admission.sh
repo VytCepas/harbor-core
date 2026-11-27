@@ -1054,10 +1054,28 @@ _floor_seg_ids() { # <cmd-ERE> [ci]
   _fsci=""; [ "${2:-}" = ci ] && _fsci="-i"
   # The anchors come off by parameter expansion, not $(printf | sed): two fewer processes per call (harbor#264).
   _fsre="${1#^}"; _fsre="${_fsre%\$}"
-  "$FLOOR_GREP" $_fsci -E "^SEGC:[0-9]+:$_fsre\$" 2>/dev/null <<HARBOR_ADMISSION_SEG_EOF \
-    | sed -n 's/^SEGC:\([0-9][0-9]*\):.*/\1/p' | sort -un | tr '\n' ' '
+  # The ids come off by parameter expansion, not `| sed | sort -un | tr`: three processes per call, 21 calls per Bash call (harbor#1633).
+  # Output stays sorted-unique: seg_emit, the cd fold and _suwadd all write ascending ids today, so `sort -un` runs only if a table ever repeats or reorders them.
+  # `|| :` keeps the old pipeline's status: a grep that fails for any reason (no match, bad pattern) yields no ids, as before.
+  _fsm="$("$FLOOR_GREP" $_fsci -E "^SEGC:[0-9]+:$_fsre\$" 2>/dev/null <<HARBOR_ADMISSION_SEG_EOF
 ${FLOOR_SEGS:-}
 HARBOR_ADMISSION_SEG_EOF
+)" || :
+  _fsout=''; _fsprev=-1; _fssort=0
+  while IFS= read -r _fsl; do
+    _fsl="${_fsl#SEGC:}"; _fsl="${_fsl%%:*}"
+    case "$_fsl" in ''|*[!0-9]*) continue ;; esac
+    [ "$_fsl" -gt "$_fsprev" ] || _fssort=1
+    _fsprev="$_fsl"; _fsout="$_fsout$_fsl "
+  done <<HARBOR_ADMISSION_SEG_EOF
+$_fsm
+HARBOR_ADMISSION_SEG_EOF
+  if [ "$_fssort" = 1 ]; then
+    # shellcheck disable=SC2086 # word-splitting the id list is the point
+    printf '%s\n' $_fsout | sort -un | tr '\n' ' '
+  else
+    printf '%s' "$_fsout"
+  fi
 }
 
 # _floor_seg_argtab — every segment's arguments and redirect targets, one per line, raw then in
