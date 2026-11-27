@@ -27,7 +27,6 @@ EOF
 chmod +x "$INBIN/pgrep" "$INBIN/ps"
 cat > "$T_BIN/ioreg" <<'EOF'
 #!/bin/sh
-echo x >> "$FX/ioreg.calls"
 printf '    | |   "HIDIdleTime" = %s000000000\n' "$(cat "$FX/idle")"
 EOF
 cat > "$T_BIN/sysctl" <<'EOF'
@@ -76,7 +75,6 @@ b="$(cat "$FX/cpu")"; printf ' %d 0 %d  1.00 1.00 1.00\n' "$b" "$((100 - b))"
 EOF
 cat > "$T_BIN/pmset" <<'EOF'
 #!/bin/sh
-echo x >> "$FX/pmset.calls"
 if [ -f "$FX/therm" ]; then cat "$FX/therm"; else
   printf 'Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded\n'; fi
 EOF
