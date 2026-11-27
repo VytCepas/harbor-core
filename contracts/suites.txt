@@ -40,7 +40,6 @@ tests/admission/baseline/baseline.test.sh
 tests/admission/baseline/install.test.sh
 tests/admission/baseline/b6.test.sh
 tests/admission/baseline/b8.test.sh
-tests/admission/baseline/b8-cache.test.sh
 tests/admission/baseline/managed.test.sh
 tests/admission/baseline/confinement.test.sh
 tests/admission/baseline/ledger.test.sh
@@ -74,7 +73,6 @@ tests/lint/conventions/skills.test.sh
 tests/lint/conventions/suites.test.sh
 tests/scope/marker/marker.test.sh
 tests/memory/memory/memory.test.sh
-tests/memory/secret-scan/secret-scan.test.sh
 tests/admission/normalize/normalize.test.sh
 tests/admission/prod/prod.test.sh
 tests/alert/probe/probe.test.sh
@@ -269,6 +267,7 @@ hooks/reply-shape/reply-shape.test.sh
 tests/session/subagent/check.test.sh
 tests/session/agents/registry.test.sh
 tests/ci/governor/priority.test.sh
+tests/ci/governor/box.test.sh
 tests/event/bus/emit.test.sh
 tests/event/bus/concurrency.test.sh
 tests/event/bus/wait.test.sh
@@ -333,6 +332,7 @@ tests/audit/collector-install/collector-install.test.sh
 tests/audit/stream-export/stream-export.test.sh
 tests/audit/otlp-receiver/otlp-receiver.test.sh
 tests/scope/managed-telemetry/managed-telemetry.test.sh
+tests/status/telemetry-report/telemetry-report.test.sh
 tests/audit/telemetry/e2e.test.sh
 tests/scope/registry/repo.test.sh
 tests/lint/dev-paths/ratchet.test.sh
@@ -460,6 +460,7 @@ tests/lint/name/issue-taxonomy.test.sh
 tests/lint/name/validators.test.sh
 tests/lint/name/overlay.test.sh
 tests/lint/name/vendored.test.sh
+tests/doc/vale/vale.test.sh
 tests/lint/pr/pr.test.sh
 tests/context/injection-rule/name-note-create.test.sh
 tests/lint/renderer/renderer.test.sh

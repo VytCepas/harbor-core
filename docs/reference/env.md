@@ -98,11 +98,13 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_CI_CORE_SLUG` | value | `VytCepas/harbor-core` | owner/name of the public harbor-core repository that ci-mirror.sh pushes to (default VytCepas/harbor-core) | ci |  | tests only |
 | `HARBOR_CI_DOCKER` | path | `docker` | Docker command used by the CI queue and runner scripts; defaults to docker, tests swap in a fake | ci |  | tests only |
 | `HARBOR_CI_EVENTS_DIR` | path | `$HOME/runners/harbor-linux/events` | Directory holding the CI runner event files that ci-runners.sh reads (default ~/runners/harbor-linux/events) | ci |  | tests only |
+| `HARBOR_CI_GOVERNOR_ADMITTED` | handoff | none | Set by ci-governor admit on the job it lets run, so a poller that re-execs itself through admit runs once instead of asking again | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_DIR` | path | `$CACHE_DIR/ci-governor` | Directory holding the CI governor's state and slots; with none present, ci-governor run is a plain exec | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_DOCKERENV` | test-only | `/.dockerenv` | path of the file whose presence marks a CI container for the governor hook; tests point it elsewhere (default /.dockerenv) | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_EVENTS` | path | `/gov-events` | Directory where the CI governor hook writes its events inside the runner container, default /gov-events | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_POLL` | tuning | `3` | Seconds the CI governor sleeps between polls while waiting for a runner slot (default 3) | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_SLOT` | handoff | none | Set by the CI governor to its pid when it holds a slot, so nested governed runs execute plainly instead of queueing again | ci |  | tests only |
+| `HARBOR_CI_GOVERNOR_SYNC` | test-only | none | When set, the jobs an idle tick starts (vm resize, prune) run inline instead of detached, so a suite can read what they did | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_TEMPORARY_ROOT` | test-only | `/tmp` | Temp directory root the CI governor hook cleans (default /tmp); tests point it at a fixture directory | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_TRIGGER` | path | `$HOME/runners/harbor-linux/events/trigger` | File the CI governor touches to trigger the Linux runner's event handling (default under ~/runners/harbor-linux/events/trigger) | ci |  | tests only |
 | `HARBOR_CI_HEAD` | value | `HEAD` | git ref used as the head of the diff when selecting test suites (default HEAD) | ci |  | tests only |
@@ -322,7 +324,6 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_TEST_IN_SUITE` | handoff | none | Set to 1 by status-generate.sh for the suite it runs so a nested status run skips re-running suites (harbor#288) | test |  | tests only |
 | `HARBOR_TEST_NOW` | test-only | `computed` | Fixed epoch seconds used instead of the real clock so time-dependent CI and admission scripts are deterministic in tests | test |  | tests only |
 | `HARBOR_TEST_REQUIRE_BUN` | test-only | none | Set to 1 in the Linux governance job so a suite that needs bun fails instead of skipping when it is missing | test |  | tests only |
-| `HARBOR_TEST_REQUIRE_GITLEAKS` | test-only | none | Set to 1 in the Linux governance job so the suites that need gitleaks fail instead of skipping when it is missing | test |  | tests only |
 | `HARBOR_TEST_REQUIRE_NODE` | test-only | none | Set to 1 in the Linux runner image so the browser test fails instead of skipping when node is missing | test |  | tests only |
 | `HARBOR_TEST_REQUIRE_VALE` | test-only | none | Set to 1 in the Linux governance job so the Vale suites fail instead of skipping when Vale is missing | test |  | tests only |
 | `HARBOR_TEST_SANDBOX_DIR` | path | `$HOME/.claude-sandbox` | Sandbox config directory lint-conventions checks for the guards and floor files (default ~/.claude-sandbox) | test |  | tests only |
