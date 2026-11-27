@@ -1253,7 +1253,6 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>contracts/access-card.md</code></td><td>The access card - the format of the access register</td></tr>
 <tr><td><code>contracts/access-get.md</code></td><td>access-get — one read-only GET to a vendor API</td></tr>
 <tr><td><code>contracts/access-register.md</code></td><td>The access register - one list of every identity an agent may use</td></tr>
-<tr><td><code>contracts/box-profile.md</code></td><td>Box-profile seam (L0 Helm → L3 Yard) — FROZEN v1 (the plan's ONLY up-pointing read)</td></tr>
 <tr><td><code>contracts/browser-routing.md</code></td><td>Which browser — the router (harbor#458)</td></tr>
 <tr><td><code>contracts/cli.md</code></td><td><code>harbor</code> — the L0 command surface (CLI-1, harbor#42)</td></tr>
 <tr><td><code>contracts/control-plane-state.md</code></td><td>The <code>.helm-*</code> state files — which ones a session may write</td></tr>
@@ -1261,7 +1260,6 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>contracts/finding.md</code></td><td>CONTRACT — a finding: its key, its digest, its age, and a person's disposition</td></tr>
 <tr><td><code>contracts/fleet-controller-json.md</code></td><td><code>--json</code> output seam (L2 Fleet → L0 Helm) — FREEZE before Helm consumes it</td></tr>
 <tr><td><code>contracts/gates.md</code></td><td>Gates — where a checker lives, and who runs it</td></tr>
-<tr><td><code>contracts/helm-state.md</code></td><td>The <code>.helm-*</code> state files — which ones a session may write</td></tr>
 <tr><td><code>contracts/hooks.md</code></td><td>Hooks — which moment, which mechanism, and which channel is actually proven</td></tr>
 <tr><td><code>contracts/host-profile.md</code></td><td>Box-profile seam (L0 Helm → L3 Yard) — FROZEN v1 (the plan's ONLY up-pointing read)</td></tr>
 <tr><td><code>contracts/hub.md</code></td><td>Hub and member contract (harbor#1278)</td></tr>
@@ -1273,7 +1271,6 @@ build, because a rule that blocks ordinary work gets switched off.</p>
 <tr><td><code>contracts/member-law.md</code></td><td>Company rules for Claude Code</td></tr>
 <tr><td><code>contracts/memory-format.md</code></td><td>Memory format (shared canonical)</td></tr>
 <tr><td><code>contracts/pack.md</code></td><td>The pack loader - <code>harbor pack</code></td></tr>
-<tr><td><code>contracts/pilot.md</code></td><td>pilot — the practice layer, and where it should live</td></tr>
 <tr><td><code>contracts/platforms.md</code></td><td>Platforms — where every solution runs</td></tr>
 <tr><td><code>contracts/port-root.md</code></td><td><code>PORT_ROOT</code> — the workspace root the governed repos live under</td></tr>
 <tr><td><code>contracts/private-layer.md</code></td><td>The private layer - <code>harbor-private/</code>, data only</td></tr>
@@ -1439,6 +1436,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/admission/baseline/install.test.sh</code></td><td><code>bin/* hooks/* fixtures/* contracts/* vendor/* docs/generated/status.md tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/admission/bash/fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/baseline/b6.test.sh</code></td><td><code>bin/* hooks/* fixtures/* contracts/* vendor/* docs/generated/status.md tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/admission/bash/fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/baseline/b8.test.sh</code></td><td><code>bin/* hooks/* fixtures/* contracts/* vendor/* docs/generated/status.md tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/admission/bash/fixture.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/admission/baseline/b8-cache.test.sh</code></td><td><code>bin/* hooks/* fixtures/* contracts/* vendor/* docs/generated/status.md tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/admission/bash/fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/baseline/managed.test.sh</code></td><td><code>bin/* hooks/* fixtures/* contracts/* vendor/* docs/generated/status.md tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/admission/bash/fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/baseline/confinement.test.sh</code></td><td><code>bin/* hooks/* fixtures/* contracts/* vendor/* docs/generated/status.md tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/admission/bash/fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/baseline/ledger.test.sh</code></td><td><code>bin/* hooks/* fixtures/* contracts/* vendor/* docs/generated/status.md tests/admission/baseline/fixture.sh tests/admission/baseline/baseline.test.sh tests/admission/baseline/* tests/admission/bash/fixture.sh tests/lib/core.sh</code></td></tr>
@@ -1472,6 +1470,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/lint/conventions/suites.test.sh</code></td><td><code>always</code></td></tr>
 <tr><td><code>tests/scope/marker/marker.test.sh</code></td><td><code>bin/access.sh bin/admission-decide.sh bin/admission-normalize.awk bin/event-bus.sh bin/library-admission.sh bin/library-fs.sh bin/library-hub.sh bin/library-log.sh bin/memory.sh bin/scope-roots.sh bin/secret bin/status-suggest.sh hooks/* fixtures/* contracts/* tests/scope/marker/marker.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/memory/memory/memory.test.sh</code></td><td><code>bin/access.sh bin/admission-decide.sh bin/admission-normalize.awk bin/event-bus.sh bin/library-admission.sh bin/library-fs.sh bin/library-hub.sh bin/library-log.sh bin/memory-lint.sh bin/memory.sh bin/scope-roots.sh bin/secret bin/status-suggest.sh tools/* fixtures/* contracts/* worklog/pre-push tests/memory/memory/memory.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/memory/secret-scan/secret-scan.test.sh</code></td><td><code>worklog/pre-push bin/memory-secret-scan.sh bin/library-log.sh tests/memory/secret-scan/secret-scan.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/normalize/normalize.test.sh</code></td><td><code>bin/admission-normalize.awk tests/admission/normalize/normalize.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/admission/prod/prod.test.sh</code></td><td><code>bin/* hooks/* tests/admission/prod/prod.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/alert/probe/probe.test.sh</code></td><td><code>bin/* tests/alert/probe/probe.test.sh tests/lib/core.sh</code></td></tr>
@@ -1521,7 +1520,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>hooks/injection-rule/detector.test.sh</code></td><td><code>bin/* context-rules/* contracts/* tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/detector.test.sh policy/constitution.md docs/reports/evals.md docs/src/injection-rule.html fixtures/inject/* fixtures/injection-rule/notes.tsv* fixtures/injection-rule/packs/example-store/wipe-destroys-history.md* tests/admission/baseline/baseline.test.sh tests/admission/baseline/b8.test.sh</code></td></tr>
 <tr><td><code>hooks/injection-rule/packs.test.sh</code></td><td><code>bin/* context-rules/* contracts/* tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/packs.test.sh</code></td></tr>
 <tr><td><code>hooks/injection-rule/scope.test.sh</code></td><td><code>bin/* context-rules/* contracts/* tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/scope.test.sh</code></td></tr>
-<tr><td><code>hooks/injection-rule/compaction-digest.test.sh</code></td><td><code>bin/context-compaction-digest.sh bin/library-admission.sh context-rules/* tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/compaction-digest.test.sh</code></td></tr>
+<tr><td><code>hooks/injection-rule/compaction-digest.test.sh</code></td><td><code>bin/context-compaction-digest.sh bin/library-admission.sh bin/deploy-runtime-install.sh bin/deploy-install-lib.sh bin/library-log.sh bin/standard-kit.sh context-rules/* tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/compaction-digest.test.sh</code></td></tr>
 <tr><td><code>hooks/injection-rule/context-rules.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh tests/context/injection-rule/fixture.sh tests/lib/core.sh hooks/injection-rule/context-rules.test.sh</code></td></tr>
 <tr><td><code>hooks/ticket-note/ticket-note.test.sh</code></td><td><code>hooks/ticket-note/ticket-note.sh hooks/ticket-note/ticket-note.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>hooks/session-title/session-title.test.sh</code></td><td><code>hooks/session-title/session-title.sh bin/admission-self-edit.sh bin/library-admission.sh hooks/session-title/session-title.test.sh tests/lib/core.sh</code></td></tr>
@@ -1725,8 +1724,7 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/audit/stream-export/stream-export.test.sh</code></td><td><code>bin/audit-stream-export.py contracts/streams.tsv tests/audit/stream-export/stream-export.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/audit/otlp-receiver/otlp-receiver.test.sh</code></td><td><code>bin/audit-otlp-receiver.py tests/audit/otlp-receiver/otlp-receiver.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/scope/managed-telemetry/managed-telemetry.test.sh</code></td><td><code>bin/scope-managed-telemetry.sh bin/library-log.sh tests/scope/managed-telemetry/managed-telemetry.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/status/telemetry-report/telemetry-report.test.sh</code></td><td><code>bin/status-telemetry-report.sh bin/library-log.sh tests/status/telemetry-report/telemetry-report.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/audit/telemetry/e2e.test.sh</code></td><td><code>bin/admission-decide.sh bin/admission-normalize.awk bin/admission-observe.sh bin/audit-collector-check.sh bin/audit-collector.sh bin/audit-otlp-receiver.py bin/audit-stream-export.py bin/audit-stream-lib.sh bin/event-bus.sh bin/library-admission.sh bin/library-fs.sh bin/library-log.sh bin/memory.sh bin/status-suggest.sh bin/status-telemetry-report.sh contracts/streams.tsv tests/audit/telemetry/e2e.test.sh tests/lib/core.sh</code></td></tr>
+<tr><td><code>tests/audit/telemetry/e2e.test.sh</code></td><td><code>bin/admission-decide.sh bin/admission-normalize.awk bin/admission-observe.sh bin/audit-collector-check.sh bin/audit-collector.sh bin/audit-otlp-receiver.py bin/audit-stream-export.py bin/audit-stream-lib.sh bin/event-bus.sh bin/library-admission.sh bin/library-fs.sh bin/library-log.sh bin/memory.sh bin/status-suggest.sh contracts/streams.tsv tests/audit/telemetry/e2e.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/scope/registry/repo.test.sh</code></td><td><code>bin/scope-roots.sh bin/scope.sh bin/harbor bin/library-log.sh contracts/roots.tsv standards/naming/repo-kinds.tsv tests/scope/registry/repo.test.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/dev-paths/ratchet.test.sh</code></td><td><code>bin/lint-dev-paths.sh bin/scope-layers.sh bin/lint-conventions.sh bin/library-log.sh contracts/layers.tsv contracts/dev-paths-allow.tsv contracts/lint-dev-paths-baseline.txt tests/lint/dev-paths/ratchet.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
 <tr><td><code>tests/lint/core-writes/ratchet.test.sh</code></td><td><code>bin/lint-core-writes.sh bin/scope-layers.sh bin/lint-conventions.sh bin/library-log.sh contracts/layers.tsv contracts/core-writes-allow.tsv contracts/lint-core-writes-baseline.txt tests/lint/core-writes/ratchet.test.sh tests/checks/lint-fixture.sh tests/lib/core.sh</code></td></tr>
@@ -1853,7 +1851,6 @@ are selected by what changed rather than all run every time.</p>
 <tr><td><code>tests/lint/name/validators.test.sh</code></td><td><code>bin/lint-name.sh bin/name-check standards/naming/* fixtures/naming/* tests/checks/lint-fixture.sh tests/lint/name/fixture.sh tests/lint/name/validators.test.sh tests/lib/core.sh bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/lint/name/overlay.test.sh</code></td><td><code>bin/lint-name.sh bin/standard-vendor.sh bin/library-log.sh standards/naming/* fixtures/naming/* tests/checks/lint-fixture.sh tests/lint/name/fixture.sh tests/lint/name/overlay.test.sh tests/lib/core.sh bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/lint/name/vendored.test.sh</code></td><td><code>bin/lint-name.sh bin/standard-vendor.sh bin/library-log.sh bin/lint-renderer.sh standards/naming/* tests/lint/name/vendored.test.sh tests/lib/core.sh</code></td></tr>
-<tr><td><code>tests/doc/vale/vale.test.sh</code></td><td><code>bin/doc-vale.sh bin/lint-name.sh bin/library-log.sh standards/naming/* tests/doc/vale/* tests/lib/core.sh bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/lint/pr/pr.test.sh</code></td><td><code>bin/lint-pr.sh bin/lint-name.sh bin/library-log.sh hooks/commit-msg standards/naming/* fixtures/naming/* tests/lint/pr/pr.test.sh tests/lib/core.sh bin/standard-register.sh</code></td></tr>
 <tr><td><code>tests/context/injection-rule/name-note-create.test.sh</code></td><td><code>hooks/injection-rule/injection-rule.sh bin/library-admission.sh bin/lint-name.sh bin/library-log.sh standards/naming/* context-rules/* tests/context/injection-rule/name-note-create.test.sh tests/lib/core.sh bin/standard-register.sh contracts/name-create.tsv</code></td></tr>
 <tr><td><code>tests/lint/renderer/renderer.test.sh</code></td><td><code>bin/lint-renderer.sh bin/library-log.sh standards/naming/* tests/lib/core.sh</code></td></tr>
@@ -2396,6 +2393,7 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>ci-runners.sh</code></td><td>ci-runners.sh (harbor#1060) — one Linux runner container per fleet repo that wants local CI, owned by this box.</td></tr>
 <tr><td><code>ci-wait.sh</code></td><td>ci-wait.sh (harbor#1367) — a PR's CI verdict, woken by the event bus: one GitHub read per finished job, never a poll loop.</td></tr>
 <tr><td><code>context-budget.sh</code></td><td>context-budget.sh — measure what Harbor costs EVERY session.</td></tr>
+<tr><td><code>context-compaction-digest.sh</code></td><td>compaction-digest — the traps THIS session sprang, from its own ledger rows (harbor#569).</td></tr>
 <tr><td><code>context-peers.sh</code></td><td>L0-11 (harbor#75) — read the session registry Claude Code already maintains,</td></tr>
 <tr><td><code>context-resolve.sh</code></td><td>H2 (harbor#4) — SessionStart resolver: write this session's detect-and-defer</td></tr>
 <tr><td><code>deploy-install-lib.sh</code></td><td>deploy-install-lib.sh (harbor#765, harbor#771) — the install standard's shared half: argument parsing, target</td></tr>
@@ -2423,6 +2421,7 @@ score a plumbing gap as a verdict on the idea.</p>
 <tr><td><code>member-tests.sh</code></td><td>member-tests.sh (harbor#1278) — check <code>member.tests</code>, holds contracts/member-law.md §8: a code change in a registered project comes with a test.</td></tr>
 <tr><td><code>memory-harvest.sh</code></td><td>memory-harvest (harbor#6 — workstream D, D1) — the work-log reconciler.</td></tr>
 <tr><td><code>memory-log-token-save.sh</code></td><td>memory-log-token-save.sh (harbor#431, #1205) — put the work-log token in the store as worklog-token</td></tr>
+<tr><td><code>memory-secret-scan.sh</code></td><td>memory-secret-scan.sh (harbor#25) — the work-log's whole-history gitleaks scan, nightly; while it is loaded the pre-push scans only a push's range (124ey1kjcu0 P3).</td></tr>
 <tr><td><code>memory-store-check.sh</code></td><td>store-check (CX1, harbor#150 Phase 5 · harbor#183/#184) — bound the memory</td></tr>
 <tr><td><code>recover-test.sh</code></td><td>RECOVER (harbor#34, #765): deploy-restore.sh parses every flag, writes only with --apply, restores exactly a</td></tr>
 <tr><td><code>reply-shape.sh</code></td><td>reply-shape (harbor#952, #949 D-23) — advisory Stop hook. Registered in docs/reference/checks.md as <code>session.reply-shape</code>.</td></tr>
@@ -2765,7 +2764,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/doc-register-index.sh</code></td><td>doc-register-index.sh (harbor#1424) — the two indexes over the registers and the contracts, generated and never hand-written.</td></tr>
 <tr><td><code>bin/doc-report-verify.sh</code></td><td>doc-report-verify.sh — does a generated artefact meet contracts/reports.md?</td></tr>
 <tr><td><code>bin/doc-shape.sh</code></td><td>doc-shape.sh (harbor#1434, #1435) — every doc carries one front matter shape, every generated file one header.</td></tr>
-<tr><td><code>bin/doc-vale.sh</code></td><td>doc-vale.sh (harbor#978) — prose against the registry: legacy aliases, UK spelling, banned words, via Vale.</td></tr>
 <tr><td><code>bin/doc-visual-check.sh</code></td><td>VISUAL CHECK (harbor#392) — renders every generated HTML surface and routes it</td></tr>
 <tr><td><code>bin/drift-confinement.sh</code></td><td>drift-confinement.sh (harbor#1299, #555 P2) — the check drift.confinement: the installed <code>sandbox</code> block of the</td></tr>
 <tr><td><code>bin/drift-install.sh</code></td><td>drift-install.sh (harbor#431) — does the RUNNING floor still equal its source?</td></tr>
@@ -2881,6 +2879,7 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/memory-lint.sh</code></td><td>memory-lint (harbor#6 — workstream D, D2) — the deterministic anti-rot gate</td></tr>
 <tr><td><code>bin/memory-log-token-save.sh</code></td><td>memory-log-token-save.sh (harbor#431, #1205) — put the work-log token in the store as worklog-token</td></tr>
 <tr><td><code>bin/memory-route.sh</code></td><td>memory-route.sh (GOVERNANCE) — does a session started IN a governed repo load</td></tr>
+<tr><td><code>bin/memory-secret-scan.sh</code></td><td>memory-secret-scan.sh (harbor#25) — the work-log's whole-history gitleaks scan, nightly; while it is loaded the pre-push scans only a push's range (124ey1kjcu0 P3).</td></tr>
 <tr><td><code>bin/memory-store-check.sh</code></td><td>store-check (CX1, harbor#150 Phase 5 · harbor#183/#184) — bound the memory</td></tr>
 <tr><td><code>bin/memory.sh</code></td><td>memory (harbor#6 — workstream D, D1/D7) — the L0 memory front door.</td></tr>
 <tr><td><code>bin/pack.sh</code></td><td>pack.sh (harbor#1149, D-80, D-84) - <code>harbor pack</code>: install a workload repo's harbor-pack/ box-wide, and remove it exactly.</td></tr>
@@ -2949,7 +2948,6 @@ same filename is not a hypothetical.</li>
 <tr><td><code>bin/status-subagent-glyph.sh</code></td><td>L0-5b (harbor#293) — Claude Code SUBAGENT statusline: one row per live agent.</td></tr>
 <tr><td><code>bin/status-suggest-scan.sh</code></td><td>status-suggest-scan.sh (harbor#1485) — repeated work in recent sessions that could become a skill, hook, job or mod.</td></tr>
 <tr><td><code>bin/status-suggest.sh</code></td><td>status-suggest.sh (harbor#1485) — the one writer of the suggestion state, and its reader.</td></tr>
-<tr><td><code>bin/status-telemetry-report.sh</code></td><td>status-telemetry-report.sh (harbor#1181 lane 7) — the signals Harbor captures, turned into answers. TSV on stdout.</td></tr>
 <tr><td><code>bin/status-usage-aggregate.sh</code></td><td>M9 · UsageAggregator (harbor#44) — durable per-day token usage, attributed.</td></tr>
 <tr><td><code>bin/test-sandbox-make.sh</code></td><td>SANDBOX (harbor#33) — build a disposable copy of ~/.claude's CONFIG surfaces</td></tr>
 <tr><td><code>bin/test-suite-cache.sh</code></td><td>test-suite-cache.sh — a suite whose inputs already passed is reported cached, not re-run (harbor#1288)</td></tr>

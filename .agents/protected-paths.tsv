@@ -155,6 +155,7 @@ bin/ci-runners.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/ci-verified.sh	ci-gate	derived: decides what a required check runs
 bin/ci-wait.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/context-budget.sh	installed	derived: shipped by deploy-runtime-install.sh
+bin/context-compaction-digest.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/context-injection-install.sh	installed	derived: called by bin/admission-decider-set.sh
 bin/context-peers.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/context-resolve.sh	installed	derived: shipped by admission-install.sh
@@ -263,6 +264,7 @@ bin/member-tests.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/memory-lint.sh	installed	derived: called by bin/memory-store-check.sh
 bin/memory-log-token-save.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/memory-route.sh	ci-gate	derived: called by bin/lint-conventions.sh
+bin/memory-secret-scan.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/memory-store-check.sh	installed	derived: shipped by deploy-runtime-install.sh
 bin/memory.sh	operator-run	derived: linked into ~/.local/bin as memory by contracts/shims.tsv
 bin/name-check	operator-run	derived: linked into ~/.local/bin as name-check by contracts/shims.tsv
