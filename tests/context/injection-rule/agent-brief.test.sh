@@ -13,9 +13,11 @@ OBS="$CFG/MEMORY/OBSERVABILITY/testhost"; mkdir -p "$OBS"; printf 'testhost\n' >
 trap 'chmod -R u+w "$T_TMP" 2>/dev/null; rm -rf "$T_TMP"' EXIT
 
 FULL='Goal: list the stale branches. Done when every branch older than 30 days is named. Constraint: read-only, never delete anything. Write the table to ~/Deliverables/branches.md.'
-call() { # <prompt> [model] [subagent_type] [effort] → engine stdout in $OUT, rc in $RC
-  jq -nc --arg p "$1" --arg m "${2-sonnet}" --arg t "${3-general-purpose}" --arg e "${4-}" \
-    '{hook_event_name:"PreToolUse",tool_name:"Agent",session_id:"s",
+CALLN=0
+call() { # <prompt> [model] [subagent_type] [effort] → engine stdout in $OUT, rc in $RC; one session per call, the pack is once: context (once-context.test.sh holds that)
+  CALLN=$((CALLN + 1))
+  jq -nc --arg p "$1" --arg m "${2-sonnet}" --arg t "${3-general-purpose}" --arg e "${4-}" --arg s "s$CALLN" \
+    '{hook_event_name:"PreToolUse",tool_name:"Agent",session_id:$s,
       tool_input:({description:"d",prompt:$p,subagent_type:$t} + (if $m == "" then {} else {model:$m} end)
                   + (if $e == "" then {} else {effort:$e} end))}' > "$T/in.json"
   OUT="$(CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$CFG/bin/injection-rule.sh" < "$T/in.json" 2>"$T/err")"; RC=$?

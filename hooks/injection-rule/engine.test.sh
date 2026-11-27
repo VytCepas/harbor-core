@@ -446,6 +446,29 @@ rm -f "$ML/bin/controls.tsv"
 _m="$(printf '%s' "$(bash_ev PreToolUse 'modeprobe now' "m-nore-$$")" | CLAUDE_CONFIG_DIR="$ML" CLAUDE_PROJECT_DIR="$REPO" sh "$ML/bin/injection-rule.sh" 2>/dev/null)"
 t_has "no register at all: a deny is still honoured, as before" "$_m" '"permissionDecision":"deny"'
 
+t_section "a deny leaves the same usage stamp a note does: the rule id in the session's once-ledger (U5)"
+# A once: never rule is the case that left none: the stamp used to be written only for a rule that could be suppressed. Reuses the mode section's layout.
+DSEEN="$ML/state/inject/dstamp-1.seen"; DWANT='{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"[HARBOR GOVERNANCE] the register said block"}}'
+dfire() { printf '%s' "$(bash_ev PreToolUse 'modeprobe now' "$1")" | CLAUDE_CONFIG_DIR="$ML" CLAUDE_PROJECT_DIR="$REPO" sh "$ML/bin/injection-rule.sh" 2>/dev/null; }
+dstamp() { grep -c '^mode-deny$' "$1" 2>/dev/null || :; }
+rm -rf "$ML/state/inject"
+{ printf 'id\tmode\ttype\tengine\tsurfaces\tmoment\tfunction\tstability\tsuccessor\towner\tred_proof\temitted\ttitle\n'
+  printf 'context.mode-note\twarn\tinjection\thooks/injection-rule/injection-rule.sh\t-\truntime\tpreventive\texperimental\t-\tcontext\t-\tmode-note\tx\n'
+  printf 'context.mode-deny\tblock\tinjection\thooks/injection-rule/injection-rule.sh\t-\truntime\tpreventive\texperimental\t-\tcontext\t-\tmode-deny\tx\n'; } > "$ML/bin/controls.tsv"
+_d="$(dfire dstamp-1)"; _x=$?
+t_eq "a deny still denies: the same output, byte for byte" "$DWANT" "$_d"
+t_eq "...and the same exit" 0 "$_x"
+t_eq "a once: never deny leaves its stamp, the rule id" 1 "$(dstamp "$DSEEN")"
+t_eq "...and the stamp is the rule id alone, as a note's is" mode-deny "$(head -1 "$DSEEN")"
+_d="$(dfire dstamp-1)"
+t_eq "a second call is refused exactly the same: once: never never suppresses" "$DWANT" "$_d"
+t_eq "...and the ledger is still read as before: one entry per call" 2 "$(dstamp "$DSEEN")"
+_d="$(dfire dstamp-2)"
+t_eq "another session stamps its own ledger" 1 "$(dstamp "$ML/state/inject/dstamp-2.seen")"
+rm -rf "$ML/state/inject"
+printf '%s' "$(bash_ev PreToolUse 'modeprobe now' dstamp-3)" | CLAUDE_CONFIG_DIR="$ML" CLAUDE_PROJECT_DIR="$REPO" sh "$ML/bin/injection-rule.sh" --explain >/dev/null 2>&1
+t_eq "--explain spends nothing, so it leaves no stamp" "" "$(ls "$ML/state/inject" 2>/dev/null)"
+
 t_section "a run: pack may supply the person's line, at most one a session (harbor#1485)"
 # An installed layout, so the ledger has a sink, the salt gives a session key and the claim is real.
 UL="$T/linecfg"; UB="$UL/context-rules/user"; mkdir -p "$UL/bin" "$UB" "$UL/MEMORY/OBSERVABILITY/probehost"
@@ -470,9 +493,9 @@ echo SPOKE-NOISE
 echo SPOKE-ERR >&2
 exit 3
 EOS
-pack "$UB" 20-suggest-tool.md <<'PACK'
+pack "$UB" 20-spoke-probes.md <<'PACK'
 ---
-id: suggest-tool
+id: spoke-probes
 event: PreToolUse
 tool: Bash
 when: cmd-prefix lineprobe
@@ -492,19 +515,19 @@ unote() { printf '%s' "$1" | jq -r '.hookSpecificOutput.additionalContext // emp
 urec() { jq -c --arg r "$1" 'select(.r == $r)' "$US" | wc -l | tr -d ' '; }  # <ledger rule> -> how many records
 uclaim() { [ -e "$UI/$1.seen.line" ] && echo claimed || echo free; }
 uspoken() { cat "$UL/spoken" 2>/dev/null || true; }
-ukey() { grep -qs suggest-tool "$UI/$1.seen" && echo spent || echo kept; }
+ukey() { grep -qs spoke-probes "$UI/$1.seen" && echo spent || echo kept; }
 ureset() { : > "$US"; rm -f "$UL/spoken" "$UL/ran"; }
-uset() { sed "s|^$1:.*|$1: $2|" "$UB/20-suggest-tool.md" > "$T/u.md" && mv "$T/u.md" "$UB/20-suggest-tool.md"; }  # <key> <value>
+uset() { sed "s|^$1:.*|$1: $2|" "$UB/20-spoke-probes.md" > "$T/u.md" && mv "$T/u.md" "$UB/20-spoke-probes.md"; }  # <key> <value>
 usk() { if command -v sha256sum >/dev/null 2>&1; then printf '%s:sid:%s' "$UK" "$1" | sha256sum; else printf '%s:sid:%s' "$UK" "$1" | shasum -a 256; fi | cut -c1-16; }
 
 ureset; uout 'HARBOR-USER-LINE row-a: The plain line.' 'The agent note,' 'on two lines.'
 _u="$(ufire l1)"
 t_eq "the sentinel's text is the person's line, and summary: gives way" 'harbor: The plain line.' "$(umsg "$_u")"
 t_eq "the rest is the note, one paragraph, led by the pack id, the sentinel gone" \
-  '[HARBOR GOVERNANCE] [context:suggest-tool] The agent note, on two lines.' "$(unote "$_u")"
+  '[HARBOR GOVERNANCE] [context:spoke-probes] The agent note, on two lines.' "$(unote "$_u")"
 t_eq "spoke: ran once with the row id as its one argument" '1|row-a' "$(uspoken)"
-t_eq "the spoken line left one record under its row token" 1 "$(jq -c 'select(.r == "suggest-tool-row-a" and .d == "advise" and .g == "inject")' "$US" | wc -l | tr -d ' ')"
-t_eq "the record carries the salted session key" "$(usk l1)" "$(jq -r 'select(.r == "suggest-tool-row-a") | .sk' "$US")"
+t_eq "the spoken line left one record under its row token" 1 "$(jq -c 'select(.r == "spoke-probes-row-a" and .d == "advise" and .g == "inject")' "$US" | wc -l | tr -d ' ')"
+t_eq "the record carries the salted session key" "$(usk l1)" "$(jq -r 'select(.r == "spoke-probes-row-a") | .sk' "$US")"
 t_eq "the claim is taken" claimed "$(uclaim l1)"
 _u="$(ufire l1)"
 t_eq "once: session: the second call is silent" "" "$_u"
@@ -514,7 +537,7 @@ t_eq "and spoke: did not run again" '1|row-a' "$(uspoken)"
 # A session with the claim already gone: the state a parallel call leaves.
 ureset; : > "$UI/l2.seen.line"
 t_eq "a loser says nothing at all: the line is dropped and the note with it" "" "$(ufire l2)"
-t_eq "a loser leaves no record" 0 "$(urec suggest-tool-row-a)"
+t_eq "a loser leaves no record" 0 "$(urec spoke-probes-row-a)"
 t_eq "a loser does not run spoke:" "" "$(uspoken)"
 t_eq "a loser spends its key, since no line can follow" spent "$(ukey l2)"
 # uutils mkdir 0.10 (Ubuntu 26.04) exits 0 when it loses a creation race; this one always loses (harbor#1378).
@@ -532,13 +555,13 @@ t_eq "both parallel calls reached the rule" xx "$(cat "$UL/ran")"
 t_eq "two parallel calls: one line" 1 "$(cat "$T/race1" "$T/race2" | grep -c systemMessage)"
 t_eq "two parallel calls: one note" 1 "$(cat "$T/race1" "$T/race2" | grep -c additionalContext)"
 t_eq "two parallel calls: one spoke:" 1 "$(uspoken | wc -l | tr -d ' ')"
-t_eq "two parallel calls: one record" 1 "$(urec suggest-tool-row-a)"
+t_eq "two parallel calls: one record" 1 "$(urec spoke-probes-row-a)"
 
 t_section "the row id is held to the ledger's token rules, and a bad row is dropped whole (harbor#1485)"
 _r27=abcdefghijklmnopqrstuvwxyz0; _r28=abcdefghijklmnopqrstuvwxyz01
 ureset; uout "HARBOR-USER-LINE $_r27: The longest id." 'note'
 t_eq "a 27-character id is a row" 'harbor: The longest id.' "$(umsg "$(ufire lmax)")"
-t_eq "and its 40-character token reaches the ledger whole" 1 "$(urec "suggest-tool-$_r27")"
+t_eq "and its 40-character token reaches the ledger whole" 1 "$(urec "spoke-probes-$_r27")"
 _n=0
 for _bad in "HARBOR-USER-LINE $_r28: text" 'HARBOR-USER-LINE Upper: text' 'HARBOR-USER-LINE -lead: text' 'HARBOR-USER-LINE a_b: text' \
   'HARBOR-USER-LINE ../x: text' 'HARBOR-USER-LINE : text' 'HARBOR-USER-LINE nocolon text' 'HARBOR-USER-LINE nocolon' 'HARBOR-USER-LINE row-a: ' 'HARBOR-USER-LINE row-a:    '; do
@@ -546,19 +569,19 @@ for _bad in "HARBOR-USER-LINE $_r28: text" 'HARBOR-USER-LINE Upper: text' 'HARBO
   t_eq "bad row $_n, the whole output is dropped: $_bad" "" "$(ufire "lbad$_n")"
   t_eq "bad row $_n leaves no claim" free "$(uclaim "lbad$_n")"
   t_eq "bad row $_n runs no spoke:" "" "$(uspoken)"
-  t_eq "bad row $_n is logged as a bad row, shadow, not spoken" 1 "$(jq -c 'select(.r == "suggest-tool--bad-row" and .d == "shadow")' "$US" | wc -l | tr -d ' ')"
+  t_eq "bad row $_n is logged as a bad row, shadow, not spoken" 1 "$(jq -c 'select(.r == "spoke-probes--bad-row" and .d == "shadow")' "$US" | wc -l | tr -d ' ')"
 done
 ufire "lbad$_n" >/dev/null
-t_eq "a bad row logs once a session, not on every tool call" 1 "$(urec suggest-tool--bad-row)"
+t_eq "a bad row logs once a session, not on every tool call" 1 "$(urec spoke-probes--bad-row)"
 t_eq "and it spends no pack key: the rule still runs" xx "$(cat "$UL/ran")"
 ureset; printf 'HARBOR-USER-LINE row-a: A line with no note.\n' > "$UL/out"
 t_eq "a sentinel with no note: nothing is shown" "" "$(ufire lnone)"
-t_eq "and it is logged as a defect" 1 "$(urec suggest-tool--no-note)"
+t_eq "and it is logged as a defect" 1 "$(urec spoke-probes--no-note)"
 t_eq "and it leaves no claim, so the row can still speak" free "$(uclaim lnone)"
 t_eq "and it runs no spoke:" "" "$(uspoken)"
 ureset; uout 'HARBOR-USER-LINE row-a: A line.' "$(printf '\t \t')"
 t_eq "a note of tabs is no note: nothing is shown" "" "$(ufire ltab)"
-t_eq "and it is logged as a defect" 1 "$(urec suggest-tool--no-note)"
+t_eq "and it is logged as a defect" 1 "$(urec spoke-probes--no-note)"
 t_eq "and it leaves no claim, so the row can still speak" free "$(uclaim ltab)"
 t_eq "and it runs no spoke:" "" "$(uspoken)"
 ureset; uout 'note first' 'HARBOR-USER-LINE row-a: Second line.'
@@ -603,7 +626,7 @@ rm -f "$REPO/context-rules/repo/97-repo-line.md" "$REPO/context-rules/repo/repo-
 ureset; uout 'HARBOR-USER-LINE row-a: Unsaid.' 'INFORM-NOTE'; uset mode inform
 _u="$(ufire linform)"
 t_eq "a box pack without mode: notify shows no line" "" "$(umsg "$_u")"
-t_eq "and is still a note, the sentinel gone" '[HARBOR GOVERNANCE] [context:suggest-tool] INFORM-NOTE' "$(unote "$_u")"
+t_eq "and is still a note, the sentinel gone" '[HARBOR GOVERNANCE] [context:spoke-probes] INFORM-NOTE' "$(unote "$_u")"
 t_eq "and takes no claim" free "$(uclaim linform)"
 t_eq "and runs no spoke:" "" "$(uspoken)"
 uset mode notify
@@ -644,18 +667,18 @@ t_has "the deny stands" "$_u" '"permissionDecision":"deny"'
 t_hasnt "the line does not ride a deny" "$_u" systemMessage
 t_eq "a deny spends no claim" free "$(uclaim ldeny)"
 t_eq "a deny spends no once key" kept "$(ukey ldeny)"
-t_eq "a deny writes no record of a line" 0 "$(urec suggest-tool-row-a)"
+t_eq "a deny writes no record of a line" 0 "$(urec spoke-probes-row-a)"
 t_eq "a deny runs no spoke:" "" "$(uspoken)"
 t_eq "so the next call in the session still speaks" 'harbor: The plain line.' "$(umsg "$(ufire ldeny)")"
-printf 'id\tmode\ttype\tengine\tsurfaces\tmoment\tfunction\tstability\tsuccessor\towner\tred_proof\temitted\ttitle\ncontext.suggest-tool\tshadow\tinjection\thooks/injection-rule/injection-rule.sh\t-\truntime\tpreventive\texperimental\t-\tcontext\t-\tsuggest-tool\tx\n' > "$UL/bin/controls.tsv"
+printf 'id\tmode\ttype\tengine\tsurfaces\tmoment\tfunction\tstability\tsuccessor\towner\tred_proof\temitted\ttitle\ncontext.spoke-probes\tshadow\tinjection\thooks/injection-rule/injection-rule.sh\t-\truntime\tpreventive\texperimental\t-\tcontext\t-\tspoke-probes\tx\n' > "$UL/bin/controls.tsv"
 ureset
 t_eq "shadow: nothing is spoken" "" "$(ufire lshadow)"
-t_eq "shadow: recorded under the row token" 1 "$(jq -c 'select(.r == "suggest-tool-row-a" and .d == "shadow")' "$US" | wc -l | tr -d ' ')"
+t_eq "shadow: recorded under the row token" 1 "$(jq -c 'select(.r == "spoke-probes-row-a" and .d == "shadow")' "$US" | wc -l | tr -d ' ')"
 t_eq "shadow: no claim" free "$(uclaim lshadow)"
 t_eq "shadow: no spoke:" "" "$(uspoken)"
 t_eq "shadow: the once key is spent, one record a session" spent "$(ukey lshadow)"
 ureset; ufire lshadowdeny 'lineprobe deny' >/dev/null
-t_eq "shadow: a later deny means it would not have spoken, so no record" 0 "$(urec suggest-tool-row-a)"
+t_eq "shadow: a later deny means it would not have spoken, so no record" 0 "$(urec spoke-probes-row-a)"
 t_eq "shadow: and no key is spent" kept "$(ukey lshadowdeny)"
 sed 's/\tshadow\t/\twarn\t/' "$UL/bin/controls.tsv" > "$T/c.tsv" && mv "$T/c.tsv" "$UL/bin/controls.tsv"
 ureset; uout 'HARBOR-DECISION deny: HARBOR-USER-LINE row-a: smuggled' 'rest'
@@ -678,7 +701,7 @@ t_eq "the absolute script never ran" no "$([ -e "$UL/outside-ran" ] && echo yes 
 uset spoke no-such-spoke.sh
 t_eq "a missing spoke: script changes nothing" "$_base" "$(ufire lsp3)"
 t_has "and --explain names it" "$(printf '%s' "$(bash_ev PreToolUse 'lineprobe now' lsp3x)" | CLAUDE_CONFIG_DIR="$UL" CLAUDE_PROJECT_DIR="$REPO" sh "$UL/bin/injection-rule.sh" --explain 2>&1)" \
-  'skip spoke suggest-tool: no-such-spoke.sh not found'
+  'skip spoke spoke-probes: no-such-spoke.sh not found'
 # The hook has 10 s (hooks/injection-rule/manifest.tsv). A hung spoke: is cut off, and the answer already made still leaves.
 for _h in "plain|sleep 20" "ignores-term|trap '' TERM; i=0; while [ \"\$i\" -lt 25 ]; do sleep 1; i=\$((i + 1)); done"; do
   ureset; rm -f "$UL/hang-ran"
@@ -750,14 +773,14 @@ t_eq "a call with no session id cannot claim, so it stays silent" "" "$_u"
 t_eq "and it runs no spoke:" "" "$(uspoken)"
 ureset
 _u="$(printf '%s' "$(bash_ev PreToolUse 'lineprobe now' lexp)" | CLAUDE_CONFIG_DIR="$UL" CLAUDE_PROJECT_DIR="$REPO" sh "$UL/bin/injection-rule.sh" --explain 2>&1)"
-t_has "--explain reports the fire" "$_u" 'FIRE suggest-tool'
+t_has "--explain reports the fire" "$_u" 'FIRE spoke-probes'
 t_has "--explain shows what would be said" "$_u" '"systemMessage":"harbor: The plain line."'
 t_eq "--explain takes no claim" free "$(uclaim lexp)"
 t_eq "--explain runs no spoke:" "" "$(uspoken)"
-t_eq "--explain writes no record" 0 "$(urec suggest-tool-row-a)"
+t_eq "--explain writes no record" 0 "$(urec spoke-probes-row-a)"
 uout 'HARBOR-USER-LINE Bad: text' 'note'
 printf '%s' "$(bash_ev PreToolUse 'lineprobe now' lexp2)" | CLAUDE_CONFIG_DIR="$UL" CLAUDE_PROJECT_DIR="$REPO" sh "$UL/bin/injection-rule.sh" --explain >/dev/null 2>&1
-t_eq "--explain writes no defect record either" 0 "$(urec suggest-tool--bad-row)"
+t_eq "--explain writes no defect record either" 0 "$(urec spoke-probes--bad-row)"
 uout 'HARBOR-USER-LINE row-a: The plain line.' 'The agent note.'
 mkdir -p "$UI/old.seen.line"; : > "$UI/old.seen"; : > "$UI/fresh.seen.line"
 touch -t 202001010000 "$UI/old.seen.line" "$UI/old.seen"

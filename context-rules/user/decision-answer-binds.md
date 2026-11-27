@@ -3,7 +3,7 @@ description: After the operator answers an AskUserQuestion round, record each an
 event: PostToolUse
 tool: AskUserQuestion
 when: always
-once: never
+once: context
 ---
 
 The operator just answered. In this turn, before the next round or any build step: record each

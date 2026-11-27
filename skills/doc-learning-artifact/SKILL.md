@@ -1,6 +1,6 @@
 ---
 name: doc-learning-artifact
-description: "The operator's preferred page for learning anything: one section per tab, hand-drawn SVG diagrams whose boxes open a card under the diagram, a saved-answer quiz, gates in real Chrome (desktop + iPhone) for routing, cards and text fit, and a check that every quiz question is answerable from the page. USE WHEN building or updating a study or exam guide, course notes, a revision page, or teaching or onboarding material that explains a topic, process or system so a person can learn it. NOT FOR a system map to navigate (`doc-atlas`), a live workshop deck (`doc-workshop-deck`), or a status report or findings."
+description: "The operator's page for learning a topic: a tab per section, clickable SVG diagrams, a saved-answer quiz, real-Chrome gates. USE WHEN building or updating a study or exam guide, course notes, a revision page, or teaching or onboarding material that explains a topic, process or system so a person can learn it. NOT FOR a system map to navigate (`doc-atlas`), a live workshop deck (`doc-workshop-deck`), or a status report or findings."
 argument-hint: [course or topic, and the deliverable folder]
 reach: reasoning
 ---
