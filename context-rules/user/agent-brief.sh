@@ -48,4 +48,11 @@ if [ "$MODEL" = haiku ] && [ -z "$EFFORT" ] \
 fi
 
 [ -n "$MISSING" ] || exit 0
+# The explanation is spent once per context: the engine's ledger holds `ctx:agent-brief`, purged on a compaction or a clear.
+# Every thin brief still draws a line naming what it lacks. No ledger (no session id) means the short line.
+if [ -z "${HARBOR_CONTEXT_LEDGER:-}" ] || { [ -f "$HARBOR_CONTEXT_LEDGER" ] && grep -qxF 'ctx:agent-brief' "$HARBOR_CONTEXT_LEDGER" 2>/dev/null; }; then
+  printf '%s\n' "Agent brief does not state: $MISSING."
+  exit 0
+fi
+printf '%s\n' 'ctx:agent-brief' >> "$HARBOR_CONTEXT_LEDGER" 2>/dev/null || true
 printf '%s\n' "Agent brief check (harbor#953, advisory, the call was not blocked). This brief does not state: $MISSING. A brief that names the testable outcome, the constraints and where the result goes lets the agent work without guessing. Checked by keywords, so a brief can pass and still be thin."

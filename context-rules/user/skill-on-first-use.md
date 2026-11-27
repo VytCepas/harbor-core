@@ -21,7 +21,7 @@ the engine's per-pack `once` cannot express.
 harbor#1591: the same audit, re-run over 7 days, found the note read in 18 of 47 sessions for agent-routing and the
 Lithuanian skill read in 4 of 10, and only 4 of 45 installed skills owned anything. So a skill may own CONTENT
 (`owns-content`, a regex over the call input), the note repeats as one line while the skill stays unread (the next
-owned call and every 10th after, at most 5 per session), and a `gate-commands` CLI or `cli:subcommand` prints the
+owned call and every 10th after, at most 3 per session across skills: P10 found 49 of 64 sessions with reminders at 3 or fewer), and a `gate-commands` CLI or `cli:subcommand` prints the
 deny sentinel. This row is block, promoted by the operator, so the sentinel is a deny; warn would make it a note.
 The only deny this pack can emit is a gate, so the row's mode changes nothing else.
 

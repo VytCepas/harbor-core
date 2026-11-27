@@ -6,7 +6,7 @@
 # call's input; a gate CLI denies until the skill is read. Mutations seen red: the reminder branch removed (the
 # reminder asserts fail), `del(.description)` dropped (the description assert fails), the gate's told-check removed
 # (the never-named assert fails), the warn arm of the row ignored (the downgrade assert fails). The reminder runs
-# on the next owned call and every 10th after, at most 5 per session; a gate entry may name `cli:subcommand`.
+# on the next owned call and every 10th after, at most 3 per session across skills; a gate entry may name `cli:subcommand`.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 T="$T_TMP"; CFG="$T/cfg"; REPO="$T/repo"; SK="$CFG/skills"; N=0
 mkdir -p "$CFG/context-rules/user" "$CFG/bin" "$REPO" "$SK/alpha" "$SK/beta" "$SK/agent-routing" "$SK/delta" "$SK/epsilon"
@@ -169,11 +169,23 @@ t_eq "a warn row turns the deny into a note: no decision" "" "$DEC"
 t_has "the note carries the reason" "$NOTE" 'sendcli new waits until the skill that governs it is read'
 export HARBOR_CONTEXT_CONTROLS="$OLDC"
 
-t_section "the reminder is capped at 5 per session"
+t_section "the reminder is capped at 3 per session, across skills"
 call Bash 'betacli x' s19
 R=0
 for _i in $(seq 1 60); do call Bash 'betacli x' s19; case "$NOTE" in *'still unread'*) R=$((R + 1)) ;; esac; done
-t_eq "60 owned calls after the note give 5 reminders" 5 "$R"
+t_eq "60 owned calls after the note give 3 reminders" 3 "$R"
+call Bash 'alphacli x' s20; call Bash 'betacli x' s20
+R=0
+for _i in $(seq 1 25); do for _c in alphacli betacli; do call Bash "$_c x" s20; case "$NOTE" in *'still unread'*) R=$((R + 1)) ;; esac; done; done
+t_eq "two unread skills share the session's 3 reminders" 3 "$R"
+
+t_section "a tracked skill that owns a tool names itself at its call (the real frontmatter, harbor#1591)"
+mkdir -p "$SK/doc-workshop-deck"; cp "$T_ROOT/skills/doc-workshop-deck/SKILL.md" "$SK/doc-workshop-deck/SKILL.md"
+sleep 1   # [ -nt ] compares whole seconds: the new skill dir must read newer than the cached index
+call Bash 'uv run --no-project --with python-pptx python kit/lint_deck.py deck.pptx plan.json' w1
+t_has "lint_deck.py names doc-workshop-deck" "$NOTE" 'Skill `doc-workshop-deck`'
+call Bash 'ls kit/ && cat kit/plan.example.json' w2
+t_eq "a path that does not name the script is silent" "" "$NOTE"
 
 t_section "fail open"
 call Bash 'alphacli list' s14

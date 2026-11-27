@@ -14,8 +14,10 @@ harbor#953 (#949 harbor/D-44): an inform pack for the brief an Agent call carrie
 unset, and it NEVER denies: the sentinel is not in the script, so this pack cannot block a call.
 
 `when: always` with the gate in the script, as 97-agent-model-required: what counts as present is
-a text test, not a predicate. `once: never` because every brief is its own, and a note spent on
-the first thin brief says nothing about the second. A fork inherits the whole conversation and is
+a text test, not a predicate. `once: never`, because every brief is its own and the note names what THIS brief lacks; the script spends the
+explanation once per context (key `ctx:agent-brief` in the engine ledger, purged on a compaction or a clear) and later
+thin briefs draw one line, "does not state: X" (P10: 152 of 267 notes repeated the explanation). A complete brief draws
+nothing and spends nothing. A fork inherits the whole conversation and is
 briefed by it, so it is skipped, as it is by 97.
 
 The `model` half reuses agent-model.sh, so the exemptions (a fork, an agent whose definition pins
