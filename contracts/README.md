@@ -54,7 +54,6 @@ hand-kept account of direction and status; this table is what exists.
 | [agent-tools.tsv](./agent-tools.tsv) | tsv | agent-tools.tsv (harbor#1010) - the USE WHEN and the exact invocation of every agent-facing `harbor` verb and bin/ tool; bin/skill-catalog.s |
 | [agents.tsv](./agents.tsv) | tsv | - |
 | [bin.tsv](./bin.tsv) | tsv | bin.tsv (harbor#1432) — every file under bin/: its form, purpose and ticket. |
-| [box-profile.md](./box-profile.md) | shim | the old name of `host-profile.md` (renames.tsv), kept until its remove_by date |
 | [bq-schema.tsv](./bq-schema.tsv) | tsv | bq-schema.tsv (harbor#1278) — every table and field harbor's logs may hold in BigQuery, as data. |
 | [bq-values.tsv](./bq-values.tsv) | tsv | bq-values.tsv (harbor#1278) — the closed value sets of contracts/bq-schema.tsv, each code an INT64 that dim_enum maps back. |
 | [browser-agent-hosts.txt](./browser-agent-hosts.txt) | txt | Hosts `harbor chrome` may navigate to (goto, tab-new): the big platforms any |
@@ -88,7 +87,6 @@ hand-kept account of direction and status; this table is what exists.
 | [fleet-controller-json.md](./fleet-controller-json.md) | md | --json` output seam (L2 Fleet → L0 Helm) — FREEZE before Helm consumes it |
 | [fresh-checks.tsv](./fresh-checks.tsv) | tsv | fresh-checks.tsv (harbor#1287) — the generated files bin/doc-fresh-verify.sh proves current, each in seconds. |
 | [gates.md](./gates.md) | md | Gates — where a checker lives, and who runs it |
-| [helm-state.md](./helm-state.md) | shim | the old name of `control-plane-state.md` (renames.tsv), kept until its remove_by date |
 | [hooks-external.tsv](./hooks-external.tsv) | tsv | hooks-external.tsv — hooks the live box runs that NO installer in bin/ wires. harbor#813. |
 | [hooks.md](./hooks.md) | md | Hooks — which moment, which mechanism, and which channel is actually proven |
 | [host-profile.md](./host-profile.md) | md | Box-profile seam (L0 Helm → L3 Yard) — FROZEN v1 (the plan's ONLY up-pointing read) |
@@ -128,7 +126,6 @@ hand-kept account of direction and status; this table is what exists.
 | [obligation-kinds.tsv](./obligation-kinds.tsv) | tsv | obligation-kinds.tsv (harbor#1050) — every kind of unfinished work the obligations ledger tracks. |
 | [pack-frontmatter-keys.txt](./pack-frontmatter-keys.txt) | txt | Allowed top-level front-matter keys in an .md a pack installs (bin/pack.sh; harbor#1149). Derived 2026-10-11: union of the top-level keys of |
 | [pack.md](./pack.md) | md | The pack loader - `harbor pack` |
-| [pilot.md](./pilot.md) | shim | the old name of `knowledge-base.md` (renames.tsv), kept until its remove_by date |
 | [platforms.md](./platforms.md) | md | Platforms — where every solution runs |
 | [port-paths-exempt.tsv](./port-paths-exempt.tsv) | tsv | port-paths-exempt.tsv (harbor#629) — CODE rows bin/lint-port-paths.sh deliberately |
 | [port-root.md](./port-root.md) | md | PORT_ROOT` — the workspace root the governed repos live under |
