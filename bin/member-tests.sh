@@ -87,44 +87,23 @@ registered_projects() {
 # state_of <checkout> -> the state on stdout: "HEAD <sha|none>", then "<path> TAB <content hash|gone>" per dirty path, sorted. Non-zero on any doubt.
 # Every git call goes through library-git-safe.sh (gs_open, gs_git): the repo's own config and attributes are never read, and the hash is of the
 # bytes (--no-filters), so nothing the agent wrote into the repo makes git run a program on this hook's behalf.
-# A second argument is the work dir for its scratch files (default $W), so states_of can run several at once.
 state_of() {
-  _sw="${2:-$W}"; mkdir -p "$_sw" 2>/dev/null || return 1
-  gs_open "$1" "$_sw/g" || return 1
+  gs_open "$1" "$W/g" || return 1
   _head="$(gs_git rev-parse -q --verify HEAD 2>/dev/null)" || _head=none
   gs_git status --porcelain -z -uall 2>/dev/null | tr '\0' '\n' | awk '
     skip { skip = 0; print substr($0, 1); next }
     length($0) < 4 { next }
-    { s = substr($0, 1, 2); print substr($0, 4); if (s ~ /[RC]/) skip = 1 }' | sort -u > "$_sw/dirty" || return 1
-  [ "$(wc -l < "$_sw/dirty" | tr -d ' ')" -le 600 ] || return 1
+    { s = substr($0, 1, 2); print substr($0, 4); if (s ~ /[RC]/) skip = 1 }' | sort -u > "$W/dirty" || return 1
+  [ "$(wc -l < "$W/dirty" | tr -d ' ')" -le 600 ] || return 1
   printf 'HEAD %s\n' "$_head"
-  : > "$_sw/exist"
-  while IFS= read -r _f; do [ -f "$1/$_f" ] && [ ! -L "$1/$_f" ] && printf '%s\n' "$_f" >> "$_sw/exist"; done < "$_sw/dirty"
-  gs_git hash-object --no-filters --stdin-paths < "$_sw/exist" > "$_sw/hashes" 2>/dev/null || return 1
+  : > "$W/exist"
+  while IFS= read -r _f; do [ -f "$1/$_f" ] && [ ! -L "$1/$_f" ] && printf '%s\n' "$_f" >> "$W/exist"; done < "$W/dirty"
+  gs_git hash-object --no-filters --stdin-paths < "$W/exist" > "$W/hashes" 2>/dev/null || return 1
   i=0
   while IFS= read -r _f; do
-    if [ -f "$1/$_f" ] && [ ! -L "$1/$_f" ]; then i=$((i + 1)); printf '%s\t%s\n' "$_f" "$(sed -n "${i}p" "$_sw/hashes")"
+    if [ -f "$1/$_f" ] && [ ! -L "$1/$_f" ]; then i=$((i + 1)); printf '%s\t%s\n' "$_f" "$(sed -n "${i}p" "$W/hashes")"
     else printf '%s\tgone\n' "$_f"; fi
-  done < "$_sw/dirty" | sort -u
-}
-
-# states_of <projects file> <out dir> -> <out dir>/<name> holds each project's state_of, only when it succeeded. PAR at a time (124ey1kjcu0
-# P2): one after another, 17 projects took ~0.45 s each, so the 5 s snapshot bound cut the snapshot to the first few and the rest went
-# unchecked. Every project is still read, at the prompt and at Stop; only the order changes, so no verdict does.
-# Each lands in <out dir> by rename as it finishes, so a bound that ends the pass keeps every project already read.
-PAR=6
-states_of() {
-  mkdir -p "$2" 2>/dev/null || return 1
-  _sn=0
-  while IFS="$(printf '\t')" read -r _n _p; do
-    [ -n "$_n" ] || continue
-    # No job holds the hook's stdout: a subshell forked as the bound kills its parent outlived it and kept Stop open 40 s.
-    ( state_of "$_p" "$W/j.$_n" > "$2/.$_n.part" 2>/dev/null && mv -f "$2/.$_n.part" "$2/$_n" || rm -f "$2/.$_n.part" ) </dev/null >/dev/null 2>&1 &
-    _sn=$((_sn + 1))
-    if [ "$_sn" -ge "$PAR" ]; then wait; _sn=0; fi
-  done < "$1"
-  wait
-  return 0
+  done < "$W/dirty" | sort -u
 }
 
 class_of() { # <path> -> test | code | other
@@ -150,16 +129,17 @@ snap_work() {
   mkdir -p "$STATE/$SID" 2>/dev/null || return 0
   find "$STATE" -mindepth 1 -maxdepth 1 -type d -mtime +2 -exec rm -rf {} + 2>/dev/null || :
   registered_projects > "$W/projects"
-  states_of "$W/projects" "$STATE/$SID"
+  while IFS="$(printf '\t')" read -r _n _p; do
+    state_of "$_p" > "$W/s.$_n" 2>/dev/null && cp "$W/s.$_n" "$STATE/$SID/$_n" 2>/dev/null
+  done < "$W/projects"
   return 0
 }
 
 # changed_paths <checkout> <snapshot file> -> "present <path>" or "gone <path>" per path changed in the turn, a pure rename (same bytes, new name) left out.
 # A path is changed when its line is new or different since the prompt, or when commits made in the turn touched it. A path that was dirty at the
 # prompt and is clean now was committed (the commit diff names it) or reverted (not a change).
-changed_paths() { # <checkout> <snapshot file> <state now, from states_of>
-  [ -f "$3" ] && cp "$3" "$W/now" 2>/dev/null || return 1
-  gs_open "$1" "$W/g" || return 1
+changed_paths() {
+  state_of "$1" > "$W/now" 2>/dev/null || return 1
   _h0="$(sed -n '1s/^HEAD //p' "$2")"; _h1="$(sed -n '1s/^HEAD //p' "$W/now")"
   sed '1d' "$2" > "$W/a"; sed '1d' "$W/now" > "$W/b"
   comm -13 "$W/a" "$W/b" | awk -F'\t' '{ print ($2 == "gone" ? "gone" : "present") "\t" $1 }' > "$W/c0"
@@ -211,13 +191,9 @@ stop_work() {
   [ -d "$STATE/$SID" ] || return 0
   registered_projects > "$W/projects"
   : > "$W/out"
-  while IFS="$(printf '\t')" read -r _n _p; do [ -f "$STATE/$SID/$_n" ] && printf '%s\t%s\n' "$_n" "$_p"; done < "$W/projects" > "$W/snapped"
-  states_of "$W/snapped" "$W/now.d"
   while IFS="$(printf '\t')" read -r _n _p; do
     [ -f "$STATE/$SID/$_n" ] || continue
-    # The same state as at the prompt (HEAD and every dirty path with its hash) is no change: nothing more to read.
-    ! cmp -s "$STATE/$SID/$_n" "$W/now.d/$_n" 2>/dev/null || continue
-    changed_paths "$_p" "$STATE/$SID/$_n" "$W/now.d/$_n" | sort -u > "$W/changed" || continue
+    changed_paths "$_p" "$STATE/$SID/$_n" | sort -u > "$W/changed" || continue
     awk -F'\t' '$1 == "present" { print $2 }' "$W/changed" > "$W/changed.present"   # a deleted path is neither a code change nor a test written
     : > "$W/code"; _t=0
     while IFS= read -r _f; do
