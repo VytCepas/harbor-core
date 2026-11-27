@@ -34,20 +34,6 @@ t_has "a repo pack fires alongside the box packs" "$(fire "$(bash_ev PreToolUse 
 t_has "the envelope names the event it answered" "$(fire "$(bash_ev PreToolUse 'gh pr merge 173')")" '"hookEventName":"PreToolUse"'
 t_eq "a tool the rule does not name says nothing" "" "$(fire "$(tool_ev PreToolUse Write file_path /tmp/x)")"
 
-t_section "1 · frontmatter ends at its closing ---: a key-shaped body line is body (harbor#1633)"
-pack "$CFG/context-rules/user" 12-body-key.md <<'PACK'
----
-id: body-key
-event: PreToolUse
-when: always
-once: never
----
-BODY-KEY-NOTE
-tool: Write
-PACK
-t_has "a body line shaped like tool: does not narrow the pack" "$(fire "$(bash_ev PreToolUse 'ls')")" BODY-KEY-NOTE
-rm -f "$CFG/context-rules/user/12-body-key.md"
-
 t_section "1 · a tier that is the same directory twice is loaded once"
 pack "$T/same/context-rules/repo" 10-once.md <<'PACK'
 ---

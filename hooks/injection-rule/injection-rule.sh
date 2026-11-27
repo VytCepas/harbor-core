@@ -121,17 +121,7 @@ fmall(){ fm "$1" | awk -v k="^$2:[[:space:]]*" '$0 ~ k { sub(k, ""); print }'; }
 NL='
 '
 TAB='	'
-# What `fm` prints, read by the shell: an awk per pack per event was ~18 forks a Bash call (harbor#1633).
-fm_load() { # <file> -> _FM
-  _FM=''; _fl=0
-  while IFS= read -r _l || [ -n "$_l" ]; do
-    _fl=$((_fl + 1))
-    case "$_l" in ---*) case "${_l#---}" in *[![:space:]]*) ;; *) [ "$_fl" = 1 ] && continue; break ;; esac ;; esac
-    [ "$_fl" = 1 ] && break
-    _FM="$_FM$_l$NL"
-  done < "$1"
-  while :; do case "$_FM" in *"$NL") _FM="${_FM%"$NL"}" ;; *) break ;; esac; done   # as $(...) strips them
-}
+fm_load() { _FM="$(fm "$1")"; }
 fm_scan() { # <key> <all:0|1> -> FMV, the first value (or every value, one per line)
   FMV=''; _rest="$_FM"
   while [ -n "$_rest" ]; do
@@ -643,18 +633,9 @@ CTL="${HARBOR_CONTEXT_CONTROLS:-}"
 if [ -z "$CTL" ]; then
   for _c in "$SELF_DIR/controls.tsv" "$SELF_DIR/../standards/naming/controls.tsv"; do [ ! -f "$_c" ] || { CTL="$_c"; break; }; done
 fi
-# The register is read once, on the first ask: an awk per surviving pack was ~12 forks a Bash call (harbor#1633).
-CTLMAP=''; CTLREAD=0
-ctl_mode() { # <pack id> -> CTLV: shadow|warn|block, or empty when no row names it
-  CTLV=''
+ctl_mode() { # <pack id> -> shadow|warn|block, or nothing when no row names it
   [ -n "$CTL" ] && [ -f "$CTL" ] || return 0
-  if [ "$CTLREAD" = 0 ]; then
-    CTLREAD=1
-    CTLMAP="$(awk -F'\t' '$3 == "injection" && !($12 in s) { s[$12] = 1; print $12 "\t" $2 }' "$CTL" 2>/dev/null || :)"
-  fi
-  case "$NL$CTLMAP$NL" in
-    *"$NL$1$TAB"*) _cm="$NL$CTLMAP$NL"; _cm="${_cm#*"$NL$1$TAB"}"; CTLV="${_cm%%"$NL"*}" ;;
-  esac
+  awk -F'\t' -v i="$1" '$3 == "injection" && $12 == i { print $2; exit }' "$CTL" 2>/dev/null || :
 }
 
 shell_targets() {
@@ -925,7 +906,7 @@ WHEN
     if [ "$_once" != never ] && already "$_key"; then
       explain "skip $_id: already delivered this session ($_key)"; continue
     fi
-    ctl_mode "$_id"; _cmode="$CTLV"
+    _cmode="$(ctl_mode "$_id")"
 
     # `run:` - the script gets the payload on stdin and its STDOUT is the note; empty stdout is silence. Invoked as an ARGUMENT to sh (CONSTITUTION 4).
     # Resolved next to its pack, run from the session's repo; `..` and absolute paths are refused.
@@ -974,8 +955,7 @@ WHEN
     fi
     # Collapse to one paragraph. A note arrives inside a JSON string; hard-wrapped
     # source lines read as broken prose once they land.
-    # Only when there is something to collapse: most `run:` packs return nothing, and the two trs were ~24 forks a Bash call (harbor#1633).
-    case "$_note" in *"$NL"*|*'  '*) _note="$(printf '%s' "$_note" | tr '\n' ' ' | tr -s ' ')" ;; esac
+    _note="$(printf '%s' "$_note" | tr '\n' ' ' | tr -s ' ')"
     _note="${_note# }"; _note="${_note% }"
     if [ "${DECISION:-}" = deny ]; then
       # The reason travels in its own field, so it is not also appended as a note.

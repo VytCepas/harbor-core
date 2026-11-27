@@ -288,7 +288,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_STATUS_GLYPH_NAME_CAP` | tuning | `80` | Maximum characters of the name field the fleet status glyph prints before truncating (default 80) | status |  | tests only |
 | `HARBOR_STATUS_GLYPH_STALE_S` | tuning | `900` | age in seconds after which the fleet cache is treated as stale by the status glyph (default 900) | status |  | tests only |
 | `HARBOR_STATUS_IN_TREE` | switch | none | Set to 1 to make status-generate write status.md and build output into the checkout tree instead of the state directory | status |  | tests only |
-| `HARBOR_STATUS_LINE_REFRESH` | tuning | `30` | Seconds between status line refreshes written into the installed statusLine setting (default 30) | status |  | tests only |
+| `HARBOR_STATUS_LINE_REFRESH` | tuning | `10` | Seconds between status line refreshes written into the installed statusLine setting (default 10) | status |  | tests only |
 | `HARBOR_STATUS_OBLIGATION_BUDGET` | tuning | `40` | Seconds all reads of one status-obligations run may take together; default 40 | status |  | tests only |
 | `HARBOR_STATUS_OBLIGATION_CLAUDE` | test-only | `claude` | Name or path of the claude binary status-obligations runs (default claude); suites point it at a stub | status |  | tests only |
 | `HARBOR_STATUS_OBLIGATION_DIR` | path | `$HOME/.local/state/harbor/obligations` | Directory holding the status obligation ledger state (default ~/.local/state/harbor/obligations) | status |  | tests only |
