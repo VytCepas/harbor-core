@@ -1,25 +1,11 @@
 #!/bin/sh
 # G1 (harbor#25) — fail-CLOSED gitleaks pre-push gate for the Log repo.
-# Blocks the push when gitleaks finds a secret in the commits this push sends
+# Blocks the push when gitleaks finds a secret ANYWHERE in the repo history
 # OR when gitleaks is missing. Install: cp into ~/.claude/MEMORY/.git/hooks/.
 command -v gitleaks >/dev/null 2>&1 || {
   echo "pre-push: gitleaks missing — push BLOCKED (fail-closed)" >&2
   exit 1
 }
-TOP="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-  echo "pre-push: not inside a git work tree — push BLOCKED (fail-closed)" >&2
-  exit 1
-}
-# THE PUSHED RANGE, NOT THE WHOLE HISTORY (124ey1kjcu0 P3): the full scan was 13.8 CPU-s over 23,737
-# commits on every push, at 200-470 pushes a day. git hands the hook one `<local ref> <local sha>
-# <remote ref> <remote sha>` line per ref: an update scans <remote sha>..<local sha>, a deletion scans
-# nothing. A new ref scans the whole history: local remote-tracking refs can name commits the remote
-# lacks, so excluding them could send a secret unscanned. So does a range that cannot be read (no lines
-# on stdin, a sha that is not hex, a remote sha this repo lacks).
-# ONLY WHILE THE BACKSTOP RUNS: a secret already on the remote is the nightly full scan's
-# (bin/memory-secret-scan.sh, launchd com.harbor.memory.secret-scan). Unless `launchctl print` finds that
-# job loaded, every push scans the whole history, as before.
-#
 # THE SUBCOMMAND IS A DIALECT. gitleaks 8.19 introduced `gitleaks git`; 8.18.4 —
 # the version .github/workflows/governance.yml pins by exact URL — has no such
 # verb and exits 1 on it. With `--exit-code 1` meaning "a leak was found", an
@@ -33,40 +19,8 @@ TOP="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 # repo it guards fails open the moment that path moves — so this one stays
 # standalone, and the duplication is the price of that. library-admission.sh carries the
 # reference implementation and the measured equivalence; keep the two in step.
-scan() { # [git log options]; none = the whole history
-  if gitleaks git --help >/dev/null 2>&1; then
-    if [ -n "$1" ]; then gitleaks git --no-banner --exit-code 1 --log-opts="$1" "$TOP"
-    else gitleaks git --no-banner --exit-code 1 "$TOP"; fi
-  else
-    if [ -n "$1" ]; then gitleaks detect --no-banner --exit-code 1 --log-opts="$1" --source "$TOP"
-    else gitleaks detect --no-banner --exit-code 1 --source "$TOP"; fi
-  fi
-}
-backstop_loaded() {
-  command -v launchctl >/dev/null 2>&1 || return 1
-  launchctl print "gui/$(id -u)/com.harbor.memory.secret-scan" >/dev/null 2>&1
-}
-FULL=0; N=0; RANGES=''
-if [ -t 0 ]; then FULL=1; else
-  while read -r _lr _ls _rr _rs; do
-    [ -n "$_lr" ] || continue
-    N=$((N + 1))
-    case "$_ls$_rs" in *[!0123456789abcdef]*) FULL=1; continue ;; esac
-    case "$_ls" in *[!0]*) ;; *) continue ;; esac   # a deletion sends no commit
-    case "$_rs" in
-      *[!0]*) if git cat-file -e "$_rs^{commit}" 2>/dev/null; then RANGES="$RANGES
-$_rs..$_ls"; else FULL=1; fi ;;
-      *) FULL=1 ;;   # a new ref: the whole history
-    esac
-  done
+if gitleaks git --help >/dev/null 2>&1; then
+  exec gitleaks git --no-banner --exit-code 1 "$(git rev-parse --show-toplevel)"
+else
+  exec gitleaks detect --no-banner --exit-code 1 --source "$(git rev-parse --show-toplevel)"
 fi
-[ "$N" -gt 0 ] || FULL=1
-backstop_loaded || FULL=1
-if [ "$FULL" -eq 1 ]; then scan ''; exit $?; fi
-_old_ifs="$IFS"; IFS='
-'
-for _r in $RANGES; do
-  IFS="$_old_ifs"
-  scan "$_r" || exit 1
-done
-exit 0

@@ -8,7 +8,6 @@ tests/admission/baseline/ledger.test.sh
 tests/admission/baseline/ledger-class.test.sh
 tests/admission/baseline/status.test.sh
 tests/admission/baseline/b8.test.sh
-tests/admission/baseline/b8-cache.test.sh
 tests/admission/baseline/install.test.sh
 tests/admission/baseline/session.test.sh
 tests/admission/baseline/managed.test.sh

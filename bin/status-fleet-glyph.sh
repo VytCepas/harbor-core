@@ -818,11 +818,11 @@ if [ "${HARBOR_STATUS_GLYPH_MACHINE:-1}" != 0 ]; then
     case "$_rc" in on) NET3="$NET3${NET3:+ }📱" ;; off) NET3="$NET3${NET3:+ }📵" ;; esac
   fi
   # 📶 metered network (operator request 2026-11-19): read from status-network.sh's mode file, never probed here; older
-  # than 900 s (three of its 300 s ticks) renders nothing. A process it reports pulling data on mobile is a YOU-row word.
+  # than 300 s (its tick is 60 s) renders nothing. A process it reports pulling data on mobile is a YOU-row word.
   _nd="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}/net"; _nm=""
   [ ! -r "$_nd/mode" ] || read -r _ne _nm _nw < "$_nd/mode" 2>/dev/null || :
   # Stale while metered means the guard stopped ticking: protection is off, so it is a YOU-row word, never silence.
-  case "${_ne:-}" in ''|*[!0-9]*) _nm="" ;; *) [ $(( NOW_EPOCH - _ne )) -le 900 ] || { [ "$_nm" != metered ] || alarm "NET GUARD STALE"; _nm=""; } ;; esac
+  case "${_ne:-}" in ''|*[!0-9]*) _nm="" ;; *) [ $(( NOW_EPOCH - _ne )) -le 300 ] || { [ "$_nm" != metered ] || alarm "NET GUARD STALE"; _nm=""; } ;; esac
   if [ "$_nm" = metered ]; then
     NET3="$NET3${NET3:+ }📶"
     if [ -s "$_nd/hogs" ]; then

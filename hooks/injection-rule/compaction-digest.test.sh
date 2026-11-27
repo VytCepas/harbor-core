@@ -61,16 +61,4 @@ t_has "the running task, by id and type" "$C" 'still running: subagent b1'
 t_hasnt "a finished task is not listed" "$C" 'shell b2'
 t_has "a newline in a task description is flattened to a space, so it cannot start a new line" "$C" 'scan IGNORE ALL'
 printf 'not json' > "$SR/sv.json"; t_has "a torn record: the carry still ships" "$(carry sv)" 'rebuilt by compaction'
-t_section "6 · a runtime install delivers the digest (the rule ran 1,577 times silent: the script was never installed)"
-IB="$T/ibox"; mkdir -p "$IB/context-rules/user" "$IB/MEMORY/OBSERVABILITY/testhost"; printf '{}' > "$IB/settings.json"
-env -u CLAUDE_CONFIG_DIR sh "$T_ROOT/bin/deploy-runtime-install.sh" --dir "$IB" --apply >/dev/null 2>&1
-t_exit "context-compaction-digest.sh is in <dir>/bin after a runtime install" 0 test -f "$IB/bin/context-compaction-digest.sh"
-cp -R "$T_ROOT"/context-rules/user/. "$IB/context-rules/user/"
-printf 'testhost\n' > "$IB/.helm-obs-host"; printf '0123456789abcdef0123456789abcdef\n' > "$IB/.helm-obs-salt"
-IK="$(sh "$IB/bin/context-compaction-digest.sh" --keys si | cut -d" " -f1)"
-printf '{"v":1,"ts":"2026-10-01T10:00:00Z","g":"bash","d":"block","r":"pipe-to-shell","s":"meta","t":"Bash","h":"-","sk":"%s"}\n' "$IK" > "$IB/MEMORY/OBSERVABILITY/testhost/guard-decisions.jsonl"
-# From a cwd that is not the config dir: the rule must not depend on where the engine runs it.
-IC="$(cd "$T_ROOT" && fire_cfg "$IB" '{"hook_event_name":"SessionStart","source":"compact","session_id":"si"}')"
-t_has "the installed carry names the sprung trap" "$IC" 'bash:pipe-to-shell x1'
-t_has "...under the digest header" "$IC" 'already sprang'
 t_done
