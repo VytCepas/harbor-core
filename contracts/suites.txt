@@ -100,6 +100,7 @@ tests/status/statusline/row2.test.sh
 tests/status/statusline/subagent.test.sh
 tests/status/usage-aggregate/usage-aggregate.test.sh
 tests/status/network/network.test.sh
+tests/status/disk/disk.test.sh
 tests/test/suite-select/suite-select.test.sh
 tests/ci/verified/verified.test.sh
 tests/ci/runner/image.test.sh
@@ -134,6 +135,8 @@ tests/admission/confinement/covered.test.sh
 tests/access/chrome/mcp.test.sh
 tests/access/desktop/desktop.test.sh
 tests/access/chrome/session.test.sh
+tests/access/chrome/cards.test.sh
+tests/access/chrome/cards-server.test.sh
 tests/access/chrome/hidden.test.sh
 tests/access/chrome/click-text.test.sh
 tests/access/chrome/script.test.sh
@@ -264,6 +267,7 @@ hooks/reply-shape/reply-shape.test.sh
 tests/session/subagent/check.test.sh
 tests/session/agents/registry.test.sh
 tests/ci/governor/priority.test.sh
+tests/ci/governor/box.test.sh
 tests/event/bus/emit.test.sh
 tests/event/bus/concurrency.test.sh
 tests/event/bus/wait.test.sh
@@ -350,6 +354,7 @@ tests/check/registry/readers.test.sh
 tests/access/browser/private-hosts.test.sh
 tests/access/browser/token.test.sh
 tests/access/browser/chrome.test.sh
+tests/access/browser/intake.test.sh
 hooks/ticket-note/private-owners.test.sh
 tests/lint/citations/private.test.sh
 tests/lint/decision/citation.test.sh
@@ -435,6 +440,7 @@ tests/ci/runner/wedge.test.sh
 tests/drift/reconcile/contract.test.sh
 tests/drift/status/status.test.sh
 tests/ci/runners/scale.test.sh
+tests/ci/runners/tidy.test.sh
 tests/standard/rename/window.test.sh
 tests/standard/rename/collapse.test.sh
 tests/standard/rename/env-window.test.sh
@@ -585,3 +591,5 @@ tests/hub/release/release.test.sh
 tests/member/setup/generate.test.sh
 tests/member/connectors/connectors.test.sh
 tests/access/cli/oauth.test.sh
+tests/access/get/get.test.sh
+tests/access/get/review.test.sh

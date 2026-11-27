@@ -5,10 +5,13 @@
 # ones, set an adopted one's memory live) | down <repo|org> [--apply] (refuses a busy runner) | refresh [--apply] [--include-governance]
 # (recreate containers on a stale image, one at a time, skipping busy ones; tick never runs it) | switch [--apply] (CI_RUNS_ON=self-hosted
 # per ci-runner-switch.sh's verdict) | rerun-refused, rerun-lost [--apply] (once, last 48h) | tick (switch + both reruns + drift report;
-# run by status-fleet-snapshot-refresh.sh) | unwedge <container> [--apply] (TERM then KILL on the step processes of a runner the alarm confirmed wedged).
+# run by status-fleet-snapshot-refresh.sh) | unwedge <container> [--apply] (TERM then KILL on the step processes of a runner the alarm confirmed wedged) |
+# tidy [--apply] [--if-due] (check ci.runner-tidy: per runner container drop update staging, old versions, old _diag logs, an over-cap json log,
+# an idle runner's caches unless the network is metered; then fstrim the VM and report MB freed. --if-due: Sundays from 04:00, run by status-fleet-snapshot-refresh.sh).
 # THE FLEET is the fleet snapshot: a repo wants a runner when its workflows read vars.CI_RUNS_ON, unless `ci_runner: hosted` or it has no GitHub origin; other owners are `foreign`.
 # CONFIG $CLAUDE_CONFIG_DIR/.harbor-ci-runners: image, cpus, memory, hold REPO why, governance N, gate N (harbor#1286), repo OWNER/NAME,
-# org ORG [cap] [runners N], limits NAME [memory SIZE] [cpus N], mount REPO HOST-PATH CONTAINER-PATH (always read-only), lost-rerun off.
+# org ORG [cap] [runners N], limits NAME [memory SIZE] [cpus N], mount REPO HOST-PATH CONTAINER-PATH (always read-only), lost-rerun off,
+# logsize SIZE and logfiles N (the json-file log cap a container is CREATED with, default 20m x 2; HARBOR_CI_LOG_SIZE / HARBOR_CI_LOG_FILES win).
 # A container that exists is ADOPTED (up never recreates, stops or removes one); CPUS are set at creation, the governor moves them live. Per owner: personal repos follow cache/runner-switch.json, an org cache/runner-switch.<ORG>.json. No billing is read or written here.
 # Removed notes: docs/explanation/code-cases/bin-ci-runners.md
 # THE TOKEN goes GitHub -> 0600 file -> docker --env-file -> deleted: never an argv, a URL, a log line or the screen.
@@ -25,25 +28,27 @@ case "${1:-}" in
              exit 0 ;;
 esac
 CMD="${1:-}"; [ "$#" -gt 0 ] && shift
-APPLY=0; JSON=0; INCGOV=0; TARGET=""
+APPLY=0; JSON=0; INCGOV=0; IFDUE=0; TARGET=""
 for _a in "$@"; do
   # shellcheck disable=SC2034 # APPLY: read by the ci-runners-*-lib.sh this sources
   case "$_a" in
     --apply) APPLY=1 ;;
     --json) JSON=1 ;;
     --include-governance) INCGOV=1 ;;
+    --if-due) IFDUE=1 ;;
     -*) log_fail "unknown option $_a"; log_fix "sh $0 --help"; exit 2 ;;
     *) TARGET="$_a" ;;
   esac
 done
 case "$CMD" in
-  list|up|refresh|switch|rerun-refused|rerun-lost|tick) ;;
+  list|up|refresh|switch|rerun-refused|rerun-lost|tick|tidy) ;;
   unwedge) case "$TARGET" in *[!A-Za-z0-9._-]*|''|-*) log_fail "unwedge needs a container name (letters, digits . _ -)"; log_fix "sh $0 unwedge <name>-linux"; exit 2 ;; esac ;;
   down) case "$TARGET" in *[!A-Za-z0-9._-]*|'') log_fail "down needs a repo name (letters, digits . _ -)"; log_fix "sh $0 down <repo>"; exit 2 ;; esac
         case "$TARGET" in harbor|harbor-[0-9]) log_fail "$TARGET-linux is a governance runner, not a fleet runner"; log_fix "docker rm -f harbor-linux-N, then governance 1 in the config (see --help)"; exit 2 ;; esac ;;
   *) log_fail "unknown command '$CMD'"; log_fix "sh $0 --help"; exit 2 ;;
 esac
 
+[ "$IFDUE" = 0 ] || [ "$CMD" = tidy ] || { log_fail "--if-due belongs to tidy only"; log_fix "sh $0 tidy --apply --if-due"; exit 2; }
 [ "$INCGOV" = 0 ] || [ "$CMD" = refresh ] || [ "$CMD" = up ] || { log_fail "--include-governance belongs to refresh and up only"; log_fix "sh $0 refresh --apply --include-governance"; exit 2; }
 
 OWNER="${HARBOR_CI_OWNER:-VytCepas}"
@@ -75,6 +80,10 @@ IMAGE="${HARBOR_CI_IMAGE:-$(conf image)}"; IMAGE="${IMAGE:-port-linux-runner:loc
 CPUS="$(conf cpus)"; CPUS="${CPUS:-1}"
 MEMORY="$(conf memory)"; MEMORY="${MEMORY:-1g}"
 GOVN="$(conf governance)"; case "$GOVN" in [1-9]) ;; *) GOVN=1 ;; esac   # how many governance runners; anything else is the default 1
+# the json-file log cap every container is created with (harbor#1060, 2026-11-23: unrotated logs held 6 GB, one runner 2.7 GB of it)
+LOGSIZE="${HARBOR_CI_LOG_SIZE:-$(conf logsize)}"
+case "$LOGSIZE" in [1-9]*[kKmMgG]) case "${LOGSIZE%?}" in *[!0-9]*) LOGSIZE=20m ;; esac ;; *) LOGSIZE=20m ;; esac   # N[kmg], else the default
+LOGFILES="${HARBOR_CI_LOG_FILES:-$(conf logfiles)}"; case "$LOGFILES" in [1-9]|[1-9][0-9]) ;; *) LOGFILES=2 ;; esac
 GATEN="$(conf gate)"; case "$GATEN" in [1-9]) ;; *) GATEN=0 ;; esac   # how many gate runners (harbor#1286); anything else is the default 0
 is_hold() { [ -f "$CONF" ] && awk -v r="$1" '$1 == "hold" && $2 == r { f = 1 } END { exit !f }' "$CONF"; }
 ORGS="$( [ -f "$CONF" ] && awk '$1 == "org" && $2 ~ /^[A-Za-z0-9][A-Za-z0-9-]*$/ { printf "%s ", $2 }' "$CONF" 2>/dev/null || :)"
@@ -109,6 +118,7 @@ RC=0
 case "$CMD" in
   down) do_down ;;
   tick) do_tick ;;
+  tidy) do_tidy ;;
   unwedge) do_unwedge ;;
   *) collect
      case "$CMD" in list) do_list; [ "$JSON" = 1 ] || { do_mounts; do_memory; } ;; up) do_up ;; refresh) do_refresh ;; switch) do_switch ;; rerun-refused) do_rerun ;; rerun-lost) do_rerun_lost ;; esac ;;
