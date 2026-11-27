@@ -1054,10 +1054,20 @@ _floor_seg_ids() { # <cmd-ERE> [ci]
   _fsci=""; [ "${2:-}" = ci ] && _fsci="-i"
   # The anchors come off by parameter expansion, not $(printf | sed): two fewer processes per call (harbor#264).
   _fsre="${1#^}"; _fsre="${_fsre%\$}"
-  "$FLOOR_GREP" $_fsci -E "^SEGC:[0-9]+:$_fsre\$" 2>/dev/null <<HARBOR_ADMISSION_SEG_EOF \
-    | sed -n 's/^SEGC:\([0-9][0-9]*\):.*/\1/p' | sort -un | tr '\n' ' '
+  # The ids come off by parameter expansion, not `| sed | sort -un | tr`: three processes per call, 21 calls per Bash call (harbor#1633).
+  # No sort is needed: seg_emit (admission-normalize.awk) writes at most one SEGC per segment, ascending. `|| :` because grep exits 1 on no match.
+  _fsm="$("$FLOOR_GREP" $_fsci -E "^SEGC:[0-9]+:$_fsre\$" 2>/dev/null <<HARBOR_ADMISSION_SEG_EOF
 ${FLOOR_SEGS:-}
 HARBOR_ADMISSION_SEG_EOF
+)" || :
+  _fsout=''
+  while IFS= read -r _fsl; do
+    _fsl="${_fsl#SEGC:}"; _fsl="${_fsl%%:*}"
+    case "$_fsl" in ''|*[!0-9]*) ;; *) _fsout="$_fsout$_fsl " ;; esac
+  done <<HARBOR_ADMISSION_SEG_EOF
+$_fsm
+HARBOR_ADMISSION_SEG_EOF
+  printf '%s' "$_fsout"
 }
 
 # _floor_seg_argtab — every segment's arguments and redirect targets, one per line, raw then in
