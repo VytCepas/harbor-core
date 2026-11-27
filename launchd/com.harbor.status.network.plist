@@ -7,8 +7,9 @@
 
      This block is not installed; bin/deploy-launchd-render.sh drops it. -->
 <!-- docs/reference/checks.md `status.network` (operator request 2026-11-19): on a metered network (a phone hotspot), pause the jobs
-     that pull megabytes and report any other process that does; resume them when the network is unmetered again. Every 60 s and on
-     every network change (WatchPaths on SystemConfiguration). INSTALLED BY DEPLOY (harbor:deploy-installs is the marker
+     that pull megabytes and report any other process that does; resume them when the network is unmetered again. Every 300 s and on
+     every network change (WatchPaths on SystemConfiguration), which is what catches a switch to a hotspot; the interval is
+     only the backstop, 300 s since 2026-11-26 (60 s was ~10k runs a week, 124ey1kjcu0 P9). INSTALLED BY DEPLOY (harbor:deploy-installs is the marker
      bin/deploy-launchd-sync.sh reads; `sh bin/deploy.sh --apply --live` renders this file into ~/Library/LaunchAgents and loads it).
      A Claude session cannot install this, by design (#555 decision 3).
 
@@ -29,7 +30,7 @@
     <string>@HOME@/.claude/bin/status-network.sh</string>
     <string>guard</string>
   </array>
-  <key>StartInterval</key><integer>60</integer>
+  <key>StartInterval</key><integer>300</integer>
   <key>WatchPaths</key>
   <array>
     <string>/Library/Preferences/SystemConfiguration</string>
