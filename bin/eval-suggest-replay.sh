@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# eval-suggest-replay.sh (harbor#1485) — replay a suggestion table over every tool call in the transcript store, extended from
+# eval-suggest-replay.sh (harbor#1485) — replay a suggest-tool table over every tool call in the transcript store, extended from
 # eval-hook-replay.sh. A row must have no false matches before it ships; the replay proves that, it does not choose the rows.
 #
 #   sh bin/eval-suggest-replay.sh [--days N] [--table FILE]                  per-row counts and payload hashes
@@ -30,7 +30,7 @@ die() { log_fail "$1"; log_fix "$2"; log_end || :; exit "$3"; }
 TAB='	'
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 SRC_DIR="${HARBOR_SESSION_TRANSCRIPTS:-$CFG/projects}"
-DAYS=14; TABLE="$ROOT/context-rules/user/suggest-rows.tsv"; SAMPLE=''
+DAYS=14; TABLE="$ROOT/context-rules/user/suggest-tool.tsv"; SAMPLE=''
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -55,7 +55,7 @@ SUGGEST_HERE="$ROOT/context-rules/user"
 suggest_parser_load || die "the floor's parser is not beside this tool" "sh bin/admission-verify.sh --live" 2
 
 hash16() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -c1-16; }
-# The fields of a row, as suggest-subject.sh reads them. A cell is never empty, so tab as IFS loses nothing.
+# The fields of a row, as suggest-tool.sh reads them. A cell is never empty, so tab as IFS loses nothing.
 load() { IFS="$TAB" read -r ID KIND TOOLS WORD REC QUIET LINE SW SAFE INSTALL REQ SRC <<ROW
 $1
 ROW

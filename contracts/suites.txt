@@ -154,8 +154,8 @@ tests/context/injection-rule/default-way-deny.test.sh
 tests/context/injection-rule/repo-not-adopted.test.sh
 tests/context/injection-rule/ci-verdict-for-session.test.sh
 tests/context/injection-rule/skill-first-use.test.sh
+tests/context/injection-rule/suggest-tool.test.sh
 tests/context/injection-rule/name-note.test.sh
-tests/context/injection-rule/once-context.test.sh
 tests/admission/destroy/destroy.test.sh
 tests/admission/destroy/c1-miscellaneous.test.sh
 tests/admission/cloud/cloud.test.sh

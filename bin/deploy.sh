@@ -1215,20 +1215,6 @@ _pr_find() {
       printf '%s\t%s\n' "$_r" 'recorded by an install, gone from the box, and the repo no longer ships it' >>"$WORK/prune.rows"
     done
   fi
-  # 2c · rename shims: a symlink in <cfg>/bin that an install recorded (a manifest row), that the repo no
-  # longer ships (no bin/ path at HEAD), and that renames.tsv no longer keeps alive (no row for the old name
-  # whose remove_by is today or later). A regular file is never one; no HEAD listing drops nothing (harbor#996).
-  if [ -s "$WORK/prune.head" ] && [ -f "$ROOT/standards/naming/renames.tsv" ]; then
-    _today="$(date +%Y-%m-%d)"
-    il_mf_rows "$CFG" | awk -F'\t' '$1 ~ /^bin\/[^\/]+$/ { print substr($1, 5) }' | while IFS= read -r _n; do
-      [ -L "$CFG/bin/$_n" ] || continue
-      grep -qxF -- "bin/$_n" "$WORK/prune.head" && continue
-      _live="$(awk -F'\t' -v o="bin/$_n" -v t="$_today" '$2 == o && $6 ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ && $6 >= t { print $6; exit }' "$ROOT/standards/naming/renames.tsv")"
-      [ -z "$_live" ] || { printf '%s\t%s\n' "$CFG/bin/$_n" "a rename shim whose window is open until $_live: kept" >>"$WORK/prune.kept"; continue; }
-      _pr_has "$CFG/bin/$_n" && continue
-      _pr_add "$CFG/bin/$_n" "a rename shim: the repo no longer ships bin/$_n and renames.tsv holds no live row for it (-> $(readlink "$CFG/bin/$_n"))"
-    done
-  fi
   # 3 · prod-guard-install's old backups in the config root (install-lib backs up beside the log now).
   for _f in "$CFG"/settings.json.bak.*; do [ -e "$_f" ] && _pr_add "$_f" "prod-guard-install's old backup in the config root"; done
   # 4 · backups beyond retention: per installer, the newest $PRUNE_KEEP and anything younger than

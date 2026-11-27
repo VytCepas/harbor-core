@@ -180,7 +180,7 @@ collapsed to one paragraph.
 | `event` | **yes** | `PreToolUse` · `PostToolUse` · `PostToolUseFailure` · `SessionStart` · `SubagentStart` — and `PreCompact` · `SessionEnd` **only with `mode: notify`**, see below |
 | `tool` | no | tool-name matcher. `Write\|Edit` alternation is accepted. Absent means any tool |
 | `when` | **yes** | a predicate. **Repeatable, and repeats are ANDed** |
-| `once` | no | `session` (default) · `context` · `match` · `never` |
+| `once` | no | `session` (default) · `match` · `never` |
 | `mode` | no | `inform` (default) or `notify`, which also emits a `systemMessage` to the operator |
 | `summary` | no | the operator-facing line for `mode: notify`, unless a `run:` script supplies the line — see below |
 | `run` | no | a script beside the pack whose **stdout is the note**; empty stdout means no note. It may instead return a **decision**, or lead with the **person's line** — see below |
@@ -190,7 +190,7 @@ collapsed to one paragraph.
 **Every delivered note starts `[context:<id>]`**, after the governance stamp, where `<id>` is the pack's `id`. The
 `emitted` column of `standards/naming/controls.tsv` maps that id to its control row, so the first lookup from a note
 reaches its owner and its off-switch (harbor#957; `hooks/injection-rule/engine.test.sh`, section "every note starts").
-A deny reason keeps the refusal form its channel already has. A deny leaves the same usage stamp a note does, the rule id in the session's once-ledger (`state/inject/<session>.seen`), even for `once: never`.
+A deny reason keeps the refusal form its channel already has.
 
 ### A `run:` pack may return a decision, not only a note
 
@@ -284,27 +284,17 @@ can be joined to what that session did next. The engine hands the writer the ses
 Keyed inject records also enter what joins on `sk`: `bin/context-compaction-digest.sh` lists a session's inject denies,
 and the reroute count in `bin/admission-observe-report.sh` reads inject deny and shadow records.
 
-**A spoken line records its row.** `r` is `<pack id>-<row id>`, which is why a row
+**A spoken line records its row.** `r` is `<pack id>-<row id>`, for example `suggest-tool-<row-id>`, which is why a row
 id stops at 27 characters: the writer keeps 40. A line in shadow records the same token with `d=shadow`.
 
 **A sentinel the pack got wrong** records `<pack id>--bad-row` or `<pack id>--no-note` with `d=shadow`, once a session. No
 row token can equal these, because a row id never starts with `-`. `bin/admission-observe-report.sh` lists them with
 the shadow rows, which is where the defect is read.
 
-### `once: context`, and what re-arms it
-
-`context` delivers a rule once per **context**: the ledger key is `ctx:<id>`, and a SessionStart whose `source` is
-`compact` or `clear` drops every `ctx:` key, because the model has lost the earlier copy and the session id has not
-changed. A `session` key is never dropped. A rule whose note is empty spends nothing. Use it for an advisory note
-that repeats its own text (never for a deny or a security note, which stay `never` or `match`).
-A `run:` script may keep the scope itself: the engine exports `HARBOR_CONTEXT_LEDGER` (the session's ledger file, empty without a
-session id), and the script reads and appends a `ctx:<id>` line, so it can send its explanation once and a short line after
-(`agent-brief`).
-
 ### `once: match` and what the subject is
 
 `session` (the default) delivers a rule once per session. `never` delivers every
-time. `context` is `session` that a compaction or a clear resets (above). `match` re-delivers when the **subject** changes, and the subject is, in
+time. `match` re-delivers when the **subject** changes, and the subject is, in
 order of preference:
 
 1. `tool_input.file_path` — the path the tool was handed;
