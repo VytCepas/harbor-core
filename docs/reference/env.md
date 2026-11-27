@@ -145,7 +145,6 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_CONTEXT_BUDGET_NO_PROBE` | switch | `0` | Set to 1 to skip running the SessionStart injector when measuring context cost; that row reports NOT PROBED | context |  | tests only |
 | `HARBOR_CONTEXT_CEILING` | tuning | `40000` | Token ceiling the always-loaded session context is measured against by context-budget.sh; default 40000 | context |  | tests only |
 | `HARBOR_CONTEXT_CONTROLS` | path | none | controls.tsv the injection engine reads each pack mode from; unset means the one beside the engine, a suite points it at a fixture | context |  | tests only |
-| `HARBOR_CONTEXT_LEDGER` | path | none | Set by the injection engine for a run: script to the session's once-ledger file (empty without a session id); agent-brief.sh reads and appends its ctx: key there | context |  | tests only |
 | `HARBOR_CONTEXT_PEERS_DIR` | path | `$CFG/.helm-peers` | Directory of per-session peer files that context-peers.sh reads (default $CFG/.helm-peers) | context |  | tests only |
 | `HARBOR_CONTEXT_PEER_EXCLUDE` | handoff | none | Session id context-resolve passes to context-peers so the starting session is left out of its own peer-session report | context |  | tests only |
 | `HARBOR_CONTEXT_RATCHET_BASELINE` | path | `$ROOT/registries/context-ratchet.tsv` | TSV file holding the context-size ratchet baseline that context-budget compares against (default registries/context-ratchet.tsv) | context |  | tests only |

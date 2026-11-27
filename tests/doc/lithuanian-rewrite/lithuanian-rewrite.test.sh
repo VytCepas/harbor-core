@@ -122,17 +122,20 @@ PATH="$T_TMP/nojq:$PATH" HARBOR_DOC_LITHUANIAN_REWRITE_COMMAND="cat" sh "$TOOL" 
 t_eq "jq fails: exit" 3 "$_rc"
 t_has "jq fails: says so" "$(cat "$T_TMP/err")" "could not run"
 
-t_section "the context rule: the script gives the rules on a session call, one line with no session, silent on the rewrite call"
-# Once per context is the engine's job (once: context, tests/context/injection-rule/once-context.test.sh); the script keeps no ledger.
+t_section "the context rule: rules once, one line after, silent on the rewrite call"
 _p() { jq -cn --arg s "$1" --arg c "$2" '{hook_event_name:"PreToolUse",session_id:$s,tool_name:"Write",tool_input:{file_path:"/x/a.md",content:$c}}'; }
 LT="Šiuo metu duomenų perkėlimas vykdomas į naują lentelę, kurią užpildysiu iki penktadienio."
 N1="$(_p s1 "$LT" | sh "$RULE")"
-t_has "a session call: carries the rules" "$N1" "Write the draft to these rules"
-t_has "a session call: names the tool" "$N1" "doc-lithuanian-rewrite.sh"
-# harbor#1592 review: a note once sent the draft into the skill file it names.
-t_has "a session call: the draft goes to a file" "$N1" "write it to a file"
-t_hasnt "a session call: never into the skill" "$N1" "write it to ~/.claude/skills"
-t_has "a session call: exit 3 prints nothing" "$N1" "exits 3 and prints nothing"
+t_has "first note: carries the rules" "$N1" "Write the draft to these rules"
+t_has "first note: names the tool" "$N1" "doc-lithuanian-rewrite.sh"
+N2="$(_p s1 "$LT" | sh "$RULE")"
+t_has "second note: names the tool" "$N2" "doc-lithuanian-rewrite.sh"
+t_hasnt "second note: no rules again" "$N2" "Write the draft to these rules"
+# harbor#1592 review: the short note once sent the draft into the skill file it names.
+t_has "second note: the draft goes to a file" "$N2" "write it to a file"
+t_hasnt "second note: never into the skill" "$N2" "write it to ~/.claude/skills"
+t_has "second note: exit 3 prints nothing" "$N2" "exit 3 prints nothing"
+t_has "first note: exit 3 prints nothing" "$N1" "exits 3 and prints nothing"
 N3="$(_p s2 "$LT" | sh "$RULE")"
 t_has "another session: the rules again" "$N3" "Write the draft to these rules"
 N4="$(jq -cn --arg c "sh ~/port/harbor/bin/doc-lithuanian-rewrite.sh a.md # $LT" '{hook_event_name:"PreToolUse",session_id:"s1",tool_name:"Bash",tool_input:{command:$c}}' | sh "$RULE")"
@@ -142,8 +145,9 @@ t_has "six Lithuanian letters: fires" "$(_p s3 "aą bč cę dė eį fš" | sh "$
 N5="$(jq -cn --arg c "$LT" '{hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:"/x/a.md",content:$c}}' | sh "$RULE")"
 t_has "no session id: one line" "$N5" "doc-lithuanian-rewrite.sh"
 t_hasnt "no session id: not the rules" "$N5" "Write the draft to these rules"
-t_has "no session id: the draft goes to a file" "$N5" "write it to a file"
-t_has "no session id: exit 3 prints nothing" "$N5" "exit 3 prints nothing"
-t_eq "the script keeps no ledger of its own" "" "$(ls "$CLAUDE_CONFIG_DIR/state/lithuanian-prose" 2>/dev/null)"
+LD="$CLAUDE_CONFIG_DIR/state/lithuanian-prose"; mkdir -p "$LD"; : > "$LD/old.seen"; touch -t 202001010000 "$LD/old.seen"
+_p s4 "$LT" | sh "$RULE" > /dev/null
+[ ! -f "$LD/old.seen" ] && t_pass || t_fail "a ledger older than 7 days was not pruned"
+[ -f "$LD/s4.seen" ] && t_pass || t_fail "the new session's ledger was not written"
 
 t_done

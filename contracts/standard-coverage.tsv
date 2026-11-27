@@ -23,5 +23,6 @@ project-pointer	rule-data	{rules}/projects.tsv	none	the private layer's projects
 browser-route-platform-chrome	rule-data	{rules}/projects.tsv	none	the private layer's projects.tsv, installed by the inject installer
 default-way-route	rule-data	{rules}/default-way-route.tsv	row	core's default-way-route.tsv, installed by the inject installer
 default-way-deny	rule-data	{rules}/default-way-route.tsv	row	core's default-way-route.tsv, installed by the inject installer
+suggest-tool	rule-data	{rules}/suggest-tool.tsv	row	no row has a delivery until harbor#1278; until then the rule is installed and judges nothing
 uv	tool-origin	{home}/.local/share/uv/	-	uv tool install and uv python install
 claude-code	tool-origin	{home}/.local/share/claude/	-	the Claude Code installer's own versions
