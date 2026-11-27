@@ -74,6 +74,9 @@ t_eq "and not one of them is in the release" 0 "$(grep -c -F -f "$T_TMP/raw-h" "
 chmod 0700 "$OH"; printf '{"v":1,"ts":"%sT10:00:00Z","stream":"fleet.snapshots","attrs":{"who":"%s"}}\n' "$D" "$(id -un)" >> "$F"
 t_eq "a planted user name stops the release" 1 "$(python3 -I "$B/audit-stream-export.py" fleet.snapshots --out "$T_TMP/rel2" --cfg "$CF" --key-file "$KEY" >/dev/null 2>&1; echo $?)"
 
+t_section "7. the reports"
+printf '{"id":"e2","ts":"2026-10-09T10:05:00Z","kind":"approval.close","subject":"a1","data":{}}\n' >> "$BUS/2026-10-09.jsonl"
+t_eq "approval latency comes out of the bus" 300 "$(sh "$B/status-telemetry-report.sh" approvals --bus "$BUS" 2>/dev/null | awk -F'\t' '$1=="a1"{print $4}')"
 chmod -R u+w "$CF" 2>/dev/null || :
 chflags -R nouappnd "$ST" 2>/dev/null || :   # append-only files cannot be unlinked: let the temp dir go
 t_done

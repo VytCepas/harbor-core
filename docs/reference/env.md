@@ -322,7 +322,6 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_TEST_IN_SUITE` | handoff | none | Set to 1 by status-generate.sh for the suite it runs so a nested status run skips re-running suites (harbor#288) | test |  | tests only |
 | `HARBOR_TEST_NOW` | test-only | `computed` | Fixed epoch seconds used instead of the real clock so time-dependent CI and admission scripts are deterministic in tests | test |  | tests only |
 | `HARBOR_TEST_REQUIRE_BUN` | test-only | none | Set to 1 in the Linux governance job so a suite that needs bun fails instead of skipping when it is missing | test |  | tests only |
-| `HARBOR_TEST_REQUIRE_GITLEAKS` | test-only | none | Set to 1 in the Linux governance job so the suites that need gitleaks fail instead of skipping when it is missing | test |  | tests only |
 | `HARBOR_TEST_REQUIRE_NODE` | test-only | none | Set to 1 in the Linux runner image so the browser test fails instead of skipping when node is missing | test |  | tests only |
 | `HARBOR_TEST_REQUIRE_VALE` | test-only | none | Set to 1 in the Linux governance job so the Vale suites fail instead of skipping when Vale is missing | test |  | tests only |
 | `HARBOR_TEST_SANDBOX_DIR` | path | `$HOME/.claude-sandbox` | Sandbox config directory lint-conventions checks for the guards and floor files (default ~/.claude-sandbox) | test |  | tests only |
