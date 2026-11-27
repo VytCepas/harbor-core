@@ -2,6 +2,7 @@
 # bin/lint-name.sh (harbor#950): --added and its relay standard.names-added (harbor#968), --gen, the share column (D-83), the
 # private overlay (D-85). Split from tests/lint/name/name.test.sh at the 500-line budget (tests/README.md T2); the fixture
 # tree comes from tests/lint/name/fixture.sh.
+REQ_VALE="${HARBOR_TEST_REQUIRE_VALE:-0}"   # read before core.sh clears the HARBOR_* knobs
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 # the suite never reads the box's private overlay (D-85)
 HARBOR_SCOPE_PRIVATE="$TMP/no-private"; export HARBOR_SCOPE_PRIVATE; unset PORT_ROOT
@@ -120,7 +121,7 @@ if command -v vale > /dev/null 2>&1; then
   t_has "vale runs the generated config and flags a legacy term" "$_vl" "alerting"
   t_has "…and a UK spelling" "$_vl" "Use behavior instead of behaviour"
 else
-  t_eq "vale is absent: the generated config was not run (verified NOTHING about it)" absent absent
+  t_eq "vale is absent (the generated config was not run), so HARBOR_TEST_REQUIRE_VALE must be off" 0 "$REQ_VALE"
 fi
 
 t_section "spelling (D-16): a UK spelling is allowed nowhere and never expires"
