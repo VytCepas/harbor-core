@@ -338,7 +338,7 @@ emit() {
   cat <<'HEAD'
 ---
 name: skill-catalog
-description: "The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, each with the path or exact command; most are hidden from your listing and this is the only route to them. USE WHEN you are about to wait on CI or a PR, run a suite, push, merge or do any scripted chore by hand, or do reasoning work by hand: design an eval or a pass^k study, run a red-team pass, chase a root cause, reason from first principles, get independent perspectives, write or optimise a prompt, extract a paper, generate options. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, skill-book (its old name). NOT FOR invoking a skill already in your listing."
+description: "The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, with paths; most skills are hidden from your listing and this is the only route to them. USE WHEN you are about to wait on CI or a PR, run a suite, push, merge or do any scripted chore by hand, or do reasoning work by hand: design an eval or a pass^k study, run a red-team pass, chase a root cause, find why a problem keeps recurring, reason from first principles, get independent perspectives, write or optimise a prompt, extract a paper, generate options, search past sessions. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, skill-book (its old name). NOT FOR invoking a skill already in your listing."
 reach: reasoning
 ---
 

@@ -640,7 +640,7 @@ rule	630	lint.share	live	standards/naming/controls.tsv
 rule	631	lint.file-header	live	standards/naming/controls.tsv
 rule	632	lint.comment-added	live	standards/naming/controls.tsv
 rule	633	lint.comment-conform	live	standards/naming/controls.tsv
-rule	634	doc.vale	live	standards/naming/controls.tsv
+rule	634	doc.vale	retired	retired: no source names it
 rule	635	context.skill-on-first-use	live	standards/naming/controls.tsv
 rule	636	context.session-title-missing	live	standards/naming/controls.tsv
 rule	637	name.commit	live	standards/naming/controls.tsv
@@ -683,7 +683,7 @@ rule	673	check.deploy.launchd	live	standards/naming/controls.tsv
 rule	674	context.repo-sources-agree	live	standards/naming/controls.tsv
 rule	675	standard.kit-complete	live	standards/naming/controls.tsv
 rule	676	scope.system-register	live	standards/naming/controls.tsv
-rule	677	context.suggest-tool	live	standards/naming/controls.tsv
+rule	677	context.suggest-tool	retired	retired: no source names it
 rule	678	context.suggest-start	live	standards/naming/controls.tsv
 rule	679	lint.suggest-table	live	standards/naming/controls.tsv
 rule	680	hub.gate	live	standards/naming/controls.tsv
@@ -1140,7 +1140,7 @@ rule	1130	share	live	standards/naming/controls.tsv, the id less its family
 rule	1131	file-header	live	standards/naming/controls.tsv, the id less its family
 rule	1132	comment-added	live	standards/naming/controls.tsv, the id less its family
 rule	1133	comment-conform	live	standards/naming/controls.tsv, the id less its family
-rule	1134	vale	live	standards/naming/controls.tsv, the id less its family
+rule	1134	vale	retired	retired: no source names it
 rule	1135	skill-on-first-use	live	standards/naming/controls.tsv, the id less its family
 rule	1136	session-title-missing	live	standards/naming/controls.tsv, the id less its family
 rule	1137	commit	live	standards/naming/controls.tsv, the id less its family
@@ -1183,7 +1183,7 @@ rule	1173	deploy.launchd	live	standards/naming/controls.tsv, the id less its fam
 rule	1174	repo-sources-agree	live	standards/naming/controls.tsv, the id less its family
 rule	1175	kit-complete	live	standards/naming/controls.tsv, the id less its family
 rule	1176	system-register	live	standards/naming/controls.tsv, the id less its family
-rule	1177	suggest-tool	live	standards/naming/controls.tsv, the id less its family
+rule	1177	suggest-tool	retired	retired: no source names it
 rule	1178	suggest-start	live	standards/naming/controls.tsv, the id less its family
 rule	1179	suggest-table	live	standards/naming/controls.tsv, the id less its family
 rule	1180	gate	live	standards/naming/controls.tsv, the id less its family
@@ -1435,3 +1435,9 @@ rule	1425	desktop-script-deny	live	standards/naming/controls.tsv, the id less it
 rule	1426	desktop-script-confirm	live	standards/naming/controls.tsv, the id less its family
 rule	1427	desktop-shortcut-confirm	live	standards/naming/controls.tsv, the id less its family
 rule	1428	desktop-ask-rule	live	standards/naming/controls.tsv, the id less its family
+rule	1429	check.status.disk	live	standards/naming/controls.tsv
+rule	1430	check.ci-runner-tidy	live	standards/naming/controls.tsv
+rule	1431	status.disk	live	standards/naming/controls.tsv, the id less its family
+rule	1432	ci-runner-tidy	live	standards/naming/controls.tsv, the id less its family
+rule	1433	check.memory.secret-scan	live	standards/naming/controls.tsv
+rule	1434	memory.secret-scan	live	standards/naming/controls.tsv, the id less its family

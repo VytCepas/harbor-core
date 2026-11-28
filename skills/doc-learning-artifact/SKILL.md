@@ -1,6 +1,6 @@
 ---
 name: doc-learning-artifact
-description: "The operator's preferred page for learning anything: one section per tab, hand-drawn SVG diagrams whose boxes open a card under the diagram, a saved-answer quiz, gates in real Chrome (desktop + iPhone) for routing, cards and text fit, and a check that every quiz question is answerable from the page. USE WHEN building or updating a study or exam guide, course notes, a revision page, or teaching or onboarding material that explains a topic, process or system so a person can learn it. NOT FOR a system map to navigate (`doc-atlas`), a live workshop deck (`doc-workshop-deck`), or a status report or findings."
+description: "The operator's page for learning a topic: a tab per section, clickable SVG diagrams, a saved-answer quiz, real-Chrome gates. USE WHEN building or updating a study or exam guide, course notes, a revision page, or teaching or onboarding material that explains a topic, process or system so a person can learn it. NOT FOR a system map to navigate (`doc-atlas`), a live workshop deck (`doc-workshop-deck`), or a status report or findings."
 argument-hint: [course or topic, and the deliverable folder]
 reach: reasoning
 ---
@@ -119,7 +119,20 @@ Read the CSS before you invent a class.
 - `build.py` reports no unused cards.
 - **After changing the kit**, `test_kit.py --browser` exits 0.
 - The page sits in `~/Deliverables/<date>-<slug>/` and is handed over as a `file://` link.
-  Publish it only when asked.
+- **A personal learning page is also live on the operator's public learning site, and its
+  URL is in the hand-over.** University and self-study pages are published without asking
+  (operator, 2026-11-25). Where the site lives is private-layer data, named in the operator's
+  memory; the site's own README is the method (list the page, run its sync, commit, push).
+  The URL is read from the site repo's remote, never typed. The site is public. Whether a page is
+  personal or work is the session's judgment; the guard is the backstop: the sync refuses
+  the whole batch on any hit (home paths, config paths, emails,
+  tag ids, client names from the private roster), and a refusal is reported, never worked
+  around by editing the guard or the page.
+- **A work page is never published there**: anything about the employer, a client or internal
+  systems stays a `file://` link. The guard catching it is the backstop, not the decision.
+- **If the push is refused** (this session's GitHub identity may not reach the personal
+  account), hand over the exact push command and the URL it will serve, and check the URL
+  answers once the operator says it is pushed.
 
 ## Gotchas, each one measured
 

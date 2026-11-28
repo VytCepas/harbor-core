@@ -348,8 +348,8 @@ _gone() { rc env -u PLAYWRIGHT_MCP_EXTENSION_TOKEN STUB_GONE=1 XDG_CACHE_HOME="$
 t_eq "a verb on a gone session fails" "exit 1" "$(_gone tab-list)"
 t_has "naming the session" "$(out)" "no Chrome is connected to session claude-abc123def456"
 t_has "and the reconnect, not the CLI's own advice" "$(out)" "fix: harbor chrome attach"
-t_hasnt "the CLI's fresh-browser advice is not passed on" "$(out)" "please run open first"
-t_has "positive control: the stub does print that advice" "$(STUB_GONE=1 "$STUB" -s=x tab-list)" "please run open first"
+t_hasnt "the CLI's fresh-browser advice is not passed on" "$(out)" "playwright-cli -s="
+t_has "positive control: the stub does print that advice" "$(STUB_GONE=1 "$STUB" -s=x tab-list 2>&1)" "playwright-cli -s=x open"
 mkdir -p "$T_TMP/cache/ms-playwright/daemon/h"
 printf '2026-10-02T13:41:01.756Z pw:mcp:relay <ws closed> code=1000 reason=All controlled tabs detached\n' > "$T_TMP/cache/ms-playwright/daemon/h/claude-abc123def456.err"
 _gone snapshot > /dev/null
@@ -366,7 +366,7 @@ t_has "a page error that merely says 'is not open' passes through as itself" "$(
 t_hasnt "and is not called a gone session" "$(out)" "no Chrome is connected"
 t_eq "click on a gone session: the guard's snapshot is told apart too" "exit 1" "$(_gone click e3)"
 t_has "with the attach fix" "$(out)" "fix: harbor chrome attach"
-t_hasnt "and not the CLI's advice" "$(out)" "please run open first"
+t_hasnt "and not the CLI's advice" "$(out)" "playwright-cli -s="
 t_eq "no held output is left in the workdir" "" "$(find "$T_TMP/harbor-browser" -name '.out.*' 2>/dev/null)"
 
 URL="$LIVE_URL"
@@ -393,7 +393,7 @@ t_hasnt "...until detach" "$(ag status >/dev/null; out)" "background"
 HL="$T_TMP/harbor-browser/claude-abc123def456-web"
 hag() { HARBOR_ACCESS_BROWSER_LANE=web; export HARBOR_ACCESS_BROWSER_LANE; ag "$@"; _x=$?; unset HARBOR_ACCESS_BROWSER_LANE; return $_x; }
 _w0="$(osa window)"
-t_eq "attach --headless passes" "exit 0" "$(hag attach --headless)"
+t_eq "attach --blank passes" "exit 0" "$(hag attach --blank)"
 t_has "...opening an in-memory system Chrome, not the extension" "$(out)" "args=-s=claude-abc123def456-web open --browser=chrome --idle-timeout=14400000"
 t_hasnt "...with no profile name and no background flag" "$(out)" "profile=Default"
 t_eq "...and no Chrome window of the operator's" "$_w0" "$(osa window)"

@@ -1,6 +1,6 @@
 ---
 name: access-ledger
-description: "Which account to use on each system, the role it holds and what it cannot reach: harbor-private/access/ACCOUNTS.md, generated from the route cards; plus the one-ask access ledger. USE WHEN which account, wrong account, 401, 403, permission denied, Reauthentication failed, do I have access, can I reach X, need access, credentials, token, least privilege. NOT FOR obtaining or storing a credential (the operator holds those), or a number that is wrong (a casefile pack owns that)."
+description: "Which account to use on each system and what it cannot reach (ACCOUNTS.md). USE WHEN which account, wrong account, 401, 403, permission denied, Reauthentication failed, do I have access, can I reach X, need access, credentials, token, least privilege. NOT FOR obtaining or storing a credential (the operator holds those), or a number that is wrong (a casefile pack owns that)."
 argument-hint: [system or client]
 reach: reasoning
 ---
@@ -110,8 +110,8 @@ cell meaning *not recorded*, which is not the same as *no access*.
   is not the account for this. **`none`** measured to reach nothing. **`never`**
   must not be used here, whatever it holds.
 - **`role-check:`** reads the role held, and `--run` fails when it changes. A
-  role shown only on a settings page is `open <https URL>`, which an agent reads
-  in the browser (`BROWSER`, below). Where nothing can read it, the line says
+  role shown only on a settings page is `harbor chrome goto <https URL>`, which an
+  agent reads in the browser (`BROWSER`, below). Where nothing can read it, the line says
   `none - <why>` so the gap stays on the page instead of looking covered.
 - **An access failure points here by itself.** The box pack
   `context-rules/user/access-route-pointer.md` fires on a Bash result carrying a
@@ -155,15 +155,18 @@ card passes on `Needs authentication` — the route is dead, and the card says s
 A book that only accepted working routes would drop exactly the rows that stop
 the next session re-probing a closed door.
 
-**Three verdicts are neither pass nor fail, and all are honest:** `BROWSER` for a
+**Four verdicts are neither pass nor fail, and all are honest:** `BROWSER` for a
 check that is a URL to look at, `MANUAL` for one a person must run (`ssh`, `say`),
-and `UNCHECKABLE` for an `expect:` with no backticked literal to match on. Silence
-about what cannot be verified is the failure this whole file exists to end.
+`UNCHECKABLE` for an `expect:` with no backticked literal to match on, and
+`INSTRUMENT` when the tool failed rather than the access (exit 126/127, a timeout,
+no attached Chrome, `curl: (28)`): it is counted apart and never fails the run.
+Silence about what cannot be verified is the failure this whole file exists to end.
 
 **`BROWSER` is an agent's job, not the operator's.** A `check:` or `role-check:`
-of the form `open <https URL>` is run through Claude in Chrome: open the URL in a
-new tab, compare the page with the expectation `--run` prints beside it, and move
-`verified:` to today only on a match. Reading is all it licenses:
+of the form `harbor chrome goto <https URL>` is never executed by `--run`; it prints
+`card=<name> url=<url> expect: <expect>` on one line. Open that URL in the agent
+Chrome (`harbor chrome`, never `open`, which launches the operator's own),
+compare the page with the expectation, and move `verified:` to today only on a match. Reading is all it licenses:
 
 - **A login wall is the finding.** Never type a password, pick an SSO consent,
   or tick a terms box to get past one; report the wall and ask the operator to

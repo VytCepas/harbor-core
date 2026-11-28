@@ -790,11 +790,10 @@ cmd_dispatch() {
     now; [ "$((NOW / 86400))" = "$_pday" ] || { prune_ledger; _pday=$((NOW / 86400)); }
     # In the background, because a shell defers a trap until its foreground child ends: TERM must not wait an hour.
     sh "$BUS" wait . --timeout "$NEXT" --since-offset "$ST/offsets" --consumer dispatch >/dev/null 2>&1 9>&- & WAITER=$!
-    # dispatch.off is honoured within a second or two, not at the next event (up to an hour away).
-    ( while kill -0 "$WAITER" 2>/dev/null; do
-        if [ -e "$ST/dispatch.off" ]; then kill "$WAITER" 2>/dev/null; exit 0; fi
-        sleep 1
-      done ) >/dev/null 2>&1 </dev/null 9>&- & OFFW=$!
+    # dispatch.off is honoured within a second or two, not at the next event (up to an hour away). One perl that
+    # sleeps in-process, not a shell loop: its `sleep 1` was a process a second, all day (harbor#1633).
+    perl -e 'my ($w, $f) = @ARGV; while (kill 0, $w) { if (-e $f) { kill "TERM", $w; exit 0 } select(undef, undef, undef, 1) }' \
+      "$WAITER" "$ST/dispatch.off" >/dev/null 2>&1 </dev/null 9>&- & OFFW=$!
     _w=0; wait "$WAITER" || _w=$?; WAITER=""
     kill "$OFFW" 2>/dev/null || :; wait "$OFFW" 2>/dev/null || :; OFFW=""
     if [ -e "$ST/dispatch.off" ]; then log_note "[check:event.dispatch] $ST/dispatch.off appeared — stopping"; receipt off; exit 0; fi

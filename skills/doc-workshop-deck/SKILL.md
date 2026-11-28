@@ -4,7 +4,7 @@ description: "Prepare a live workshop or teaching session: a backward-designed p
 argument-hint: [topic, audience, minutes, and the deliverable folder]
 architecture: analysis decision-check
 disable-model-invocation: true
-reach: reasoning
+owns-content: "\blint_deck\.py\b"
 ---
 
 # doc-workshop-deck — a session people leave able to do something

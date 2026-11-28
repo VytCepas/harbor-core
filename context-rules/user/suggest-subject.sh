@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# suggest-subject.sh (harbor#1485): the reading of a suggest-tool table, and the one string a row's recogniser and quiet run on.
-# Sourced, never run, by suggest-tool.sh and bin/eval-suggest-replay.sh, so the replay proves what the live rule does.
+# suggest-subject.sh (harbor#1485): the reading of a suggestion table, and the one string a row's recogniser and quiet run on.
+# Sourced, never run, by suggest-start.sh and bin/eval-suggest-replay.sh.
 # The caller sets SUGGEST_HERE to the directory of this file.
 #
 # THE SUBJECT

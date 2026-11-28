@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # 99-skill-on-first-use: a call a skill owns, in a session that has not read that skill, names the skill and
 # its SKILL.md (harbor#1591). The first note carries the USE WHEN triggers and the inline section; while the skill
-# stays unread, a one-line reminder follows on the next owned call and every 10th after, at most 5 per session:
+# stays unread, a one-line reminder follows on the next owned call and every 10th after, at most 3 per session in all (P10):
 # uncapped, a 14-day replay counted 871 agent-routing reminders in 38 sessions.
 #
 # A CALL IS OWNED when a command-position segment (heredoc bodies and quoted arguments are data, by the
@@ -178,8 +178,15 @@ while IFS="$US" read -r _n _cmds _tools _sec _use _con _gate; do
   if told "$_n"; then
     _k="$("$_G" -cxF -- "own:$_n" "$SEEN" 2>/dev/null || true)"; case "$_k" in ''|*[!0-9]*) _k=0 ;; esac
     printf 'own:%s\n' "$_n" >> "$SEEN" 2>/dev/null || true
-    case "$((_k + 1))" in 1|10|20|30|40) OUT="${OUT}Skill \`$_n\` owns this call and is still unread: read $SK/$_n/SKILL.md.
-" ;; esac
+    # Three reminders a session across every skill (P10: of 64 sessions with reminders, 49 had 3 or fewer; a 4th is the 4th unheeded one).
+    case "$((_k + 1))" in 1|10|20|30|40)
+      _r="$("$_G" -cxF -- "rem" "$SEEN" 2>/dev/null || true)"; case "$_r" in ''|*[!0-9]*) _r=0 ;; esac
+      if [ "$_r" -lt 3 ]; then
+        printf 'rem\n' >> "$SEEN" 2>/dev/null || true
+        OUT="${OUT}Skill \`$_n\` owns this call and is still unread: read $SK/$_n/SKILL.md.
+"
+      fi ;;
+    esac
     continue
   fi
   printf '%s\n' "$_n" >> "$SEEN" 2>/dev/null || true
