@@ -45,11 +45,9 @@ mkdir -p "$T/cfg/skills/agent-routing" "$T/cfg/bin"; cp "$T_ROOT/skills/agent-ro
 cp "$T_ROOT/bin/library-admission.sh" "$T_ROOT/bin/admission-normalize.awk" "$T/cfg/bin/"; printf '{}\n' > "$T/transcript.jsonl"
 # name-note-create ships the mechanism, never a command: a workload pack writes the rows. This neutral one stands in (tests/context/injection-rule/name-note-create.test.sh).
 mkdir -p "$T/cfg/name-create.d"; printf 'fixturectl[[:space:]]+create[[:space:]]+\tskill\tUse the form the grammar names.\n' > "$T/cfg/name-create.d/fixture.tsv"
-# suggest-tool ships with no rows until the operator names the jobs, so its fire arm reads a neutral table, and the stop tool is a stub.
-# Both suggest packs are born shadow, so the rows run them at warn; the shadow arm is its own section below (harbor#1485).
-cp "$T_ROOT/fixtures/injection-rule/suggest-tool.tsv" "$BOXD/suggest-tool.tsv"
+# suggest-start is born shadow, so the rows run it at warn; the shadow arm is its own section below (harbor#1485). The stop tool is a stub.
 printf '#!/bin/sh\nexit 0\n' > "$T/cfg/bin/status-suggest.sh"
-awk -F'\t' -v OFS='\t' '$3 == "injection" && $12 ~ /^suggest-(tool|start)$/ { $2 = "warn" } { print }' "$T_ROOT/standards/naming/controls.tsv" > "$T/controls-warn.tsv"
+awk -F'\t' -v OFS='\t' '$3 == "injection" && $12 == "suggest-start" { $2 = "warn" } { print }' "$T_ROOT/standards/naming/controls.tsv" > "$T/controls-warn.tsv"
 
 make_repo() { # <dir> <pack> <shape>: skills = a HIDDEN skill, visible = one the model already lists
   rm -rf "$1"; mkdir -p "$1/context-rules/repo" "$1/vault" "$1/docs"
@@ -182,11 +180,10 @@ mkdir -p "$T/cfg/state/browser-last-tier"; : > "$T/cfg/state/browser-last-tier/a
 bl bl-s9 mcp__harbor_chrome__goto '{"args":["https://app.example.invalid/a"]}' >/dev/null
 t_eq "a ledger older than 7 days is removed on the way past" gone "$([ -e "$T/cfg/state/browser-last-tier/ancient.seen" ] && echo present || echo gone)"
 
-t_section "the suggest packs are born shadow: recorded, and nothing reaches the person (harbor#1485)"
+t_section "the suggest pack is born shadow: recorded, and nothing reaches the person (harbor#1485)"
 REPO="$T/repo"; make_repo "$REPO" box plain
-_sp='{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"sug-shadow","transcript_path":"'"$T/transcript.jsonl"'","tool_input":{"command":"fixturectl report"}}'
 _ss='{"hook_event_name":"SessionStart","source":"startup","session_id":"sug-shadow-start"}'
-for _a in "$_sp:suggest-tool" "$_ss:suggest-start"; do
+for _a in "$_ss:suggest-start"; do
   _pl="${_a%:*}"; _pk="${_a##*:}"
   _x="$(printf '%s' "$_pl" | CLAUDE_CONFIG_DIR="$T/cfg" CLAUDE_PROJECT_DIR="$REPO" /bin/sh "$ENGINE" --explain 2>&1)"
   t_has "$_pk under the shipped row is recorded in shadow" "$_x" "SHADOW $_pk: recorded, not spoken"

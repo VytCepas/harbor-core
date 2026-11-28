@@ -1,6 +1,6 @@
 ---
 name: skill-catalog
-description: "The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, each with the path or exact command; most are hidden from your listing and this is the only route to them. USE WHEN you are about to wait on CI or a PR, run a suite, push, merge or do any scripted chore by hand, or do reasoning work by hand: design an eval or a pass^k study, run a red-team pass, chase a root cause, reason from first principles, get independent perspectives, write or optimise a prompt, extract a paper, generate options. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, skill-book (its old name). NOT FOR invoking a skill already in your listing."
+description: "The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, with paths; most skills are hidden from your listing and this is the only route to them. USE WHEN you are about to wait on CI or a PR, run a suite, push, merge or do any scripted chore by hand, or do reasoning work by hand: design an eval or a pass^k study, run a red-team pass, chase a root cause, find why a problem keeps recurring, reason from first principles, get independent perspectives, write or optimise a prompt, extract a paper, generate options, search past sessions. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, skill-book (its old name). NOT FOR invoking a skill already in your listing."
 reach: reasoning
 ---
 
@@ -83,14 +83,14 @@ Listed for the operator, who does not get the model's skill listing.
 
 | Skill | Tier | What it is for |
 |---|---|---|
-| `access-ledger` | core | Which account to use on each system, the role it holds and what it cannot reach:…<br>_NOT FOR obtaining or storing a credential (the operator holds those), or a number that is wrong…_ |
+| `access-ledger` | core | Which account to use on each system and what it cannot reach (ACCOUNTS.md).<br>_NOT FOR obtaining or storing a credential (the operator holds those), or a number that is wrong…_ |
 | `audit-claims` | core | A fresh-context verifier checks each claim of an answer against its source before it ships.<br>_NOT FOR a code diff (audit-review-fanout)._ |
-| `audit-review-fanout` | core | Review a code change with several cheap reviewers, each given a different lens, then verify every finding…<br>_NOT FOR proving a test can fail (test-strength), or the merge decision (gate-merge)._ |
-| `doc-atlas` | core | The single owner of human-readable HTML artefacts on this box: an atlas whose subject is a DRAWING, not…<br>_NOT FOR a page a person studies or learns a topic from (`doc-learning-artifact`)._ |
-| `doc-deliverable-contract` | core | Before writing anything a person outside this session will read — a client thread reply, a ticket…<br>_NOT FOR the investigation itself (casefile), or the durable map (topology)._ |
-| `doc-learning-artifact` | core | The operator's preferred page for learning anything: one section per tab, hand-drawn SVG diagrams whose…<br>_NOT FOR a system map to navigate (`doc-atlas`), a live workshop deck (`doc-workshop-deck`), or…_ |
+| `audit-review-fanout` | core | Review a code change with cheap reviewers on different lenses, then verify every finding; verified…<br>_NOT FOR proving a test can fail (test-strength), or the merge decision (gate-merge)._ |
+| `doc-atlas` | core | A clickable HTML architecture atlas (pan-and-zoom diagram, a card per component) rendered from archify…<br>_NOT FOR a status write-up, a what-changed report, findings or test output (terminal, PR body or…_ |
+| `doc-deliverable-contract` | core | Before writing anything a person outside this session will read, restate the contract (what the verb…<br>_NOT FOR the investigation itself (casefile), or the durable map (topology)._ |
+| `doc-learning-artifact` | core | The operator's page for learning a topic: a tab per section, clickable SVG diagrams, a saved-answer quiz,…<br>_NOT FOR a system map to navigate (`doc-atlas`), a live workshop deck (`doc-workshop-deck`), or…_ |
 | `member-setup` | core | Adopt Harbor in an organisation: hub repo, signing key, pinned harbor-core, a setup zip per colleague,…<br>_NOT FOR a project's own CI._ |
-| `skill-catalog` | core | The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, each…<br>_NOT FOR invoking a skill already in your listing._ |
+| `skill-catalog` | core | The index of every skill, `harbor` verb, agent-facing bin tool and credentialed CLI on this box, with…<br>_NOT FOR invoking a skill already in your listing._ |
 | `status-suggest-scan` | core | Runs the repeated-work scan and says in plain words what a person keeps doing by hand.<br>_NOT FOR building what it finds._ |
 
 ## Commands and tools — `harbor <verb>` and the `bin/` scripts agents call directly
@@ -196,7 +196,7 @@ does not carry the path sends you back to the top.
 - `doc-workshop-deck` — `~/.claude/skills/doc-workshop-deck/SKILL.md` — preparing a workshop, training, lecture, onboarding session, teach-in, lunch-and-learn, or slides meant to TEACH colleagues or a class; when somebody says prepare slides to explain X.
 - `housekeeping` — `~/.claude/skills/housekeeping/SKILL.md` — the statusline shows 🧹 or SWEEP, clean up, sweep, free disk space, the box feels cluttered, tidy the fleet, obsolete worktrees or branches, stale sessions, what is safe to delete, disk is full, prune caches, retire a PR nobody will merge, merge what is waiting, garbage collect.
 - `member-setup` — `~/.claude/skills/member-setup/SKILL.md` — onboarding a company or colleague, building a setup zip, raising the hub pin.
-- `skill-catalog` — `~/.claude/skills/skill-catalog/SKILL.md` — you are about to wait on CI or a PR, run a suite, push, merge or do any scripted chore by hand, or do reasoning work by hand: design an eval or a pass^k study, run a red-team pass, chase a root cause, reason from first principles, get independent perspectives, write or optimise a prompt, extract a paper, generate options. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, skill-book (its old name).
+- `skill-catalog` — `~/.claude/skills/skill-catalog/SKILL.md` — you are about to wait on CI or a PR, run a suite, push, merge or do any scripted chore by hand, or do reasoning work by hand: design an eval or a pass^k study, run a red-team pass, chase a root cause, find why a problem keeps recurring, reason from first principles, get independent perspectives, write or optimise a prompt, extract a paper, generate options, search past sessions. ALSO WHEN what skills do I have, list skills, find a tool, is there a harbor command for this, how do I wait on CI, skill-book (its old name).
 - `status-suggest-scan` — `~/.claude/skills/status-suggest-scan/SKILL.md` — a person asks what they repeat or what Harbor could take over.
 - `test-strength` — `~/.claude/skills/test-strength/SKILL.md` — a suite is written or changed, a guard is trusted, a gate reports zero, or a green result is about to be cited as evidence.
 - `harbor status` — you need the generated counts, or the obligations ledger (open PRs, approvals, overdue items) — `harbor status [--json]; harbor status obligations --json`

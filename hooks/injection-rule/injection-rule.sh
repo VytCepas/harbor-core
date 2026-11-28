@@ -593,6 +593,17 @@ claim_line() {
   [ -n "$SEEN" ] && ( set -C; : > "$SEEN.line" ) 2>/dev/null
 }
 
+# ONCE PER CONTEXT: `once: context` keys the ledger on `ctx:<id>`. A compaction or a clear empties the model's context while the session id
+# lives on, so the keys of that scope are dropped when SessionStart reports it and the note is delivered again; `session` keys stay spent.
+if [ -n "$SEEN" ] && [ "$MODE" = hook ] && [ "$EVENT" = SessionStart ] && [ -f "$SEEN" ]; then
+  case "$SOURCE" in compact|clear)
+    awk '$0 !~ /^ctx:/' "$SEEN" > "$SEEN.c$$" 2>/dev/null && mv -f "$SEEN.c$$" "$SEEN" 2>/dev/null || rm -f "$SEEN.c$$" 2>/dev/null || true ;;
+  esac
+fi
+
+# A `run:` script that spends the context-scoped key itself (agent-brief: full text once, a short line after) reads and appends to this ledger.
+HARBOR_CONTEXT_LEDGER="$SEEN"; export HARBOR_CONTEXT_LEDGER
+
 NOTES=''
 USERMSG=''
 _GREP=/usr/bin/grep; [ -x "$_GREP" ] || _GREP=grep
@@ -630,7 +641,7 @@ log_defect() { # <pack id> <defect>
   remember "$1--$2"
   log_rule shadow "$1--$2"
 }
-# 27 characters: the writer keeps a 40-character rule, and suggest-tool- takes 13 of them.
+# 27 characters: the writer keeps a 40-character rule, and a 12-character pack id plus its hyphen takes 13 of them.
 row_ok() { # <row id>
   case "$1" in ''|-*|*[!abcdefghijklmnopqrstuvwxyz0-9-]*) return 1 ;; esac
   [ "${#1}" -le 27 ]
@@ -909,11 +920,12 @@ WHEN
     # No predicate is not "always": a pack missing its `when:` would fire on every event of its type.
     [ "$_npred" -gt 0 ] || { explain "skip $_id: no when: predicate — refusing to fire"; continue; }
 
-    # ONCE: session | match | never.
+    # ONCE: session | context | match | never.
     # `match` keys the ledger on what matched, so a benign hit on a document ABOUT injection does not spend the session's single note.
     # The known false-positive set is in hooks/injection-rule/detector.test.sh, not here.
     fm_get once; _once="$FMV"; [ -n "$_once" ] || _once=session
     _key="$_id"
+    [ "$_once" != context ] || _key="ctx:$_id"
     # The command is part of the subject (harbor#180): without it every Bash command hashed to one empty subject and `once: match` acted as `once: session`.
     # Keyed on the raw command, not the matched prefix, so two merges of different PR numbers each speak.
     if [ "$_once" = match ]; then
@@ -981,7 +993,8 @@ WHEN
       # The reason travels in its own field, so it is not also appended as a note.
       DREASON="$(printf '%s' "$DREASON" | tr '\n' ' ' | tr -s ' ')"
       DREASON="${DREASON# }"; DREASON="${DREASON% }"
-      if [ "$_once" != never ]; then remember "$_key"; fi
+      # Stamp even a once: never deny: a note stamps its rule in this ledger, and `already` never reads the key of a never rule (U5).
+      remember "$_key"
       log_rule deny "$_id"
       break
     fi

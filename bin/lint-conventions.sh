@@ -8051,18 +8051,18 @@ done < "$_rs_o"
 rm -f "$_rs_o"
 }
 
-# ── lint.suggest-table · every suggest-tool row passes the table check (harbor#1485) ─────────────────────────────────────────
-# A row reaches a person, so the check runs on the shipped table and on the fixture the notes suite overlays. The check is its own tool
+# ── lint.suggest-table · every suggestion-table row passes the table check (harbor#1485) ─────────────────────────────────────────
+# A row reaches a person, so the check runs on the fixture table. The check is its own tool
 # so a table can be held before it ships: sh bin/lint-suggest-table.sh <table>.
 rule_lint_suggest_table() {
-rule "lint.suggest-table every row of suggest-tool.tsv and its fixture has a distinctive trigger, an anchored Bash recogniser, no safe mod and a plain person's line (harbor#1485)"
+rule "lint.suggest-table every row of the suggestion fixture table has a distinctive trigger, an anchored Bash recogniser, no safe mod and a plain person's line (harbor#1485)"
 _stt=''
-for _st_f in "$ROOT/context-rules/user/suggest-tool.tsv" "$ROOT/fixtures/injection-rule/suggest-tool.tsv"; do [ ! -f "$_st_f" ] || _stt="$_stt$_st_f$_NL"; done
-[ -n "$_stt" ] || { _advn lint.suggest-table no-table; _advp '  ADVISORY [lint.suggest-table] no suggest-tool.tsv in this tree: NO row was checked\n'; return 0; }
+for _st_f in "$ROOT/context-rules/user/suggest-rows.tsv" "$ROOT/fixtures/suggest/rows.tsv"; do [ ! -f "$_st_f" ] || _stt="$_stt$_st_f$_NL"; done
+[ -n "$_stt" ] || { _advn lint.suggest-table no-table; _advp '  ADVISORY [lint.suggest-table] no suggestion table in this tree: NO row was checked\n'; return 0; }
 _st_o="${TMPDIR:-/tmp}/st.$$"
 printf '%s' "$_stt" | while IFS= read -r _st_f; do sh "$(dirname -- "$0")/lint-suggest-table.sh" "$_st_f"; done > "$_st_o" 2>&1
 while IFS= read -r _st_l; do
-  case "$_st_l" in '  FAIL: '*) _st_l="${_st_l#  FAIL: }"; bad lint.suggest-table "${_st_l#"$ROOT"/}" context-rules/user/suggest-tool.tsv ;; esac
+  case "$_st_l" in '  FAIL: '*) _st_l="${_st_l#  FAIL: }"; bad lint.suggest-table "${_st_l#"$ROOT"/}" fixtures/suggest/rows.tsv ;; esac
 done < "$_st_o"
 rm -f "$_st_o"
 }
