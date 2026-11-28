@@ -69,7 +69,13 @@
 # last line on the bus is left for the next run: the offset stops at the last newline.
 # RETENTION. A closed row, and the key of every transition, is kept for 15 days: the bus keeps 14 days of day files
 # (CONTRACT §1), and a day file's last event is a day younger than its name, so a replay of everything the bus still
-# holds is still deduped. A row older than that is gone from current.json and the snapshot; the ledger keeps it.
+# holds is still deduped. A row older than that is gone from current.json and the snapshot, and, once a UTC day, from the ledger: the fold rewrites it
+# without the obligations that are over (closed, abandoned or pending) and have no transition inside that window, which is as far
+# back as anything reads it (the fold's dedupe keys, and `show --since` for rows still in current.json). Every line of an
+# obligation still open or overdue stays whatever its age, and so does every line of one that moved inside the window, so a rebuild
+# from the cut ledger gives the same rows. A line that does not parse is kept. $DIR/compacted holds the day of the last cut.
+# A run that changes nothing does not rewrite current.json or snapshot.json (~10 MB together); the fold's clock is then the
+# stamp $DIR/generated_ts, which `show` reports as generated_ts.
 # A LEDGER LINE THAT DOES NOT PARSE is skipped and counted, never fatal: it is warned on stderr and shows as a `ledger`
 # source (ok:false) in `harbor status obligations --json` until the next clean run.
 # ORDER OF ARRIVAL. A terminal event for an id with no row is held (a `pending` transition) and applied when the open
@@ -133,7 +139,7 @@ SHOW_JQ='
     | . + {state: (if .state == "open" and ts(.deadline_ts) > 0 and ts(.deadline_ts) < $now then "overdue" else .state end)}
     | select($since < 0 or ([ts(.opened_ts), ts(.closed_ts), ts($changed[.id] // "")] | max) >= ($now - $since))] as $rows
   | if $fmt == "json" then
-      {generated_ts: (.generated_ts // $nowiso), sources: $src, obligations: $rows, proposals: [], read_ts: $nowiso}
+      {generated_ts: (if $gen != "" then $gen else (.generated_ts // $nowiso) end), sources: $src, obligations: $rows, proposals: [], read_ts: $nowiso}
     else
       ($rows | map(select(.state == "overdue")) | sort_by(.deadline_ts)) as $od
       | ($rows | map(select(.state == "open" or .state == "overdue"))) as $live
@@ -196,9 +202,11 @@ show_main() {
       | jq -s -c 'group_by(.obligation) | map({key: .[0].obligation, value: (map(.ts) | max)}) | from_entries')" \
       || { log_fail "could not read $LEDGER"; log_nofix "tests/status/obligations/surface.test.sh"; log_end || :; exit 1; }
   fi
+  _gen="$(cat "$DIR/generated_ts" 2>/dev/null || :)"
+  case "$_gen" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;; *) _gen="" ;; esac
   _rc=0
   { if [ "$_cur" = /dev/null ]; then printf '{"obligations":[]}\n'; else cat "$_cur"; fi; } \
-    | jq -r --argjson now "$_now" --arg nowiso "$NOW" --argjson since "$_since" --arg fmt "$_fmt" --argjson src "$_src" --argjson changed "$_chg" "$SHOW_JQ" \
+    | jq -r --argjson now "$_now" --arg nowiso "$NOW" --argjson since "$_since" --arg fmt "$_fmt" --argjson src "$_src" --argjson changed "$_chg" --arg gen "$_gen" "$SHOW_JQ" \
     || _rc=$?
   [ "$_rc" -eq 0 ] || { log_fail "could not read $CURRENT"; log_fix "sh $0 fold"; log_end || :; exit 1; }
 }
@@ -321,7 +329,7 @@ collect() {
 }
 
 # The definitions the fold and the reconciler share: ts_re … finish. $reg is the register, $now the clock, $home the
-# operator's home, $retain the seconds a closed row is kept. The state they thread is {rows, seen, pending, live, out}:
+# operator's home, $retain the seconds a closed row is kept, in steps of $step. The state they thread is {rows, seen, pending, live, out}:
 # rows by id; seen the (event, obligation, to) keys applied, by the epoch of their ts; pending a terminal event held for
 # an open that has not arrived; live the ids of the open and overdue rows, so a pass never walks the closed ones.
 # SPEED. jq mutates the state in place only while nothing else holds it, and an unfinished generator holds it: `//`, `try`,
@@ -432,7 +440,7 @@ def overdue_pass:
 # document, the state the snapshot keeps, a summary, then each transition to append. A closed row, a seen key and a
 # pending close older than the retention window are dropped here, once, at the end.
 def finish:
-  ($now - $retain) as $cut
+  ((($now - $retain) / $step | floor) * $step) as $cut
   | .rows |= del(.[] | select(((.state | live) or ts_e(.closed_ts) >= $cut) | not))
   | .seen |= del(.[] | select(. < $cut))
   | .pending |= del(.[] | select(ts_e(.ts) < $cut))
@@ -565,20 +573,18 @@ BUDGET="${HARBOR_STATUS_OBLIGATION_BUDGET:-40}"          # seconds every read of
 GRACE="${HARBOR_STATUS_OBLIGATION_GRACE:-300}"           # a registry file lags exec: a younger row is not judged dead
 QUIET="${HARBOR_STATUS_OBLIGATION_QUIET:-86400}"         # seconds a dead owner may be silent before its outliving row lapses even though it wrote after the deadline
 RETAIN="${HARBOR_STATUS_OBLIGATION_RETAIN:-1296000}"       # seconds a closed row, and the keys of its transitions, are kept: bus retention (14d) + 1d
+STEP=$((RETAIN / 15)); [ "$STEP" -ge 1 ] || STEP=1                # the retention edge moves in steps of a 15th of the window (a day for 15 days), so a quiet tick changes no byte
 LOCK_GRACE="${HARBOR_STATUS_OBLIGATION_LOCK_GRACE:-10}"  # a lock whose owner cannot be read is live until it is this old
 LOCK_MAX="${HARBOR_STATUS_OBLIGATION_LOCK_MAX:-900}"     # a lock older than this is taken over, whatever its pid says
 GH_MAX=25                                                # gh reads per source per run, oldest row first
+GH_PAR=6                                                 # of them in flight at once
 RECORD_MAX_AGE=129600                                    # a sweep record older than 36h answers nothing
 for _v in READ_TO BUDGET GRACE QUIET RETAIN LOCK_GRACE LOCK_MAX; do
   eval "_x=\$$_v"; case "$_x" in ''|*[!0-9]*) log_fail "HARBOR_STATUS_OBLIGATION_$_v is '$_x', want whole seconds"; log_fix "unset HARBOR_STATUS_OBLIGATION_$_v"; log_end || :; exit 2 ;; esac
 done
 
-bounded() { # <seconds> <command> [args…] — its stdout; non-zero when it failed or ran over
-  # THE READ GOES TO A FILE, NEVER A PIPE. `$(…)` waits for every holder of the pipe's write end, so a command whose grandchild
-  # outlives the kill (`sh -c 'sleep 25'`: the alarm kills the sh, the sleep keeps stdout) held the caller for the sleep's whole
-  # life and was then recorded as "timed out after 2s" (measured 27s on this box, no timeout(1), harbor#1115). A file has no
-  # reader to wait for. The perl arm also kills the whole process group, so nothing is left running behind a timed-out read.
-  _bs="$1"; shift; _bo="$T/bounded.out"; _brc=0
+bounded_run() { # <seconds> <outfile> <command...> - the command's stdout in <outfile>; non-zero when it failed or ran over. A read in the background names its own file
+  _bs="$1"; _bo="$2"; shift 2; _brc=0
   if command -v timeout >/dev/null 2>&1; then timeout "$_bs" "$@" > "$_bo" || _brc=$?
   elif command -v gtimeout >/dev/null 2>&1; then gtimeout "$_bs" "$@" > "$_bo" || _brc=$?
   elif command -v perl >/dev/null 2>&1; then
@@ -587,7 +593,16 @@ bounded() { # <seconds> <command> [args…] — its stdout; non-zero when it fai
       $SIG{ALRM} = sub { kill "KILL", -$p; waitpid($p, 0); exit 142 };
       alarm $t; waitpid($p, 0); exit($? & 127 ? 128 + ($? & 127) : $? >> 8)' "$_bs" "$@" > "$_bo" || _brc=$?
   else return 125; fi
-  cat "$_bo"; rm -f "$_bo"; return "$_brc"
+  return "$_brc"
+}
+bounded() { # <seconds> <command> [args…] — its stdout; non-zero when it failed or ran over
+  # THE READ GOES TO A FILE, NEVER A PIPE. `$(…)` waits for every holder of the pipe's write end, so a command whose grandchild
+  # outlives the kill (`sh -c 'sleep 25'`: the alarm kills the sh, the sleep keeps stdout) held the caller for the sleep's whole
+  # life and was then recorded as "timed out after 2s" (measured 27s on this box, no timeout(1), harbor#1115). A file has no
+  # reader to wait for. The perl arm also kills the whole process group, so nothing is left running behind a timed-out read.
+  _bt="$1"; shift; _bf="$T/bounded.out"; _bq=0
+  bounded_run "$_bt" "$_bf" "$@" || _bq=$?
+  cat "$_bf" 2>/dev/null; rm -f "$_bf"; return "$_bq"
 }
 slot() { # seconds the next read may take: the per-read cap, or what is left of the budget, or 0
   _left=$((BUDGET - ($(date +%s) - T_START)))
@@ -644,7 +659,7 @@ read_transcripts() {
 finished_facts() { # <session id> <transcript> <session dir>
   { printf 'main\t%s\n' "$2"; find "$3/subagents" -name 'agent-*.jsonl' -type f 2>/dev/null | while IFS= read -r _f; do
       _w="${_f##*/agent-}"; printf '%s\t%s\n' "${_w%.jsonl}" "$_f"; done; } | while IFS="$(printf '\t')" read -r _who _f; do
-    awk -v sid="$1" -v who="$_who" 'function secs(d,  n, a, i, v, u, t) { n = split(d, a, " "); t = 0
+    grep -aF -e 'Monitor started (task ' -e '<task-notification>' "$_f" 2>/dev/null | awk -v sid="$1" -v who="$_who" 'function secs(d,  n, a, i, v, u, t) { n = split(d, a, " "); t = 0
         for (i = 1; i <= n; i++) { v = a[i] + 0; u = substr(a[i], length(a[i])); t += v * (u == "h" ? 3600 : u == "m" ? 60 : 1) } return t }
       index($0, "Monitor started (task ") && match($0, /"timestamp":"[0-9T:.Z-]*"/) {
         ts = substr($0, RSTART + 13, 19) "Z"; s = $0
@@ -660,7 +675,7 @@ finished_facts() { # <session id> <transcript> <session dir>
           if (!match(b, /<task-id>[A-Za-z0-9]+<\/task-id>/)) continue
           tk = substr(b, RSTART + 9, RLENGTH - 19)
           if (match(b, /<status>(completed|failed|killed|stopped)<\/status>/)) { st = substr(b, RSTART + 8, RLENGTH - 17); printf "%s\tN\t%s\t%s\t%s\n", sid, tk, st, ts }
-          else if (b !~ /<status>/ && (b ~ /<event>\[Monitor expired after / || b ~ /stream ended<\/summary>/)) printf "%s\tX\t%s\n", sid, tk } }' "$_f" >> "$T/fin.facts" 2>/dev/null || :
+          else if (b !~ /<status>/ && (b ~ /<event>\[Monitor expired after / || b ~ /stream ended<\/summary>/)) printf "%s\tX\t%s\n", sid, tk } }' >> "$T/fin.facts" 2>/dev/null || :
     [ "$_who" != main ] || continue
     tail -n 1 "$_f" 2>/dev/null | jq -e -s 'length == 1 and .[0].type == "assistant" and .[0].message.stop_reason == "end_turn"' >/dev/null 2>&1 \
       && printf '%s\tE\t%s\n' "$1" "$_who" >> "$T/fin.facts"
@@ -711,7 +726,7 @@ read_finished() {
     _tf="$(find "$TRANSCRIPTS" -maxdepth 2 -name "$_sid.jsonl" -type f 2>/dev/null | head -n 1)"
     [ -n "$_tf" ] || continue
     _sd="${_tf%.jsonl}"
-    { cat "$_tf"; find "$_sd/subagents" -name '*.jsonl' -type f -exec cat {} + 2>/dev/null; } | awk -v sid="$_sid" '{ s = $0
+    { cat "$_tf"; find "$_sd/subagents" -name '*.jsonl' -type f -exec cat {} + 2>/dev/null; } | grep -aF '<task-notification>' | awk -v sid="$_sid" '{ s = $0
       while (match(s, /<task-notification>(\\n|[ \t])*<task-id>[^<]*<\/task-id>(\\n|[ \t])*<tool-use-id>[A-Za-z0-9_]+<\/tool-use-id>(\\n|[ \t])*(<output-file>[^<]*<\/output-file>(\\n|[ \t])*)?<status>(completed|failed|killed|stopped)<\/status>/)) {
         m = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
         sub(/.*<tool-use-id>/, "", m); sub(/<\/tool-use-id>.*/, "", m); print sid ":" m "\ttranscript" } }' >> "$T/fin.ids" 2>/dev/null || :
@@ -779,34 +794,53 @@ publish_pr_closes() {
     done
 }
 
+gh_read_one() { # <source> <subject> <seconds> <prefix> - one read, in the background: <prefix>.rc, and <prefix>.ans when it answered
+  _o="$4.raw"; _rc=0
+  if [ "$1" = gh-pr ]; then
+    bounded_run "$3" "$_o" "$GH" pr view "${2##*#}" -R "${2%#*}" --json state --jq .state </dev/null 2>/dev/null || _rc=$?
+    _a="$(cat "$_o" 2>/dev/null || :)"
+    case "$_a" in MERGED|CLOSED|OPEN) ;; *) [ "$_rc" -ne 0 ] || _rc=1 ;; esac
+  else
+    _rest="${2#*:}"
+    bounded_run "$3" "$_o" "$GH" run view "${_rest%%:*}" -R "${2%%:*}" --json status,jobs </dev/null 2>/dev/null || _rc=$?
+    _a=""
+    [ "$_rc" -ne 0 ] || _a="$(jq -r -e --arg job "${_rest#*:}" '
+      if (.status | type) != "string" then error("no status")
+      elif .status == "completed" or ([.jobs[]? | select(.name == $job and .status == "completed")] | length > 0) then "completed"
+      else "running" end' "$_o" 2>/dev/null)" || _rc=1
+  fi
+  [ "$_rc" -ne 0 ] || printf '%s' "$_a" > "$4.ans"
+  printf '%s' "$_rc" > "$4.rc"; rm -f "$_o"
+}
 # One `gh` read per live row, capped. A row whose read failed gets no answer, so it flips nothing; the source is
-# ok:false when any read failed, and says how many.
+# ok:false when any read failed, and says how many. The reads are independent round trips (~1 s each, 25 in a row measured
+# 2026-11-28), so they run GH_PAR at a time; each batch gets the time the budget has left, and the answers are collected in
+# row order, so the answer file is the serial run's.
 read_gh() { # <gh-pr|gh-run>
   _src="$1"; live_rows "$_src" | head -n "$GH_MAX" > "$T/list.$_src"
-  : > "$T/ans.$_src"; _n=0; _bad=0; _last=""
+  _gd="$T/gh.$_src"; rm -rf "$_gd"; mkdir "$_gd"
+  : > "$T/ans.$_src"; _n=0; _bad=0; _last=""; _to=0
   while IFS= read -r _s; do
     [ -n "$_s" ] || continue
     case "$_src" in
       gh-pr)  printf '%s' "$_s" | jq -R -e 'test("^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+#[0-9]+$")' >/dev/null 2>&1 || continue ;;
       gh-run) printf '%s' "$_s" | jq -R -e 'test("^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+:[0-9]+:.+$")' >/dev/null 2>&1 || continue ;;
     esac
-    _n=$((_n + 1)); _to="$(slot)"
-    [ "$_to" -gt 0 ] || { _bad=$((_bad + 1)); _last="read budget spent"; continue; }
-    _rc=0
-    if [ "$_src" = gh-pr ]; then
-      _a="$(bounded "$_to" "$GH" pr view "${_s##*#}" -R "${_s%#*}" --json state --jq .state </dev/null 2>/dev/null)" || _rc=$?
-      case "$_a" in MERGED|CLOSED|OPEN) ;; *) [ "$_rc" -ne 0 ] || _rc=1 ;; esac
-    else
-      _rest="${_s#*:}"; _json="$(bounded "$_to" "$GH" run view "${_rest%%:*}" -R "${_s%%:*}" --json status,jobs </dev/null 2>/dev/null)" || _rc=$?
-      _a=""
-      [ "$_rc" -ne 0 ] || _a="$(printf '%s' "$_json" | jq -r -e --arg job "${_rest#*:}" '
-        if (.status | type) != "string" then error("no status")
-        elif .status == "completed" or ([.jobs[]? | select(.name == $job and .status == "completed")] | length > 0) then "completed"
-        else "running" end' 2>/dev/null)" || _rc=1
-    fi
-    if [ "$_rc" -eq 0 ]; then printf '%s\t%s\n' "$_s" "$_a" >> "$T/ans.$_src"
-    else _bad=$((_bad + 1)); _last="$(why "$_rc" "$_to")"; fi
+    _n=$((_n + 1))
+    [ $(((_n - 1) % GH_PAR)) -ne 0 ] || { wait; _to="$(slot)"; }
+    printf '%s' "$_s" > "$_gd/$_n.s"; printf '%s' "$_to" > "$_gd/$_n.to"
+    if [ "$_to" -gt 0 ]; then gh_read_one "$_src" "$_s" "$_to" "$_gd/$_n" </dev/null & else printf B > "$_gd/$_n.rc"; fi
   done < "$T/list.$_src"
+  wait
+  _k=0
+  while [ "$_k" -lt "$_n" ]; do
+    _k=$((_k + 1)); _rc="$(cat "$_gd/$_k.rc" 2>/dev/null || echo 1)"
+    case "$_rc" in
+      0) printf '%s\t%s\n' "$(cat "$_gd/$_k.s")" "$(cat "$_gd/$_k.ans" 2>/dev/null || :)" >> "$T/ans.$_src" ;;
+      B) _bad=$((_bad + 1)); _last="read budget spent" ;;
+      *) _bad=$((_bad + 1)); _last="$(why "$_rc" "$(cat "$_gd/$_k.to")")" ;;
+    esac
+  done
   _ans="$(jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t")) | map({key: .[0], value: .[1]}) | {answers: from_entries}' "$T/ans.$_src")"
   if [ "$_n" -eq 0 ]; then src_set "$_src" true "no live rows to check" "$_ans"
   elif [ "$_bad" -eq 0 ]; then src_set "$_src" true "" "$_ans"
@@ -905,7 +939,7 @@ fold_pass() {
   load_state || return 1
   [ "${HARBOR_STATUS_OBLIGATION_FAULT:-}" != slow-read ] || sleep 3   # a suite's way to hold what a run read while another reads too
   jq -n -c --slurpfile snap "$SNAPFILE" --slurpfile led "$T/led.tail" --slurpfile ev "$T/events" --argjson reg "$(cat "$T/reg.json")" \
-    --argjson now "$NOW_E" --arg nowiso "$NOW" --arg home "$HOME" --argjson retain "$RETAIN" "$FOLD" > "$T/result" \
+    --argjson now "$NOW_E" --arg nowiso "$NOW" --arg home "$HOME" --argjson retain "$RETAIN" --argjson step "$STEP" "$FOLD" > "$T/result" \
     || { log_fail "the fold failed on $LEDGER or the new events; nothing was written"; log_nofix "tests/status/obligations/fold.test.sh"; return 1; }
   split_result "$T/result"
   if [ -s "$T/batch" ]; then
@@ -923,12 +957,61 @@ fold_pass() {
   _read="$(wc -l < "$T/raw" | tr -d ' ')"; _valid="$(wc -l < "$T/events" | tr -d ' ')"
   _moves="$(jq -s -r 'map(.to) | group_by(.) | map("\(length) \(.[0])") | join(", ")' "$T/batch")"
   log_ok "read $_read lines ($_valid events), $(jq '.unmatched' "$T/summary") matched no register row; transitions: ${_moves:-none}"
+  compact_ledger
 }
 
+# What a tick writes (harbor perf: the two files are ~10 MB together and were rewritten by every fold AND every reconcile):
+# a file whose bytes would not change is left alone. current.json is compared without its generated_ts, the fold's clock, which
+# changes every run; that clock lives in $DIR/generated_ts instead, a few bytes, and `show` reads it from there.
+body_of() { sed 's/^{"generated_ts":"[^"]*",//' "$1"; }   # a one-line document: everything after the clock
+put_if_changed() { # <new file> <target> <compare: body|whole> — move <new file> over <target> unless the bytes it would add are the same
+  if [ -f "$2" ]; then
+    if [ "$3" = body ]; then body_of "$1" > "$T/cmp.new"; body_of "$2" > "$T/cmp.old"; _pa="$T/cmp.new"; _pb="$T/cmp.old"
+    else _pa="$1"; _pb="$2"; fi
+    if cmp -s "$_pa" "$_pb"; then rm -f "$1"; return 0; fi
+  fi
+  mv -f "$1" "$2"
+}
+write_stamp() { printf '%s\n' "$NOW" > "$DIR/.generated.tmp" && mv -f "$DIR/.generated.tmp" "$DIR/generated_ts" || log_warn "cannot write $DIR/generated_ts"; }
+write_snapshot() { # <state doc> — the snapshot, taken at the ledger's end
+  { printf '{"v":1,"ledger_bytes":%s,"state":' "$(wc -c < "$LEDGER" | tr -d ' ')"; cat "$1"; printf '}\n'; } > "$T/snapshot.new" \
+    && put_if_changed "$T/snapshot.new" "$SNAP" whole
+}
 write_current() { # $T/current.doc as current.json, then $T/state.doc as the snapshot, taken at the ledger's end
-  mv -f "$T/current.doc" "$CURRENT" || { log_fail "cannot write $CURRENT; the offset is not advanced"; log_fix "ls -ld $DIR"; return 1; }
-  { printf '{"v":1,"ledger_bytes":%s,"state":' "$(wc -c < "$LEDGER" | tr -d ' ')"; cat "$T/state.doc"; printf '}\n'; } > "$T/snapshot.new" \
-    && mv -f "$T/snapshot.new" "$SNAP" || { log_fail "cannot write $SNAP; the offset is not advanced"; log_fix "ls -ld $DIR"; return 1; }
+  put_if_changed "$T/current.doc" "$CURRENT" body || { log_fail "cannot write $CURRENT; the offset is not advanced"; log_fix "ls -ld $DIR"; return 1; }
+  write_snapshot "$T/state.doc" || { log_fail "cannot write $SNAP; the offset is not advanced"; log_fix "ls -ld $DIR"; return 1; }
+  write_stamp
+}
+
+# THE LEDGER'S BOUND (header, RETENTION): once a UTC day the fold keeps only the lines of obligations that are live or moved within RETAIN.
+# The snapshot is removed before the swap and written after it, so a kill between them means a whole read of the cut ledger, never a stale byte.
+# shellcheck disable=SC2016
+KEEP='
+  def ep($t): [$t | try fromdateiso8601 catch 0][0];
+  ([$st[0].rows[] | select(.state == "open" or .state == "overdue") | .id]) as $liveids
+  | (reduce $liveids[] as $i ({}; .[$i] = true)) as $live
+  | (split("\n") | map(select(length > 0))) as $L
+  | [$L[] | (try fromjson catch null) | if type == "object" and (.obligation | type) == "string" and (.ts | type) == "string" then {o: .obligation, t: ep(.ts)} else null end] as $P
+  | (reduce ($P[] | select(. != null)) as $p ({}; .[$p.o] as $c | if $c == null or $c < $p.t then .[$p.o] = $p.t else . end)) as $last
+  | range(0; $L | length) as $i
+  | select($P[$i] == null or $live[$P[$i].o] == true or $last[$P[$i].o] >= $cut)
+  | $L[$i]'
+compact_ledger() {
+  _day="${NOW%%T*}"
+  [ "$(cat "$DIR/compacted" 2>/dev/null || :)" != "$_day" ] || return 0
+  [ -s "$LEDGER" ] || return 0
+  _lb="$(wc -l < "$LEDGER" | tr -d ' ')"
+  if jq -R -s -r --argjson cut $(((NOW_E - RETAIN) / STEP * STEP)) --slurpfile st "$T/state.doc" "$KEEP" "$LEDGER" > "$T/ledger.compact"; then
+    _la="$(wc -l < "$T/ledger.compact" | tr -d ' ')"
+    if [ "$_la" -lt "$_lb" ]; then
+      rm -f "$SNAP"
+      if mv -f "$T/ledger.compact" "$LEDGER"; then
+        write_snapshot "$T/state.doc" || log_warn "cannot write $SNAP; the next run rebuilds it from the ledger"
+        log_note "ledger cut from $_lb to $_la lines: what no reader looks back to (closed, and idle for $RETAIN s) is gone"
+      else log_warn "cannot replace $LEDGER with its cut copy; it is left whole"; fi
+    fi
+    printf '%s\n' "$_day" > "$DIR/.compacted.tmp" && mv -f "$DIR/.compacted.tmp" "$DIR/compacted" || log_warn "cannot write $DIR/compacted"
+  else log_warn "could not cut $LEDGER to its bound; it is left whole"; fi
 }
 
 reconcile_pass() {
@@ -957,7 +1040,7 @@ reconcile_pass() {
   for _f in "$T"/src/*.json; do jq -c --arg n "$(basename "$_f" .json)" '{($n): .}' "$_f"; done | jq -s -c 'add // {}' > "$T/src.json"
   load_state || return 1
   jq -n -c --slurpfile snap "$SNAPFILE" --slurpfile led "$T/led.tail" --argjson reg "$(cat "$T/reg.json")" --slurpfile src "$T/src.json" --argjson lo "$_lo" \
-    --argjson now "$NOW_E" --argjson grace "$GRACE" --argjson quiet "$QUIET" --arg nowiso "$NOW" --arg home "$HOME" --argjson retain "$RETAIN" '$src[0] as $src | '"$RECON" > "$T/rresult" \
+    --argjson now "$NOW_E" --argjson grace "$GRACE" --argjson quiet "$QUIET" --arg nowiso "$NOW" --arg home "$HOME" --argjson retain "$RETAIN" --argjson step "$STEP" '$src[0] as $src | '"$RECON" > "$T/rresult" \
     || { log_fail "the reconcile failed on $LEDGER or a source answer; nothing was written"; log_nofix "tests/status/obligations/reconcile.test.sh"; return 1; }
   split_result "$T/rresult"
   if [ -s "$T/batch" ]; then

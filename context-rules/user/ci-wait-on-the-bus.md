@@ -3,7 +3,7 @@ order: 91
 description: A CI wait runs on the event bus, never as a poll
 event: PreToolUse
 tool: Bash
-when: always
+when: payload-contains gh run|gh pr checks|gh pr view
 run: ci-wait-on-the-bus.sh
 once: session
 ---

@@ -214,28 +214,60 @@ fi
 
 field() { printf '%s' "$PAYLOAD" | jq -r "$1 // empty" 2>/dev/null || true; }
 
-EVENT="$(field '.hook_event_name')"
+# Every field the engine reads, in one jq (it was one per field, 9 forks a call). They travel joined by the unit separator after an `ok` mark;
+# a value that is not a string or that holds a separator cannot be split back exactly, so the jq says so (no `ok`) and the reads below run the long way.
+US="$(printf '\037')"
+# A field that errors is empty, as `field` makes it. CONTENT is the written text and the tool output, capped so the hook cannot stall its call:
+# the null filter precedes `tostring` (else a missing tool_response read as `null`), `.error` counts (PostToolUseFailure has no tool_response),
+# and both ends are kept, as a head-only cap let an injection past byte 262144 evade the scan.
+_FLD=''
+# Only a small payload: splitting a big joined string in the shell is quadratic (300 KB took 277 s, 16 KB twice the CPU of the long way), so a payload past 8 KB reads per field.
+[ "${#PAYLOAD}" -gt 8192 ] || _FLD="$(printf '%s' "$PAYLOAD" | jq -r '
+  def f(g): first((try (g) catch null), null);
+  [ f(.hook_event_name // empty), f(.tool_name // empty), f(.session_id // empty), f(.tool_input.command // empty),
+    f(.tool_input.file_path // empty), f(.source // empty), f(.cwd // empty),
+    f(.tool_input.file_path // .tool_input.notebook_path // .tool_input.path // empty),
+    f([ (.tool_input.content? // empty), (.tool_input.new_string? // empty), (.error? // empty),
+        (.tool_response? | select(. != null) | if type == "string" then . else (tostring) end) ]
+      | map(select(. != null and . != "")) | join("\n")
+      | if (length > 262144) then (.[:196608] + "\n" + .[-65536:]) else . end),
+    f(.agent_id // empty | strings) ]
+  | map(if . == null then "" else . end)
+  | if all(.[]; type == "string") and (map(contains("\u001f")) | any | not) then "ok\u001f" + join("\u001f") else "" end' 2>/dev/null || true)"
+case "$_FLD" in
+  "ok$US"*)
+    _FLD="${_FLD#ok"$US"}$US"
+    _take() { _x="${_FLD%%"$US"*}"; _FLD="${_FLD#*"$US"}"; while :; do case "$_x" in *"$NL") _x="${_x%"$NL"}" ;; *) break ;; esac; done; }   # as $(...) strips them
+    _take; EVENT="$_x"; _take; TOOL="$_x"; _take; SID="$_x"; _take; CMD="$_x"; _take; FPATH="$_x"
+    _take; SOURCE="$_x"; _take; CWDP="$_x"; _take; PPATH="$_x"; _take; CONTENT="$_x"; _take; AGENT="$_x"
+    # What a `run:` script would otherwise parse out of its stdin again. HARBOR_CONTEXT_FIELDS=1 says the values are the engine's reading of this
+    # payload (a script run by hand has none and reads its input); the command rides too: the whole payload is under 8 KB on this path.
+    HARBOR_CONTEXT_FIELDS=1; HARBOR_CONTEXT_TOOL="$TOOL"; HARBOR_CONTEXT_SID="$SID"; HARBOR_CONTEXT_CWD="$CWDP"; HARBOR_CONTEXT_AGENT="$AGENT"
+    export HARBOR_CONTEXT_FIELDS HARBOR_CONTEXT_TOOL HARBOR_CONTEXT_SID HARBOR_CONTEXT_CWD HARBOR_CONTEXT_AGENT
+    HARBOR_CONTEXT_COMMAND="$CMD"; export HARBOR_CONTEXT_COMMAND ;;
+  *)
+    EVENT="$(field '.hook_event_name')"
+    TOOL="$(field '.tool_name')"
+    SID="$(field '.session_id')"
+    CMD="$(field '.tool_input.command' | head -c 262144)"
+    FPATH="$(field '.tool_input.file_path')"
+    # SessionStart's `source` (startup|resume|clear|compact|fork) is what lets the post-compaction rule exist without firing on every start.
+    SOURCE="$(field '.source')"
+    CWDP="$(field '.cwd')"
+    AGENT="$(field '.agent_id | strings')"
+    unset HARBOR_CONTEXT_FIELDS HARBOR_CONTEXT_COMMAND   # a payload read the long way hands its scripts nothing to trust
+    PPATH="$(field '.tool_input.file_path // .tool_input.notebook_path // .tool_input.path')"
+    CONTENT="$(printf '%s' "$PAYLOAD" | jq -r '
+      [ (.tool_input.content? // empty),
+        (.tool_input.new_string? // empty),
+        (.error? // empty),
+        (.tool_response? | select(. != null)
+          | if type == "string" then . else (tostring) end) ]
+      | map(select(. != null and . != "")) | join("\n")
+      | if (length > 262144) then (.[:196608] + "\n" + .[-65536:]) else . end
+      ' 2>/dev/null || true)" ;;
+esac
 [ -n "$EVENT" ] || exit 0
-TOOL="$(field '.tool_name')"
-SID="$(field '.session_id')"
-CMD="$(field '.tool_input.command' | head -c 262144)"
-FPATH="$(field '.tool_input.file_path')"
-# SessionStart's `source` (startup|resume|clear|compact|fork) is what lets the post-compaction rule exist without firing on every start.
-SOURCE="$(field '.source')"
-
-# Written text for Write/Edit and the tool OUTPUT for PostToolUse, capped so the hook cannot stall its tool call.
-# The null filter precedes `tostring`, else a missing tool_response became the literal string `null`.
-# `.error` is content too: PostToolUseFailure carries no tool_response, so content-contains could never match there.
-CONTENT="$(printf '%s' "$PAYLOAD" | jq -r '
-  [ (.tool_input.content? // empty),
-    (.tool_input.new_string? // empty),
-    (.error? // empty),
-    (.tool_response? | select(. != null)
-      | if type == "string" then . else (tostring) end) ]
-  | map(select(. != null and . != "")) | join("\n")
-  # Keep both ends: a head-only cap let an injection past byte 262144 evade the scan.
-  | if (length > 262144) then (.[:196608] + "\n" + .[-65536:]) else . end
-  ' 2>/dev/null || true)"
 
 # -- provenance --
 # Not a label: fetched pages ride the same envelope, so the stamp carries a token derived from a box-local salt (bin/govern-token.sh).
@@ -294,9 +326,20 @@ segments() {
     | awk '{ gsub(/[[:space:]]+/, " "); sub(/^ /, ""); sub(/ $/, ""); if ($0 != "") print }'
 }
 
+# The command is split once a call, on the first predicate that needs it: every cmd-prefix and cmd-word reuses it (the split is 4 processes).
+# Set in the shell that evaluates the predicates, never inside a $(...), or the memo would be lost with the subshell.
+_SEGS=''; _SEGS_OK=0; _SEGW=''; _SEGW_OK=0; _STRIP=''; _STRIP_OK=0
+seg_load() { [ "$_SEGS_OK" = 1 ] || { _SEGS="$(segments "$CMD")"; _SEGS_OK=1; }; }
+segw_load() {
+  seg_load
+  [ "$_SEGW_OK" = 1 ] || { _SEGW="$(printf '%s\n' "$_SEGS" | sed -e 's/"[ ]*"/Q/g' -e "s/'[ ]*'/Q/g")"; _SEGW_OK=1; }
+}
+strip_load() { [ "$_STRIP_OK" = 1 ] || { _STRIP="$(strip_heredocs "$CMD")"; _STRIP_OK=1; }; }
+
 # The subcommand, not a substring: the predicate is the first N words of a command-position segment.
 seg_prefix() { # <words> -> 0 when some segment starts with exactly those words
   _want="$1"
+  seg_load
   while IFS= read -r _s; do
     [ -n "$_s" ] || continue
     case "$_s" in
@@ -309,7 +352,7 @@ seg_prefix() { # <words> -> 0 when some segment starts with exactly those words
     case "$_s" in *' --help') continue ;; esac
     return 0
   done <<SEGS
-$(segments "$CMD")
+$_SEGS
 SEGS
   return 1
 }
@@ -318,6 +361,7 @@ SEGS
 # the word must be the name or a path ending `/name`; `--help` excluded as above.
 seg_word() { # <name> -> 0 when some segment's command word is <name>
   _want="$1"
+  segw_load
   while IFS= read -r _s; do
     [ -n "$_s" ] || continue
     case " $_s " in *' --help '*) continue ;; esac
@@ -326,7 +370,7 @@ seg_word() { # <name> -> 0 when some segment's command word is <name>
     [ $# -gt 0 ] || continue
     case "${1#\`}" in "$_want"|*/"$_want") return 0 ;; esac
   done <<SEGS
-$(segments "$CMD" | sed -e 's/"[ ]*"/Q/g' -e "s/'[ ]*'/Q/g")
+$_SEGW
 SEGS
   return 1
 }
@@ -339,7 +383,7 @@ pred() { # <predicate line> -> 0 when satisfied
   if [ "$_kind" = "$_p" ]; then _arg=''; else _arg="${_p#* }"; fi
   # An unknown predicate is its own answer: returning 1 let `not <typo>` invert into a rule that fired on everything.
   case "$_kind" in
-    always|cmd-prefix|cmd-word|cmd-contains|path-contains|content-contains|repo-has|tool-is|source-is|injected-instruction) ;;
+    always|cmd-prefix|cmd-word|cmd-contains|path-contains|content-contains|payload-contains|repo-has|tool-is|source-is|injected-instruction) ;;
     *) explain "unknown predicate '$_kind' — refusing to fire either way"; return 1 ;;
   esac
   _r=1
@@ -347,9 +391,17 @@ pred() { # <predicate line> -> 0 when satisfied
     always)               _r=0 ;;
     cmd-prefix)           if seg_prefix "$_arg"; then _r=0; fi ;;
     cmd-word)             if seg_word "$_arg"; then _r=0; fi ;;
-    cmd-contains)         case "$(strip_heredocs "$CMD")" in *"$_arg"*) _r=0 ;; esac ;;
+    cmd-contains)         strip_load; case "$_STRIP" in *"$_arg"*) _r=0 ;; esac ;;
     path-contains)        case "$FPATH" in *"$_arg"*) _r=0 ;; esac ;;
     content-contains)     case "$CONTENT" in *"$_arg"*) _r=0 ;; esac ;;
+    # A gate for a `run:` pack, whose script costs a shell and several tools to answer "nothing": any one of the `|`-separated words in the event's
+    # raw JSON text. A superset of what the script can match (it reads decoded fields of that same text), so it only ever skips a script that
+    # would have printed nothing. Plain ASCII words: the harness writes JSON with no \u-escaped ASCII (a word needing `"` or `\` in JSON cannot be one).
+    payload-contains)     _pc_rest="$_arg|"
+                          while [ -n "$_pc_rest" ]; do
+                            _pc="${_pc_rest%%|*}"; _pc_rest="${_pc_rest#*|}"
+                            if [ -n "$_pc" ]; then case "$PAYLOAD" in *"$_pc"*) _r=0; break ;; esac; fi
+                          done ;;
     repo-has)             if [ -e "${RT:-$REPO}/$_arg" ]; then _r=0; fi ;;
     tool-is)              if [ "$TOOL" = "$_arg" ]; then _r=0; fi ;;
     source-is)            if [ "$SOURCE" = "$_arg" ]; then _r=0; fi ;;
@@ -568,7 +620,7 @@ SEEN=''
 case "$SID" in *[!A-Za-z0-9._-]*) SID='' ;; esac
 if [ -n "$SID" ] && [ "$MODE" = hook ]; then
   _sd="$CFG/state/inject"
-  mkdir -p "$_sd" 2>/dev/null || true
+  [ -d "$_sd" ] || mkdir -p "$_sd" 2>/dev/null || true
   if [ -d "$_sd" ]; then
     SEEN="$_sd/$SID.seen"
     # Prune on the way past. A ledger that only grows is a directory nobody
@@ -749,7 +801,7 @@ shell_targets() {
 
 touched_trees() {
   [ -z "$MR" ] || return 0   # member mode: no other tree is reached
-  _pp="$(printf '%s' "$PAYLOAD" | jq -r '.tool_input.file_path // .tool_input.notebook_path // .tool_input.path // empty' 2>/dev/null || true)"
+  _pp="$PPATH"
   {
     case "$_pp" in
       '')    ;;
@@ -798,7 +850,6 @@ registered() { # <physical tree>
 }
 
 TOUCHED=''; REACHED=''
-CWDP="$(field '.cwd')"
 case "$EVENT" in
   PreToolUse|PostToolUse|PostToolUseFailure)
     TOUCHED="$(touched_trees)"
@@ -870,6 +921,7 @@ prefilter() {
 }
 
 DECISION=''; DREASON=''
+_SUBJ_OK=0; _SUBJ_CK=''
 # The sweep's one held line (harbor#1485): nothing about it is logged, remembered or spoken until the sweep ends with no deny.
 H_ID=''; H_ROW=''; H_LINE=''; H_NOTE=''; H_KEY=''; H_ONCE=''; H_CMODE=''; H_DIR=''; H_SPOKE=''; SPOKEN=''
 while IFS="$TAB" read -r _file RT _reach; do
@@ -933,10 +985,17 @@ WHEN
     # The command is part of the subject (harbor#180): without it every Bash command hashed to one empty subject and `once: match` acted as `once: session`.
     # Keyed on the raw command, not the matched prefix, so two merges of different PR numbers each speak.
     if [ "$_once" = match ]; then
-      _subject="$FPATH"
-      [ -n "$_subject" ] || _subject="$(printf '%s' "$CONTENT" | head -c 4096)"
-      [ -n "$_subject" ] || _subject="$(printf '%s' "$CMD" | head -c 4096)"
-      _key="$_id:$(printf '%s' "$_subject" | cksum | tr -d ' ')"
+      # The subject is the same for every pack of the call, so its checksum is taken once (a fork per `match` pack was 3 processes each).
+      if [ "$_SUBJ_OK" = 0 ]; then
+        _subject="$FPATH"
+        # head -c only past its cap: a shorter string comes back unchanged (both were stripped of trailing newlines already).
+        [ -n "$_subject" ] || { _subject="$CONTENT"; [ "${#_subject}" -le 4096 ] || _subject="$(printf '%s' "$_subject" | head -c 4096)"; }
+        [ -n "$_subject" ] || { _subject="$CMD"; [ "${#_subject}" -le 4096 ] || _subject="$(printf '%s' "$_subject" | head -c 4096)"; }
+        _SUBJ_CK="$(printf '%s' "$_subject" | cksum)"
+        _SUBJ_CK="${_SUBJ_CK% *}${_SUBJ_CK#* }"
+        _SUBJ_OK=1
+      fi
+      _key="$_id:$_SUBJ_CK"
     fi
     if [ "$_once" != never ] && already "$_key"; then
       explain "skip $_id: already delivered this session ($_key)"; continue

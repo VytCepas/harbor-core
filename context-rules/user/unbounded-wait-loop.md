@@ -3,7 +3,7 @@ order: 90
 description: A wait loop with no deadline is replaced by the wait-for helper
 event: PreToolUse
 tool: Bash
-when: always
+when: payload-contains sleep
 run: unbounded-wait-loop.sh
 once: match
 ---

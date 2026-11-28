@@ -125,14 +125,14 @@ written: `status-obligations.sh show` takes no lock and reads `current.json` and
 
 - Every row carries every key above, in that order, with `""` for one the ledger has no value for. `age_s` is seconds from `opened_ts` to
   `read_ts` for every state, counted at read; a closed row's lifetime is `closed_ts` minus `opened_ts`.
-- `generated_ts` is when the fold last wrote `current.json`, not the clock of the read: a consumer sees how stale the file is as
+- `generated_ts` is when the fold last RAN (the stamp `generated_ts` beside `current.json`; a run with nothing new does not rewrite `current.json`), not the clock of the read: a consumer sees how stale the fold is as
   `read_ts` minus `generated_ts`. `read_ts` is the read's own clock and is the last key (added by harbor#1115; the rest are unchanged).
   A row stored `open` whose `deadline_ts` has passed is shown `overdue`, so a stale file cannot show an expired row as healthy.
 - `sources` is what each source answered on the last reconcile (`ok: false` carries the `reason`; `ts` is the attempt, not the last
   success). A source that did not answer flipped no row. `{}` until a reconcile has run. A `ledger` key (`ok: false`) appears for the
   run that skipped ledger lines which did not parse, and is gone after the next clean one.
-- `obligations` is every live row plus every row closed within the last 15 days (the event bus keeps 14, plus a day for its day files);
-  an older closed row is no longer listed, and `ledger.jsonl` still holds its history.
+- `obligations` is every live row plus every row closed within the last 15 days, the edge moving once a UTC day so a quiet tick rewrites nothing (the event bus keeps 14, plus a day for its day files);
+  an older closed row is no longer listed, and `ledger.jsonl` keeps the same window: the fold cuts it once a UTC day to the rows still open and those that moved inside the 15 days.
 - `proposals` is `[]` until harbor#1052; a consumer treats a missing or empty list as none.
 - `--since <N>s|m|h|d` keeps the rows opened, closed, or last moved by a transition within the window. An absent ledger prints the
   empty shape and exits 0; a malformed `--since` exits 2.

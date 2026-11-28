@@ -274,10 +274,21 @@ judge() {
 
 # ── judge every repo; a repo that did not answer keeps its last entry, flagged ─────────────────
 fleet > "$T/fleet.txt"
+# The repos are independent (each judge reads and writes only its own $T/r<N> and $T/entry.<N>.json), and each is a handful of
+# sequential GitHub round trips: measured 2026-11-28, ~4 minutes of a tick on a loaded box. So they run TIP_PAR at a time; the
+# verdicts are then collected in fleet order, so the log lines, the cache and the exit code are the serial run's.
+TIP_PAR=6
 _i=0; _unread=0
 while IFS= read -r _repo; do
-  _i=$((_i + 1)); _why=""
-  if ! judge "$_repo" "$_i"; then
+  _i=$((_i + 1))
+  ( _why=""; _jrc=0; judge "$_repo" "$_i" || _jrc=$?; printf '%s' "$_jrc" > "$T/rc.$_i"; printf '%s' "$_why" > "$T/why.$_i" ) &
+  [ $((_i % TIP_PAR)) -ne 0 ] || wait
+done < "$T/fleet.txt"
+wait
+_i=0
+while IFS= read -r _repo; do
+  _i=$((_i + 1)); _why="$(cat "$T/why.$_i" 2>/dev/null || :)"
+  if [ "$(cat "$T/rc.$_i" 2>/dev/null || echo 1)" != 0 ]; then
     _unread=$((_unread + 1)); log_fail "$_repo: UNREAD, GitHub did not answer (${_why:-read})"; log_fix "gh auth status"
     _prev="$(jq -c --arg r "$_repo" '(if (.repos | type) == "array" then .repos else [.] end) | map(select(.repo == $r)) | .[0] // empty' "$OUT" 2>/dev/null || :)"
     if [ -n "$_prev" ]; then printf '%s\n' "$_prev" | jq -c '. + {unread: true}' > "$T/entry.$_i.json"

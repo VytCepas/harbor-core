@@ -3,7 +3,7 @@ order: 93
 description: Before a long wait on a background task, confirm its process exists, and stop waiting if it is gone
 event: PreToolUse
 tool: Bash
-when: always
+when: payload-contains sleep|wait
 run: long-wait-process-exists.sh
 once: session
 ---

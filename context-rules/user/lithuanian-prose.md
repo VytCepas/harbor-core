@@ -3,7 +3,7 @@ order: 68
 description: Writing Lithuanian text names the Lithuanian sentence rules and the skill that holds them
 event: PreToolUse
 tool: Bash|Write|Edit|mcp__claude_ai_Claude_Docs__batch|mcp__claude_ai_Claude_Docs__update
-when: always
+when: payload-contains ą|č|ę|ė|į|š|ų|ū|ž|Ą|Č|Ę|Ė|Į|Š|Ų|Ū|Ž|\u01
 run: lithuanian-prose.sh
 once: context
 ---

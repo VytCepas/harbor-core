@@ -3,7 +3,7 @@ order: 71
 description: A read-only Bash call that asks to leave the sandbox is told it runs confined
 event: PreToolUse
 tool: Bash
-when: always
+when: payload-contains dangerouslyDisableSandbox
 run: confinement-read-escape.sh
 once: session
 ---

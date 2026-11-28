@@ -172,7 +172,8 @@ fi
 # Every element must be an OBJECT (fleet#218): `[..., null]` passed the array check and moved the statusline from 15 to 16 berths (a phantom project). Fields inside an object stay unchecked on purpose: the seam is additive-only (pinned in tests/status/statusline/fleet.test.sh).
 if "$ORCH" snapshot --fleet "$FLEET" --json >"$TMP" 2>/dev/null \
    && jq -e -s 'length == 1 and (.[0] | type == "array" and all(.[]; type == "object"))' "$TMP" >/dev/null 2>&1; then
-  mv "$TMP" "$CACHE"
+  # An unchanged snapshot is not rewritten (155 KB a tick, 288 ticks a day): its mtime is what the glyph's staleness reads, so it is touched instead.
+  if [ -f "$CACHE" ] && [ ! -L "$CACHE" ] && cmp -s "$TMP" "$CACHE" && touch "$CACHE" 2>/dev/null; then rm -f "$TMP"; else mv "$TMP" "$CACHE"; fi
 else
   log_fail "the fleet snapshot failed, or failed the shape gate, so $CACHE keeps its previous value: $ORCH snapshot --fleet $FLEET"
   log_nofix "fleet — run $ORCH snapshot --fleet $FLEET --json to see why"

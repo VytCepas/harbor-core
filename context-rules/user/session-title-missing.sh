@@ -3,11 +3,16 @@
 # Silent in a subagent (its tool calls carry agent_id), with no session id, when the title file exists
 # or the operator switched titles off. FAIL-OPEN: any error prints nothing and exits 0.
 set -u
-command -v jq >/dev/null 2>&1 || exit 0
-P="$(cat)"
-[ -n "$P" ] || exit 0
-SID="$(printf '%s' "$P" | jq -r '.session_id // empty | strings' 2>/dev/null)" || exit 0
-AID="$(printf '%s' "$P" | jq -r '.agent_id // empty | strings' 2>/dev/null)" || exit 0
+# The engine has already read these two fields (HARBOR_CONTEXT_FIELDS=1); run by hand, the script reads its own input.
+if [ "${HARBOR_CONTEXT_FIELDS:-}" = 1 ]; then
+  SID="$HARBOR_CONTEXT_SID"; AID="$HARBOR_CONTEXT_AGENT"
+else
+  command -v jq >/dev/null 2>&1 || exit 0
+  P="$(cat)"
+  [ -n "$P" ] || exit 0
+  SID="$(printf '%s' "$P" | jq -r '.session_id // empty | strings' 2>/dev/null)" || exit 0
+  AID="$(printf '%s' "$P" | jq -r '.agent_id // empty | strings' 2>/dev/null)" || exit 0
+fi
 [ -z "$AID" ] || exit 0
 case "$SID" in ''|*[!A-Za-z0-9_-]*) exit 0 ;; esac
 CFG="${CLAUDE_CONFIG_DIR:-${HOME:-/nonexistent}/.claude}"
