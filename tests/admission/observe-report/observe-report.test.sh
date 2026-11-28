@@ -156,23 +156,23 @@ t_has "the call it took is counted as unknown" "$OUTRL" "1 call(s) within 10 s o
 t_has "the refusers the ledger cannot see are named" "$OUTRL" "govern-hook denies"
 # harbor#1485: an inject record now carries `sk`, so it reaches the join. A shadow note or line refused nothing, and a real guard's shadow still counts.
 FRI="$(mkfixture reroute-inject)"; unseal "$FRI"; census "$FRI" 2
-rr "$FRI" "$T0:01Z" egress allow Bash "$SA"; rr "$FRI" "$T0:01Z" inject shadow Bash "$SA" suggest-start-row-a
+rr "$FRI" "$T0:01Z" egress allow Bash "$SA"; rr "$FRI" "$T0:01Z" inject shadow Bash "$SA" suggest-tool-row-a
 rr "$FRI" "$T0:03Z" egress allow Write "$SA"
-rr "$FRI" "$T0:05Z" egress allow Bash "$SA"; rr "$FRI" "$T0:05Z" inject advise Bash "$SA" suggest-start-row-b
+rr "$FRI" "$T0:05Z" egress allow Bash "$SA"; rr "$FRI" "$T0:05Z" inject advise Bash "$SA" suggest-tool-row-b
 rr "$FRI" "$T0:07Z" egress allow Edit "$SA"
-rr "$FRI" "$T0:09Z" egress allow Bash "$SA"; rr "$FRI" "$T0:09Z" inject shadow Bash "$SA" suggest-start--bad-row
+rr "$FRI" "$T0:09Z" egress allow Bash "$SA"; rr "$FRI" "$T0:09Z" inject shadow Bash "$SA" suggest-tool--bad-row
 rr "$FRI" "$T0:11Z" egress allow Bash "$SA"
 rr "$FRI" "$T0:13Z" egress allow Bash "$SB"; rr "$FRI" "$T0:13Z" bash shadow Bash "$SB" pipe-to-shell
 rr "$FRI" "$T0:15Z" egress allow Write "$SB"; seal "$FRI"
 OUTRI="$(CLAUDE_CONFIG_DIR="$FRI" sh "$OR" --reroute 2>&1)"
-t_has "a suggest-start record leaves its call in the control; a guard's would-block does not" "$OUTRI" "allowed Bash calls (control): 3, next call Write/Edit: 2 (66.7%)"
+t_has "a suggest-tool record leaves its call in the control; a guard's would-block does not" "$OUTRI" "allowed Bash calls (control): 3, next call Write/Edit: 2 (66.7%)"
 OUTSI="$(CLAUDE_CONFIG_DIR="$FRI" sh "$OR" --shadow 2>&1)"
 t_has "--shadow counts only guards as would-blocks" "$OUTSI" "0 shadow session(s), 1 would-block record(s)"
 t_has "...and names the rule that would have blocked" "$OUTSI" "bash/pipe-to-shell"
 t_has "...and lists a pack's shadow records apart, as not spoken" "$OUTSI" "2 inject record(s) in shadow"
-t_has "...per rule" "$(printf '%s\n' "$OUTSI" | grep 'inject/suggest-start-row-a')" " 1 "
+t_has "...per rule" "$(printf '%s\n' "$OUTSI" | grep 'inject/suggest-tool-row-a')" " 1 "
 t_eq "--json keeps them out of the would-blocks" '{"pipe-to-shell":1}' "$(CLAUDE_CONFIG_DIR="$FRI" sh "$OR" --json | jq -c .shadow)"
-t_eq "...and gives them their own key" '{"suggest-start--bad-row":1,"suggest-start-row-a":1}' "$(CLAUDE_CONFIG_DIR="$FRI" sh "$OR" --json | jq -c .inject_shadow)"
+t_eq "...and gives them their own key" '{"suggest-tool--bad-row":1,"suggest-tool-row-a":1}' "$(CLAUDE_CONFIG_DIR="$FRI" sh "$OR" --json | jq -c .inject_shadow)"
 # Both sides at the minimum and no control call to a Write: the ratio is undefined, not withheld.
 FRZ="$(mkfixture reroute-zero)"; unseal "$FRZ"; census "$FRZ" 2
 _i=10

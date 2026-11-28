@@ -261,6 +261,7 @@
 5	tests/ci/deploy-fleet/gate.test.sh
 5	tests/ci/queue/queue.test.sh
 5	tests/ci/release-names/release-names.test.sh
+5	tests/context/injection-rule/suggest-tool.test.sh
 5	tests/drift/reference-check/skills.test.sh
 5	tests/event/bus/concurrency.test.sh
 5	tests/event/bus/since.test.sh

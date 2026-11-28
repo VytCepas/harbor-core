@@ -115,13 +115,23 @@ body() { awk 'BEGIN { n = 0 }
 fmv()  { fm "$1" | awk -v k="^$2:[[:space:]]*" '$0 ~ k { sub(k, ""); print; exit }'; }
 fmall(){ fm "$1" | awk -v k="^$2:[[:space:]]*" '$0 ~ k { sub(k, ""); print }'; }
 
-# -- the same answers, one awk per pack (harbor#669) --
+# -- the same answers, no awk per pack (harbor#669, #1633) --
 # fmv is `fm | awk`; the sweep asks every pack on every event, so it reads frontmatter once (fm_load) and answers by string handling.
 # Same match as fmv (first `<key>:` line, blanks after the colon stripped); fmv/fmall stay for --list.
 NL='
 '
 TAB='	'
-fm_load() { _FM="$(fm "$1")"; }
+# What `fm` prints, read by the shell: an awk per pack per event was ~18 forks a Bash call (harbor#1633).
+fm_load() { # <file> -> _FM
+  _FM=''; _fl=0
+  while IFS= read -r _l || [ -n "$_l" ]; do
+    _fl=$((_fl + 1))
+    case "$_l" in ---*) case "${_l#---}" in *[![:space:]]*) ;; *) [ "$_fl" = 1 ] && continue; break ;; esac ;; esac
+    [ "$_fl" = 1 ] && break
+    _FM="$_FM$_l$NL"
+  done < "$1"
+  while :; do case "$_FM" in *"$NL") _FM="${_FM%"$NL"}" ;; *) break ;; esac; done   # as $(...) strips them
+}
 fm_scan() { # <key> <all:0|1> -> FMV, the first value (or every value, one per line)
   FMV=''; _rest="$_FM"
   while [ -n "$_rest" ]; do
@@ -583,17 +593,6 @@ claim_line() {
   [ -n "$SEEN" ] && ( set -C; : > "$SEEN.line" ) 2>/dev/null
 }
 
-# ONCE PER CONTEXT: `once: context` keys the ledger on `ctx:<id>`. A compaction or a clear empties the model's context while the session id
-# lives on, so the keys of that scope are dropped when SessionStart reports it and the note is delivered again; `session` keys stay spent.
-if [ -n "$SEEN" ] && [ "$MODE" = hook ] && [ "$EVENT" = SessionStart ] && [ -f "$SEEN" ]; then
-  case "$SOURCE" in compact|clear)
-    awk '$0 !~ /^ctx:/' "$SEEN" > "$SEEN.c$$" 2>/dev/null && mv -f "$SEEN.c$$" "$SEEN" 2>/dev/null || rm -f "$SEEN.c$$" 2>/dev/null || true ;;
-  esac
-fi
-
-# A `run:` script that spends the context-scoped key itself (agent-brief: full text once, a short line after) reads and appends to this ledger.
-HARBOR_CONTEXT_LEDGER="$SEEN"; export HARBOR_CONTEXT_LEDGER
-
 NOTES=''
 USERMSG=''
 _GREP=/usr/bin/grep; [ -x "$_GREP" ] || _GREP=grep
@@ -631,7 +630,7 @@ log_defect() { # <pack id> <defect>
   remember "$1--$2"
   log_rule shadow "$1--$2"
 }
-# 27 characters: the writer keeps a 40-character rule, and a 12-character pack id plus its hyphen takes 13 of them.
+# 27 characters: the writer keeps a 40-character rule, and suggest-tool- takes 13 of them.
 row_ok() { # <row id>
   case "$1" in ''|-*|*[!abcdefghijklmnopqrstuvwxyz0-9-]*) return 1 ;; esac
   [ "${#1}" -le 27 ]
@@ -644,9 +643,18 @@ CTL="${HARBOR_CONTEXT_CONTROLS:-}"
 if [ -z "$CTL" ]; then
   for _c in "$SELF_DIR/controls.tsv" "$SELF_DIR/../standards/naming/controls.tsv"; do [ ! -f "$_c" ] || { CTL="$_c"; break; }; done
 fi
-ctl_mode() { # <pack id> -> shadow|warn|block, or nothing when no row names it
+# The register is read once, on the first ask: an awk per surviving pack was ~12 forks a Bash call (harbor#1633).
+CTLMAP=''; CTLREAD=0
+ctl_mode() { # <pack id> -> CTLV: shadow|warn|block, or empty when no row names it
+  CTLV=''
   [ -n "$CTL" ] && [ -f "$CTL" ] || return 0
-  awk -F'\t' -v i="$1" '$3 == "injection" && $12 == i { print $2; exit }' "$CTL" 2>/dev/null || :
+  if [ "$CTLREAD" = 0 ]; then
+    CTLREAD=1
+    CTLMAP="$(awk -F'\t' '$3 == "injection" && !($12 in s) { s[$12] = 1; print $12 "\t" $2 }' "$CTL" 2>/dev/null || :)"
+  fi
+  case "$NL$CTLMAP$NL" in
+    *"$NL$1$TAB"*) _cm="$NL$CTLMAP$NL"; _cm="${_cm#*"$NL$1$TAB"}"; CTLV="${_cm%%"$NL"*}" ;;
+  esac
 }
 
 shell_targets() {
@@ -901,12 +909,11 @@ WHEN
     # No predicate is not "always": a pack missing its `when:` would fire on every event of its type.
     [ "$_npred" -gt 0 ] || { explain "skip $_id: no when: predicate — refusing to fire"; continue; }
 
-    # ONCE: session | context | match | never.
+    # ONCE: session | match | never.
     # `match` keys the ledger on what matched, so a benign hit on a document ABOUT injection does not spend the session's single note.
     # The known false-positive set is in hooks/injection-rule/detector.test.sh, not here.
     fm_get once; _once="$FMV"; [ -n "$_once" ] || _once=session
     _key="$_id"
-    [ "$_once" != context ] || _key="ctx:$_id"
     # The command is part of the subject (harbor#180): without it every Bash command hashed to one empty subject and `once: match` acted as `once: session`.
     # Keyed on the raw command, not the matched prefix, so two merges of different PR numbers each speak.
     if [ "$_once" = match ]; then
@@ -918,7 +925,7 @@ WHEN
     if [ "$_once" != never ] && already "$_key"; then
       explain "skip $_id: already delivered this session ($_key)"; continue
     fi
-    _cmode="$(ctl_mode "$_id")"
+    ctl_mode "$_id"; _cmode="$CTLV"
 
     # `run:` - the script gets the payload on stdin and its STDOUT is the note; empty stdout is silence. Invoked as an ARGUMENT to sh (CONSTITUTION 4).
     # Resolved next to its pack, run from the session's repo; `..` and absolute paths are refused.
@@ -967,14 +974,14 @@ WHEN
     fi
     # Collapse to one paragraph. A note arrives inside a JSON string; hard-wrapped
     # source lines read as broken prose once they land.
-    _note="$(printf '%s' "$_note" | tr '\n' ' ' | tr -s ' ')"
+    # Only when there is something to collapse: most `run:` packs return nothing, and the two trs were ~24 forks a Bash call (harbor#1633).
+    case "$_note" in *"$NL"*|*'  '*) _note="$(printf '%s' "$_note" | tr '\n' ' ' | tr -s ' ')" ;; esac
     _note="${_note# }"; _note="${_note% }"
     if [ "${DECISION:-}" = deny ]; then
       # The reason travels in its own field, so it is not also appended as a note.
       DREASON="$(printf '%s' "$DREASON" | tr '\n' ' ' | tr -s ' ')"
       DREASON="${DREASON# }"; DREASON="${DREASON% }"
-      # Stamp even a once: never deny: a note stamps its rule in this ledger, and `already` never reads the key of a never rule (U5).
-      remember "$_key"
+      if [ "$_once" != never ]; then remember "$_key"; fi
       log_rule deny "$_id"
       break
     fi

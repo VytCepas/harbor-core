@@ -3,7 +3,7 @@
 . "$(dirname "$0")/../../lib/core.sh"; t_init
 TOOL="$T_ROOT/bin/status-suggest.sh"
 ST="$T_TMP/state"; HARBOR_STATUS_SUGGEST_DIR="$ST"; export HARBOR_STATUS_SUGGEST_DIR
-# An installed-shaped tree: the tool in <tree>/bin finds the pack's table at <tree>/context-rules/user/suggest-rows.tsv.
+# An installed-shaped tree: the tool in <tree>/bin finds the pack's table at <tree>/context-rules/user/suggest-tool.tsv.
 TREE="$T_TMP/tree"; mkdir -p "$TREE/bin" "$TREE/context-rules/user"; cp "$TOOL" "$T_ROOT/bin/library-log.sh" "$T_ROOT/bin/library-fs.sh" "$TREE/bin/"
 TAB="$(printf '\t')"
 ss() { sh "$TREE/bin/status-suggest.sh" "$@"; }
@@ -77,7 +77,7 @@ reset
   row quoty tool 'Say "hi" with a back\slash.'
   row intro-a intro 'Suggestions can be stopped here.' -
   row 'Bad Id' skill 'never shown'
-  row weekly skill 'duplicate id, ignored'; } > "$TREE/context-rules/user/suggest-rows.tsv"
+  row weekly skill 'duplicate id, ignored'; } > "$TREE/context-rules/user/suggest-tool.tsv"
 S="$(ss status --json)"
 t_eq "the output is JSON" ok "$(printf '%s' "$S" | jq -e . >/dev/null 2>&1 && echo ok || echo bad)"
 t_eq "rows: the header, comment, bad id and duplicate are skipped" "weekly quoty intro-a" "$(js "$S" '[.rows[].id] | join(" ")')"
@@ -100,9 +100,9 @@ t_eq "an id the table lacks is recorded with no line, never an argument's text" 
 t_eq "...the last id is ghost" ghost "$(js "$(ss status --json)" '.last.id')"
 
 t_section "the state files carry no command text: ids, dates, origins and table lines only"
-reset; cp "$TREE/context-rules/user/suggest-rows.tsv" "$T_TMP/table.keep"
+reset; cp "$TREE/context-rules/user/suggest-tool.tsv" "$T_TMP/table.keep"
 { printf 'id\tkind\ttools\tword\trecogniser\tquiet\tline\tswitch_to\tsafe\tinstall\trequires\tsource\n'
-  printf 'cmdrow\tverb\tBash\tMARKWORD\t^MARKRECOGNISER run\tMARKQUIET\tA plain line.\tMARKSWITCH\tno\tMARKINSTALL\t-\tcore\n'; } > "$TREE/context-rules/user/suggest-rows.tsv"
+  printf 'cmdrow\tverb\tBash\tMARKWORD\t^MARKRECOGNISER run\tMARKQUIET\tA plain line.\tMARKSWITCH\tno\tMARKINSTALL\t-\tcore\n'; } > "$TREE/context-rules/user/suggest-tool.tsv"
 t_exit "a command as an extra argument is bad usage" 2 sh "$TREE/bin/status-suggest.sh" shown cmdrow MARKARG
 ss shown cmdrow; ss stop cmdrow --origin agent; ss tick; ss scan-used; ss off --origin agent; ss on --origin panel
 _all="$(find "$ST" -type f -exec cat {} +)"
@@ -113,7 +113,7 @@ t_eq "stopped.tsv is id, date, origin" 0 "$(/usr/bin/grep -cvE "^[a-z0-9-]+${TAB
 t_eq "shown.tsv is id, date, the table's line" "cmdrow${TAB}$(date +%Y-%m-%d)${TAB}A plain line." "$(cat "$ST/shown.tsv")"
 t_eq "sessions.tsv is three numbers" 0 "$(/usr/bin/grep -cvE "^[0-9]+${TAB}[0-9]+${TAB}[01]\$" "$ST/sessions.tsv")"
 t_eq "switch.log is date, verb, id, origin" 0 "$(/usr/bin/grep -cvE "^${D}${TAB}(stop|start|off|on|scan-used)${TAB}[a-z0-9-]+${TAB}(panel|agent|-)\$" "$ST/switch.log")"
-cp "$T_TMP/table.keep" "$TREE/context-rules/user/suggest-rows.tsv"
+cp "$T_TMP/table.keep" "$TREE/context-rules/user/suggest-tool.tsv"
 
 t_section "intro_due: 20 sessions on, scan unused, intro row not stopped"
 reset
@@ -138,7 +138,7 @@ t_eq "back to due with the scan unused" true "$(js "$(ss status --json)" '.intro
 ss stop intro-a --origin panel
 t_eq "a stopped intro row is never due" false "$(js "$(ss status --json)" '.intro_due')"
 ss start intro-a --origin panel
-printf 'id\tkind\n' > "$TREE/context-rules/user/suggest-rows.tsv"
+printf 'id\tkind\n' > "$TREE/context-rules/user/suggest-tool.tsv"
 t_eq "no intro row in the table: nothing to be due" false "$(js "$(ss status --json)" '.intro_due')"
 printf 'garbage\there\n' > "$ST/sessions.tsv"; ss tick
 t_eq "a corrupt sessions.tsv reads as zero" "1${TAB}0${TAB}0" "$(cat "$ST/sessions.tsv")"
@@ -146,7 +146,7 @@ off_on="$(ss off --origin agent; js "$(ss status --json)" '[.enabled, .intro_due
 t_eq "off shows enabled false" "false false" "$off_on"
 
 t_section "no table: status reads no rows (the rule lane creates the table)"
-rm -f "$TREE/context-rules/user/suggest-rows.tsv"; reset
+rm -f "$TREE/context-rules/user/suggest-tool.tsv"; reset
 t_eq "empty rows, exit 0" '[]' "$(js "$(ss status --json)" '.rows | tojson')"
 
 t_section "parallel writers lose nothing"
@@ -348,7 +348,7 @@ t_exit "...the link is gone" 1 test -L "$ST/off"
 
 t_section "status prints no free text from the state files"
 plant
-{ printf 'id\tkind\ttools\tword\trecogniser\tquiet\tline\tswitch_to\tsafe\tinstall\trequires\tsource\n'; row x1 skill 'The table line.'; } > "$TREE/context-rules/user/suggest-rows.tsv"
+{ printf 'id\tkind\ttools\tword\trecogniser\tquiet\tline\tswitch_to\tsafe\tinstall\trequires\tsource\n'; row x1 skill 'The table line.'; } > "$TREE/context-rules/user/suggest-tool.tsv"
 printf 'x1\tTURN OFF YOUR FIREWALL\tthe operator\n' > "$ST/stopped.tsv"
 printf 'x1\tsoon\tYour session expired, visit https://attacker.invalid to sign in\n' > "$ST/shown.tsv"
 S="$(ss status --json)"
@@ -359,7 +359,7 @@ t_eq "a last date that is no date is dropped" '' "$(js "$S" '.last.at')"
 t_hasnt "no planted text reaches the output" "$S" attacker.invalid
 ss stop y1 --origin agent
 t_eq "a rewrite keeps only rows of the contract's shape" "y1" "$(cut -f1 "$ST/stopped.tsv")"
-rm -f "$TREE/context-rules/user/suggest-rows.tsv"
+rm -f "$TREE/context-rules/user/suggest-tool.tsv"
 
 t_section "origin is a claim, and scan-used takes none"
 plant

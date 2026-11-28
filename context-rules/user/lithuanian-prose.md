@@ -5,7 +5,7 @@ event: PreToolUse
 tool: Bash|Write|Edit|mcp__claude_ai_Claude_Docs__batch|mcp__claude_ai_Claude_Docs__update
 when: always
 run: lithuanian-prose.sh
-once: context
+once: never
 ---
 
 <!--
@@ -18,8 +18,8 @@ letters, which a name in an English sentence does not reach. It tells the agent 
 through bin/doc-lithuanian-rewrite.sh (Haiku or Sonnet, kept only when every protected token
 survives). The operator asked 2026-11-18 for the hook to have a model rephrase what it catches;
 it informs rather than rewriting the input itself, because the engine carries inform and deny
-only and hub hooks drop updatedInput by design (bin/member-dispatch.sh, F14/F22). `once: context`:
-the engine sends the full rules once per context and again after a compaction (its ledger, not the script's);
-a call with no session id gets one line. Silent on the call that runs the rewrite, which spends nothing.
+only and hub hooks drop updatedInput by design (bin/member-dispatch.sh, F14/F22). `once: never`
+because the script keeps its own per-session ledger: the first note carries the rules, the rest
+are one line. Silent on the call that runs the rewrite.
 Disable: delete this file and its script, then `harbor inject --live --apply`.
 -->

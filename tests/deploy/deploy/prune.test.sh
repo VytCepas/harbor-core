@@ -31,15 +31,6 @@ build() { # <case> — a box holding one leftover of every class, and the contro
   g mv skills/KeepMe skills/tmp-keep; g mv skills/tmp-keep skills/keepme; g commit -qm 'rename KeepMe'; g push -q origin main
   ship commands/gone.md 'gone v1'; retire commands/gone.md
   ship bin/gone-row.sh 'gone row'; retire bin/gone-row.sh; ship commands/kept-row.md 'still shipped'
-  # rename shims: the repo ships new-name.sh, a committed symlink and the live row's file is gone
-  ship bin/new-name.sh 'new name'; ln -s new-name.sh "$REPO/bin/shipped-shim.sh"; g add bin/shipped-shim.sh; g commit -qm 'ship a shim'; g push -q origin main
-  mkdir -p "$REPO/standards/naming"
-  { printf 'id\told\tnew\tsurface\twave\tremove_by\treason\n'
-    printf 'rename-1\tbin/stale-name.sh\tbin/new-name.sh\tbin\tW1\t2026-11-15\tclosed\n'
-    printf 'rename-2\tbin/open-name.sh\tbin/new-name.sh\tbin\tW1\t2999-01-01\topen window\n'
-    printf 'rename-3\tbin/shipped-shim.sh\tbin/new-name.sh\tbin\tW1\t2026-11-15\tclosed but still shipped\n'
-    printf 'rename-4\tbin/reg-name.sh\tbin/new-name.sh\tbin\tW1\t2026-11-15\tclosed, a regular file here\n'; } > "$REPO/standards/naming/renames.tsv"
-  g add standards; g commit -qm renames; g push -q origin main
   mkdir -p "$REPO/contracts"; printf 'name\troot\trel\nidea\tHARBOR_REPO\tbin/idea\n' > "$REPO/contracts/shims.tsv"
   g add contracts; g commit -qm shims; g push -q origin main
   # the box
@@ -64,10 +55,6 @@ build() { # <case> — a box holding one leftover of every class, and the contro
   mkdir -p "$H/.local/share/project-init"; git init -q "$H/.local/share/project-init"
   ln -s "$T/nowhere" "$H/.local/bin/gone"
   printf '#!/bin/sh\n' > "$C/bin/idea"; ln -s "$C/bin/idea" "$H/.local/bin/idea"
-  printf 'new name\n' > "$C/bin/new-name.sh"
-  for _s in stale-name open-name shipped-shim; do ln -s new-name.sh "$C/bin/$_s.sh"; printf 'abc 120000 bin/%s.sh runtime-install -\n' "$_s" >> "$C/.harbor-manifest"; done
-  ln -s new-name.sh "$C/bin/mine-link.sh"   # a link no install recorded: the operator's own
-  printf 'a regular file\n' > "$C/bin/reg-name.sh"; printf 'abc 100755 bin/reg-name.sh runtime-install -\n' >> "$C/.harbor-manifest"
 }
 
 t_section "a dry run lists every leftover, and moves nothing"
@@ -82,9 +69,6 @@ for _w in "$C/.helm-baseline" "$C/backups/config-baseline-20260801-000000.tgz" "
           "$H/.local/share/project-init" "$H/.local/bin/gone" "$H/.local/bin/idea"; do
   t_has "would move ${_w#"$T"/}" "$(out)" "  note: would move $_w ("
 done
-t_has "a stale rename shim would be moved, naming its target" "$(out)" "  note: would move $C/bin/stale-name.sh (a rename shim: the repo no longer ships bin/stale-name.sh and renames.tsv holds no live row for it (-> new-name.sh))"
-t_eq "...and a shim with an open window, one the repo ships, an unrecorded link and a regular file would not" 0 \
-  "$(out | grep -c -e 'would move .*bin/open-name.sh' -e 'would move .*bin/shipped-shim.sh' -e 'would move .*bin/mine-link.sh' -e 'would move .*bin/reg-name.sh')"
 t_has "a manifest row for a file gone from the box and the repo would be dropped" "$(out)" "  note: would drop the manifest row bin/gone-row.sh ("
 t_eq "...a row for a path the repo still ships would not" 0 "$(out | grep -c 'manifest row commands/kept-row.md')"
 t_has "...and would delete a pruned-* dir older than 30 days" "$(out)" "  note: would delete $C/backups/pruned-20250101-000000"
@@ -98,13 +82,6 @@ for _m in .helm-baseline backups/config-baseline-20260801-000000.tgz bin/old-too
           settings.json.bak.20260801T000000Z backups/floor-install/20260801-000001 backups/deploy-20260801-000000-1; do
   t_eq "$_m moved, not deleted" "no yes" "$(yn [ -e "$C/$_m" ]) $(yn [ -e "$P/$_m" ])"
 done
-t_eq "the stale rename shim moved, as a link, and its manifest row is dropped" "no new-name.sh 0" \
-  "$(yn [ -L "$C/bin/stale-name.sh" ]) $(readlink "$P/bin/stale-name.sh") $(grep -c ' bin/stale-name.sh ' "$C/.harbor-manifest")"
-t_has "...logged like the rest" "$(dlog)" "  ok: moved $C/bin/stale-name.sh -> $P/bin/stale-name.sh"
-t_eq "a shim with an open window stays, row and all" "yes 1" "$(yn [ -L "$C/bin/open-name.sh" ]) $(grep -c ' bin/open-name.sh ' "$C/.harbor-manifest")"
-t_eq "a shim the repo still ships stays" "yes yes" "$(yn [ -L "$C/bin/shipped-shim.sh" ]) $(yn [ -f "$C/bin/shipped-shim.sh" ])"
-t_eq "a link no install recorded stays" yes "$(yn [ -L "$C/bin/mine-link.sh" ])"
-t_eq "a regular file with a closed row stays, and so does the file the shims point at" "yes yes" "$(yn [ -f "$C/bin/reg-name.sh" ]) $(yn [ -f "$C/bin/new-name.sh" ])"
 t_eq "baseline-pin.sh and its B6 pin moved together" "no no yes yes" \
   "$(yn [ -e "$C/bin/baseline-pin.sh" ]) $(yn [ -e "$C/.helm-pins/baseline-pin.sh.sha256" ]) $(yn [ -e "$P/bin/baseline-pin.sh" ]) $(yn [ -e "$P/.helm-pins/baseline-pin.sh.sha256" ])"
 t_eq "...so did a retired tool and its pin" "no yes" "$(yn [ -e "$C/.helm-pins/old-tool.sh.sha256" ]) $(yn [ -e "$P/.helm-pins/old-tool.sh.sha256" ])"

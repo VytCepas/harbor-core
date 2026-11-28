@@ -2,7 +2,7 @@
 # eval-suggest-replay.sh (harbor#1485): per-row counts and payload hashes over a synthetic transcript store, never the operator's. The
 # report holds no sample, the run leaves no file, and samples reach only a terminal with no agent on it, through the scrub controls.
 . "$(dirname "$0")/../../lib/core.sh"; t_init
-B="$T_TMP"; TOOL="$T_ROOT/bin/eval-suggest-replay.sh"; TABLE="$T_ROOT/fixtures/suggest/rows.tsv"
+B="$T_TMP"; TOOL="$T_ROOT/bin/eval-suggest-replay.sh"; TABLE="$T_ROOT/fixtures/injection-rule/suggest-tool.tsv"
 STORE="$B/store"; mkdir -p "$STORE/proj-a/sess-1/subagents"
 HARBOR_SESSION_TRANSCRIPTS="$STORE"; export HARBOR_SESSION_TRANSCRIPTS
 unset CLAUDECODE
@@ -98,9 +98,9 @@ t_has "the short row is reported, not hidden" "$(OUT)" 'WARN: 1 row(s) the rule 
 t_has "a bad ERE matches nothing and silences nothing" "$(OUT)" 'bad-ere: 0 match(es)'
 rm -f "$STORE/proj-a/sess-4.jsonl"
 
-t_section "no table ships, and what stops a run"
-t_eq "a bare run: no table ships, so it exits 2" "exit 2" "$(rp)"
-t_has "it says nothing was replayed" "$(OUT)" 'nothing was replayed'
+t_section "the shipped table, and what stops a run"
+t_eq "the shipped empty table exits 0" "exit 0" "$(rp)"
+t_has "it says there is nothing to replay" "$(OUT)" 'skip: the table has no rows'
 t_eq "an unknown flag exits 2" "exit 2" "$(rp --nope)"
 t_eq "--days must be a number" "exit 2" "$(rp --days x)"
 t_eq "--days must be above 0" "exit 2" "$(rp --days 0)"

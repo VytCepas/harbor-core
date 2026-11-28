@@ -10,7 +10,7 @@
 #
 # STATE in ${HARBOR_STATUS_SUGGEST_DIR:-$HOME/.local/state/harbor/suggest}, outside the config dir so a confined shell can write it; ids, dates and origins only.
 # stopped.tsv (id, date, origin), off, shown.tsv (id, date, the table's line), sessions.tsv (count, intro_last_count, scan_used), switch.log.
-# Writes are temp file plus rename under a lock; rows come from ../context-rules/user/suggest-rows.tsv. Exit 0 done, 1 unwritable or refused, 2 usage.
+# Writes are temp file plus rename under a lock; rows come from ../context-rules/user/suggest-tool.tsv. Exit 0 done, 1 unwritable or refused, 2 usage.
 #
 # THE FOLDER IS HOSTILE. A confined command may write it (contracts/confinement-paths.txt), and this tool also runs outside the sandbox, so
 # nothing in it is trusted. Four things hold that, and none rests on a check beating a race (a check here is only the loud half):
@@ -33,7 +33,7 @@ log_init status-suggest
 STATE="${HARBOR_STATUS_SUGGEST_DIR:-$HOME/.local/state/harbor/suggest}"
 while [ "${STATE%/}" != "$STATE" ]; do STATE="${STATE%/}"; done
 case "$STATE" in */*) ;; *) STATE="./$STATE" ;; esac
-TABLE="$HERE/../context-rules/user/suggest-rows.tsv"
+TABLE="$HERE/../context-rules/user/suggest-tool.tsv"
 INTRO_EVERY=20
 # A lock this old with a dead owner is a killed writer's: inside the engine's 3 s spoke bound, read in whole seconds. Past LOCK_DEAD it goes
 # whoever it names. A waiter gives up on one owner after LOCK_GIVE_UP, under the SessionStart hook's 10 s, and on the whole queue after LOCK_QUEUE.
