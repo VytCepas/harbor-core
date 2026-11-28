@@ -44,10 +44,29 @@ case "$CMD" in *'$IFS'*|*'${IFS'*)
   [ "$_TIF" = "$TARGETS" ] || TARGETS="$TARGETS
 $_TIF" ;;
 esac
+# X2: the pipe-to-shell rules read a quoted-delimiter heredoc body as text: Markdown inline code in `cat >> f <<'EOF'` was read as a command substitution (a SUB: line) and its `x | sh` as a pipeline.
+# Only the backtick and `$(` of a QUOTED-delimiter body are defused (POSIX: that body is never expanded, so they are text); the body's words stay, and every other rule keeps the full TARGETS.
+TARGETS_PTS="$TARGETS"
+case "$CMD" in
+  *'<<'*)
+    case "$CMD" in *'$IFS'*|*'${IFS'*) ;; *)
+      _PTSC="$(floor_hd_defuse_quoted_bodies "$CMD")"
+      if [ "$_PTSC" != "$CMD" ]; then
+        TARGETS_PTS="$(floor_bash_targets "$_PTSC")"
+        _TCN="$(floor_canon_lines "$TARGETS_PTS")"
+        [ -z "$_TCN" ] || TARGETS_PTS="$TARGETS_PTS
+$_TCN"
+      fi ;;
+    esac ;;
+esac
 # A heredoc, not `printf | grep`: one process per rule instead of two (harbor#264). Empty TARGETS
 # returns 1 first, because grep on no input never matches but on one empty line it could.
 hit() { [ -n "$TARGETS" ] || return 1; "$FLOOR_GREP" -iEq -- "$1" <<HARBOR_ADMISSION_HIT_EOF
 $TARGETS
+HARBOR_ADMISSION_HIT_EOF
+}
+pts_hit() { [ -n "$TARGETS_PTS" ] || return 1; "$FLOOR_GREP" -iEq -- "$1" <<HARBOR_ADMISSION_HIT_EOF
+$TARGETS_PTS
 HARBOR_ADMISSION_HIT_EOF
 }
 # The structured table the migrated rules read (B-rewrite). Fail-open: an empty table makes floor_seg_* return "no match", never "block".
@@ -65,16 +84,21 @@ rawhit() { printf '%s' "$CMD" | "$FLOOR_GREP" -iEq -- "$1"; }
 # A shell RUNNING A NAMED SCRIPT is not that act (harbor#222): floor_seg_shells_all_named_scripts refuses the exemption for `-s`, `-`, /dev/stdin, option-only calls and a table it could not build, so an oversized payload still blocks.
 # harbor#1420: the sink may follow a brace group, a subshell paren, `!`, assignments, or a `time`/`doas`-style wrapper.
 _PIPE_PRE='\|&?[[:space:]]*(\{[[:space:]]+|\(+[[:space:]]*|![[:space:]]+)*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(((/[a-zA-Z0-9_/.-]*/)?(sudo|env|command|builtin|exec|nohup|stdbuf|nice|ionice|setsid|xargs|timeout|time|doas|caffeinate|unshare|busybox))[[:space:]]+((-[^[:space:]]+|[0-9]+[smhd]?|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|--)[[:space:]]+([^-][^[:space:]]*[[:space:]]+)?)*)*(((/[a-zA-Z0-9_/.-]*/)?(flock|chroot))[[:space:]]+(-[^[:space:]]+[[:space:]]+)*[^-[:space:]][^[:space:]]*[[:space:]]+)?(/[a-zA-Z0-9_/.-]*/)?'
-if hit "${_PIPE_PRE}"'(sh|bash|zsh|dash|ksh|fish|ash|csh|tcsh|\$SHELL|\$\{SHELL\})([[:space:];&|)<>]|$)' \
+_PTS_SH="${_PIPE_PRE}"'(sh|bash|zsh|dash|ksh|fish|ash|csh|tcsh|\$SHELL|\$\{SHELL\})([[:space:];&|)<>]|$)'
+if pts_hit "$_PTS_SH" \
    && ! floor_seg_shells_all_named_scripts \
-   && ! floor_seg_all_inert; then  # harbor#1420: a quoted regex alternation is text, not a sink
+   && ! floor_seg_all_inert \
+   && ! floor_seg_sink_text_clear "$_PTS_SH" "$TARGETS_PTS"; then  # harbor#1420: a quoted regex alternation is text, not a sink; X2: also beside an executor word
   floor_block bash "pipe-to-shell (a pipeline's output executed as a shell script)" pipe-to-shell.flat
 fi
 # The shells are not the only sinks (harbor#1313): `source` and `.` with a stdin path operand, and a non-shell interpreter reading its PROGRAM from stdin (bare or `-`;
 # given code or a script it reads data, harbor#607, which floor_seg_interps_all_programmed separates by argv).
-if hit "${_PIPE_PRE}(source|\\.)[[:space:]]+(--[[:space:]]+)?(/+dev/+(stdin|fd/+[0-9]+)|/+proc/+(self|[0-9]+)/+fd/+[0-9]+)([[:space:];&|)<>]|\$)" \
-   || { hit "${_PIPE_PRE}(python[0-9.]*|pypy[0-9.]*|perl|ruby|node|nodejs|php|lua|luajit|osascript)([[:space:];&|)<>]|\$)" \
-        && ! floor_seg_interps_all_programmed && ! floor_seg_all_inert; }; then
+_PTS_SRC="${_PIPE_PRE}(source|\\.)[[:space:]]+(--[[:space:]]+)?(/+dev/+(stdin|fd/+[0-9]+)|/+proc/+(self|[0-9]+)/+fd/+[0-9]+)([[:space:];&|)<>]|\$)"
+_PTS_INT="${_PIPE_PRE}(python[0-9.]*|pypy[0-9.]*|perl|ruby|node|nodejs|php|lua|luajit|osascript)([[:space:];&|)<>]|\$)"
+if pts_hit "$_PTS_SRC" \
+   || { pts_hit "$_PTS_INT" \
+        && ! floor_seg_interps_all_programmed && ! floor_seg_all_inert \
+        && ! floor_seg_sink_text_clear "$_PTS_INT" "$TARGETS_PTS"; }; then
   floor_block bash "pipe-to-shell (a pipeline's output executed as a program by a builtin or an interpreter reading stdin)" pipe-to-shell.flat
 fi
 # Fetch-then-execute, decoupled across the pipeline: curl -o p && sh p.

@@ -1530,6 +1530,57 @@ floor_hd_doc_view() {
   printf '%s' "$_dvo"
 }
 
+# floor_hd_defuse_quoted_bodies <cmd> - <cmd> with each backtick and `$(` INSIDE the body of a QUOTED-delimiter heredoc replaced by a space (X2). POSIX 2.7.4: a delimiter with any quoted part means the body is not expanded, so those characters are text, yet the normalizer read them as a substitution and handed the flat rules a SUB: line (Markdown inline code naming a shell sink blocked a plain `cat >> f <<'EOF'`).
+# Words are kept, only the two introducers change, so a body a shell consumer RUNS (`sh <<'EOF'`) is still judged as flat text. Unquoted delimiters, unterminated bodies and anything unclear come back unchanged. The opener scan is floor_hd_body_expands' own.
+floor_hd_defuse_quoted_bodies() {
+  case "$1" in *'<<'*) ;; *) printf '%s' "$1"; return 0 ;; esac
+  case "$1" in *'`'*|*'$('*) ;; *) printf '%s' "$1"; return 0 ;; esac
+  _hdq="$(printf '%s\n' "$1" | awk '
+    # NO APOSTROPHES IN THIS PROGRAM: it is a single-quoted shell string.
+    function scan(s,   n, i, c, nx, q1, dw, dq, dash) {
+      n = length(s); q1 = 0; i = 1
+      while (i <= n) {
+        c = substr(s, i, 1); nx = substr(s, i + 1, 1)
+        if (q1) { if (c == "\047") q1 = 0; i++; continue }
+        if (c == "\047") { q1 = 1; i++; continue }
+        if (c == "\\") { i += 2; continue }
+        if (c == "<" && substr(s, i, 3) == "<<<") { i += 3; continue }
+        if (c == "<" && nx == "<") {
+          i += 2; dash = 0
+          if (substr(s, i, 1) == "-") { dash = 1; i++ }
+          while (substr(s, i, 1) ~ /[ \t]/) i++
+          dw = ""; dq = 0
+          while (i <= n) {
+            c = substr(s, i, 1)
+            if (c ~ /[ \t;&|<>()]/) break
+            if (c == "\047" || c == "\"" || c == "\\") { dq = 1; i++; continue }
+            dw = dw c; i++
+          }
+          if (dw != "") { NQ++; QD[NQ] = dw; QQ[NQ] = dq; QT[NQ] = dash }
+          continue
+        }
+        i++
+      }
+    }
+    { L[NR] = $0 }
+    END {
+      for (i = 1; i <= NR; i++) {
+        y = L[i]
+        if (HEAD > 0 && HEAD <= NQ) {
+          x = y; if (QT[HEAD]) sub(/^\t+/, "", x)
+          if (x == QD[HEAD]) { HEAD++; if (HEAD > NQ) HEAD = 0 }
+          else if (QQ[HEAD]) { gsub(/`/, " ", y); gsub(/\$\(/, " (", y) }
+        } else {
+          before = NQ; scan(y)
+          if (NQ > before) HEAD = before + 1
+        }
+        printf "%s%s", (i > 1 ? "\n" : ""), y
+      }
+      if (HEAD > 0) exit 1
+    }' 2>/dev/null)" || { printf '%s' "$1"; return 0; }
+  printf '%s' "$_hdq"
+}
+
 # floor_hd_body_expands <cmd> — 0 iff some heredoc with an UNQUOTED delimiter has a
 # body carrying `$(`, a backtick, `$[` or `${` (harbor#782). POSIX expands such a
 # body while building the heredoc, so `git commit -F - <<EOF` / `$(<cmd>)` / `EOF`
@@ -1932,6 +1983,32 @@ floor_seg_all_inert() {
       if (c !~ /^((\/usr)?(\/local)?\/bin\/|\/opt\/homebrew\/bin\/)?(echo|printf|grep|egrep|fgrep|rg|ag|ack|sort|uniq|wc|head|tail|cut|tr|cat|comm|basename|dirname)$/ \
           && (own == "" || c !~ own)) bad = 1 }
     END { exit (n > 0 && !bad) ? 0 : 1 }'
+}
+
+# floor_seg_sink_text_clear <sink-ERE> <flat-text> — exit 0 iff the sink <sink-ERE> names is absent from <flat-text> once the SPAN of every pattern-only segment is cut out of it (harbor X2).
+# WHY: one executor word anywhere (xargs, awk, env, find -exec ...) promotes the CODE view, which carries EVERY quoted argument of the whole command, so `grep -E '\.(md|sh)$'` beside `xargs` read as `| sh)` and floor_seg_all_inert (every segment inert) refused to acquit.
+# HOW: a pattern-only segment (grep-class: its arguments are a pattern or a file, never emitted and never run) is `<command> <args>` in the table; that exact span is cut from the flat text, and the sink ERE is asked again of what is left. A real sink, a producer's text (`echo 'a | sh' | awk ...`) and a `sh -c` envelope stay in the residue, so they still match. Only the span goes, never every occurrence of its arguments: `grep sh f | curl u | sh` loses `grep sh f` and keeps its sink. FAIL CLOSED: no table, an awk failure, a pattern segment carrying a substitution, or a span not found verbatim in the text (different spacing, a redirect between its arguments) leaves the text whole, so the flat verdict stands.
+floor_seg_sink_text_clear() {
+  [ -n "${FLOOR_SEGS:-}" ] || return 1
+  _stv="$(printf '%s\n' "$FLOOR_SEGS" | FLOOR_STC_TEXT="$2" awk '
+    /^SEG[CA]:/ { k = substr($0, 4, 1); s = substr($0, 6); p = index(s, ":"); id = substr(s, 1, p - 1) + 0; v = substr(s, p + 1)
+      if (k == "C") C[id] = v; else A[id] = A[id] " " v
+      if (id > M) M = id; seen[id] = 1 }
+    END {
+      t = ENVIRON["FLOOR_STC_TEXT"]
+      for (i = 1; i <= M; i++) if (i in seen) {
+        b = C[i]
+        if (b !~ /^((\/usr)?(\/local)?\/bin\/|\/opt\/homebrew\/bin\/)?(grep|egrep|fgrep|wc|head|tail|cut|tr|uniq|comm)$/) continue
+        if (A[i] ~ /@SUB@|`/) continue
+        span = C[i] A[i]; o = ""
+        while ((q = index(t, span)) > 0) { o = o substr(t, 1, q - 1) C[i]; t = substr(t, q + length(span)) }
+        t = o t
+      }
+      print "@OK@"; print t
+    }' 2>/dev/null)" || return 1
+  case "$_stv" in "@OK@"*) ;; *) return 1 ;; esac
+  if printf '%s\n' "$_stv" | "$FLOOR_GREP" -iEq -- "$1"; then return 1; fi
+  return 0
 }
 
 # floor_seg_flat_clear <cmd-ERE> <danger-ERE> — exit 0 iff the table proves a flat hit is text beside the
