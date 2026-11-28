@@ -63,6 +63,18 @@ _m="$(fire "$(bash_ev PreToolUse 'ls')")"
 t_has "a one-line note's double blank is squeezed" "$_m" 'TWOSP-A TWOSP-B'
 rm -f "$CFG/context-rules/user/12-two-sp.md"
 
+t_section "1 · a CRLF pack reads as LF: its values match and an empty id: falls back to the file name (harbor#1633)"
+for _n in a b; do
+  printf -- '---\r\nid:\r\nevent: PreToolUse\r\ntool: Bash\r\nwhen: always\r\nonce: never\r\n---\r\nCRLF-NOTE-%s\r\n' "$_n" > "$CFG/context-rules/user/12-crlf-$_n.md"
+done
+_m="$(fire "$(bash_ev PreToolUse 'ls')")"
+t_has "a CRLF pack's event: and tool: still match" "$_m" CRLF-NOTE-a
+t_has "a second empty-id CRLF pack is not dropped as a duplicate id" "$_m" CRLF-NOTE-b
+_x="$(printf '%s' "$(bash_ev PreToolUse 'ls')" | CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$REPO" sh "$SUT" --explain 2>&1)"
+t_has "its empty id: falls back to the file name" "$_x" 'FIRE 12-crlf-a'
+t_eq "--list prints no carriage return" 0 "$(CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$REPO" sh "$SUT" --list | tr -cd '\r' | wc -c | tr -d ' ')"
+rm -f "$CFG/context-rules/user/12-crlf-a.md" "$CFG/context-rules/user/12-crlf-b.md"
+
 t_section "1 · a tier that is the same directory twice is loaded once"
 pack "$T/same/context-rules/repo" 10-once.md <<'PACK'
 ---

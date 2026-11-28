@@ -354,4 +354,16 @@ t_has "Linux with apt-get: the fix is apt-get" "$(nj_run Linux apt-get)" "  fix:
 t_has "Linux with dnf: the fix is dnf" "$(nj_run Linux dnf)" "  fix: sudo dnf install -y jq"
 t_hasnt "Linux: the fix never says brew" "$(nj_run Linux apt-get)" "brew"
 t_has "macOS: the fix is brew" "$(nj_run Darwin -)" "  fix: brew install jq"
+
+t_section "HARBOR_STATUS_LINE_REFRESH: whole seconds from 1, or the install refuses before it writes (harbor#1633)"
+for _v in abc 0 -5 2.5 030; do
+  RD="$T/refresh-$_v"; mkdir -p "$RD"; printf '{"permissions":{"deny":[]}}\n' > "$RD/settings.json"
+  _rc=0; _o="$(HARBOR_STATUS_LINE_REFRESH="$_v" ri --dir "$RD" --apply 2>&1)" || _rc=$?
+  t_eq "'$_v' is refused" 1 "$_rc"
+  t_has "...naming the variable and its value" "$_o" "HARBOR_STATUS_LINE_REFRESH is '$_v'"
+  t_eq "...and settings.json is untouched" '{"permissions":{"deny":[]}}' "$(cat "$RD/settings.json")"
+done
+RD="$T/refresh-45"; mkdir -p "$RD"; printf '{"permissions":{"deny":[]}}\n' > "$RD/settings.json"
+HARBOR_STATUS_LINE_REFRESH=45 ri --dir "$RD" --apply >/dev/null 2>&1
+t_eq "a whole number is written as the refreshInterval" 45 "$(jq -r '.statusLine.refreshInterval' "$RD/settings.json")"
 t_done

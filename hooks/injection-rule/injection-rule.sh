@@ -88,6 +88,7 @@ rule_files() { # <dir>... (new layout first) -> one rule file per line; an id al
     { f = $0; n = f; sub(/^.*\//, "", n); id = n; sub(/\.md$/, "", id); o = ""; hid = 0; hor = 0; ln = 0
       while ((getline l < f) > 0) {
         ln++
+        sub(/\r$/, "", l)
         if (ln == 1) { if (l !~ /^---[[:space:]]*$/) break; continue }
         if (l ~ /^---[[:space:]]*$/) break
         if (l ~ /^id:/ && !hid)    { hid = 1; v = l; sub(/^id:[[:space:]]*/, "", v); if (v != "") id = v }
@@ -108,7 +109,7 @@ export LC_ALL
 # Frontmatter only, never the body: packs are documents ABOUT matching and would classify themselves (as skill-catalog.sh records).
 fm()   { awk 'NR==1 && $0 !~ /^---[[:space:]]*$/ { exit }
               NR>1  && $0 ~  /^---[[:space:]]*$/ { exit }
-              NR>1' "$1"; }
+              NR>1 { sub(/\r$/, ""); print }' "$1"; }   # a CRLF pack reads as LF (harbor#1633)
 body() { awk 'BEGIN { n = 0 }
               /^---[[:space:]]*$/ { n++; next }
               n >= 2' "$1"; }
@@ -121,11 +122,13 @@ fmall(){ fm "$1" | awk -v k="^$2:[[:space:]]*" '$0 ~ k { sub(k, ""); print }'; }
 NL='
 '
 TAB='	'
+CR="$(printf '\r')"
 # What `fm` prints, read by the shell: an awk per pack per event was ~18 forks a Bash call (harbor#1633).
 fm_load() { # <file> -> _FM
   _FM=''; _fl=0
   while IFS= read -r _l || [ -n "$_l" ]; do
     _fl=$((_fl + 1))
+    _l="${_l%"$CR"}"   # a CRLF pack: every value kept its \r, so it never matched (harbor#1633)
     case "$_l" in ---*) case "${_l#---}" in *[![:space:]]*) ;; *) [ "$_fl" = 1 ] && continue; break ;; esac ;; esac
     [ "$_fl" = 1 ] && break
     _FM="$_FM$_l$NL"
@@ -840,6 +843,7 @@ prefilter() {
     { f = $1; ev = ""; tl = ""; hev = 0; htl = 0; ln = 0; id = f; sub(/^.*\//, "", id); sub(/\.md$/, "", id); hid = 0
       while ((getline l < f) > 0) {
         ln++
+        sub(/\r$/, "", l)
         if (ln == 1) { if (l !~ /^---[[:space:]]*$/) break; continue }
         if (l ~ /^---[[:space:]]*$/) break
         if (l ~ /^event:/ && !hev) { hev = 1; ev = l; sub(/^event:[ \t]*/, "", ev) }

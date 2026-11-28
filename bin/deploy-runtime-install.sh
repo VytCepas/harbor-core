@@ -42,6 +42,12 @@ DIR="$IL_TARGET"
 # The commit column of this run's .harbor-manifest rows (install standard §3): the checkout it runs from.
 il_source "$SRC/.."
 REFRESH="${HARBOR_STATUS_LINE_REFRESH:-30}"  # 30 s, not 10: every open session renders the glyph, ~0.35 s CPU each (harbor#1633)
+# Whole seconds, 1 or more: jq --argjson exited 2 on text, and wrote 0, -5 or 2.5 into settings.json (harbor#1633).
+case "$REFRESH" in ''|*[!0-9]*|0*)
+  log_fail "HARBOR_STATUS_LINE_REFRESH is '$REFRESH', not a whole number of seconds from 1"
+  log_fix "unset HARBOR_STATUS_LINE_REFRESH (the default is 30), or set it to a number such as 30"
+  log_end; exit 1 ;;
+esac
 if ! command -v jq >/dev/null 2>&1; then
   log_fail "jq is required, and is not on PATH"
   log_fix "$(pkg_hint jq)"
