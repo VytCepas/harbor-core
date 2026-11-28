@@ -54,6 +54,9 @@ line; prose below the block is free-form and unchecked. `check-routes.sh` reads 
 | `reaches`, `cannot` | what it reaches and what it provably cannot; a fully blocked route stays valid, because a measured negative stops the next session re-probing a closed door |
 | `verified` | one ISO date; older than `ROUTE_STALE_DAYS` (30) is red |
 | `ui-hosts` | **optional.** The hosts of the system's vendor UI, bare lowercase hostnames, comma or space separated; a listed host covers its subdomains. A host named on two cards is red. `context-rules/user/browser-last-tier.sh` reads it: a session that opens one of these hosts in harbor chrome, on a card whose leftmost `via:` tier is `cli`, `api` or `mcp`, is told that tier and the card's `use:` once per session (harbor#1507). List only hosts the card itself grounds; `sh skills/access-ledger/bin/check-routes.sh --ui-hosts` prints the derived `host<TAB>card` map |
+| `vendor` | **optional.** The vendor's own id for the system, free text |
+| `state` | **optional.** `unknown YYYY-MM-DD - <what was not probed>`, nothing else; a measured negative is an `account:` line with use `none` |
+| `session` | **optional.** `persistent` or `show-only`, then optionally ` - <why>`. `persistent`: a sign-in in the agent Chrome survives into a headless profile copy. `show-only`: it does not (a session-only cookie, or a challenge headless cannot pass), so the browser must be `harbor chrome attach --show` (harbor#1617) |
 
 `<use>` in an `account:` line is one of `primary` (use first; a reachable system names at least one), `fallback`,
 `avoid`, `none` (measured: no access) or `never` (must not be used here, whatever it holds). Cells are capped at
@@ -77,6 +80,21 @@ line; prose below the block is free-form and unchecked. `check-routes.sh` reads 
     cannot:   <what it provably cannot>
     verified: YYYY-MM-DD
 ```
+
+## What the gate holds a card to (harbor#1617)
+
+Beyond the fields, `check-routes.sh` refuses a card that breaks one of these. They read the field block only; the prose below it is free.
+
+- **One browser-check form:** `harbor chrome goto <https url>`. `--run` never executes it: it prints `card=<name> url=<url> expect: <expect>` on one line for an agent with an attached browser. `open <url>` is refused, because macOS `open` launches the operator's own Chrome, which agents never use.
+- **A check can run:** the first word of `check:` and `role-check:` is a command on PATH, a builtin, an executable path, an env assignment, the browser form, or `none - <why>`. A prose line (`GET <url> with the cookie jar`) is refused.
+- **No operator's Chrome or browser, and no `authuser=<digit>`,** in the field block: agents sign in to the agent Chrome as the card's account.
+- **`verified:` is a re-check, not a note.** A date in the field block newer than `verified:` (a date later than today is ignored: a renewal, an expiry) is a WARN, "re-run the check before moving verified:", never a FAIL, so a note cannot pressure anyone into bumping the date. A `verified:` more than 25 days old is a WARN too (red at 30). `ROUTE_TODAY` pins today for a replay.
+- **A `primary` account holds something:** a role starting `none` or `no access` belongs on a `none` line.
+- **Only the fields in the table.** `state:` is `unknown YYYY-MM-DD`; `role-expect:` is exactly `none` when `role-check:` is `none - <why>`. A second check (`check2`/`expect2`) is not a field: nothing runs it.
+- **`ui-hosts:` is required** when `via:` ranks `cli`, `api` or `mcp` ahead of `browser`, or the browser-last note never fires on that UI.
+- **`session:`** is `persistent` or `show-only`, optionally with a reason.
+
+`--run` has six verdicts and its summary splits them: pass, access-FAIL, **instrument**, browser, refused, skipped. INSTRUMENT is the tool failing, not the access: exit 126 or 127, a timeout (`PROBE_TIMEOUT`, default 30 s), or output carrying a signature from `INSTRUMENT_SIGS` in the checker (no attached Chrome, `curl: (28)`, `curl: (7)`, `Resource not accessible by integration`). It does not fail the run. A failed reach skips its role probe. A FAIL prints the verdict and the missing literal, never the command's output.
 
 ## Routing and precedence
 

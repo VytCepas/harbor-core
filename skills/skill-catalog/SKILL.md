@@ -132,6 +132,7 @@ checkout (`~/port/harbor`) or your worktree of it.
 | `harbor ui` | you want the live state as a localhost console | `harbor ui` |
 | `harbor scope` | you are setting up a fresh machine's PORT_ROOT and private layer | `harbor scope install --dry-run` |
 | `harbor access` | you need to know which identity may reach a system, or register one | `harbor access list; harbor access has <id>` |
+| `harbor access get` | you need to read an ad or vendor API with a stored key, read-only, without writing a curl or a wrapper | `harbor access get --list; harbor access get <vendor> <path> [--query k=v ...]` |
 | `harbor pack` | a workload repo ships a harbor-pack/ that must be installed box-wide or removed | `harbor pack list; harbor pack install <repo-id> --live` |
 | `harbor merge-stack` | several PRs must merge in order, each on its own green CI | `harbor merge-stack check <plan>` |
 | `harbor ship` | opted-in fleet repos must be merged and deployed unattended | `harbor ship night [--plan <file>]` |
@@ -226,6 +227,7 @@ does not carry the path sends you back to the top.
 - `harbor ui` — you want the live state as a localhost console — `harbor ui`
 - `harbor scope` — you are setting up a fresh machine's PORT_ROOT and private layer — `harbor scope install --dry-run`
 - `harbor access` — you need to know which identity may reach a system, or register one — `harbor access list; harbor access has <id>`
+- `harbor access get` — you need to read an ad or vendor API with a stored key, read-only, without writing a curl or a wrapper — `harbor access get --list; harbor access get <vendor> <path> [--query k=v ...]`
 - `harbor pack` — a workload repo ships a harbor-pack/ that must be installed box-wide or removed — `harbor pack list; harbor pack install <repo-id> --live`
 - `harbor merge-stack` — several PRs must merge in order, each on its own green CI — `harbor merge-stack check <plan>`
 - `harbor ship` — opted-in fleet repos must be merged and deployed unattended — `harbor ship night [--plan <file>]`

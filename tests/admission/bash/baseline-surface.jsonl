@@ -357,6 +357,8 @@
 {"id":"snap772-tar-create-dashless","rule":"tar-archive-at-surface","want":"block","cmd":"tar czf {cfg}/backups/deploy-1/config.tgz -C /tmp pl"}
 {"id":"snap772-tar-create-long","rule":"tar-archive-at-surface","want":"block","cmd":"tar --create --gzip --file={cfg}/backups/deploy-1/config.tgz -C /tmp pl"}
 {"id":"snap772-tar-create-split-flags","rule":"tar-archive-at-surface","want":"block","cmd":"tar -c -z -f {cfg}/backups/deploy-1/config.tgz -C /tmp pl"}
+{"id":"snap772-tar-create-file-first","rule":"tar-archive-at-surface","want":"block","cmd":"tar --file {cfg}/backups/deploy-1/config.tgz -c -C /tmp pl"}
+{"id":"snap772-tar-create-dir-first","rule":"tar-archive-at-surface","want":"block","cmd":"tar -C /tmp -czf {cfg}/backups/deploy-1/config.tgz pl"}
 {"id":"snap772-tar-append","rule":"tar-archive-at-surface","want":"block","cmd":"tar -rf {cfg}/backups/deploy-1/config.tar /tmp/x"}
 {"id":"snap772-tar-extract","rule":"extract-into-cfg","want":"block","cmd":"tar -xzf /tmp/x.tgz -C {cfg}/backups/deploy-1"}
 {"id":"snap772-ln","rule":"mutate-aimed-surface","want":"block","cmd":"ln -sf /tmp/x.tgz {cfg}/backups/deploy-1/config.tgz"}

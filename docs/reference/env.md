@@ -28,7 +28,8 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_ACCESS_AGENT_PROFILE` | path | `~/Library/Application Support/harbor/agent-chrome` | the agent Chrome profile attach copies per session and lane, and signin opens for the operator to sign in once | access |  | tests only |
 | `HARBOR_ACCESS_ENFORCE` | switch | none | set to 1 by both harbor_chrome MCP servers on every call they pass to the shell agent: an agent call, so attach --operator is refused, a mapped vendor UI needs --ui=<why> and attach --show needs --ui=<why> | access |  | tests only |
 | `HARBOR_ACCESS_BROWSER_SESSION` | value | none | Name of the browser session the harbor chrome agent uses when set outside Claude Code; the MCP wrapper sets it to mcp-<parent pid> | access |  | tests only |
-| `HARBOR_ACCESS_BROWSER_SETTLE` | tuning | `1` | Seconds the access browser agent sleeps after sending input before probing, so Chrome's target detach lands first; default 1 | access |  | tests only |
+| `HARBOR_ACCESS_BROWSER_SETTLE` | tuning | `1` | Seconds the access browser agent sleeps after sending input before probing, so Chrome's target detach lands first, and between verify's page reads; default 1 | access |  | tests only |
+| `HARBOR_ACCESS_VERIFY_TRIES` | tuning | `6` | Times harbor chrome verify reads a page for its expect literals, one settle apart, before calling one missing; default 6 | access |  | tests only |
 | `HARBOR_ACCESS_CHROME` | path | `the Google Chrome binary inside the macOS Applications folder` | Chrome executable the access browser uses; defaults to the macOS Google Chrome app, tests point it at a missing path to prove the skip | access |  | tests only |
 | `HARBOR_ACCESS_CHROME_DATA` | path | `$_chrome_data_default` | Chrome user-data directory the access browser agent drives (default: the OS's standard Google Chrome profile location) | access |  | tests only |
 | `HARBOR_ACCESS_CLAUDE_JSON` | path | `$HOME/.claude.json` | Path of the claude.json file access-browser-agent checks for a configured @playwright/mcp server (default ~/.claude.json) | access |  | tests only |
@@ -44,6 +45,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_ACCESS_REDACTED` | handoff | none | Set to 1 by bin/access-browser-agent.sh for its own inner run, whose stdout and stderr it pipes through bin/access-redact.sh; unset means the run is the outer one and wraps itself | access |  | tests only |
 | `HARBOR_ACCESS_REDACT_EGRESS` | test-only | `computed` | Path of the egress guard whose SECRET list bin/access-redact.sh reads, default admission-egress.sh beside it; a test points it at a fixture | access |  | tests only |
 | `HARBOR_ACCESS_OAUTH_CS` | handoff | none | The app's client secret, put in the environment of bin/access-oauth.sh's own --exchange run by `secret run`, so it never reaches an argv; read only by that run | access |  | tests only |
+| `HARBOR_ACCESS_GET_VALUE` | handoff | none | A credential `secret run` hands to bin/access-get.sh's own --emit child, which unsets it and writes it to the parent's pipe before anything else runs; set by nothing else | access |  | tests only |
 | `HARBOR_ACCESS_SECRET_BIN` | path | `computed` | Path of the secret CLI used to fetch credentials (default: found on PATH, else ~/.local/bin/secret) | standard |  | tests only |
 | `HARBOR_ADMISSION_CLASSES` | test-only | `computed` | The confinement class list admission-observe-report.sh compares with contracts/confinement-classes.tsv; a suite sets it to test the comparison | admission |  | tests only |
 | `HARBOR_ADMISSION_CLASSES_FILE` | path | `contracts/confinement-classes.tsv` | File admission-observe-report.sh reads the confinement classes from (default the register beside bin/) | admission |  | tests only |
@@ -96,15 +98,21 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_CI_CORE_SLUG` | value | `VytCepas/harbor-core` | owner/name of the public harbor-core repository that ci-mirror.sh pushes to (default VytCepas/harbor-core) | ci |  | tests only |
 | `HARBOR_CI_DOCKER` | path | `docker` | Docker command used by the CI queue and runner scripts; defaults to docker, tests swap in a fake | ci |  | tests only |
 | `HARBOR_CI_EVENTS_DIR` | path | `$HOME/runners/harbor-linux/events` | Directory holding the CI runner event files that ci-runners.sh reads (default ~/runners/harbor-linux/events) | ci |  | tests only |
+| `HARBOR_CI_GOVERNOR_ADMITTED` | handoff | none | Set by ci-governor admit on the job it lets run, so a poller that re-execs itself through admit runs once instead of asking again | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_DIR` | path | `$CACHE_DIR/ci-governor` | Directory holding the CI governor's state and slots; with none present, ci-governor run is a plain exec | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_DOCKERENV` | test-only | `/.dockerenv` | path of the file whose presence marks a CI container for the governor hook; tests point it elsewhere (default /.dockerenv) | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_EVENTS` | path | `/gov-events` | Directory where the CI governor hook writes its events inside the runner container, default /gov-events | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_POLL` | tuning | `3` | Seconds the CI governor sleeps between polls while waiting for a runner slot (default 3) | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_SLOT` | handoff | none | Set by the CI governor to its pid when it holds a slot, so nested governed runs execute plainly instead of queueing again | ci |  | tests only |
+| `HARBOR_CI_GOVERNOR_SYNC` | test-only | none | When set, the jobs an idle tick starts (vm resize, prune) run inline instead of detached, so a suite can read what they did | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_TEMPORARY_ROOT` | test-only | `/tmp` | Temp directory root the CI governor hook cleans (default /tmp); tests point it at a fixture directory | ci |  | tests only |
 | `HARBOR_CI_GOVERNOR_TRIGGER` | path | `$HOME/runners/harbor-linux/events/trigger` | File the CI governor touches to trigger the Linux runner's event handling (default under ~/runners/harbor-linux/events/trigger) | ci |  | tests only |
 | `HARBOR_CI_HEAD` | value | `HEAD` | git ref used as the head of the diff when selecting test suites (default HEAD) | ci |  | tests only |
 | `HARBOR_CI_IMAGE` | value | `computed` | Docker image the CI runners use, overriding the config file's image line; default port-linux-runner:local | ci |  | tests only |
+| `HARBOR_CI_LOG_SIZE` | value | `20m` | json-file log size (N[kmg]) at which a container ci-runners.sh creates rotates, overriding the config file logsize line; default 20m | ci |  | tests only |
+| `HARBOR_CI_LOG_FILES` | value | `2` | json-file log files (1-99) a container ci-runners.sh creates keeps, overriding the config file logfiles line; default 2 | ci |  | tests only |
+| `HARBOR_CI_COLIMA` | path | `colima` | colima command ci-runners.sh tidy reaches the VM through (fstrim, the json-log size and truncate); tests swap in a fake | ci |  | tests only |
+| `HARBOR_CI_DATADISK` | path | `$HOME/.colima/_lima/_disks/colima/datadisk` | Colima data disk file whose size ci-runners.sh tidy measures before and after the trim, to report the MB the Mac gained | ci |  | tests only |
 | `HARBOR_CI_LABELS` | value | `self-hosted,Linux,ARM64` | Comma-separated runner labels ci-runners.sh uses for the self-hosted runners (default self-hosted,Linux,ARM64) | ci |  | tests only |
 | `HARBOR_CI_LEVEL` | value | `full` | CI depth for the governance workflow; quick runs only the quick suite list, anything else (default full) runs everything | ci |  | tests only |
 | `HARBOR_CI_LOST_READS` | tuning | `20` | Maximum failed or cancelled runs per tick that ci-runners examines for lost jobs over the last 48 hours (default 20) | ci |  | tests only |
@@ -280,7 +288,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_STATUS_GLYPH_NAME_CAP` | tuning | `80` | Maximum characters of the name field the fleet status glyph prints before truncating (default 80) | status |  | tests only |
 | `HARBOR_STATUS_GLYPH_STALE_S` | tuning | `900` | age in seconds after which the fleet cache is treated as stale by the status glyph (default 900) | status |  | tests only |
 | `HARBOR_STATUS_IN_TREE` | switch | none | Set to 1 to make status-generate write status.md and build output into the checkout tree instead of the state directory | status |  | tests only |
-| `HARBOR_STATUS_LINE_REFRESH` | tuning | `10` | Seconds between status line refreshes written into the installed statusLine setting (default 10) | status |  | tests only |
+| `HARBOR_STATUS_LINE_REFRESH` | tuning | `30` | Seconds between status line refreshes written into the installed statusLine setting (default 30) | status |  | tests only |
 | `HARBOR_STATUS_OBLIGATION_BUDGET` | tuning | `40` | Seconds all reads of one status-obligations run may take together; default 40 | status |  | tests only |
 | `HARBOR_STATUS_OBLIGATION_CLAUDE` | test-only | `claude` | Name or path of the claude binary status-obligations runs (default claude); suites point it at a stub | status |  | tests only |
 | `HARBOR_STATUS_OBLIGATION_DIR` | path | `$HOME/.local/state/harbor/obligations` | Directory holding the status obligation ledger state (default ~/.local/state/harbor/obligations) | status |  | tests only |
@@ -306,6 +314,9 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_STATUS_WINDOW` | tuning | `3000000` | number of trailing bytes of the transcript the session-state hook scans for recent events (default 3000000) | status |  | tests only |
 | `HARBOR_STATUS_WORKFLOW` | path | `$ROOT/.github/workflows/governance.yml` | Workflow file status-generate reads for shard information, default .github/workflows/governance.yml | status |  | tests only |
 | `HARBOR_STATUS_NETWORK_LIMIT` | tuning | `200` | KB/s a process may pull on a metered network before status-network.sh reports it (default 200) | status |  | tests only |
+| `HARBOR_STATUS_DISK_MIN_GB` | kill-switch | `30` | GB of free space on the data volume under which status-disk.sh reports LOW (decimals allowed); 0 turns the check off | status | check.status.disk | tests only |
+| `HARBOR_STATUS_DISK_PATH` | path | `/System/Volumes/Data` | Volume status-disk.sh reads free space of; $HOME where that path does not exist | status |  | tests only |
+| `HARBOR_STATUS_DISK_DF` | test-only | `df` | df command status-disk.sh runs (called with -Pk <volume>); a suite stub | status |  | tests only |
 | `HARBOR_TEST_CHANGED` | value | none | Newline-separated list of changed file paths that test-suite-select uses instead of the git diff; pre-push sets it | test |  | tests only |
 | `HARBOR_TEST_CPU_MAX` | path | `/sys/fs/cgroup/cpu.max` | Path of the cgroup cpu.max file test-suite-run reads to size its job pool (default /sys/fs/cgroup/cpu.max) | test |  | tests only |
 | `HARBOR_TEST_CURL` | test-only | `curl` | curl command used in place of curl by ci-verified and access-browser-hosts-add; tests swap in a fake (default curl) | test |  | tests only |
@@ -313,6 +324,7 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_TEST_IN_SUITE` | handoff | none | Set to 1 by status-generate.sh for the suite it runs so a nested status run skips re-running suites (harbor#288) | test |  | tests only |
 | `HARBOR_TEST_NOW` | test-only | `computed` | Fixed epoch seconds used instead of the real clock so time-dependent CI and admission scripts are deterministic in tests | test |  | tests only |
 | `HARBOR_TEST_REQUIRE_BUN` | test-only | none | Set to 1 in the Linux governance job so a suite that needs bun fails instead of skipping when it is missing | test |  | tests only |
+| `HARBOR_TEST_REQUIRE_GITLEAKS` | test-only | none | Set to 1 in the Linux governance job so the suites that need gitleaks fail instead of skipping when it is missing | test |  | tests only |
 | `HARBOR_TEST_REQUIRE_NODE` | test-only | none | Set to 1 in the Linux runner image so the browser test fails instead of skipping when node is missing | test |  | tests only |
 | `HARBOR_TEST_REQUIRE_VALE` | test-only | none | Set to 1 in the Linux governance job so the Vale suites fail instead of skipping when Vale is missing | test |  | tests only |
 | `HARBOR_TEST_SANDBOX_DIR` | path | `$HOME/.claude-sandbox` | Sandbox config directory lint-conventions checks for the guards and floor files (default ~/.claude-sandbox) | test |  | tests only |

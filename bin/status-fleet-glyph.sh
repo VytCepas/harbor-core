@@ -205,7 +205,7 @@ sev() { # <text> [red|yel]: a given level wins over the word lookup
   case "${2:-}" in red) _sv="$RED"; return ;; yel) _sv="$YEL"; return ;; esac
   case "$1" in
     "MAIN RED"*|"PIN "*|"STALE "*|"CI STALL"*|"CI EMERG"*|"DOCKER DOWN"*|\
-    "RUNNER "*|"CI NO RUNNER"*|"SHARED TREE"*|"WATCH "*|"PLAN "*|"GATE "*) _sv="$RED" ;;
+    "RUNNER "*|"CI NO RUNNER"*|"SHARED TREE"*|"WATCH "*|"PLAN "*|"GATE "*|"DISK LOW"*) _sv="$RED" ;;
     *) _sv="$YEL" ;;
   esac
 }
@@ -607,6 +607,15 @@ $_ao
 ALARMS
 done
 
+# ── DISK LOW 24G (bin/status-disk.sh, check status.disk): free space on the data volume under its floor, read from the cache it writes
+# every tick, never probed here. `disk?`: that cache is over 900s old, so the number is not today's.
+if [ -f "$CACHE_DIR/disk-free.json" ] && command -v jq >/dev/null 2>&1; then
+  _dk="$(jq -r --argjson now "$NOW_EPOCH" '
+      if (($now - ((.at // 0) | tonumber)) > 900) then "?disk?"
+      elif .low == true then "DISK LOW \(.free_gb | floor)G" else empty end' "$CACHE_DIR/disk-free.json" 2>/dev/null || true)"
+  case "$_dk" in '?'*) ci_ambient "${_dk#?}" ;; ?*) ci_alarm "$_dk" ;; esac
+fi
+
 
 # ── the alarm zone ────────────────────────────────────────────────────────────
 
@@ -809,11 +818,11 @@ if [ "${HARBOR_STATUS_GLYPH_MACHINE:-1}" != 0 ]; then
     case "$_rc" in on) NET3="$NET3${NET3:+ }📱" ;; off) NET3="$NET3${NET3:+ }📵" ;; esac
   fi
   # 📶 metered network (operator request 2026-11-19): read from status-network.sh's mode file, never probed here; older
-  # than 300 s (its tick is 60 s) renders nothing. A process it reports pulling data on mobile is a YOU-row word.
+  # than 900 s (three of its 300 s ticks) renders nothing. A process it reports pulling data on mobile is a YOU-row word.
   _nd="${HARBOR_STATUS_DIR:-${HOME:-/nonexistent}/.local/state/harbor}/net"; _nm=""
   [ ! -r "$_nd/mode" ] || read -r _ne _nm _nw < "$_nd/mode" 2>/dev/null || :
   # Stale while metered means the guard stopped ticking: protection is off, so it is a YOU-row word, never silence.
-  case "${_ne:-}" in ''|*[!0-9]*) _nm="" ;; *) [ $(( NOW_EPOCH - _ne )) -le 300 ] || { [ "$_nm" != metered ] || alarm "NET GUARD STALE"; _nm=""; } ;; esac
+  case "${_ne:-}" in ''|*[!0-9]*) _nm="" ;; *) [ $(( NOW_EPOCH - _ne )) -le 900 ] || { [ "$_nm" != metered ] || alarm "NET GUARD STALE"; _nm=""; } ;; esac
   if [ "$_nm" = metered ]; then
     NET3="$NET3${NET3:+ }📶"
     if [ -s "$_nd/hogs" ]; then

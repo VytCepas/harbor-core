@@ -303,4 +303,14 @@ dhas "echo hi | sh"                  '|'
 dhas "true; rm -rf /"                ';'
 t_has "data [the unneutralized spelling] can hold the boundary needle" "$(data 's rm -rf / X')" 's rm -rf / X'
 
+# harbor#1633: _floor_seg_ids dropped its sed|sort|tr pipeline; the ids stay sorted-unique even when an appended table repeats or reorders them.
+t_section "_floor_seg_ids: sorted, unique ids"
+segids() ( . "$T_ROOT/bin/library-admission.sh" >/dev/null 2>&1; FLOOR_SEGS="$1"; _floor_seg_ids "$2" ${3:-} )
+t_eq "segids [one ascending table]" "1 3 " "$(segids "SEGC:1:rm${NL}SEGC:2:ls${NL}SEGC:3:rm" '^rm$')"
+t_eq "segids [appended rows repeat and reorder]" "1 3 " "$(segids "SEGC:3:rm${NL}SEGC:2:ls${NL}SEGC:1:rm${NL}SEGC:3:rm" '^rm$')"
+t_eq "segids [no match]" "" "$(segids "SEGC:1:ls" '^rm$')"
+t_eq "segids [ci only when asked]" "1 " "$(segids "SEGC:1:RM${NL}SEGC:2:ls" '^rm$' ci)"
+t_eq "segids [case-sensitive by default]" "" "$(segids "SEGC:1:RM" '^rm$')"
+t_eq "segids [the real table]" "1 2 " "$(segids "$(tab 'rm a; rm b; ls')" '^rm$')"
+
 t_done

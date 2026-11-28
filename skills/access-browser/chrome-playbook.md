@@ -49,7 +49,7 @@ Every tool call pays ~3 s of hooks and permission checks around a browser action
   same steps are not known to you yet, so take the snapshot in one call and act on its refs in the next.
 - **`text` to read, not `screenshot` or `snapshot`.** `text` is the page's visible text; `text <ref>` one
   element's. A screenshot is for layout and canvas apps.
-- **A page that needs no login: the headless lane.** `attach` with `lane: "web"` and args `["--headless"]`, then
+- **A page that needs no login: the blank lane.** `attach` with `lane: "web"` and args `["--blank"]` (no profile, never signed in; `--headless` is its old name), then
   the usual verbs with the same lane; `detach` when done. Same host allow-list, no Connect, no window.
 - **A dropped relay re-attaches by itself** once, with the registered token, and reopens the last page. After
   an input verb it asks for a fresh snapshot: refs do not survive the reload.
@@ -64,8 +64,8 @@ which Chrome lets no other extension drive, and its arrival drops the tab.
 
 1. A `goto`, `tab-new`, `reload` or `click` that lands on a sign-in page is refused:
    `signed out: <app> sent this session to a sign-in page … sign in as <account> (<card>)`.
-   The account is the `primary` line of the access register's route card naming the
-   app's host or its parent domain. No card means no account is named; never guess one.
+   The account is the `primary` line of the route card that lists the app's host in
+   `ui-hosts:` (point 2 under the list below). No card means no account is named; never guess one.
 2. Tell the operator in one line: the app, and the account to pick in their password
    manager.
 3. `harbor chrome wait-signin` (default 300 s, at most 900). It watches the tab through
@@ -77,6 +77,21 @@ which Chrome lets no other extension drive, and its arrival drops the tab.
    is harbor's to do. The route card's `reaches:` line names the right one.
 
 An account picker (Google's chooser, LinkedIn's) is a sign-in page too: the operator picks.
+
+**The agent profile, and what a sign-in needs (harbor#1617).**
+
+1. *Which attach.* Plain `attach` is the signed-in agent profile, already without a window. `attach --blank` is no profile: never
+   signed in, so every login looks lost in it. "Run headless" means plain `attach`, never `--blank` (`--headless` is the old
+   name of `--blank` and prints a notice).
+2. *Which account.* The account named in a `signed out` stop is the `primary` one of the card whose `ui-hosts:` lists the host
+   (exactly, else a parent domain it lists); only when no card lists it does harbor read card prose.
+3. *A login that needs a window.* A card with `session: show-only` holds a login that does not survive a headless profile copy:
+   `goto`/`tab-new` on its host refuses with `harbor chrome attach --show --ui='<why>'`.
+4. *Is the card's login live?* `verify <card>` goes to the card's `check:`/`role-check:` url in this session and prints per check
+   `pass`, `FAIL missing <literal>` or `login-wall`. It navigates and reads; it never clicks or fills.
+5. *Several sign-ins in one sitting.* `signin --cards a,b,c` opens the first card's check url, the operator signs in, you run
+   `signin --next` (it closes that window and opens the next); each step and `signin --done` print the cookie names the host holds and
+   whether each is persistent (never a value), or `no new cookies for <host>` when the window wrote nothing.
 
 **The operator signs in inside harbor's tab, not their own.** Some apps keep the session per
 tab: one data-pipeline app sent harbor's fresh tab to `/login` minutes after the operator

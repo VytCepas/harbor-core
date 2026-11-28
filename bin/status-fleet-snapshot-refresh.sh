@@ -27,6 +27,10 @@ mkdir -p "$CACHE_DIR"
 # inline runs averaging 344 s, 7.3 h of dispatcher time, which held every other rule up to 95 min behind its events (a
 # PR's CI watch started 90 min late). The child gets its own process group from the dispatcher's bounded(), so it outlives
 # the handler. launchd keeps the inline run: it kills the job's group on exit, and its tick is the schedule this serves.
+# The box's budget owner decides first (harbor#1630): under load or memory pressure this run is skipped, and a run deferred
+# ci-governor's admit_max_defer runs anyway. A box without the governor beside this copy just runs.
+_gov="$(dirname -- "$0")/ci-governor.sh"
+[ -n "${HARBOR_CI_GOVERNOR_ADMITTED:-}" ] || [ ! -f "$_gov" ] || exec sh "$_gov" admit status.fleet-snapshot -- sh "$0" "$@"
 if [ -n "${HARBOR_EVENT_JSON:-}" ]; then
   ( env -u HARBOR_EVENT_JSON sh "$0" ) </dev/null >/dev/null 2>&1 &
   exit 0
@@ -113,6 +117,11 @@ if [ -f "$SRC_DIR/ci-runner-switch.sh" ]; then
   done
 fi
 
+# Free disk on the Mac (operator decision 2026-11-23): one df a tick; writes cache/disk-free.json (the statusline's DISK LOW) and one checks.log line per change. BEFORE the orchestrator block.
+if [ -f "$SRC_DIR/status-disk.sh" ]; then
+  HARBOR_SCOPE_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/status-disk.sh" >/dev/null 2>&1 || true
+fi
+
 # The fleet's runners (harbor#1060): after runner-switch, whose verdict each repo's CI_RUNS_ON follows; also raises the ci-runner-alarm. Creates no container and touches no billing (bin/ci-runners.sh).
 if [ -f "$SRC_DIR/ci-runners.sh" ]; then
   HARBOR_SCOPE_CACHE_DIR="$CACHE_DIR" sh "$SRC_DIR/ci-runners.sh" tick >/dev/null 2>&1 || true
@@ -185,3 +194,7 @@ harbor_emit fleet.snapshots "$(jq -c '{repos: length, dirty: (map(select(.status
 # harbor#1437: the fleet controller's watch pass, once an hour, on this schedule (docs/reference/checks.md status.fleet-watch).
 # --if-due makes every other tick a no-op; the pass is bounded, and its red is its own receipt and checks.log line, not this job's.
 [ ! -f "$HERE/status-fleet-watch.sh" ] || sh "$HERE/status-fleet-watch.sh" --if-due >/dev/null 2>&1 || :
+
+# The runners' weekly tidy (operator decision 2026-11-23, Sundays from 04:00): LAST, after the snapshot is written, because it runs minutes and holds this run's lock. --if-due makes every
+# other tick a no-op (a box with no stamp is seeded, not run); it removes only what ci-runners.sh tidy lists (docs/reference/checks.md ci.runner-tidy), and its red is its own checks.log line.
+[ ! -f "$HERE/ci-runners.sh" ] || HARBOR_SCOPE_CACHE_DIR="$CACHE_DIR" sh "$HERE/ci-runners.sh" tidy --apply --if-due >/dev/null 2>&1 || :
