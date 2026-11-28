@@ -169,7 +169,7 @@ SNAP=''
 # runtime-install's lib/ and prod-guard-install's settings.json.bak.* were missing. A glob is allowed.
 # The install manifest joined it with Wave C (§3): a restore that put the files back and not their rows
 # would leave install-drift and skills-collide reading a record of an install that was undone.
-SNAP_SET='settings.json CLAUDE.md bin lib hooks context-rules inject.d skills skill-packs commands agents checks.d shims.d conf-keys.d terms.d name-create.d .harbor-packs .harbor-hooks-wired .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
+SNAP_SET='settings.json CLAUDE.md bin lib hooks context-rules inject.d skills skill-packs commands agents checks.d shims.d conf-keys.d terms.d name-create.d access .harbor-packs .harbor-hooks-wired .helm-pins .helm-floor-teeth .sec0-baseline.sha256 .helm-instructions.sha256 .helm-install-stamp .harbor-manifest settings.json.bak.*'
 B8PIN="$CFG/.helm-instructions.sha256"
 trap 'rm -rf "$WORK"' EXIT
 # A trapped INT returns to the script, so it must exit explicitly or the install carries on.
@@ -1213,6 +1213,20 @@ _pr_find() {
       [ ! -e "$CFG/$_r" ] && [ ! -L "$CFG/$_r" ] || continue
       grep -qxF -- "$_r" "$WORK/prune.head" && continue
       printf '%s\t%s\n' "$_r" 'recorded by an install, gone from the box, and the repo no longer ships it' >>"$WORK/prune.rows"
+    done
+  fi
+  # 2c · rename shims: a symlink in <cfg>/bin that an install recorded (a manifest row), that the repo no
+  # longer ships (no bin/ path at HEAD), and that renames.tsv no longer keeps alive (no row for the old name
+  # whose remove_by is today or later). A regular file is never one; no HEAD listing drops nothing (harbor#996).
+  if [ -s "$WORK/prune.head" ] && [ -f "$ROOT/standards/naming/renames.tsv" ]; then
+    _today="$(date +%Y-%m-%d)"
+    il_mf_rows "$CFG" | awk -F'\t' '$1 ~ /^bin\/[^\/]+$/ { print substr($1, 5) }' | while IFS= read -r _n; do
+      [ -L "$CFG/bin/$_n" ] || continue
+      grep -qxF -- "bin/$_n" "$WORK/prune.head" && continue
+      _live="$(awk -F'\t' -v o="bin/$_n" -v t="$_today" '$2 == o && $6 ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ && $6 >= t { print $6; exit }' "$ROOT/standards/naming/renames.tsv")"
+      [ -z "$_live" ] || { printf '%s\t%s\n' "$CFG/bin/$_n" "a rename shim whose window is open until $_live: kept" >>"$WORK/prune.kept"; continue; }
+      _pr_has "$CFG/bin/$_n" && continue
+      _pr_add "$CFG/bin/$_n" "a rename shim: the repo no longer ships bin/$_n and renames.tsv holds no live row for it (-> $(readlink "$CFG/bin/$_n"))"
     done
   fi
   # 3 · prod-guard-install's old backups in the config root (install-lib backs up beside the log now).

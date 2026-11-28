@@ -122,7 +122,7 @@ if [ -n "$here_name" ]; then
   [ -n "${here_main:-}" ] && [ "$here_main" != "$HERE" ] && _wt=' — a linked worktree, NOT the main checkout, so its branch and working tree are its own'
   loc="YOU ARE IN: $here_name ($here_rel)$_wt. Its own skills and memory are already loaded."
 else
-  loc="YOU ARE NOT IN A REGISTERED PROJECT — cwd is $here_rel. Nothing you write from here is covered by a project's gates, memory or skills. If this session touches a project, say which one in the work itself; if it touches SEVERAL, keep them separate — re-derive a conclusion in each tree rather than carrying it across, and never leave one repo's uncommitted work sitting in another's branch."
+  loc="YOU ARE NOT IN A REGISTERED PROJECT — cwd is $here_rel. No project's gates, memory or skills cover what you write here: name the project you touch; with several, keep them separate and re-derive each conclusion in its own tree, and never leave one repo's uncommitted work in another's branch."
 fi
 
 # "REGISTERED", AND THE WORD IS THE FIX (harbor#181). This said "%d project(s) on
@@ -136,5 +136,5 @@ fi
 # The count is not hedged, because a hedge ("there may be others") is a sentence
 # that never becomes false and so never gets fixed. It states what it counted;
 # lint IJ3 states what is missing, and that one CAN go quiet.
-printf '%s Capability outside this repo, so you do not carry it: %d REGISTERED project(s) own skills and tools that are NOT in your listing because they are scoped to their own tree.%s\nTo use one, read its .claude/skills/ or cd into it — do not rebuild what it already does, and do not conclude the capability is absent because you cannot see it.\n' \
+printf '%s %d REGISTERED project(s) hold skills and tools that are NOT in your listing (scoped to their own tree):%s\nTo use one, read its .claude/skills/ or cd into it; do not rebuild it or conclude it is absent.\n' \
   "$loc" "$n" "$out"

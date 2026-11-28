@@ -4,3 +4,9 @@
 # Columns, tab-separated, one header row, a skill once per file. Row order is the table order. Names no client, company or account.
 skill	situation
 access-ledger	Which account, which login, what am I allowed to touch
+context-search	Did we already work this out, what did we do last week, find a past session
+evals	Design an eval, a pass@k or pass^k study, a judge, a regression suite
+first-principles	A problem to rebuild from its fundamental constraints, not by analogy
+systems-thinking	The obvious fix failed or made it worse, the problem keeps coming back
+red-team	Stress-test an idea or plan with adversarial agents before committing
+telos	The operator's goals, beliefs and project dependency reports
