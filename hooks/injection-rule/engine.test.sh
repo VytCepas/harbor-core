@@ -868,4 +868,136 @@ t_eq "whatever the payload's key order" "$(usk lsk2)" "$(jq -r 'select(.r == "pl
 printf '%s' '{"session_id":"lsk3","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"skprobe","dangerouslyDisableSandbox":true}}' \
   | HARBOR_SCOPE_MANAGED_SETTINGS="$T/mg/managed-settings.json" CLAUDE_CONFIG_DIR="$UL" CLAUDE_PROJECT_DIR="$REPO" sh "$UL/bin/injection-rule.sh" >/dev/null 2>&1
 t_eq "the writer still reads no payload text: c stays what the marker says" confined "$(jq -r 'select(.r == "plain-rule") | .c' "$US")"
+
+t_section "one jq reads every field, and hands them to run: scripts (harbor#1633 follow-up)"
+FX="$CFG/context-rules/user"
+cat > "$FX/fx-env.sh" <<'SCRIPT'
+cat > /dev/null
+printf 'FX|%s|%s|%s|%s|%s|%s|\n' "${HARBOR_CONTEXT_FIELDS-unset}" "${HARBOR_CONTEXT_TOOL-unset}" "${HARBOR_CONTEXT_SID-unset}" "${HARBOR_CONTEXT_CWD-unset}" "${HARBOR_CONTEXT_AGENT-unset}" "${HARBOR_CONTEXT_COMMAND-unset}"
+SCRIPT
+pack "$FX" 90-fx-env.md <<'PACK'
+---
+id: fx-env
+event: PreToolUse
+tool: Bash
+when: cmd-contains fxprobe
+once: never
+run: fx-env.sh
+---
+PACK
+fxout() { fire "$1" | jq -r '.hookSpecificOutput.additionalContext' | sed -n 's/^.*\(FX|.*|\)$/\1/p' | head -1; }
+t_eq "a run: script gets the engine's one reading of the payload" "FX|1|Bash|fx1|/work|agent7|fxprobe a|" \
+  "$(fxout '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"fx1","cwd":"/work","agent_id":"agent7","tool_input":{"command":"fxprobe a"}}')"
+t_eq "no cwd, no agent: both arrive empty, not unset" "FX|1|Bash|fx2|||fxprobe b|" \
+  "$(fxout '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"fx2","tool_input":{"command":"fxprobe b"}}')"
+t_eq "a command that is not a string cannot be split exactly: nothing here matches, nothing is handed over" "" \
+  "$(fxout '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"fx3","tool_input":{"command":123}}')"
+t_eq "a command holding the unit separator takes the long way and the script gets no fields" "FX|unset|unset|unset|unset|unset|unset|" \
+  "$(fxout '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"fx4","tool_input":{"command":"fxprobe \u001f x"}}')"
+BIGC="fxprobe $(awk 'BEGIN { for (i = 0; i < 9000; i++) printf "x" }')"
+t_eq "a payload past 8 KB is read per field (splitting it in the shell is quadratic): the script gets no fields, the pack still fires" "FX|unset|unset|unset|unset|unset|unset|" \
+  "$(fxout "$(jq -cn --arg c "$BIGC" '{hook_event_name:"PreToolUse",tool_name:"Bash",session_id:"fx5",tool_input:{command:$c}}')")"
+t_eq "trailing newlines of the command go, as a \$(...) read made them go" "FX|1|Bash|fx6|||fxprobe a b|" \
+  "$(fxout '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"fx6","tool_input":{"command":"fxprobe a\nb\n\n"}}')"
+rm -f "$FX/90-fx-env.md" "$FX/fx-env.sh"
+
+t_section "payload-contains: a word of the event's raw JSON, the gate that keeps a run: script from forking"
+pack "$FX" 91-fx-gate.md <<'PACK'
+---
+id: fx-gate
+event: PreToolUse
+tool: Bash
+when: payload-contains alphaword|betaword
+once: never
+---
+FXGATE-NOTE
+PACK
+t_has "the first word, anywhere in the payload" "$(fire "$(bash_ev PreToolUse 'echo alphaword')")" FXGATE-NOTE
+t_has "the second word" "$(fire "$(bash_ev PreToolUse 'echo x betaword')")" FXGATE-NOTE
+t_has "a word in another field counts: it is a gate, a superset" "$(fire '{"hook_event_name":"PreToolUse","tool_name":"Bash","session_id":"g1","tool_input":{"command":"ls","description":"betaword"}}')" FXGATE-NOTE
+t_eq "neither word: silent" "" "$(fire "$(bash_ev PreToolUse 'echo gamma')" | grep -o FXGATE-NOTE)"
+t_eq "a prefix of a word is not the word" "" "$(fire "$(bash_ev PreToolUse 'echo alpha beta')" | grep -o FXGATE-NOTE)"
+pack "$FX" 91-fx-gate.md <<'PACK'
+---
+id: fx-gate
+event: PreToolUse
+tool: Bash
+when: not payload-contains alphaword
+once: never
+---
+FXGATE-NOTE
+PACK
+t_eq "not inverts it" "" "$(fire "$(bash_ev PreToolUse 'echo alphaword')" | grep -o FXGATE-NOTE)"
+t_has "not, word absent" "$(fire "$(bash_ev PreToolUse 'echo gamma')")" FXGATE-NOTE
+pack "$FX" 91-fx-gate.md <<'PACK'
+---
+id: fx-gate
+event: PreToolUse
+tool: Bash
+when: payload-contains
+once: never
+---
+FXGATE-NOTE
+PACK
+t_eq "an empty word list matches nothing" "" "$(fire "$(bash_ev PreToolUse 'echo anything')" | grep -o FXGATE-NOTE)"
+rm -f "$FX/91-fx-gate.md"
+
+t_section "the command is split once a call: cmd-prefix, cmd-word and cmd-contains share it and each answers as it did alone"
+pack "$FX" 92-fx-seg.md <<'PACK'
+---
+id: fx-seg
+event: PreToolUse
+tool: Bash
+when: cmd-prefix fxtool run
+when: cmd-word fxtool
+when: cmd-contains --flag
+when: not cmd-prefix fxtool stop
+once: never
+---
+FXSEG-NOTE
+PACK
+t_has "every predicate of one pack reads the one split" "$(fire "$(bash_ev PreToolUse 'echo hi && fxtool run --flag')")" FXSEG-NOTE
+t_eq "a later predicate still fails on its own" "" "$(fire "$(bash_ev PreToolUse 'fxtool run --flag && fxtool stop')" | grep -o FXSEG-NOTE)"
+t_eq "a quoted body is no segment (the shared split blanks it too)" "" "$(fire "$(bash_ev PreToolUse 'echo "fxtool run --flag"')" | grep -o FXSEG-NOTE)"
+pack "$FX" 93-fx-seg2.md <<'PACK'
+---
+id: fx-seg2
+event: PreToolUse
+tool: Bash
+when: cmd-word env
+once: never
+---
+FXSEG2-NOTE
+PACK
+t_has "a second pack with another predicate kind, one call" "$(fire "$(bash_ev PreToolUse 'FOO=1 fxtool run --flag; /usr/bin/env x')")" FXSEG2-NOTE
+rm -f "$FX/92-fx-seg.md" "$FX/93-fx-seg2.md"
+
+t_section "once: match shares one subject checksum across the packs of a call, and still tells commands apart"
+pack "$FX" 94-fx-m1.md <<'PACK'
+---
+id: fx-m1
+event: PreToolUse
+tool: Bash
+when: cmd-contains fxmatch
+once: match
+---
+FXM1-NOTE
+PACK
+pack "$FX" 95-fx-m2.md <<'PACK'
+---
+id: fx-m2
+event: PreToolUse
+tool: Bash
+when: cmd-contains fxmatch
+once: match
+---
+FXM2-NOTE
+PACK
+o1="$(fire "$(bash_ev PreToolUse 'fxmatch one' fxm)")"
+t_has "both match packs speak for the first command" "$o1" FXM1-NOTE; t_has "the second pack too" "$o1" FXM2-NOTE
+t_eq "the same command again: both silent" "" "$(fire "$(bash_ev PreToolUse 'fxmatch one' fxm)" | grep -o 'FXM[12]-NOTE')"
+o3="$(fire "$(bash_ev PreToolUse 'fxmatch two' fxm)")"
+t_has "another command speaks again (pack 1)" "$o3" FXM1-NOTE; t_has "(pack 2)" "$o3" FXM2-NOTE
+t_eq "the ledger key is <id>:<cksum><size> of the raw command, as it was" "fx-m1:$(printf '%s' 'fxmatch one' | cksum | tr -d ' ')" "$(grep -F 'fx-m1:' "$CFG/state/inject/fxm.seen" | head -1)"
+rm -f "$FX/94-fx-m1.md" "$FX/95-fx-m2.md"
 t_done

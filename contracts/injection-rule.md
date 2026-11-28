@@ -301,6 +301,15 @@ A `run:` script may keep the scope itself: the engine exports `HARBOR_CONTEXT_LE
 session id), and the script reads and appends a `ctx:<id>` line, so it can send its explanation once and a short line after
 (`agent-brief`).
 
+The engine reads the payload's fields once, in one `jq`, and exports what a `run:` script would otherwise parse out of its stdin again:
+`HARBOR_CONTEXT_TOOL`, `HARBOR_CONTEXT_SID`, `HARBOR_CONTEXT_CWD`, `HARBOR_CONTEXT_AGENT` and `HARBOR_CONTEXT_COMMAND`, under `HARBOR_CONTEXT_FIELDS=1`.
+A script uses them when that switch is `1` and reads its stdin otherwise (run by hand; a payload past 8 KB, as splitting a large string in the shell
+is quadratic; or one the single read cannot split exactly: a field that is not a string, or one holding the unit separator). stdin is still the
+whole payload either way.
+**A `run:` pack that nearly always answers nothing carries a `when: payload-contains` gate** (above) so the engine skips its script on a call that
+cannot match; the gate is a superset of the script's own first test, and `tests/context/injection-rule/notes.test.sh`'s FIRE rows prove it keeps every
+call the script answers.
+
 ### `once: match` and what the subject is
 
 `session` (the default) delivers a rule once per session. `never` delivers every
@@ -427,6 +436,7 @@ interpolated into a command, or used as a glob.
 | `cmd-contains <text>` | the command contains the text, heredoc bodies stripped |
 | `path-contains <text>` | `tool_input.file_path` contains the text |
 | `content-contains <text>` | the written content or the tool's response contains the text |
+| `payload-contains <word>[\|<word>…]` | the event's raw JSON text contains any one of the `|`-separated words, as the harness wrote it (no `"` or `\` in a word; the harness does not `\u`-escape what it need not). A gate for a `run:` pack: put a superset of what the script can match, and a call it would answer with nothing never forks it |
 | `repo-has <relpath>` | that path exists in the session's repo |
 | `tool-is <name>` | the tool name is exactly that |
 | `source-is <value>` | `SessionStart` only — why the session started: `startup` · `resume` · `clear` · `compact` · `fork` |

@@ -246,7 +246,7 @@ case_long_session() { _x="$1"; fresh
 }
 t_section "a stale current.json: generated_ts is the fold's, an expired row reads overdue (harbor#1115)"
 t_eq "the case passes on the real script" ok "$(case_stale_read "$BIN")"
-redproof "stale read: generated_ts back to the read's clock" case_stale_read "$BIN" 'generated_ts: (.generated_ts // $nowiso)' 'generated_ts: $nowiso'
+redproof "stale read: generated_ts back to the read's clock" case_stale_read "$BIN" 'generated_ts: (if $gen != "" then $gen else (.generated_ts // $nowiso) end)' 'generated_ts: $nowiso'
 redproof "stale read: an expired open row not re-derived" case_stale_read "$BIN" '| . + {state: (if .state == "open" and ts(.deadline_ts) > 0 and ts(.deadline_ts) < $now then "overdue" else .state end)}' '| . + {}'
 t_eq "the fixture register differs from the real one in exactly the session deadline" 1 "$(diff "$REAL_KINDS" "$KINDS" | grep -c '^<')"
 

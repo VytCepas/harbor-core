@@ -22,6 +22,7 @@ mkdir -p "$STUBS" "$MUTD"
 cat > "$STUBS/gh" <<'EOF'
 #!/bin/sh
 echo "$*" >> "$STUB_FIX/gh.calls"
+[ ! -f "$STUB_FIX/gh.slow" ] || { mkdir -p "$STUB_FIX/inflight"; : > "$STUB_FIX/inflight/$$"; ls "$STUB_FIX/inflight" | wc -l | tr -d ' ' >> "$STUB_FIX/gh.peak"; sleep 1; rm -f "$STUB_FIX/inflight/$$"; }
 [ ! -f "$STUB_FIX/gh.hang" ] || exec sleep 30
 [ ! -f "$STUB_FIX/gh.hang2" ] || { sleep 30; exit 1; }   # a grandchild keeps stdout open past the kill (harbor#1115)
 case "$1 $2" in
@@ -493,6 +494,22 @@ t_eq "RED: ...and nothing is written: no ledger, no cache, no receipt" "no no no
 mv "$INST/bin/kinds.away" "$INST/bin/obligation-kinds.tsv"
 rm -rf "$IOB" "$ICACHE"; rm -f "$INST/bin/status-obligations.sh"; inst_run "$INST"
 t_eq "RED: with the script not installed there is no ledger either" no "$([ -e "$IOB/ledger.jsonl" ] && echo yes || echo no)"
+
+# The gh reads are independent round trips and run several at a time (GH_PAR), answered in row order: twelve one-second reads
+# overlap (a peak above one, never above the cap) and every row still gets its own answer.
+case_parallel() { X="$1"; fresh; _i=0
+  while [ "$_i" -lt 12 ]; do _i=$((_i + 1)); ev 2026-10-06T01:00:00Z pr.opened "VytCepas/harbor#$_i"; printf MERGED > "$FIX/pr-$_i"; done
+  : > "$FIX/gh.slow"; rec >/dev/null
+  _peak="$(sort -n "$FIX/gh.peak" 2>/dev/null | tail -n 1)"
+  chk "twelve reads, one each" 12 "$(calls gh)"
+  chk "every row closed by its own answer" 12 "$(jq -r '[.obligations[] | select(.state == "closed" and .closed_by == "reconcile")] | length' "$OB/current.json")"
+  chk "gh-pr answered ok" true "$(src gh-pr ok)"
+  [ "${_peak:-0}" -ge 2 ] || BAD="$BAD [the reads did not overlap: peak ${_peak:-none}]"
+  [ "${_peak:-0}" -le 6 ] || BAD="$BAD [more than six reads at once: peak $_peak]"
+  verdict; }
+t_section "gh reads run in parallel, bounded, with the serial answers"
+t_eq "the real script" ok "$(case_parallel "$BIN")"
+redproof "serial gh reads" case_parallel 'GH_PAR=6 ' 'GH_PAR=1 '
 
 t_section "hermetic: no real gh, claude or launchctl ran anywhere in this suite"
 t_eq "the poison was never touched" no "$([ -e "$T_TMP/touched" ] && cat "$T_TMP/touched" | head -n 3 | tr '\n' ' ' || echo no)"

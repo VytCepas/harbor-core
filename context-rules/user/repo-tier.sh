@@ -27,11 +27,15 @@
 # widened it would be a second, softer scoping rule in a file any box can edit.
 set -eu
 
-PAYLOAD="$(cat)"
-[ -n "$PAYLOAD" ] || exit 0
-command -v jq >/dev/null 2>&1 || exit 0
-
-CWD="$(printf '%s' "$PAYLOAD" | jq -r '.cwd // empty' 2>/dev/null || true)"
+# The engine has already read `.cwd` (HARBOR_CONTEXT_FIELDS=1); run by hand, the script reads its own input.
+if [ "${HARBOR_CONTEXT_FIELDS:-}" = 1 ]; then
+  CWD="$HARBOR_CONTEXT_CWD"
+else
+  PAYLOAD="$(cat)"
+  [ -n "$PAYLOAD" ] || exit 0
+  command -v jq >/dev/null 2>&1 || exit 0
+  CWD="$(printf '%s' "$PAYLOAD" | jq -r '.cwd // empty' 2>/dev/null || true)"
+fi
 [ -n "$CWD" ] || exit 0
 [ -d "$CWD" ] || exit 0
 
@@ -91,6 +95,8 @@ _say() { # <how the session reached the tree>
     "$1" "$(_rel "$GOVERNED")" "$nk" "$kept" "$_also"
 }
 
+# The usual call stands in the governed tree's own root, so git would answer GOVERNED and the script would exit below: skip the git.
+if [ -e "$GOVERNED/.git" ] && [ "$(_phys "$CWD")" = "$GOVERNED" ]; then exit 0; fi
 STANDING="$(cd "$CWD" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -n "$STANDING" ]; then
   STANDING="$(_phys "$STANDING")"

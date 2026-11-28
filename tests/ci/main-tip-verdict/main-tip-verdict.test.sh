@@ -12,6 +12,7 @@ cat > "$GH" <<'STUB'
 #!/bin/sh
 f="$FX/$(printf '%s' "$2" | tr '/?&=' '____')"
 [ -z "${GH_LOG:-}" ] || printf '%s\n' "$2" >> "$GH_LOG"
+[ -z "${GH_SLOW:-}" ] || { mkdir -p "$GH_SLOW"; : > "$GH_SLOW/$$"; ls "$GH_SLOW" | wc -l | tr -d ' ' >> "$GH_SLOW.peak"; sleep 1; rm -f "$GH_SLOW/$$"; }
 [ "$1" = api ] && [ -f "$f" ] && cat "$f"
 STUB
 chmod +x "$GH"
@@ -298,6 +299,23 @@ t_eq "a run-less tip over a FAILED run commit is red, named after that commit" "
 t_has "…and its line names that commit" "$(cat "$CACHE/checks.log")" 'o/pathsred tip q2 failed'
 t_eq "a repo with no run on any commit in the window is no-ci" "no-ci false" "$(getr o/nowhere '"\(.state) \(.tip.red)"')"
 t_eq "harbor stays strict: a run-less harbor tip IS red" "no-run true" "$(R=o/harbor; commits h0 h1 h2; runs h1:success h2:success; fleet >/dev/null 2>&1 || :; getr o/harbor '"\(.tip.verdict) \(.tip.red)"')"
+
+t_section "fleet: the repos are judged several at a time (TIP_PAR), and the verdicts are the serial run's"
+_peak() { sort -n "$1.peak" 2>/dev/null | tail -n 1; }
+_verdicts() { jq -c '[.repos[] | [.repo, .state, (.tip.verdict // ""), (.unread // false)]]' "$CACHE/main-tip-verdict.json"; }
+_before="$(_verdicts)"
+GH_SLOW="$T_TMP/slow"; export GH_SLOW; rm -rf "$GH_SLOW" "$GH_SLOW.peak"; rm -f "$CACHE/main-tip-verdict.json" "$CACHE/checks.log"
+fleet >/dev/null 2>&1 || :
+t_eq "the six repos give the same verdicts in the same order as before" "$_before" "$(_verdicts)"
+_pk="$(_peak "$GH_SLOW")"
+t_eq "their reads overlapped (a peak above one) and never above the cap" yes "$([ "${_pk:-0}" -ge 2 ] && [ "${_pk:-0}" -le 6 ] && echo yes || echo "no (peak ${_pk:-none})")"
+SER="$T_TMP/ser/bin"; mkdir -p "$SER"; cp "$MTI/library-log.sh" "$MTI/repo-slug.txt" "$SER/"
+awk '{ i = index($0, "TIP_PAR=6"); if (i) { $0 = substr($0, 1, i - 1) "TIP_PAR=1" substr($0, i + 9); n++ } print } END { exit n == 1 ? 0 : 3 }' "$MTI/ci-main-tip-verdict.sh" > "$SER/ci-main-tip-verdict.sh" && t_pass || t_fail "the mutation did not apply"
+rm -rf "$GH_SLOW" "$GH_SLOW.peak"
+FX="$FX" HARBOR_TEST_GH="$GH" HARBOR_SCOPE_CACHE_DIR="$CACHE" HARBOR_CHECK_RECEIPTS="$CACHE/checks" HARBOR_TEST_NOW="${AT:-$NOW}" CLAUDE_CONFIG_DIR="$CFGD" HARBOR_STATUS_FLEET_SNAPSHOT="$T_TMP/snap.json" \
+  sh "$SER/ci-main-tip-verdict.sh" >/dev/null 2>&1 || :
+t_eq "red-proof: run one at a time, the same check sees no overlap" 1 "$(_peak "$GH_SLOW")"
+unset GH_SLOW; rm -rf "$T_TMP/slow"
 
 t_section "fleet: harbor's own repository is named by repo_slug, never spelled in the script (harbor#1149)"
 reset; printf '[]\n' > "$T_TMP/snap.json"; : > "$CFGD/.harbor-ci-runners"

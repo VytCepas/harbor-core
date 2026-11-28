@@ -280,6 +280,7 @@ tests/lint/platform/calls.test.sh
 tests/lint/conventions/mktemp-template.test.sh
 tests/status/fleet-snapshot/watch.test.sh
 tests/status/fleet-snapshot/detach.test.sh
+tests/status/fleet-snapshot/unchanged.test.sh
 tests/access/secret/seam.test.sh
 tests/status/console/guards.test.sh
 tests/status/console/lifecycle.test.sh
@@ -294,6 +295,7 @@ tests/status/obligations/reconcile.test.sh
 tests/status/obligations/surface.test.sh
 tests/status/obligations/harden.test.sh
 tests/status/obligations/finished.test.sh
+tests/status/obligations/bound.test.sh
 tests/event/dispatch/resume.test.sh
 tests/event/dispatch/lag.test.sh
 tests/event/dispatch/rules.test.sh

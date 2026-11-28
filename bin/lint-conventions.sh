@@ -6060,7 +6060,7 @@ for f in "$ROOT"/context-rules/*/*.md "${_INJ_DIR:-/nonexistent}"/*/*.md; do
   _ij_fm "$f" | sed -n 's/^when:[[:space:]]*//p' | while IFS= read -r _w; do
     _w="${_w#not }"
     case "${_w%% *}" in
-      always|cmd-prefix|cmd-word|cmd-contains|path-contains|content-contains|repo-has|tool-is|source-is|injected-instruction) ;;
+      always|cmd-prefix|cmd-word|cmd-contains|path-contains|content-contains|payload-contains|repo-has|tool-is|source-is|injected-instruction) ;;
       *) _advp '  VIOLATION [context.pack-shape] unknown predicate "%s": %s\n' "${_w%% *}" "$_rel" >&2
          printf 'x' >> "${TMPDIR:-/tmp}/ij1.$$" ;;
     esac

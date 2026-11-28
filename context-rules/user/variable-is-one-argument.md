@@ -3,7 +3,8 @@ order: 60
 description: A zsh variable holding several flags is one argument, not many
 event: PreToolUse
 tool: Bash
-when: always
+when: payload-contains $
+when: payload-contains =
 run: variable-is-one-argument.sh
 once: match
 ---

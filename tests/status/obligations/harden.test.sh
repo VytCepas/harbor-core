@@ -158,7 +158,7 @@ case_retention() { _x="$1"; fresh; RETAIN=3600   # the window is one hour here: 
   ev 2026-10-06T01:30:00Z pr.opened VytCepas/harbor#2; ev 2026-10-06T01:40:00Z pr.merged VytCepas/harbor#2
   ev 2026-10-06T01:50:00Z pr.opened VytCepas/harbor#3; ob "$_x" fold >/dev/null
   chk "current.json: live and recently closed rows only" "pr:VytCepas/harbor#2 pr:VytCepas/harbor#3" "$(jq -r '[.obligations[].id] | join(" ")' "$OB/current.json")"
-  chk "the ledger keeps the old row's history" 5 "$(lines)"
+  chk "the ledger is cut to the same window: the old row's two lines are gone, the rest stay" 3 "$(lines)"
   chk "the snapshot drops it too" 2 "$(jq '.state.rows | length' "$OB/snapshot.json")"
   verdict; }
 
@@ -211,7 +211,7 @@ case_resume() { _x="$1"; fresh
   verdict; }
 
 t_section "#3 growth: current.json is the live rows and the recently closed; the fold reads the ledger from the snapshot on"
-t_eq "rows closed before the window leave current.json and the snapshot, not the ledger" ok "$(case_retention "$BIN")"
+t_eq "rows closed before the window leave current.json, the snapshot and (at the daily cut) the ledger" ok "$(case_retention "$BIN")"
 t_eq "the ledger before the snapshot is not read" ok "$(case_tail_only "$BIN")"
 t_eq "a snapshot that does not match its ledger, or is not one, is rebuilt" ok "$(case_snapshot_rebuild "$BIN")"
 t_eq "with a snapshot or without, the same ledger and rows" ok "$(case_snapshot_equal "$BIN")"

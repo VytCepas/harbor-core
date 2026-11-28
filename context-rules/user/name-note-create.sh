@@ -4,11 +4,17 @@
 #
 # FAIL-OPEN: no jq, no rows, no match, a name made of $VARS, no lint, or a lint error prints nothing and exits 0.
 set -u
-command -v jq >/dev/null 2>&1 || exit 0
-CMD="$(jq -r '.tool_input.command // empty' 2>/dev/null | head -c 65536 || true)"
-[ -n "$CMD" ] || exit 0
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-# A heredoc body is documentation, not a command (the same strip unbounded-wait-loop.sh does).
+# The engine has already read the command (HARBOR_CONTEXT_FIELDS=1, and the command rides only when short); run by hand, the script reads its input.
+if [ "${HARBOR_CONTEXT_FIELDS:-}" = 1 ] && [ -n "${HARBOR_CONTEXT_COMMAND+x}" ]; then
+  CMD="$HARBOR_CONTEXT_COMMAND"
+else
+  command -v jq >/dev/null 2>&1 || exit 0
+  CMD="$(jq -r '.tool_input.command // empty' 2>/dev/null | head -c 65536 || true)"
+fi
+[ -n "$CMD" ] || exit 0
+# A heredoc body is documentation, not a command (the same strip unbounded-wait-loop.sh does). The strip has nothing to do without a `<<`.
+case "$CMD" in *'<<'*)
 CMD="$(printf '%s\n' "$CMD" | awk '
   /<<-?[ ]*['\''"]?[A-Za-z_][A-Za-z0-9_]*['\''"]?/ && !skip {
     t = $0; sub(/^.*<<-?[ ]*/, "", t); gsub(/['\''"]/, "", t); sub(/[^A-Za-z0-9_].*$/, "", t)
@@ -16,12 +22,18 @@ CMD="$(printf '%s\n' "$CMD" | awk '
   }
   skip { s = $0; gsub(/^[ \t]+|[ \t]+$/, "", s); if (s == term) skip = 0; next }
   { print }')"
-[ -n "$CMD" ] || exit 0
+[ -n "$CMD" ] || exit 0 ;;
+esac
 
-R="$(git -C "${CLAUDE_PROJECT_DIR:-$PWD}" rev-parse --show-toplevel 2>/dev/null)" || R=""
-if [ -n "$R" ] && [ -f "$R/bin/lint-name.sh" ] && [ -f "$R/standards/naming/surfaces.tsv" ]; then LINT="$R/bin/lint-name.sh"; LROOT="$R"
-elif [ -f "$CFG/bin/lint-name.sh" ]; then LINT="$CFG/bin/lint-name.sh"; LROOT=""
-else exit 0; fi
+# Which judge to run is only asked when a row matched: most calls match none, and the git it costs was paid by every one of them.
+LINT=''
+_pick_lint() {
+  [ -z "$LINT" ] || return 0
+  R="$(git -C "${CLAUDE_PROJECT_DIR:-$PWD}" rev-parse --show-toplevel 2>/dev/null)" || R=""
+  if [ -n "$R" ] && [ -f "$R/bin/lint-name.sh" ] && [ -f "$R/standards/naming/surfaces.tsv" ]; then LINT="$R/bin/lint-name.sh"; LROOT="$R"
+  elif [ -f "$CFG/bin/lint-name.sh" ]; then LINT="$CFG/bin/lint-name.sh"; LROOT=""
+  else exit 0; fi
+}
 
 TAB="$(printf '\t')"
 for F in "$CFG"/name-create.d/*.tsv; do
@@ -46,6 +58,7 @@ for F in "$CFG"/name-create.d/*.tsv; do
     esac
     case "$NAME" in ''|*[\$\`\;\&\|\(\)\<\>\\]*) continue ;; esac
     # exit 1 is a block-mode finding, which is what the note is for; 2 and above judged nothing.
+    _pick_lint
     _rc=0
     if [ -n "$LROOT" ]; then OUT="$(sh "$LINT" --root "$LROOT" --check "$SURF" "$NAME" 2>&1)" || _rc=$?
     else OUT="$(sh "$LINT" --check "$SURF" "$NAME" 2>&1)" || _rc=$?; fi

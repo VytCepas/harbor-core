@@ -31,24 +31,42 @@ command -v jq >/dev/null 2>&1 || exit 0
 HERE="${0%/*}"; [ "$HERE" != "$0" ] || HERE=.
 REGF="$HERE/default-way-route.tsv"
 [ -f "$REGF" ] || exit 0
-P="$(cat)"
-[ -n "$P" ] || exit 0
-TOOL="$(printf '%s' "$P" | jq -r '.tool_name // empty | strings' 2>/dev/null)" || exit 0
+# The engine has already read the tool name and a short command (HARBOR_CONTEXT_FIELDS=1); the payload itself is read only when a branch needs it.
+# Run by hand, the script reads everything from its input.
+if [ "${HARBOR_CONTEXT_FIELDS:-}" = 1 ]; then
+  P=''; TOOL="$HARBOR_CONTEXT_TOOL"
+else
+  P="$(cat)"
+  [ -n "$P" ] || exit 0
+  TOOL="$(printf '%s' "$P" | jq -r '.tool_name // empty | strings' 2>/dev/null)" || exit 0
+fi
 CFGP="$(CDPATH= cd -- "$CFG" 2>/dev/null && pwd -P)" || CFGP="$CFG"
 HOMEP="$(CDPATH= cd -- "$HOME" 2>/dev/null && pwd -P)" || HOMEP="$HOME"
 
 case "$TOOL" in
   Write|Edit)
+    [ -n "$P" ] || P="$(cat)"
     TARGET="$(printf '%s' "$P" | jq -r '.tool_input.file_path // empty | strings' 2>/dev/null)" || exit 0
     [ -n "$TARGET" ] || exit 0
     case "$TARGET" in /*) ;; *) TARGET="${CLAUDE_PROJECT_DIR:-$PWD}/$TARGET" ;; esac
     BODY="$(printf '%s' "$P" | jq -r '(.tool_input.content // .tool_input.new_string // "") | strings' 2>/dev/null | head -c 262144)"
     CMD='' ;;
   Bash)
-    BODY="$(printf '%s' "$P" | jq -r '.tool_input.command // empty | strings' 2>/dev/null | head -c 262144)"
+    if [ "${HARBOR_CONTEXT_FIELDS:-}" = 1 ] && [ -n "${HARBOR_CONTEXT_COMMAND+x}" ]; then
+      BODY="$HARBOR_CONTEXT_COMMAND"
+    else
+      [ -n "$P" ] || P="$(cat)"
+      BODY="$(printf '%s' "$P" | jq -r '.tool_input.command // empty | strings' 2>/dev/null | head -c 262144)"
+    fi
     [ -n "$BODY" ] || exit 0
     # A heredoc body is data, not a command (the strip name-note-create.sh does); BODY keeps it for `content`.
     # The first 16 KB is judged: the quote mask walks it a character at a time, and a hook must stay cheap.
+    # No `<<` and nothing past the 16 KB cap: the strip and the cap would hand BODY back unchanged, so neither is run.
+    case "$BODY" in
+      *'<<'*) _strip=1 ;;
+      *) if [ "${#BODY}" -le 16384 ]; then _strip=0; else _strip=1; fi ;;
+    esac
+    if [ "$_strip" = 0 ]; then CMD="$BODY"; else
     CMD="$(printf '%s\n' "$BODY" | awk '
       /<<-?[ ]*['\''"]?[A-Za-z_][A-Za-z0-9_]*['\''"]?/ && !skip {
         t = $0; sub(/^.*<<-?[ ]*/, "", t); gsub(/['\''"]/, "", t); sub(/[^A-Za-z0-9_].*$/, "", t)
@@ -56,6 +74,7 @@ case "$TOOL" in
       }
       skip { s = $0; gsub(/^[ \t]+|[ \t]+$/, "", s); if (s == term) skip = 0; next }
       { print }' | head -c 16384)"
+    fi
     TARGET='' ;;
   *) exit 0 ;;
 esac

@@ -3,7 +3,7 @@ order: 92
 description: A suite run directly with sh or bash is pointed at test-suite-run.sh --select, which carries the timeouts
 event: PreToolUse
 tool: Bash
-when: always
+when: payload-contains .test.sh
 run: suite-run-through-runner.sh
 once: session
 ---

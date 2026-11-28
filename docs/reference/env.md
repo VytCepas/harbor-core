@@ -141,16 +141,22 @@ the repos or the box tier) is in `contracts/roots.tsv`, listed after the table.
 | `HARBOR_CI_WEDGE_CPU_PCT` | tuning | none | CPU percent of one core under which a CI job counts as near zero for wedge detection, default 2 | ci |  | tests only |
 | `HARBOR_CI_WEDGE_IDLE_SEC` | tuning | none | Seconds of near-zero activity before the runner watch judges a Runner.Worker wedged (default 3600) | ci |  | tests only |
 | `HARBOR_CI_WEDGE_OOM_SEC` | tuning | none | Seconds a CI job must stay near-idle after an out-of-memory kill before the runner watch calls it wedged; default 240 | ci |  | tests only |
+| `HARBOR_CONTEXT_AGENT` | handoff | none | Set by the injection engine for a run: script to the payload's agent_id (empty outside a subagent); read only with HARBOR_CONTEXT_FIELDS=1 | context |  | tests only |
 | `HARBOR_CONTEXT_BASELINE` | path | none | Overrides the context baseline TSV file that context-budget compares against, instead of the state or registries copy | context |  | tests only |
 | `HARBOR_CONTEXT_BUDGET_NO_PROBE` | switch | `0` | Set to 1 to skip running the SessionStart injector when measuring context cost; that row reports NOT PROBED | context |  | tests only |
 | `HARBOR_CONTEXT_CEILING` | tuning | `40000` | Token ceiling the always-loaded session context is measured against by context-budget.sh; default 40000 | context |  | tests only |
+| `HARBOR_CONTEXT_COMMAND` | handoff | none | Set by the injection engine for a run: script to the payload's command (empty when it has none); read only with HARBOR_CONTEXT_FIELDS=1 | context |  | tests only |
 | `HARBOR_CONTEXT_CONTROLS` | path | none | controls.tsv the injection engine reads each pack mode from; unset means the one beside the engine, a suite points it at a fixture | context |  | tests only |
+| `HARBOR_CONTEXT_CWD` | handoff | none | Set by the injection engine for a run: script to the payload's cwd (empty when it has none); read only with HARBOR_CONTEXT_FIELDS=1 | context |  | tests only |
+| `HARBOR_CONTEXT_FIELDS` | handoff | none | Set to 1 by the injection engine for a run: script when HARBOR_CONTEXT_AGENT, _CWD, _SID, _TOOL and _CMD hold the engine's one reading of the payload; unset means the script reads its own stdin (run by hand, a payload past 8 KB, or one the engine could not split exactly) | context |  | tests only |
 | `HARBOR_CONTEXT_LEDGER` | path | none | Set by the injection engine for a run: script to the session's once-ledger file (empty without a session id); agent-brief.sh reads and appends its ctx: key there | context |  | tests only |
 | `HARBOR_CONTEXT_PEERS_DIR` | path | `$CFG/.helm-peers` | Directory of per-session peer files that context-peers.sh reads (default $CFG/.helm-peers) | context |  | tests only |
 | `HARBOR_CONTEXT_PEER_EXCLUDE` | handoff | none | Session id context-resolve passes to context-peers so the starting session is left out of its own peer-session report | context |  | tests only |
 | `HARBOR_CONTEXT_RATCHET_BASELINE` | path | `$ROOT/registries/context-ratchet.tsv` | TSV file holding the context-size ratchet baseline that context-budget compares against (default registries/context-ratchet.tsv) | context |  | tests only |
 | `HARBOR_CONTEXT_REACHED` | handoff | none | Set by the injection-rule hook to tell repo-tier.sh which trees the sweep reached, so both report the same delivery | context |  | tests only |
 | `HARBOR_CONTEXT_RESULT_BYTES` | tuning | `32768` | Tool-result size in bytes above which the large-tool-result context rule fires (default 32768) | context |  | tests only |
+| `HARBOR_CONTEXT_SID` | handoff | none | Set by the injection engine for a run: script to the payload's session_id as the harness sent it (empty when it has none); read only with HARBOR_CONTEXT_FIELDS=1 | context |  | tests only |
+| `HARBOR_CONTEXT_TOOL` | handoff | none | Set by the injection engine for a run: script to the payload's tool_name; read only with HARBOR_CONTEXT_FIELDS=1 | context |  | tests only |
 | `HARBOR_CONTEXT_TOUCHED` | handoff | none | Set by the injection-rule hook for context-rule packs: the physical trees touched this turn, one per line | context |  | tests only |
 | `HARBOR_CORE_MIRROR_TOKEN` | value | none | Secret fine-grained GitHub token for the harbor-core mirror (Contents, PRs, Workflows write); legacy name of HARBOR_CI_CORE_MIRROR_TOKEN | standard |  | tests only |
 | `HARBOR_DEPLOY_ACTIVE` | handoff | `0` | set to 1 by deploy.sh for its children so installers skip next steps that deploy itself performs | deploy |  | tests only |
